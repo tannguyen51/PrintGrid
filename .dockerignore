@@ -1,0 +1,17 @@
+bin/
+obj/
+.vs/
+.vscode/
+.idea/
+node_modules/
+frontend/dist/
+frontend/node_modules/
+tests/
+documentation/
+.git/
+.gitignore
+.env
+docker-compose*.yml
+**/appsettings.Development.json
+**/*.md
+logs/

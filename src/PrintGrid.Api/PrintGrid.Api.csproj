@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Hangfire.AspNetCore" />
+    <PackageReference Include="Hangfire.PostgreSql" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Sinks.File" />
+    <PackageReference Include="BCrypt.Net-Next" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PrintGrid.Modules\Customer\PrintGrid.Modules.Customer.Application\PrintGrid.Modules.Customer.Application.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Customer\PrintGrid.Modules.Customer.Infrastructure\PrintGrid.Modules.Customer.Infrastructure.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Scheduling\PrintGrid.Modules.Scheduling.Application\PrintGrid.Modules.Scheduling.Application.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Scheduling\PrintGrid.Modules.Scheduling.Infrastructure\PrintGrid.Modules.Scheduling.Infrastructure.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Lab\PrintGrid.Modules.Lab.Application\PrintGrid.Modules.Lab.Application.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Lab\PrintGrid.Modules.Lab.Infrastructure\PrintGrid.Modules.Lab.Infrastructure.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Hub\PrintGrid.Modules.Hub.Application\PrintGrid.Modules.Hub.Application.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Hub\PrintGrid.Modules.Hub.Infrastructure\PrintGrid.Modules.Hub.Infrastructure.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Analytics\PrintGrid.Modules.Analytics.Application\PrintGrid.Modules.Analytics.Application.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Analytics\PrintGrid.Modules.Analytics.Infrastructure\PrintGrid.Modules.Analytics.Infrastructure.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Admin\PrintGrid.Modules.Admin.Application\PrintGrid.Modules.Admin.Application.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Admin\PrintGrid.Modules.Admin.Infrastructure\PrintGrid.Modules.Admin.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

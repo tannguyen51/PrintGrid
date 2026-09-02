@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\PrintGrid.SharedKernel\PrintGrid.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>
