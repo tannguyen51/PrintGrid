@@ -22,6 +22,7 @@ interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<void>
+  register: (input: { fullName: string; email: string; password: string }) => Promise<void>
   logout: () => void
 }
 
@@ -42,14 +43,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user)
   }, [])
 
+  const register = useCallback(async (input: { fullName: string; email: string; password: string }) => {
+    // Creates the account; the returned session (if any) is stored the same way
+    // as login, so the user lands on the app immediately. If the API returns no
+    // session, the caller should bounce to /login after a success.
+    const { data } = await apiClient.post<LoginResponse | null>('/auth/register', input)
+    if (data) {
+      setTokens(data.accessToken, data.refreshToken)
+      setUser(data.user)
+    }
+  }, [])
+
   const logout = useCallback(() => {
     clearTokens()
     setUser(null)
   }, [])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isAuthenticated: user !== null && getAccessToken() !== null, login, logout }),
-    [user, login, logout],
+    () => ({ user, isAuthenticated: user !== null && getAccessToken() !== null, login, register, logout }),
+    [user, login, register, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

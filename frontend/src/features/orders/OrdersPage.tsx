@@ -1,4 +1,4 @@
-import { Alert, Box, Chip, CircularProgress, Stack, Typography } from '@mui/material'
+  import { Alert, Box, Chip, CircularProgress, Stack, Typography } from '@mui/material'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 import { useOrders } from './useOrders'
 import type { Order, OrderStatus } from '../../shared/types/order'
@@ -27,7 +27,7 @@ const columns: GridColDef<Order>[] = [
     width: 150,
     valueFormatter: (value: number) => value?.toLocaleString('vi-VN'),
   },
-  { field: 'promisedDeliveryDate', headerName: 'Ngày giao hẹn', width: 160 },
+  { field: 'promisedDeliveryDate', headerName: 'Ngày giao hẹn ', width: 160 },
   { field: 'createdAt', headerName: 'Ngày tạo', width: 200 },
 ]
 

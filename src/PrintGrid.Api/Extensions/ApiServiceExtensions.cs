@@ -2,8 +2,10 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using PrintGrid.Api.Auth;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Api.Configuration;
+using PrintGrid.Modules.Customer.Application.Auth;
 
 namespace PrintGrid.Api.Extensions;
 
@@ -15,6 +17,10 @@ public static class ApiServiceExtensions
     {
         var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+
+        // Auth services consumed by the Customer module's auth commands.
+        services.AddScoped<ITokenService, JwtTokenService>();
+        services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
