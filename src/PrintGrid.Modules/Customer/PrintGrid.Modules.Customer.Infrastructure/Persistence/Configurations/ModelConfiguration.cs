@@ -18,8 +18,16 @@ public class ModelConfiguration : IEntityTypeConfiguration<Model>
         builder.Property(m => m.FileName).HasMaxLength(255).IsRequired();
         builder.Property(m => m.FileFormat).HasMaxLength(10).IsRequired();
         builder.Property(m => m.SizeBytes).IsRequired();
+        builder.Property(m => m.StorageKey).HasMaxLength(512);
         builder.Property(m => m.CreatedAt).IsRequired();
         builder.Property(m => m.UpdatedAt).IsRequired();
+
+        builder.Property(m => m.GeometryStatus).HasConversion<string>().HasMaxLength(16).IsRequired();
+        builder.Property(m => m.BoundingWidthMm).HasPrecision(8, 2);
+        builder.Property(m => m.BoundingDepthMm).HasPrecision(8, 2);
+        builder.Property(m => m.BoundingHeightMm).HasPrecision(8, 2);
+        builder.Property(m => m.VolumeCm3).HasPrecision(12, 3);
+        builder.Property(m => m.GeometryMessage).HasMaxLength(500);
 
         // Simple postgres text[] storage for tags.
         builder.PrimitiveCollection(m => m.Tags);

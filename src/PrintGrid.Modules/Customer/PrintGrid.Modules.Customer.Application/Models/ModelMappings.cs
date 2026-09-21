@@ -13,5 +13,13 @@ public static class ModelMappings
         model.SizeBytes,
         model.Tags.ToList(),
         model.CreatedAt,
-        model.UpdatedAt);
+        model.UpdatedAt,
+        model.GeometryStatus.ToString(),
+        model.BoundingWidthMm,
+        model.BoundingDepthMm,
+        model.BoundingHeightMm,
+        model.VolumeCm3,
+        model.EstimatedPrintMinutes,
+        model.GeometryMessage,
+        model.StorageKey);
 }

@@ -9,7 +9,15 @@ public record ModelDto(
     long SizeBytes,
     IReadOnlyList<string> Tags,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    string GeometryStatus,
+    decimal? BoundingWidthMm,
+    decimal? BoundingDepthMm,
+    decimal? BoundingHeightMm,
+    decimal? VolumeCm3,
+    int? EstimatedPrintMinutes,
+    string? GeometryMessage,
+    string? StorageKey);
 
 public record AuthUserDto(
     Guid Id,

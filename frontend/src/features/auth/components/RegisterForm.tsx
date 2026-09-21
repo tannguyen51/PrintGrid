@@ -15,7 +15,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { Visibility, VisibilityOff, ArrowForward, PersonRounded } from '@mui/icons-material'
+import { Visibility, VisibilityOff, ArrowForward, PersonRounded, PhoneRounded } from '@mui/icons-material'
 import { FaGoogle } from 'react-icons/fa6'
 import { useAuth } from '../../../app/AuthContext'
 
@@ -23,6 +23,10 @@ const registerSchema = z
   .object({
     fullName: z.string().min(2, 'Họ tên ít nhất 2 ký tự'),
     email: z.string().min(1, 'Email là bắt buộc').email('Email không hợp lệ'),
+    phoneNumber: z
+      .string()
+      .optional()
+      .refine((v) => !v || /^[0-9+\-\s()]{7,15}$/.test(v), 'Số điện thoại không hợp lệ'),
     password: z.string().min(6, 'Mật khẩu ít nhất 6 ký tự'),
     confirmPassword: z.string().min(1, 'Xác nhận mật khẩu là bắt buộc'),
   })
@@ -38,14 +42,15 @@ interface RegisterFormProps {
   onSwitchToLogin?: () => void
   /** When set (used inside a dialog with no showcase), the panel takes full width. */
   fullBleed?: boolean
+  /** Called after a successful registration (lets a dialog close itself). When unset the page navigates home. */
+  onSuccess?: () => void
 }
 
 /**
  * Register card on the unified dark background.
- * Mirrors LoginForm's premium-tech layout. Navigates to /orders when the API
- * returns a session, or to /login when the account is created without one.
+ * Mirrors LoginForm's premium-tech layout. Creates the account and navigates home (or closes a dialog).
  */
-export function RegisterForm({ onSwitchToLogin, fullBleed }: RegisterFormProps = {}) {
+export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: RegisterFormProps = {}) {
   const { register: registerAccount } = useAuth()
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
@@ -63,9 +68,14 @@ export function RegisterForm({ onSwitchToLogin, fullBleed }: RegisterFormProps =
     setSubmitting(true)
     setServerError(null)
     try {
-      await registerAccount({ fullName: values.fullName, email: values.email, password: values.password })
-      // Sau khi đăng ký thành công về trang chủ (không cần phải vào orders).
-      navigate('/', { replace: true })
+      await registerAccount({
+        fullName: values.fullName,
+        email: values.email,
+        password: values.password,
+        phoneNumber: values.phoneNumber?.trim() || undefined,
+      })
+      if (onSuccess) onSuccess()
+      else navigate('/', { replace: true })
     } catch {
       setServerError('Không thể tạo tài khoản. Vui lòng thử lại.')
     } finally {
@@ -142,9 +152,29 @@ export function RegisterForm({ onSwitchToLogin, fullBleed }: RegisterFormProps =
             helperText={errors.email?.message}
           />
 
+          {/* ── Số điện thoại ── */}
+          <TextField
+            label="Số điện thoại"
+            type="tel"
+            autoComplete="tel"
+            placeholder="0901 234 567"
+            fullWidth
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <PhoneRounded fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+            }}
+            {...register('phoneNumber')}
+            error={Boolean(errors.phoneNumber)}
+            helperText={errors.phoneNumber?.message}
+          />
+
           {/* ── Mật khẩu ── */}
           <TextField
             label="Mật khẩu"
+            placeholder="••••••••"
             type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
             fullWidth
@@ -170,6 +200,7 @@ export function RegisterForm({ onSwitchToLogin, fullBleed }: RegisterFormProps =
           {/* ── Xác nhận mật khẩu ── */}
           <TextField
             label="Xác nhận mật khẩu"
+            placeholder="••••••••"
             type={showConfirm ? 'text' : 'password'}
             autoComplete="new-password"
             fullWidth

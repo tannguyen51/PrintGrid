@@ -1,6 +1,7 @@
 using Hangfire;
 using Hangfire.PostgreSql;
 using Serilog;
+using PrintGrid.Api.BackgroundJobs;
 using PrintGrid.Api.Bootstrap;
 using PrintGrid.Api.Extensions;
 using PrintGrid.Api.Hubs;
@@ -34,6 +35,8 @@ builder.Services.AddApplicationModules(builder.Configuration);
 builder.Services.AddHangfire(config => config
     .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString)));
 builder.Services.AddHangfireServer();
+
+builder.Services.AddScoped<AnalyzeModelJob>();
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "postgres")

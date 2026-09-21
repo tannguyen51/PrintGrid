@@ -1,12 +1,6 @@
 import { Box, Button, Container, Stack, Typography } from '@mui/material'
 import { ArrowForward } from '@mui/icons-material'
-
-const stats = [
-  { value: '50+', label: 'Lab liên kết' },
-  { value: '95%', label: 'Giao đúng hẹn' },
-  { value: '1000+', label: 'Đơn hàng / tháng' },
-  { value: '<5%', label: 'Tỉ lệ lỗi' },
-]
+import { formatNumber, useNetworkStats } from '../useNetworkStats'
 
 interface HeroProps {
   onLogin: () => void
@@ -14,9 +8,26 @@ interface HeroProps {
 }
 
 /**
- * Home hero: headline + CTA + key metrics, over a dark premium backdrop.
+ * Home hero: headline + CTA + live network metrics (from the real registry,
+ * not hardcoded figures). While loading or unavailable the strip shows "–".
  */
 export function Hero({ onLogin, onRegister }: HeroProps) {
+  const { data, isLoading } = useNetworkStats()
+
+  const stats = isLoading || !data
+    ? [
+        { value: '–', label: 'Lab liên kết' },
+        { value: '–', label: 'Giao đúng hẹn' },
+        { value: '–', label: 'Máy trong mạng lưới' },
+        { value: '–', label: 'Tỉ lệ lỗi' },
+      ]
+    : [
+        { value: formatNumber(data.activeLabs), label: 'Lab liên kết' },
+        { value: `${Math.round(data.averageOnTimeDeliveryRate)}%`, label: 'Giao đúng hẹn' },
+        { value: formatNumber(data.totalMachines), label: 'Máy trong mạng lưới' },
+        { value: `${Math.round(100 - data.averageFirstPassYield)}%`, label: 'Tỉ lệ lỗi' },
+      ]
+
   return (
     <Box sx={{ position: 'relative', overflow: 'hidden' }} component="section">
       {/* backdrop sheen */}

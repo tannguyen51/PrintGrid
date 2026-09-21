@@ -37,6 +37,12 @@ public class ModelRepository : IModelRepository
         _context.Set<Domain.Entities.Model>()
             .FirstOrDefaultAsync(m => m.CustomerId == customerId && m.Id == modelId, cancellationToken);
 
+    public Task<Domain.Entities.Model?> GetByIdAsync(
+        Guid modelId,
+        CancellationToken cancellationToken = default) =>
+        _context.Set<Domain.Entities.Model>()
+            .FirstOrDefaultAsync(m => m.Id == modelId, cancellationToken);
+
     public async Task AddAsync(Domain.Entities.Model model, CancellationToken cancellationToken = default) =>
         await _context.Set<Domain.Entities.Model>().AddAsync(model, cancellationToken);
 

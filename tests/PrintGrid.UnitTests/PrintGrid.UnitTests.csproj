@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\src\PrintGrid.Modules\Customer\PrintGrid.Modules.Customer.Application\PrintGrid.Modules.Customer.Application.csproj" />
     <ProjectReference Include="..\..\src\PrintGrid.Modules\Scheduling\PrintGrid.Modules.Scheduling.Domain\PrintGrid.Modules.Scheduling.Domain.csproj" />
     <ProjectReference Include="..\..\src\PrintGrid.Modules\Scheduling\PrintGrid.Modules.Scheduling.Application\PrintGrid.Modules.Scheduling.Application.csproj" />
+    <ProjectReference Include="..\..\src\PrintGrid.Modules\Scheduling\PrintGrid.Modules.Scheduling.Infrastructure\PrintGrid.Modules.Scheduling.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

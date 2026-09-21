@@ -43,6 +43,54 @@
 
 ---
 
+## 1A. BẢNG CHÍNH — Thứ tự code workflow (FR → Chức năng → Thời gian)
+
+> Thứ tự (STT) = thứ tự **code trước cho code sau dùng được**. Ngày công = nỗ lực cộng dồn của team (5 người, 3 track song song). Track: **A** = Scheduling core (WP2+WP3), **B** = Frontend Customer (WP4), **C** = Lab/Hub/Admin + QA (WP5+WP1).
+
+### Tuần 1 (Ngày 1–7) — Nền tảng quote pipeline
+
+| STT | Ngày | FR-ID | Chức năng | Công việc code cụ thể | Ngày công | Track |
+|---|---|---|---|---|---|---|
+| 1 | D1–2 | FR-LAB-001/002 | Lab & máy registry API | CRUD lab + machine (build volume, tolerance, status) qua `POST /api/v1/labs`; **dữ liệu thật do lab đăng ký — KHÔNG seed dữ liệu ảo** | 1.5 | C |
+| 2 | D2–3 | — (FE khung) | AppShell + navbar theo role | 1 component `AppShell` (AppBar + drawer), menu lọc theo role, bọc quanh `ProtectedRoute`; sửa "Bảng điều khiển" trong HomeHeader redirect theo role | 1 | B |
+| 3 | D2–4 | FR-SCHED-001/002 | Slicing & ước tính | Adapter CuraEngine/PrusaSlicer (kèm fallback mock), parse STL → bbox/volume; chạy Hangfire → `EstimatedPrintMinutes`; lưu lên Job | 2 | A |
+| 4 | D4–6 | FR-CUST-006, FR-SCHED-005 | Quote speculative ⭐ | `CreateQuoteCommand`: capability filter (dùng lại) → trial placement **không commit** → earliest feasible delivery + giá itemized; hết hạn 48h (Hangfire) | 2.5 | A |
+| 5 | D5–7 | FR-CUST-007, FR-SCHED-006 | Đặt hàng + tự assign ⭐ | PlaceOrder từ Quote (đã có lõi); `OrderConfirmedEvent` → `AssignJobCommandHandler` (đã có) nối event; từ chối quote hết hạn | 1.5 | A |
+| 6 | D5–7 | FR-LAB-003/004 | Tồn kho tối giản + accept/reject | Lab khai material tồn (phục vụ filter); API accept/reject kèm lý do; JobStatus Assigned→Accepted/Rejected | 1.5 | C |
+| 7 | D5–7 | FR-CUST-005 | UI cấu hình in + trình quote | Trang config (material/màu/quality/infill/qty); gọi create-quote; hiện breakdown + delivery date + đặt hàng | 2 | B |
+| 8 | D7 | — | DEMO 1 + test | Chạy end-to-end; fix; integration test POST quote + assign | 1 | Tất cả |
+| | | | **Cộng tuần 1** | | **13** | |
+
+### Tuần 2 (Ngày 8–14) — Sản xuất & rescheduling
+
+| STT | Ngày | FR-ID | Chức năng | Công việc code cụ thể | Ngày công | Track |
+|---|---|---|---|---|---|---|
+| 9 | D8–9 | FR-LAB-005 | Production workflow API | start / complete; báo actual time + material thật; incident report (type, stage %, ảnh) | 2 | C |
+| 10 | D9–12 | FR-SCHED-007 | Rescheduler ⭐ | Event handler cho Rejected / PrintFailure / Breakdown → vẽ lại lịch ≤30s; **không chạm job InProgress**; audit log | 3 | A |
+| 11 | D10–12 | FR-HUB-001/002 | Hub nhận lô + QC | Batch receipt (nhận mã lô, đối soát job); checklist QC theo quality grade, pass/fail, **ảnh bắt buộc khi fail**, classify defect + fault attribution | 2.5 | C |
+| 12 | D11–14 | FR-CUST-009 | Tracking realtime | SignalR `OrderStatusChanged`; UI theo dõi 7 trạng thái **không lộ lab**; ETA cập nhật sau reschedule; thông báo lab khi có job mới | 2 | B+A |
+| 13 | D12–13 | FR-HUB-003 | Reprint tự động | `InspectionFailedEvent` (lỗi lab) → job URGENT kế thừa deadline gốc → đi qua allocation bình thường | 1.5 | A |
+| 14 | D13–14 | FR-LAB-006, FR-ANALYTICS-002(phần) | Gantt máy + ledger | API timeline từng máy (dùng `MachineTimelineService`); ghi nhận per job: `completed_on_time`, `passed_first_inspection` | 2 | C |
+| 15 | D14 | — | DEMO 2 + test | Fail 78% → reschedule → reprint → hub pass → tracking; test "job InProgress bất biến khi reschedule" | 1 | Tất cả |
+| | | | **Cộng tuần 2** | | **14** | |
+
+### Tuần 3 (Ngày 15–21) — Simulation, đo lường, đóng gói
+
+| STT | Ngày | FR-ID | Chức năng | Công việc code cụ thể | Ngày công | Track |
+|---|---|---|---|---|---|---|
+| 16 | D15–16 | S-1.2 (06-Scope) | Simulation harness | Sinh luồng đơn (spec đúng miền dữ liệu); lab simulator với fault injection (tỷ lệ fail cấu hình được); chạy 50 lab; nhiều seed | 2.5 | A |
+| 17 | D16–17 | S-1.2 | Baseline comparison | 2 heuristic: random assignment, nearest-available-lab — cùng đầu vào với scheduler của mình | 2 | A |
+| 18 | D17 | S-1.2, FR-SCHED-005 | Thu metric | Weighted tardiness, on-time rate, utilization, độ chênh phân phối; xuất bảng 3 cột cho slide/báo cáo | 1.5 | A |
+| 19 | D17–18 | FR-ANALYTICS-001/002 | Network dashboard + hiệu suất lab | Ops view: active orders, at-risk, load %, lab status; lab: ODR/FPY/acceptance 90 ngày, so network trung bình (ẩn danh) | 2.5 | C |
+| 20 | D18 | FR-SCHED-008 | Calibration loop *(điều kiện)* | Regression theo machine model → correction factor áp vào estimate; MAPE theo kỳ; ≥10 mẫu rồi mới áp dụng | 2 | A |
+| 21 | D18–19 | FR-ADMIN-002 | Admin config tối giản *(điều kiện)* | CRUD pricing rates + assignment weights, versioned, không cần redeploy | 1.5 | C |
+| 22 | D19–21 | — | Đóng gói demo | Demo script dry-run 1 nước; seed dữ liệu đẹp; chạy đủ test; README + ảnh + số liệu cho báo cáo; **buffer sửa lỗi** | 3 | Tất cả |
+| | | | **Cộng tuần 3** | | **15** | |
+
+**Tổng cộng: 22 STT / 42 ngày công** trong 3 tuần (mỗi track ≈ 14 ngày công, vừa đủ 5 người × 3 tuần). Phân bổ hợp lý theo thứ tự phụ thuộc: slicing (STT 3) xong trước → quote (STT 4) → assign (STT 5) → reschedule (STT 10) → simulation so sánh với chính rescheduler đó (STT 16–18).
+
+---
+
 ## 2. Phân công theo track (3 track song song — khớp team 5 người)
 
 | Track | Người (thay theo team) | Trách nhiệm |

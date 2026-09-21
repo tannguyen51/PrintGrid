@@ -52,7 +52,7 @@ export function AuthDialog({ open, mode, onClose, onSwitchMode }: AuthDialogProp
       >
         {mode === 'login' ? (
           <>
-            <LoginForm onSwitchToRegister={() => onSwitchMode('register')} />
+            <LoginForm onSwitchToRegister={() => onSwitchMode('register')} onSuccess={onClose} />
             {isDesktop && (
               // Critical: this wrapper must stretch (flex) so the showcase's
               // absolutely-positioned canvas has a real height to fill.
@@ -62,7 +62,7 @@ export function AuthDialog({ open, mode, onClose, onSwitchMode }: AuthDialogProp
             )}
           </>
         ) : (
-          <RegisterForm fullBleed onSwitchToLogin={() => onSwitchMode('login')} />
+          <RegisterForm fullBleed onSwitchToLogin={() => onSwitchMode('login')} onSuccess={onClose} />
         )}
       </Box>
     </Dialog>

@@ -1,7 +1,11 @@
+using Hangfire;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using PrintGrid.Api.Authorization;
+using PrintGrid.Api.BackgroundJobs;
+using PrintGrid.Infrastructure.Shared.FileStorage;
 using PrintGrid.Modules.Customer.Application.Models;
 
 namespace PrintGrid.Api.Controllers;
@@ -12,8 +16,15 @@ namespace PrintGrid.Api.Controllers;
 public class ModelsController : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly IFileStorage _files;
+    private readonly MinioOptions _minio;
 
-    public ModelsController(ISender sender) => _sender = sender;
+    public ModelsController(ISender sender, IFileStorage files, IOptions<MinioOptions> minio)
+    {
+        _sender = sender;
+        _files = files;
+        _minio = minio.Value;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetModels([FromQuery] string? search, CancellationToken cancellationToken)
@@ -56,6 +67,10 @@ public class ModelsController : ControllerBase
 
         if (result.IsFailure)
             return BadRequest(new { error = new { code = result.Error.Code, message = result.Error.Message } });
+
+        // Kick off async geometry analysis + estimate (FR-SCHED-001/002); the model stays
+        // "Pending" until the job records the result the customer sees in the library.
+        BackgroundJob.Enqueue<AnalyzeModelJob>(job => job.ExecuteAsync(result.Value.Id, CancellationToken.None));
 
         return CreatedAtAction(nameof(GetModel), new { modelId = result.Value.Id }, result.Value);
     }
@@ -101,6 +116,46 @@ public class ModelsController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpPost("upload")]
+    [RequestSizeLimit(60 * 1024 * 1024)] // 60 MB cap (FR-CUST-002 allows 50 MB per file)
+    public async Task<IActionResult> Upload(
+        [FromForm] UploadModelRequest request,
+        CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        if (customerId is null) return Forbid();
+        if (request.File is null || request.File.Length == 0)
+            return BadRequest(new { error = new { code = "validation_error", message = "File is required" } });
+
+        await using var stream = request.File.OpenReadStream();
+
+        // Object key: printgrid-models/{customerId}/{guid}.{ext}
+        var ext = Path.GetExtension(request.File.FileName).ToLowerInvariant();
+        var randomId = Guid.NewGuid();
+        var objectName = $"{customerId}/{randomId}{ext}";
+        await _files.UploadAsync(_minio.ModelBucket, objectName, stream, request.File.ContentType, cancellationToken);
+
+        var result = await _sender.Send(
+            new UploadModelCommand(
+                customerId.Value,
+                request.Name,
+                request.Description,
+                request.File.FileName,
+                ext.TrimStart('.'),
+                request.File.Length,
+                request.Tags,
+                $"{_minio.ModelBucket}/{objectName}"),
+            cancellationToken);
+
+        if (result.IsFailure)
+            return BadRequest(new { error = new { code = result.Error.Code, message = result.Error.Message } });
+
+        // Async geometry analysis + reference print-time estimate (FR-SCHED-001/002).
+        BackgroundJob.Enqueue<AnalyzeModelJob>(job => job.ExecuteAsync(result.Value.Id, CancellationToken.None));
+
+        return CreatedAtAction(nameof(GetModel), new { modelId = result.Value.Id }, result.Value);
+    }
 }
 
 public record CreateModelRequest(
@@ -117,4 +172,10 @@ public record UpdateModelRequest(
     string FileName,
     string FileFormat,
     long SizeBytes,
+    IReadOnlyList<string>? Tags);
+
+public record UploadModelRequest(
+    string Name,
+    string? Description,
+    IFormFile? File,
     IReadOnlyList<string>? Tags);

@@ -12,6 +12,8 @@ public interface IModelRepository
         Guid modelId,
         CancellationToken cancellationToken = default);
 
+    Task<Entities.Model?> GetByIdAsync(Guid modelId, CancellationToken cancellationToken = default);
+
     Task AddAsync(Entities.Model model, CancellationToken cancellationToken = default);
     void Update(Entities.Model model);
     void Remove(Entities.Model model);

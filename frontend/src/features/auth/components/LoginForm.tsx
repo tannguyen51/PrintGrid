@@ -31,18 +31,22 @@ type LoginFormValues = z.infer<typeof loginSchema>
 interface LoginFormProps {
   /** When set, the footer "Đăng ký" link switches a dialog instead of navigating. */
   onSwitchToRegister?: () => void
+  /** Called after a successful login (lets a dialog close itself). When unset the page navigates home. */
+  onSuccess?: () => void
 }
 
 /**
  * Right-hand login card on the unified dark background.
  * Keeps `useAuth().login()` flow; UI follows the premium-tech layout.
  */
-export function LoginForm({ onSwitchToRegister }: LoginFormProps = {}) {
+export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}) {
   const { login } = useAuth()
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
+  const [remember, setRemember] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [forgotNotice, setForgotNotice] = useState<string | null>(null)
 
   const {
     register,
@@ -54,8 +58,9 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps = {}) {
     setSubmitting(true)
     setServerError(null)
     try {
-      await login(values.email, values.password)
-      navigate('/', { replace: true })
+      await login(values.email, values.password, remember)
+      if (onSuccess) onSuccess()
+      else navigate('/', { replace: true })
     } catch {
       setServerError('Email hoặc mật khẩu không đúng')
     } finally {
@@ -101,6 +106,7 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps = {}) {
           </Typography>
 
           {serverError && <Alert severity="error">{serverError}</Alert>}
+          {forgotNotice && <Alert severity="info">{forgotNotice}</Alert>}
 
           {/* ── Email ── */}
           <TextField
@@ -125,13 +131,15 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps = {}) {
                 type="button"
                 variant="body2"
                 underline="hover"
-                onClick={() => {}}
+                onClick={() => setForgotNotice('Liên hệ quản trị viên để được cấp lại mật khẩu.')}
                 sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
               >
                 Quên mật khẩu?
               </Link>
             </Stack>
             <TextField
+              label="Mật khẩu"
+              placeholder="••••••••"
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               fullWidth
@@ -168,7 +176,7 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps = {}) {
 
           {/* ── Remember me ── */}
           <FormControlLabel
-            control={<Checkbox size="small" defaultChecked />}
+            control={<Checkbox size="small" checked={remember} onChange={(e) => setRemember(e.target.checked)} />}
             label={<Typography variant="body2" color="text.secondary">Ghi nhớ đăng nhập</Typography>}
           />
 

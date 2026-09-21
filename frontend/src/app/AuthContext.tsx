@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { apiClient } from '../shared/api/apiClient'
-import { clearTokens, getAccessToken, setTokens } from '../shared/api/tokenStore'
+import { clearTokens, getAccessToken, setTokens, isRemembered } from '../shared/api/tokenStore'
 
 export type Role =
   | 'Customer'
@@ -18,11 +18,19 @@ export interface AuthUser {
   roles: Role[]
 }
 
+export interface RegisterInput {
+  fullName: string
+  email: string
+  password: string
+  phoneNumber?: string | null
+}
+
 interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<void>
-  register: (input: { fullName: string; email: string; password: string }) => Promise<void>
+  /** remember=true lưu token vào localStorage (giữ qua nhiều phiên mở trình duyệt). */
+  login: (email: string, password: string, remember?: boolean) => Promise<void>
+  register: (input: RegisterInput) => Promise<void>
   logout: () => void
 }
 
@@ -34,22 +42,42 @@ interface LoginResponse {
   user: AuthUser
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null)
+/** Đọc user từ access token (JWT payload) khi khôi phục phiên sau khi reload trang. */
+function userFromAccessToken(token: string): AuthUser | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1] ?? ''))
+    const id = payload.sub ?? payload.nameidentifier
+    const rolesRaw = payload.role ?? payload.roles
+    const roles: Role[] = typeof rolesRaw === 'string' ? rolesRaw.split(',') : rolesRaw ?? []
+    if (!id || !payload.email) return null
+    return {
+      id,
+      email: payload.email,
+      fullName: payload.unique_name ?? payload.name ?? '',
+      roles,
+    }
+  } catch {
+    return null
+  }
+}
 
-  const login = useCallback(async (email: string, password: string) => {
+export function AuthProvider({ children }: { children: ReactNode }) {
+  // Khôi phục phiên đã ghi nhớ ngay từ state khởi tạo (sau khi reload trang).
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    const token = getAccessToken()
+    return token && isRemembered() ? userFromAccessToken(token) : null
+  })
+
+  const login = useCallback(async (email: string, password: string, remember = false) => {
     const { data } = await apiClient.post<LoginResponse>('/auth/login', { email, password })
-    setTokens(data.accessToken, data.refreshToken)
+    setTokens(data.accessToken, data.refreshToken, remember)
     setUser(data.user)
   }, [])
 
-  const register = useCallback(async (input: { fullName: string; email: string; password: string }) => {
-    // Creates the account; the returned session (if any) is stored the same way
-    // as login, so the user lands on the app immediately. If the API returns no
-    // session, the caller should bounce to /login after a success.
+  const register = useCallback(async (input: RegisterInput) => {
     const { data } = await apiClient.post<LoginResponse | null>('/auth/register', input)
     if (data) {
-      setTokens(data.accessToken, data.refreshToken)
+      setTokens(data.accessToken, data.refreshToken, false)
       setUser(data.user)
     }
   }, [])
