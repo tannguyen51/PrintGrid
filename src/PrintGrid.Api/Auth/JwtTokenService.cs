@@ -46,15 +46,22 @@ public class JwtTokenService : ITokenService
     {
         var key = Encoding.UTF8.GetBytes(_options.Key);
 
+        // One ClaimTypes.Role claim PER role — RequireRole matches individual values,
+        // not a comma-joined string.
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Email, user.Email),
+            new(JwtRegisteredClaimNames.UniqueName, user.FullName),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        };
+        foreach (var role in user.Roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
         var accessToken = CreateToken(
-            new[]
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(JwtRegisteredClaimNames.UniqueName, user.FullName),
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Role, string.Join(',', user.Roles)),
-            },
+            claims,
             DateTime.UtcNow,
             DateTime.UtcNow.AddMinutes(_options.AccessTokenMinutes));
 

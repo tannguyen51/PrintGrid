@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   IconButton,
   InputAdornment,
@@ -14,7 +15,7 @@ import {
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 import { AddRounded, DeleteOutlineRounded, EditRounded, LogoutRounded, SearchRounded, VisibilityRounded } from '@mui/icons-material'
 import type { ThreeDModel } from './modelTypes'
-import { useDeleteModel, useCreateModel, useUpdateModel, useModels } from './useModels'
+import { useDeleteModel, useCreateModel, useUpdateModel, useModels, useUploadModel } from './useModels'
 import type { ModelFormValues } from './modelSchema'
 import { toModelInput } from './modelSchema'
 import { ModelFormDialog } from './components/ModelFormDialog'
@@ -49,6 +50,7 @@ export default function ModelLibraryPage() {
 
   const { data, isLoading, isError } = useModels(search)
   const createMutation = useCreateModel()
+  const uploadMutation = useUploadModel()
   const updateMutation = useUpdateModel()
   const deleteMutation = useDeleteModel()
 
@@ -80,6 +82,35 @@ export default function ModelLibraryPage() {
             ))}
         </Box>
       ),
+    },
+    {
+      field: 'geometryStatus',
+      headerName: 'Phân tích',
+      width: 130,
+      renderCell: (params) => {
+        const s = params.row.geometryStatus
+        const color = s === 'Ready' ? '#34c759' : s === 'Failed' ? '#ff453a' : '#f5a623'
+        const label = s === 'Ready' ? 'Đã phân tích' : s === 'Failed' ? 'Lỗi' : 'Đang phân tích…'
+        return <Chip size="small" label={label} sx={{ bgcolor: `${color}22`, color, fontWeight: 600 }} />
+      },
+    },
+    {
+      field: 'geometrySummary',
+      headerName: 'Kích thước / thể tích',
+      flex: 1.2,
+      minWidth: 170,
+      sortable: false,
+      renderCell: (params) => {
+        const m = params.row
+        if (m.geometryStatus !== 'Ready') return <Typography variant="caption" color="text.disabled">—</Typography>
+        const dims = [m.boundingWidthMm, m.boundingDepthMm, m.boundingHeightMm]
+          .filter((v): v is number => v != null)
+          .map((v) => v.toFixed(0))
+          .join(' × ')
+        const vol = m.volumeCm3 != null ? `${m.volumeCm3.toFixed(1)} cm³` : ''
+        const mins = m.estimatedPrintMinutes != null ? `· ${m.estimatedPrintMinutes} phút` : ''
+        return <Typography variant="caption" color="text.secondary">{dims ? `${dims} mm` : '—'}{vol && ` · ${vol}`}{mins}</Typography>
+      },
     },
     {
       field: 'createdAt',
@@ -115,14 +146,20 @@ export default function ModelLibraryPage() {
     },
   ]
 
-  async function handleFormSubmit(values: ModelFormValues) {
+  async function handleFormSubmit(values: ModelFormValues, file?: File) {
     setFormError(null)
-    const input = toModelInput(values)
     try {
       if (editing) {
-        await updateMutation.mutateAsync({ id: editing.id, input })
+        await updateMutation.mutateAsync({ id: editing.id, input: toModelInput(values) })
+      } else if (file) {
+        await uploadMutation.mutateAsync({
+          name: values.name,
+          description: values.description?.trim() || undefined,
+          tags: (values.tags ?? '').split(',').map((t) => t.trim()).filter(Boolean),
+          file,
+        })
       } else {
-        await createMutation.mutateAsync(input)
+        await createMutation.mutateAsync(toModelInput(values))
       }
       setFormOpen(false)
       setEditing(null)
@@ -142,7 +179,7 @@ export default function ModelLibraryPage() {
     }
   }
 
-  const submitting = createMutation.isPending || updateMutation.isPending
+  const submitting = createMutation.isPending || updateMutation.isPending || uploadMutation.isPending
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -212,6 +249,7 @@ export default function ModelLibraryPage() {
       </Stack>
 
       <ModelFormDialog
+        key={formOpen ? (editing?.id ?? 'new') : 'closed'}
         open={formOpen}
         onClose={() => { setFormOpen(false); setEditing(null) }}
         editing={editing}
@@ -225,6 +263,7 @@ export default function ModelLibraryPage() {
         onClose={() => setDetail(null)}
         onEdit={(m) => { setDetail(null); setEditing(m); setFormError(null); setFormOpen(true) }}
         onDelete={(m) => setDeleting(m)}
+        onOrder={(m) => { setDetail(null); navigate(`/models/${m.id}/order`) }}
       />
 
       <DeleteConfirmDialog

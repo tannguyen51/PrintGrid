@@ -18,4 +18,5 @@ public static class Policies
     public const string RequireHub = "RequireHub";
     public const string RequireOps = "RequireOps";
     public const string RequireAdmin = "RequireAdmin";
+    public const string RequireProduction = "RequireProduction"; // lab + hub + ops (not customer)
 }

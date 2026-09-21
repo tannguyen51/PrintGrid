@@ -40,7 +40,7 @@ interface HomeHeaderProps {
  * Auth actions open the AuthDialog modal instead of navigating.
  */
 export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
-  const { isAuthenticated, logout } = useAuth()
+  const { isAuthenticated, logout, user } = useAuth()
   const navigate = useNavigate()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -49,6 +49,12 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
     logout()
     navigate('/', { replace: true })
   }
+
+  const roles = user?.roles ?? []
+  const isCustomer = roles.includes('Customer')
+  const isLab = roles.some((r) => r === 'LabManager' || r === 'LabOperator')
+  const isHub = roles.some((r) => r === 'HubQC' || r === 'HubFulfillment')
+  const isOps = roles.some((r) => r === 'OpsManager' || r === 'Admin')
 
   const go = (href: string) => {
     setDrawerOpen(false)
@@ -120,17 +126,39 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
             {isAuthenticated ? (
               <>
-                <Button onClick={() => go('/models')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.5, py: 0.75 }}>
-                  Thư viện model
-                </Button>
-                <Button variant="contained" color="primary" onClick={() => navigate('/orders')} sx={{ px: 2.5, py: 0.9, fontSize: '0.9rem' }}>
-                  Bảng điều khiển
+                {isCustomer && (
+                  <>
+                    <Button onClick={() => go('/models')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                      Thư viện model
+                    </Button>
+                    <Button onClick={() => go('/orders')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                      Đơn hàng
+                    </Button>
+                  </>
+                )}
+                {isLab && (
+                  <Button onClick={() => go('/lab/queue')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                    Hàng đợi sản xuất
+                  </Button>
+                )}
+                {isHub && (
+                  <Button onClick={() => go('/hub/qc')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                    Kiểm tra chất lượng
+                  </Button>
+                )}
+                {isOps && (
+                  <Button onClick={() => go('/scheduling')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                    Bảng điều phối
+                  </Button>
+                )}
+                <Button variant="contained" color="primary" onClick={() => go(isCustomer ? '/models' : isOps ? '/scheduling' : '/lab/queue')} sx={{ px: 2.5, py: 0.9, fontSize: '0.9rem' }}>
+                  {isCustomer ? 'Bắt đầu in' : isOps ? 'Điều phối' : 'Vào việc'}
                 </Button>
                 <Button
                   onClick={handleLogout}
                   color="inherit"
                   startIcon={<LogoutRounded fontSize="small" />}
-                  sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.5, py: 0.75, ml: 0.5 }}
+                  sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75, ml: 0.5 }}
                 >
                   Đăng xuất
                 </Button>
@@ -189,12 +217,31 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
             <Box sx={{ px: 2, width: '100%' }}>
               {isAuthenticated ? (
                 <Stack spacing={1.25}>
-                  <Button fullWidth variant="contained" color="primary" onClick={() => go('/orders')}>
-                    Bảng điều khiển
-                  </Button>
-                  <Button fullWidth variant="outlined" color="inherit" onClick={() => { setDrawerOpen(false); go('/models') }} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
-                    Thư viện model
-                  </Button>
+                  {isCustomer && (
+                    <>
+                      <Button fullWidth variant="contained" color="primary" onClick={() => go('/models')}>
+                        Bắt đầu in
+                      </Button>
+                      <Button fullWidth variant="outlined" color="inherit" onClick={() => { setDrawerOpen(false); go('/orders') }} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+                        Đơn hàng
+                      </Button>
+                    </>
+                  )}
+                  {isLab && (
+                    <Button fullWidth variant="contained" color="primary" onClick={() => go('/lab/queue')}>
+                      Hàng đợi sản xuất
+                    </Button>
+                  )}
+                  {isHub && (
+                    <Button fullWidth variant="contained" color="primary" onClick={() => go('/hub/qc')}>
+                      Kiểm tra chất lượng
+                    </Button>
+                  )}
+                  {isOps && (
+                    <Button fullWidth variant="contained" color="primary" onClick={() => go('/scheduling')}>
+                      Bảng điều phối
+                    </Button>
+                  )}
                   <Button fullWidth variant="outlined" color="error" onClick={handleLogout} startIcon={<LogoutRounded />}>
                     Đăng xuất
                   </Button>

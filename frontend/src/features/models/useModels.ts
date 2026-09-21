@@ -41,3 +41,22 @@ export function useDeleteModel() {
     onSuccess: invalidate,
   })
 }
+
+/** Uploads a real 3D model file (STL/OBJ/3MF) — multipart to POST /models/upload. */
+export function useUploadModel() {
+  const invalidate = useInvalidateModels()
+  return useMutation({
+    mutationFn: ({ name, description, tags, file }: { name: string; description?: string; tags: string[]; file: File }) => {
+      const form = new FormData()
+      form.append('Name', name)
+      if (description) form.append('Description', description)
+      // ASP.NET binds IReadOnlyList<string> from repeated form fields with same name.
+      tags.forEach((t) => form.append('Tags', t))
+      form.append('File', file)
+      return apiClient
+        .post<ThreeDModel>('/models/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+        .then((r) => r.data)
+    },
+    onSuccess: invalidate,
+  })
+}

@@ -37,6 +37,7 @@ builder.Services.AddHangfire(config => config
 builder.Services.AddHangfireServer();
 
 builder.Services.AddScoped<AnalyzeModelJob>();
+builder.Services.AddScoped<PrintGrid.Api.Bootstrap.DemoDataSeeder>();
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "postgres")
@@ -61,6 +62,13 @@ else
 app.UseCors("PrintGridSpa");
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Seed demo data for teacher demo (idempotent).
+using (var seedScope = app.Services.CreateScope())
+{
+    var seeder = seedScope.ServiceProvider.GetRequiredService<PrintGrid.Api.Bootstrap.DemoDataSeeder>();
+    await seeder.SeedAsync();
+}
 
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");

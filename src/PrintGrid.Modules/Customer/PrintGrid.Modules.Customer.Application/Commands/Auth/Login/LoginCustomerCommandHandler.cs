@@ -49,5 +49,5 @@ public class LoginCustomerCommandHandler : IRequestHandler<LoginCustomerCommand,
         customer.Id,
         customer.Email,
         customer.FullName,
-        new[] { "Customer" });
+        DemoRoles.RolesFor(customer.Email));
 }

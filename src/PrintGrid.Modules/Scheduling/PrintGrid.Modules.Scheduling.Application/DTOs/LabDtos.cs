@@ -26,3 +26,22 @@ public record LabDto(
     int TransitDaysToHub,
     DateTime CreatedAt,
     IReadOnlyCollection<MachineDto> Machines);
+
+public record JobDto(
+    Guid Id,
+    Guid OrderItemId,
+    Guid ModelId,
+    string Status,
+    DateOnly InternalDueDate,
+    int EstimatedPrintMinutes,
+    Guid? LabId,
+    Guid? MachineId,
+    DateTime? PlannedStartUtc,
+    DateTime? PlannedEndUtc,
+    DateTime? StartedAtUtc,
+    DateTime? CompletedAtUtc,
+    string? FailureReason,
+    string MaterialCode,
+    string ColorCode,
+    decimal LayerHeightMm,
+    int AttemptNumber);

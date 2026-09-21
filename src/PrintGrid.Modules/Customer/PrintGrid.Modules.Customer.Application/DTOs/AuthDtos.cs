@@ -25,6 +25,30 @@ public record AuthUserDto(
     string FullName,
     IReadOnlyList<string> Roles);
 
+public record QuoteDto(
+    Guid Id,
+    Guid CustomerId,
+    string Status,
+    decimal TotalPrice,
+    string Currency,
+    DateOnly PromisedDeliveryDate,
+    DateTime CreatedAt,
+    DateTime ExpiresAt,
+    string? FailureReason,
+    IReadOnlyList<QuoteItemDto> Items);
+
+public record QuoteItemDto(
+    Guid Id,
+    Guid ModelId,
+    int Quantity,
+    string MaterialCode,
+    string ColorCode,
+    decimal LayerHeightMm,
+    int InfillPercent,
+    decimal UnitPrice,
+    int EstimatedPrintMinutes,
+    decimal EstimatedMaterialGrams);
+
 public record AuthSessionDto(
     string AccessToken,
     string RefreshToken,

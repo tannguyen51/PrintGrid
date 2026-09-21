@@ -15,6 +15,16 @@ public class OrdersController : ControllerBase
 
     public OrdersController(ISender sender) => _sender = sender;
 
+    [HttpGet]
+    public async Task<IActionResult> GetOrders(CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        if (customerId is null) return Forbid();
+
+        var result = await _sender.Send(new GetOrdersQuery(customerId.Value), cancellationToken);
+        return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
+    }
+
     [HttpPost]
     public async Task<IActionResult> PlaceOrder(
         [FromBody] PlaceOrderRequest request,

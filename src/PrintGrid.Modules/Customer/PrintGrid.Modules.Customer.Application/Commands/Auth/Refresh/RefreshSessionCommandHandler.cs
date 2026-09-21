@@ -32,7 +32,7 @@ public class RefreshSessionCommandHandler : IRequestHandler<RefreshSessionComman
         if (customer is null)
             return Result.Failure<AuthSessionDto>(Error.Unauthorized("Account no longer exists"));
 
-        var user = new AuthUserDto(customer.Id, customer.Email, customer.FullName, new[] { "Customer" });
+        var user = new AuthUserDto(customer.Id, customer.Email, customer.FullName, DemoRoles.RolesFor(customer.Email));
         var tokens = _tokenService.CreateTokenPair(user);
         return Result.Success(new AuthSessionDto(tokens.AccessToken, tokens.RefreshToken, user));
     }
