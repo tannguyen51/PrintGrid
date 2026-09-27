@@ -174,16 +174,8 @@ export function LoginShowcase({ frame = false }: { frame?: boolean }) {
         </SceneBoundary>
       </Box>
 
-      {/* ── Stat chips (no boxes) ── */}
-      <Stack
-        direction="row"
-        spacing={{ xs: 5, md: 7 }}
-        sx={{ position: 'absolute', bottom: { xs: 20, md: 44 }, left: 40, zIndex: 2 }}
-      >
-        <StatValue value="128" label="Orders" />
-        <StatValue value="64" label="Printing" />
-        <StatValue value="12" label="Machines" />
-      </Stack>
+      {/* Stat chips with hardcoded figures removed (26/09): the product must not
+          display numbers that do not come from the database. */}
     </Box>
   )
 }
@@ -208,18 +200,6 @@ function BrandMark() {
         <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: 'rgba(5,5,5,0.85)' }} />
         <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: 'rgba(255,255,255,0.4)' }} />
       </Box>
-    </Box>
-  )
-}
-
-/* ── Stat: number 100%, label 55% ── */
-function StatValue({ value, label }: { value: string; label: string }) {
-  return (
-    <Box>
-      <Typography sx={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgba(255,255,255,1)', lineHeight: 1.1 }}>
-        {value}
-      </Typography>
-      <Typography sx={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)' }}>{label}</Typography>
     </Box>
   )
 }

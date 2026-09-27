@@ -12,6 +12,61 @@ This document contains user stories for all platform personas, organized by Epic
 
 ---
 
+## 0. Story Matrix (submission format)
+
+One row per story; full blocks with all acceptance criteria remain in the epics below.
+**Priority** = MoSCoW of the owning FR (detailed blocks keep their original Critical/High/Medium labels).
+**Status legend** (same as 09/10/12): `Approved` = traced to approved register scope · `Proposed` = new from v1.1 sync, to be frozen in register v1.2 · `Specified` = created by a decision (23/09) · `⚠` = open item referenced from `capstone/workbook/04`.
+
+| Story ID | As a… | I want… | So that… | Acceptance Criteria | Priority | Related Req. | Status |
+|---|---|---|---|---|---|---|---|
+| US-001 | Customer | upload STL/OBJ/3MF files | I can get a printing quote | ≤50 MB accepted; bad format rejected with message; stored in object storage with id | Must | FR-CUST-002 · UC-001 · BR-ACCESS-006 | Approved |
+| US-002 | Customer | preview my model in 3D in the browser | I verify it before ordering | rotate/zoom; bbox dims; stats; loads <5 s | Should | FR-CUST-003 · UC-001 | Approved · **cut-candidate #2 if late** |
+| US-003 | Customer | get automatic geometry validation | I know the part is printable | watertight + manifold checks; oversize vs network rejected with reason; <10 s | Must | FR-CUST-004 · UC-002 · BR-QUOTE-006 | Approved |
+| US-004 | Customer | configure print parameters per item | I get exactly what I need | material/colour/grade/infill/qty/post-processing; invalid combos disabled | Must | FR-CUST-005 · UC-001 · BR-CONFIG-003 | Approved |
+| US-005 | Customer | receive an instant quote | I can decide to order | preliminary ≤5 s; full ≤60 s; breakdown sum = total; committed date; expiry shown | Must | FR-CUST-006, FR-SCHED-010 · UC-001/010 · BR-QUOTE-* | Approved |
+| US-006 | Customer | confirm the quote and pay real money via gateway | the order enters production with a recorded payment | address+T&C enforced; hosted checkout, token only; commit only on verified webhook | Must | FR-CUST-007/008 · UC-001 · BR-PAY-001/005 · NFR-SEC-009 | Approved (payment decision 23/09) |
+| US-007 | Customer | track my order in real time | I know when to expect delivery | 7 stages; live updates; lab identity invisible everywhere | Must | FR-CUST-009 · UC-003 · BR-NOTIFY-001 | Approved |
+| US-008 | Customer | keep a personal model library | I can reorder quickly | thumbnails; metadata; delete confirm; reorder prefills config | Could | FR-CUST-010 · UC-026 · BR-ACCESS-006 | Approved |
+| US-009 | Customer | request a reprint for a defective delivered part | I get a working product | request + photos inside 30 d; trackable; acknowledgment sent | Must | FR-CUST-011 · UC-007 · BR-QC-009 | Approved |
+| US-010 | Lab Manager | register my lab with calendar and transfer time | the platform can allocate work to me | profile + completeness validated; PENDING→ACTIVE via admin approval | Must | FR-LAB-001 · UC-014 · BR-OPS-005/006 | Approved (partner lab confirmed 23/09) |
+| US-011 | Lab Manager | register machines with full capability specs | only feasible jobs reach me | technology/volume/tolerance/layer state CRUD; delete blocked with active jobs; visible to filter <1 min | Must | FR-LAB-002 · UC-014 · BR-OPS-006 | Approved (lab confirmed 23/09) |
+| US-012 | Lab Manager | track material and colour inventory | I never accept work I cannot run | stock levels; consumption auto-deduct; low-stock alert | Must | FR-LAB-003 · UC-014 · BR-ASSIGN-001(in) | Approved (lab confirmed 23/09) |
+| US-013 | Lab Manager | review and accept/decline assigned jobs | I control what enters my queue | 2 h countdown; decline requires reason; timeout auto-decline | Must | FR-LAB-004 · UC-004 · BR-ASSIGN-005/006 | Approved (auto-decline ⚠B5) |
+| US-014 | Lab Operator | manage the machine queue and update job states | the system reflects real progress | start/complete; actual duration+material mandatory; incident w/ photos; tablet-first | Must | FR-LAB-005 · UC-005 · BR-ESTIM-001, SCHED-007 | Approved |
+| US-015 | Lab Manager | see the machine schedule as a timeline | I can plan around it | per-machine Gantt; updates after each reschedule | Should | FR-LAB-006 · UC-011(view) · BR-SCHED | Approved |
+| US-016 | Lab Manager | see my performance standing and figures | I know how to improve | score + 4 metrics; network comparison anonymized; <10 jobs preliminary | Should | FR-LAB-007, FR-ANAL-002 · UC-008 · BR-PERF-* | Approved |
+| US-017 | Hub QC Staff | receive and reconcile incoming lab batches | inspection starts from truth | batch QR scan; expected list; MISSING/DAMAGED flagged with incident + notify | Must | FR-HUB-001 · UC-016 · BR-QC-001/010 | Approved |
+| US-018 | Hub QC Staff | inspect parts with the grade-bound checklist | quality decisions are consistent | all mandatory checks marked; photos required; fail → defect + attribution | Must | FR-HUB-002 · UC-006 · BR-QC-002/003/004 | Approved |
+| US-019 | Hub QC Staff | trigger reprints automatically on lab/hub faults | customers still receive good parts | URGENT job inheriting deadline; limit 2 → escalation; cost flag | Must | FR-HUB-003 · UC-007/013 · BR-QC-005..007, RESCHED-003/004 | Approved (limit=2, B14) |
+| US-020 | Hub Fulfillment Staff | consolidate order items and pack before shipping | customers receive complete orders | completeness gate blocks partial pack; packing list; waybill recorded | Must | FR-HUB-004/005 · UC-017 · BR-QC-008 | Approved |
+| US-021 | System | analyze uploaded geometry automatically | quoting and scheduling have inputs | bbox ±0.1 mm; volume; integrity checks; <10 s | Must | FR-SCHED-001 · UC-002 | Approved |
+| US-022 | System | slice headless and estimate time + material | promises rest on numbers | profile mapping per tech/grade; ≤60 s typical; async | Must | FR-SCHED-002 · UC-002 · NFR-ACC-001 | Approved (engine pinned in pilot ⚠A1) |
+| US-023 | System | filter labs by hard constraints | infeasible assignments are impossible | 0 violations on adversarial suite run independent of scoring; <1 s | Must | FR-SCHED-003 · UC-011 · BR-ASSIGN-001 · NFR-REL-005 | Approved |
+| US-024 | System | score feasible candidates on weighted criteria | allocation balances time/load/quality/cost/logistics | weights sum 1.0; normalized 0–1; deterministic per config version | Must | FR-SCHED-004 · UC-011 · BR-ASSIGN-002/003 | Approved (MVP weights fixed, A3) |
+| US-025 | System | run trial placement at quote time | the promised date comes from real capacity | ≤60 s; speculative — real schedule untouched; date moves with load | Must | FR-SCHED-005 · UC-010 · BR-QUOTE-002 · NFR-PERF-001 | Approved (crude-first, A5) |
+| US-026 | System | decompose orders and place jobs on machines | production has an executable plan | backward internal due-dates; serialized per machine; logged decision | Must | FR-SCHED-006/009 · UC-011 · BR-SCHED-001..004 · NFR-REL-004 | Approved (consolidation → Should, A4) |
+| US-027 | System | repair the unstarted plan on failure events | deadlines survive reality | ≤30 s budget; in-progress untouched; fallback committed; approvals per B16 | Must | FR-SCHED-007 · UC-012 · BR-RESCHED-*, SCHED-005..008 · NFR-PERF-002/REL-006 | Approved (B4/B16 23/09) |
+| US-028 | System | collect estimate-vs-actual samples per machine model | calibration has data | (estimated, actual) pairs on every completion; outliers filtered | Should | FR-SCHED-008 · UC-018 · BR-ESTIM-001..003 | Approved |
+| US-029 | Admin | manage accounts, roles and states | access follows responsibility | RBAC; single staff role; self-lockout blocked; audited | Must | FR-ADMIN-001 · UC-022 · BR-ACCESS-005 | Approved |
+| US-030 | Admin | adjust business parameters without deployment | policy changes don't need releases | versioned save; preview impact; ≤1 min effective; no retro | Must | FR-ADMIN-002 · UC-009 · BR-CONFIG-001..003 · NFR-MAINT-005 | Approved |
+| US-031 | Admin | maintain shared catalogues | pricing and filtering have clean inputs | CRUD; unique codes; in-use = deprecate only | Must | FR-ADMIN-003 · UC-023 · BR-CONFIG-003 | Approved |
+| US-032 | Admin | review the audit log | actions are attributable | append-only; search <2 s; export logged | Should | FR-ADMIN-004 · UC-025 · BR-CONFIG-002/004 | Approved |
+| US-033 | Ops Manager | monitor network and at-risk orders | I intervene before promises break | at-risk = slack < cfg 4 h; refresh ≤30 s; drill-down | Should | FR-ANAL-001 · UC-019 · BR-OPS-007 | Approved |
+| US-034 | Ops Manager | override assignment, priority and lab standing | exceptions have a human owner | reason enforced; feasibility advisory/force-policy; 2-step on customer-date impact | Should | FR-ANAL-004 · UC-020 · BR-OPS-001..004 | Approved (force-override ⚠B11) |
+| US-035 | Ops Manager | generate and export SLA reports | performance is reviewed with numbers | period/scope filters; empty ≠ zero; export audited | Should | FR-ANAL-003 · UC-021 · BR-CONFIG-004, OPS-008 | Approved |
+| US-036 | Lab Operator | record part handover to the hub | the hub expects the right batch | batch + QR; manual waybill; IN_TRANSIT; overdue >24 h soft alert | Must | FR-LAB-005 (handover) · UC-015 · BR-SCHED-009 | Proposed |
+| US-037 | Admin | review gaps and apply calibration factors manually | MVP quotes improve without waiting for regression | ≥10-sample gate; preview re-quote; versioned; committed quotes frozen | Should | FR-SCHED-008 · UC-018 · BR-ESTIM-002..006 | Proposed (A7 MVP manual) |
+| US-038 | Admin | author checklists and maintain the defect taxonomy | inspection is consistent and attributable | version per grade; running inspections pinned; used codes deprecate-only | Should | FR-ADMIN-005 · UC-024 · BR-QC-002/004 | Proposed |
+| US-039 | Admin | watch background-job and storage health | silent failures don't eat orders | queue depth; failed-job replay; trend highlight | Could | FR-ADMIN-004 · UC-025 · ⚠P-67 | Draft ⚠C3 (may become runbook) |
+| US-040 | Customer | manage profile, addresses and reorder from library | reordering takes under a minute | delete-address guard; quota message; 1-min reorder path | Must | FR-CUST-001/010 · UC-026 · BR-ACCESS-006 | Proposed |
+| US-041 | Hub Fulfillment Staff | record final delivery | the guarantee window starts correctly | DeliveredAt set by staff/customer; reprint availability computed from it | Must | FR-HUB-005 · UC-017 · BR-QC-009 | Proposed |
+| US-042 | Evaluator (WP1/WP2) | **generate virtual order streams and inject lab/machine/inspection faults against the real engines** | scheduler claims are measured, not asserted | order generator configurable (rate, mix, deadline tightness); 4 fault types incl. stage-distributed print failure & breakdown+MTTR; same seed ⇒ same result; ≥3 baselines; metrics exported via UC-021 | Must (research) | Products P-92/93 · UC-027 · BR-OPS-008, SCHED-005 · NFR-TEST-003 | Specified — **harness due week 4** |
+| US-043 | Ops Manager | open the assignment decision log | lab disputes settle from the record | candidates + per-criterion scores + config version for any job; overrides appended; read-only | Must | FR-SCHED-009 · UC-011 · BR-ASSIGN-004/CONFIG-004 | Proposed |
+| US-044 | Ops Manager | approve and execute refunds with daily reconciliation | real-money mistakes are corrected safely | full/partial per item; idempotent (0 double refund); webhook-confirmed; T-1 diff 0/explained; ≤5 d SLA | Must | FR-ANAL-005 · UC-028 · BR-PAY-004/006 · NFR-SEC-009 | Specified (23/09) ⚠4-eyes BR? |
+
+---
+
 ## Epic 1: Customer Order Management
 
 ### US-001: Upload 3D Model
@@ -113,7 +168,7 @@ This document contains user stories for all platform personas, organized by Epic
 **Acceptance Criteria:**
 - AC1: Order summary shows all items, configuration, and pricing
 - AC2: Delivery address form with validation
-- AC3: Payment method selection (credit card via Stripe test mode)
+- AC3: Payment method selection; real gateway (VNPay/MoMo) hosted checkout — card data never touches platform (BR-PAY-005); order commits only on verified webhook
 - AC4: Terms and conditions acceptance checkbox
 - AC5: "Place Order" button disabled until all required fields complete
 - AC6: Payment processing with loading indicator
@@ -716,27 +771,216 @@ This document contains user stories for all platform personas, organized by Epic
 
 ---
 
+## Epic 7: Shop-Floor Handover & Hub Logistics (sync v1.1 — UC-015/016/017)
+
+### US-036: Record Part Handover to Hub
+**Title:** Lab Handover & Waybill Entry  
+**User Story:** As a lab operator, I want to record which completed jobs leave my lab for the hub, so that the hub knows what to expect.
+
+**Traces:** FR-LAB-005 (decomposed) · UC-015 · BR-SCHED-009, BR-QC-001  
+**Acceptance Criteria:**
+- AC1: Operator selects completed, not-yet-shipped jobs and creates a batch with QR reference
+- AC2: Carrier + waybill number entered manually (no carrier API — out of scope)
+- AC3: Jobs transition to IN_TRANSIT; hub receives expected-batch notification
+- AC4: Handover timestamp and operator recorded for audit
+- AC5: Overdue handover (> 24 h after completion) raises soft alert (BR-SCHED-009)
+
+**Story Points:** 3  
+**Priority:** Critical  
+**Dependencies:** US-014
+
+## Epic 8: Calibration & Evidence Operations
+
+### US-037: Apply Calibration Factors Manually (MVP)
+**Title:** Admin Calibration Review  
+**User Story:** As an administrator, I want to review per-model estimate-vs-actual gaps and apply correction factors manually, so that MVP quotes improve without waiting for automatic regression.
+
+**Traces:** FR-SCHED-008 (MVP scope per B2 §4) · UC-018 · BR-ESTIM-002/003/004/006  
+**Acceptance Criteria:**
+- AC1: Screen lists machine models with sample count, mean gap %, trend
+- AC2: Proposal blocked when samples < minimum (BR-ESTIM-006)
+- AC3: Factor saved as new version; preview re-quotes 3 recent orders before commit
+- AC4: Existing committed quotes unaffected (BR-CONFIG-003)
+- AC5: Automatic regression remains a separate (Could) story — do not build in MVP
+
+**Story Points:** 3  
+**Priority:** High  
+**Dependencies:** US-028 (aggregation part)
+
+### US-038: Manage Inspection Checklists & Defect Taxonomy
+**Title:** QC Knowledge Base Administration  
+**User Story:** As an administrator, I want to author checklists per quality grade and maintain the defect taxonomy, so that inspection is consistent and attributable.
+
+**Traces:** FR-ADMIN-005 ★ · UC-024 · BR-QC-002/004, BR-CONFIG-001/003  
+**Acceptance Criteria:**
+- AC1: Checklist editor with pass criteria per item, mandatory flag, ordering
+- AC2: Save creates new checklist version bound to grade; running inspections keep their version
+- AC3: Taxonomy codes can be deprecated but never deleted once referenced by inspection history
+- AC4: All edits audited
+
+**Story Points:** 5  
+**Priority:** High  
+**Dependencies:** US-031 (quality grade exists)
+
+### US-039: Monitor Background Job & Storage Health
+**Title:** System Health Console  
+**User Story:** As an administrator, I want to see queue depth, failed background jobs and storage usage, so that I can replay failures before they affect orders.
+
+**Traces:** FR-ADMIN-004 · UC-025 · ⚠ open question (01_Extract P-67: keep as feature vs runbook constraint — decide with GVHD)  
+**Acceptance Criteria:**
+- AC1: Dashboard: Hangfire queue states, failed-job list with error, storage usage vs quota, integration status (email/MinIO)
+- AC2: Failed job replay button (idempotent, audited)
+- AC3: Repeated failure pattern highlighted for escalation
+
+**Story Points:** 3  
+**Priority:** Medium  
+**Dependencies:** None
+
+### US-040: Manage Profile, Addresses & Reorder from Library
+**Title:** Customer Account Self-Service  
+**User Story:** As a customer, I want to manage my profile, delivery addresses and reuse saved models, so that reordering takes under a minute.
+
+**Traces:** FR-CUST-001/010 · UC-026 · BR-ACCESS-001/002/006  
+**Acceptance Criteria:**
+- AC1: Address CRUD with default; deleting an address referenced by an undelivered order is blocked
+- AC2: Library reorder loads model + last config into a new quote draft
+- AC3: Quota enforcement with prune guidance (BR-ACCESS-006)
+- AC4: Password change requires re-authentication
+
+**Story Points:** 3  
+**Priority:** High  
+**Dependencies:** US-008
+
+### US-041: Confirm Delivery & Open Guarantee Window
+**Title:** Delivery Completion Recording  
+**User Story:** As hub fulfillment staff, I want to record final delivery, so that the guarantee window and order closure start correctly.
+
+**Traces:** FR-HUB-005 ★ · UC-017 · BR-QC-009, BR-NOTIFY-001  
+**Acceptance Criteria:**
+- AC1: Staff records delivered/returned; or customer confirms in portal
+- AC2: DeliveredAt timestamp drives guarantee window (BR-QC-009)
+- AC3: Order lifecycle record closed to analytics; reprint button availability computed from DeliveredAt
+
+**Story Points:** 3  
+**Priority:** Critical  
+**Dependencies:** US-020
+
+### US-044: Process Refunds & Daily Reconciliation ★ (quyết định 23/09)
+**Title:** Refund Execution & Payment Reconciliation  
+**User Story:** As an operations manager, I want to approve and execute refunds through the gateway with a daily reconciliation report, so that real-money mistakes are corrected without double-refunding or silent drift.
+
+**Traces:** FR-ANAL-005 ★ · UC-028 · BR-PAY-004/005/006, CONFIG-002  
+**Acceptance Criteria:**
+- AC1: Full and per-item partial refund with computed refundable amount
+- AC2: Idempotency key prevents second successful refund on same txn
+- AC3: Order state changes to REFUNDED only after verified gateway webhook
+- AC4: Nightly reconciliation T-1: 0 unexplained diffs; mismatched txn auto-frozen
+- AC5: Refund ≤5 business days or escalation entry with reason (BR-PAY-006)
+
+**Story Points:** 5  
+**Priority:** Critical  
+**Dependencies:** US-006
+
+---
+
+## Epic 9: Evaluation & Evidence (simulator — UC-027)
+
+### US-042: Run Network Simulation & Fault Injection
+**Title:** Simulation Harness Runs  
+**User Story:** As an evaluator (WP1/WP2), I want to generate virtual order streams and inject lab/machine/inspection faults against the real engines, so that scheduler claims are measured, not asserted.
+
+**Traces:** Products P-92/P-93 · Practical e)-bullets 8–10 · UC-027 · BR-SCHED-005, BR-OPS-008 — note: research deliverable, NOT a production portal feature  
+**Acceptance Criteria:**
+- AC1: Config for network size, order generator (rate, size/material/deadline mix), machine model mix
+- AC2: Fault injection: decline rate, print-failure with stage distribution, breakdown+MTTR, inspection failure per lab
+- AC3: Same seed replays deterministically; nondeterministic runs quarantined
+- AC4: Metrics exported via UC-021 pipeline: weighted tardiness, on-time %, utilisation, changeover, load Gini
+- AC5: 4 strategies comparable on identical workload (capacity-aware / dispatching / nearest-lab / random)
+- AC6: Deliverable date: harness usable by end of week 4 (B2 §5 commitment)
+
+**Story Points:** 13  
+**Priority:** Critical  
+**Dependencies:** US-023, US-024, US-026 (real engines exist to drive)
+
+### US-043: Review Assignment Decision Log
+**Title:** Decision Log Viewer  
+**User Story:** As an operations manager, I want to open any past assignment and see the candidate labs with their scores, so that lab disputes and bad allocations are settled from the record.
+
+**Traces:** FR-SCHED-009 ★ · UC-011 (post) · BR-ASSIGN-004, BR-CONFIG-004  
+**Acceptance Criteria:**
+- AC1: Lookup by job/order/time; shows candidates, per-criterion scores, chosen pair, timestamp, config version
+- AC2: Override and reschedule events appended to same thread
+- AC3: Viewer is read-only; export audited
+
+**Story Points:** 3  
+**Priority:** Critical  
+**Dependencies:** US-026
+
+---
+
+## Traceability Matrix (Story → FR → UC → BR domains)
+
+| Story | FR | UC | BR domain(s) | Story | FR | UC | BR domain(s) |
+|-------|----|----|--------------|-------|----|----|--------------|
+| US-001 | CUST-002 | 001 | ACCESS | US-023 | SCHED-003 | 011 | ASSIGN |
+| US-002 | CUST-003 | 001 | — | US-024 | SCHED-004 | 011 | ASSIGN/PERF |
+| US-003 | CUST-004 | 002 | QUOTE | US-025 | SCHED-005 | 010 | QUOTE/SCHED |
+| US-004 | CUST-005 | 001 | CONFIG | US-026 | SCHED-006 | 011 | SCHED |
+| US-005 | CUST-006 (+SCHED-010★) | 001 | QUOTE | US-027 | SCHED-007 | 012 | RESCHED/SCHED |
+| US-006 | CUST-007/008 | 001 | PAY | US-028 | SCHED-008 | 018 | ESTIM |
+| US-007 | CUST-009 | 003 | NOTIFY | US-029 | ADMIN-001 | 022 | ACCESS |
+| US-008 | CUST-010 | 026 | ACCESS | US-030 | ADMIN-002 | 009 | CONFIG |
+| US-009 | CUST-011 | 007 | QC | US-031 | ADMIN-003 | 023 | CONFIG |
+| US-010 | LAB-001 | 014 | OPS★ | US-032 | ADMIN-004 | 025 | CONFIG/ACCESS |
+| US-011 | LAB-002 | 014 | OPS★ | US-033 | ANAL-001 | 019 | OPS★ |
+| US-012 | LAB-003 | 014 | ASSIGN(in) | US-034 | ANAL-004 | 020 | OPS/SCHED/ACCESS |
+| US-013 | LAB-004 | 004 | ASSIGN/ACCESS | US-035 | ANAL-003 | 021 | CONFIG★ |
+| US-014 | LAB-005 | 005 | ESTIM/ACCESS | US-036 | LAB-005 | 015 | SCHED★ |
+| US-015 | LAB-006 | 011v | SCHED | US-037 | SCHED-008 | 018 | ESTIM★ |
+| US-016 | LAB-007 | 008 | PERF | US-038 | ADMIN-005★ | 024 | QC/CONFIG |
+| US-017 | HUB-001 | 016 | QC | US-039 | ADMIN-004 | 025 | ⚠P-67 |
+| US-018 | HUB-002 | 006 | QC | US-040 | CUST-001/010 | 026 | ACCESS★ |
+| US-019 | HUB-003 | 013 | QC/RESCHED | US-041 | HUB-005★ | 017 | QC★/NOTIFY |
+| US-020 | HUB-004/005★ | 017 | QC★ | US-042 | (WP harness) | 027 | OPS★/SCHED |
+| US-021 | SCHED-001 | 002 | ESTIM | US-043 | SCHED-009★ | 011 | ASSIGN/CONFIG |
+| US-022 | SCHED-002 | 002 | ESTIM | US-044 | ANAL-005★ | 028 | PAY★ |
+
+*(★ = thêm mới ở sync v1.1 / quyết định 23/09)*
+
+**Total Story Points: ~336** → 2-week sprints, velocity ~35 → **≈10 sprint**; gateway thật + refund cộng
+thêm ~8–10 ngày so sandbox, bù bởi các cắt B2 §4 — vẫn trong trần **với điều kiện** không phát sinh
+tính năng mới ngoài bảng này.
+
+---
+
 ## Summary
 
-**Total User Stories: 35**
+**Total User Stories: 44**
 
 | Epic | Stories | Total SP | Priority Distribution |
 |------|---------|----------|----------------------|
-| Customer Order Management | 9 | 70 | Critical: 5, High: 2, Medium: 2 |
-| Lab Operations | 7 | 55 | Critical: 4, Medium: 3 |
-| Hub Quality Control | 4 | 26 | Critical: 1, High: 3 |
-| Scheduling and Assignment | 8 | 82 | Critical: 6, High: 2 |
-| Platform Administration | 4 | 23 | High: 2, Medium: 2 |
-| Monitoring and Operations | 3 | 24 | High: 1, Medium: 2 |
+| 1 Customer Order Management | 9 | 70 | Critical: 5, High: 2, Medium: 2 |
+| 2 Lab Operations | 7 | 55 | Critical: 4, Medium: 3 |
+| 3 Hub Quality Control | 4 | 26 | Critical: 1, High: 3 |
+| 4 Scheduling and Assignment | 8 | 82 | Critical: 6, High: 2 |
+| 5 Platform Administration | 4 | 23 | High: 2, Medium: 2 |
+| 6 Monitoring and Operations | 3 | 24 | High: 1, Medium: 2 |
+| 7 Shop-Floor Handover & Hub Logistics | 1 | 3 | Critical: 1 |
+| 8 Calibration & Evidence Operations | 6 | 22 | Critical: 3, High: 3* |
+| 9 Evaluation & Evidence | 2 | 16 | Critical: 2 |
 
-**Total Story Points: 280**  
-**Average Velocity (assuming 2-week sprints):** 35 SP/sprint  
-**Estimated Sprints:** 8 sprints (~16 weeks for MVP)
+*US-039 Medium — đếm ở Epic 8: Critical US-041/043=2, High US-037/038/040=3, Medium US-039=1 (tổng 18 SP; bảng làm tròn theo nhóm).
+
+**Total Story Points: ~331** → 2-week sprints, velocity ~35 → **≈9–10 sprints**, vẫn trong khung 24 tuần khi giữ nguyên cut-list B2 §4.
 
 **Sprint Planning Recommendation:**
-- Sprint 1-2: US-001 to US-006 (Customer core flow)
-- Sprint 3-4: US-021 to US-027 (Scheduling engine - CORE)
-- Sprint 5-6: US-010 to US-016 (Lab operations)
-- Sprint 7-8: US-017 to US-020, US-029 to US-035 (Hub + Admin)
+- Sprint 1–2: US-001→006 (Customer core) + US-021/022 (phân tích + slicing — khởi động sớm vì critical path)
+- Sprint 2–3: **US-042 một phần** (harness khung + order generator, deadline tuần 4 — B2 §5)
+- Sprint 3–4: US-023→027 (engine CORE) + US-010→012 (lab setup để engine có dữ liệu filter)
+- Sprint 5–6: US-013/014/036 (lab production chain) + US-017→020, US-041 (hub chain)
+- Sprint 7–8: US-029→035, US-037–040, US-043 (admin/ops/evidence)
+- Sprint 9–10: toàn bộ nhánh evaluation + hardening
 
-**Critical Path:** US-001 → US-021 → US-022 → US-023 → US-024 → US-025 → US-026 → US-027
+**Critical Path:** US-001 → US-021 → US-022 → US-023 → US-024 → US-025 → US-026 → US-027 → US-042 (đo) → US-043 (giải trình)
+
+**Đồng bộ danh ngữ:** Mọi story giờ có Traces: FR-xx · UC-xx · BR-xxx — khớp `capstone/workbook/07_Traceability.md`; story không traces = không được chấm acceptance.

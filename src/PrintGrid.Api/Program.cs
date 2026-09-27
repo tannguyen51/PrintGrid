@@ -37,7 +37,6 @@ builder.Services.AddHangfire(config => config
 builder.Services.AddHangfireServer();
 
 builder.Services.AddScoped<AnalyzeModelJob>();
-builder.Services.AddScoped<PrintGrid.Api.Bootstrap.DemoDataSeeder>();
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "postgres")
@@ -63,12 +62,9 @@ app.UseCors("PrintGridSpa");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Seed demo data for teacher demo (idempotent).
-using (var seedScope = app.Services.CreateScope())
-{
-    var seeder = seedScope.ServiceProvider.GetRequiredService<PrintGrid.Api.Bootstrap.DemoDataSeeder>();
-    await seeder.SeedAsync();
-}
+// Demo seeding removed (26/09): the product runs on real data only.
+// A dedicated, explicit dev/demo data tool is scheduled as the W1 "Seed lại"
+// task in planning/Plan-ToanDu-An.xlsx — never auto-run at startup.
 
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");

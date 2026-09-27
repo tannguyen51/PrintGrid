@@ -28,61 +28,80 @@ Hanoi, March 2027
 
 | # | Week | WBS Item | Complexity | Est. Effort (man-days) |
 |---|---|---|---|---|
-| 1 | W1 | **Customer Module** | | **28** |
+| 1 | W1–W2 | **Customer Module** | | **28** |
 | 1.1 | W1 | Registration & authentication (FR-CUST-001) | Medium | 6 |
-| 1.2 | W2 | 3D model upload & validation (FR-CUST-002, 004) | Complex | 8 |
-| 1.3 | W1 | In-browser 3D model preview (FR-CUST-003) | Medium | 5 |
+| 1.2 | W1 | 3D model upload & validation (FR-CUST-002, 004) | Complex | 8 |
+| 1.3 | W2 | In-browser 3D model preview (FR-CUST-003) | Medium | 5 |
 | 1.4 | W2 | Smart print configuration (FR-CUST-005) | Medium | 4 |
-| 1.5 | W2 | Quoting + order placement + payment (FR-CUST-006→008) | Medium | 5 |
-| 2 | | **Advanced Customer (Library, Tracking)** | | **11** |
-| 2.1 | W2 | Personal model library (FR-CUST-010) | Simple | 3 |
+| 1.5 | W2 | Quoting + order placement (FR-CUST-006→008) | Medium | 5 |
+| 2 | | **Advanced Customer & Account** | | **13** |
+| 2.1 | W3 | Personal model library + account/addresses (FR-CUST-010, UC-026) | Medium | 5 |
 | 2.2 | W4 | Real-time order tracking (FR-CUST-009) | Medium | 5 |
 | 2.3 | W5 | Reprint / complaint requests (FR-CUST-011) | Simple | 3 |
-| 3 | | **Lab Module** | | **22** |
-| 3.1 | W3 | Lab registration & profile (FR-LAB-001) | Simple | 4 |
+| 3 | | **Lab Module** | | **25** |
+| 3.1 | W3 | Lab registration, approval & declaration validation (FR-LAB-001, UC-014) | Medium | 4 |
 | 3.2 | W1 | Machine registry (FR-LAB-002) | Medium | 5 |
 | 3.3 | W3 | Material inventory (FR-LAB-003) | Medium | 5 |
 | 3.4 | W4 | Job accept/reject + production workflow (FR-LAB-004, 005) | Complex | 8 |
-| 4 | | **Hub Module** | | **14** |
+| 3.5 | W5 | Part handover recording (FR-LAB-005, UC-015) | Simple | 3 |
+| 4 | | **Hub Module** | | **19** |
 | 4.1 | W5 | Batch receipt & reconciliation (FR-HUB-001) | Medium | 3 |
 | 4.2 | W4 | Quality inspection & defect classification (FR-HUB-002) | Complex | 6 |
 | 4.3 | W5 | Reprint management & order consolidation (FR-HUB-003, 004) | Medium | 5 |
-| 5 | | **Scheduling & Assignment (CORE)** | | **38** |
+| 4.4 | W5 | Pack, ship & delivery confirmation (FR-HUB-005, UC-017) | Medium | 5 |
+| 5 | | **Scheduling, Pricing & Assignment (CORE)** | | **57** |
 | 5.1 | W1 | Geometry analysis & slicing (FR-SCHED-001, 002) | Complex | 10 |
 | 5.2 | W2 | Hard capability filtering (FR-SCHED-003) | Medium | 6 |
 | 5.3 | W3 | Multi-criteria scoring (FR-SCHED-004) | Complex | 8 |
-| 5.4 | W3 | Quote-time scheduling (FR-SCHED-005) | Complex | 8 |
+| 5.4 | W3 | Quote-time speculative scheduling (FR-SCHED-005) | Complex | 8 |
 | 5.5 | W4 | Job placement & event-driven rescheduling (FR-SCHED-006, 007) | Complex | 8 |
 | 5.6 | W5 | Estimation calibration (FR-SCHED-008) | Medium | 6 |
-| 6 | | **Analytics & Operations** | | **14** |
-| 6.1 | W3 | Network monitoring dashboard (FR-ANALYTICS-001) | Medium | 4 |
-| 6.2 | W4 | Lab performance tracking (FR-ANALYTICS-002) | Medium | 4 |
-| 6.3 | W5 | SLA reporting (FR-ANALYTICS-003) | Simple | 3 |
-| 6.4 | W3 | Manual intervention tools (FR-ANALYTICS-004) | Simple | 3 |
-| 7 | | **Administration** | | **13** |
+| 5.7 | W2 | Pricing engine + parameter freeze (FR-SCHED-010) | Medium | 5 |
+| 5.8 | W4 | Assignment decision log + viewer (FR-SCHED-009, UC-011) | Medium | 3 |
+| 5.9 | W6+ | Batch consolidation (BR-SCHED-002/003 — Should-have, cut-first if late) | Medium | 3 |
+| 6 | | **Analytics & Operations** | | **25** |
+| 6.1 | W3 | Network monitoring dashboard (FR-ANAL-001) | Medium | 4 |
+| 6.2 | W4 | Lab performance tracking (FR-ANAL-002) | Medium | 4 |
+| 6.3 | W5 | SLA reporting (FR-ANAL-003) | Simple | 3 |
+| 6.4 | W3 | Manual intervention tools (FR-ANAL-004) | Medium | 3 |
+| 6.5 | W7 | Refund execution + daily reconciliation (FR-ANAL-005, UC-028) | Complex | 6 |
+| 6.6 | W7 | Calibration review UI (US-037, UC-018) | Medium | 5 |
+| 7 | | **Administration** | | **22** |
 | 7.1 | W2 | User management & RBAC (FR-ADMIN-001) | Medium | 4 |
 | 7.2 | W3 | Configuration management (FR-ADMIN-002) | Medium | 4 |
 | 7.3 | W4 | Catalog management (FR-ADMIN-003) | Simple | 3 |
 | 7.4 | W1 | Audit log viewer (FR-ADMIN-004) | Simple | 2 |
-| 8 | | **Simulation, Evaluation & Real-lab Trial** | | **22** |
-| 8.1 | W5 | Simulation framework + baseline comparison | Complex | 12 |
-| 8.2 | W5 | Real-lab trial (calibration) | Medium | 10 |
-| | | **Total Estimated Effort (man-days)** | | **≈ 162** |
+| 7.5 | W5 | Checklist & defect-taxonomy manager (FR-ADMIN-005) | Medium | 4 |
+| 7.6 | W5 | System health monitor + job replay (UC-025) | Medium | 5 |
+| 8 | | **Payments & Security (decision 23/09)** | | **12** |
+| 8.1 | W6 | Gateway integration: hosted checkout + webhook verification (FR-CUST-008, BR-PAY-005) | Complex | 7 |
+| 8.2 | W7 | Card-data hardening + reconciliation drills (NFR-SEC-009) | Medium | 5 |
+| 9 | | **Simulation, Evaluation & Real-lab Trial** | | **22** |
+| 9.1 | W4+ | Simulation framework (order generator + fault injection) + baseline comparison | Complex | 12 |
+| 9.2 | W19–20 | Real-lab trial (calibration) | Medium | 10 |
+| 10 | | **Platform Foundation** | | **17** |
+| 10.1 | W1 | Repo scaffold, modular monolith, CI/CD | Medium | 6 |
+| 10.2 | W1–2 | Database migrations, seed data | Medium | 6 |
+| 10.3 | W2 | Async job & object-storage infrastructure | Medium | 5 |
+| 11 | | **Quality & Process** | | **20** |
+| 11.1 | ongoing | Integration testing & bug fixing | Complex | 12 |
+| 11.2 | W8–9 | NFR verification suite (16 core NFRs, Report 5 link) | Medium | 5 |
+| 11.3 | ongoing | Documentation sync (SRS/SDD/user guides) | Simple | 3 |
+| | | **Total Estimated Effort (man-days)** | | **260** |
 
-*FR details from `documentation/09-Functional-Requirements.md`; complexity grading: Simple ≤ 4 man-days, Medium 5–6, Complex ≥ 8.*
+*FR details from `documentation/project/requirements/09-Functional-Requirements.md` (§0 matrix, 43 FRs); complexity grading: Simple ≤ 4 man-days, Medium 5–6, Complex ≥ 8. Rows 5.9 and parts of 6/7 are Should/Could — they are the planned cut buffer.*
 
-**Summary per week (5-week plan, 5 team members):**
+**Summary per phase (semester plan, 5 team members):**
 
-| Week | Focus / Milestone | Tasks | Est. Effort (man-days) | Main responsible |
+| Phase | Weeks | Focus | WBS items | Est. (man-days) |
 |---|---|---|---|---|
-| **W1** | Foundation & core pipeline | 1.1, 1.3, 5.1, 3.2, 7.4 | **28** | Backend + Algorithm + Frontend |
-| **W2** | Customer core + capability filter | 1.2, 1.4, 1.5, 2.1, 5.2, 7.1 | **30** | Backend + Frontend |
-| **W3** | Scheduling engine + Lab/Analytics | 5.3, 5.4, 3.1, 3.3, 6.1, 6.4, 7.2 | **36** | Algorithm + Backend |
-| **W4** | Rescheduling + Lab/Hub workflows | 3.4, 4.2, 5.5, 2.2, 6.2, 7.3 | **34** | Full team |
-| **W5** | Fulfillment, simulation & trial | 2.3, 4.1, 4.3, 5.6, 6.3, 8.1, 8.2 | **34** | QA + Algorithm + All |
-| | **Total** | | **≈ 162** | |
+| **P1** | 1–5 | Foundation, customer core, admin base, payments | 1, 3.1–3.4, 5.1–5.4, 5.7, 7, 8.1, 10 | **79** |
+| **P2** | 6–13 | Engine depth, lab/hub workflows, analytics, refund | 2, 3.5, 4, 5.5–5.9, 6, 8.2 | **96** |
+| **P3** | 14–19 | Hardening, NFR verification, decision-log demos | 9.1, 11.1–11.2 | **43** |
+| **P4** | 20–26 | Real-lab trial, evaluation report, docs, defenses | 9.2, 11.3 | **42** |
+| | | **Total** | | **260** |
 
-> **Capacity note:** 5 people × 5 weeks = 125 man-days of nominal capacity, while the estimate is ≈ 162 man-days. This is achievable because tasks run **in parallel across work packages** (backend, frontend, algorithm, QA), with review/support effort counted inside each task and some overlap between weeks. If a strictly sequential team is assumed, the plan needs ≈ 6–7 weeks or a reduced scope.
+> **Capacity note:** the register budget is 6 credits × 5 members × 26 weeks × 2 man-days/week = **260 man-days**; the WBS consumes it exactly. Of the estimate, **Must-have ≈ 215 man-days** and ≈ 45 man-days sit in Should/Could rows (5.9, 7.6, 11.3, advanced parts of 6.x) — this buffer is the agreed cut-list from `capstone/workbook/02_Phan-bien-de-tai.md` §4, so slippage cuts scope, never quality.
 
 #### 1.2 Project Objectives
 
@@ -119,12 +138,12 @@ Overall objective: build and evaluate a platform that demonstrates **capacity-aw
 
 | Activity | % | man-days |
 |---|---|---|
-| Analysis & design | 20% | ≈ 32 |
-| Coding (backend + frontend + algorithm) | 45% | ≈ 73 |
-| Testing & evaluation | 20% | ≈ 32 |
-| Simulation & lab trial | 10% | ≈ 16 |
-| Project management & documentation | 5% | ≈ 9 |
-| **Total** | 100% | **≈ 162** |
+| Analysis & design | 20% | 52 |
+| Coding (backend + frontend + algorithm) | 45% | 117 |
+| Testing & evaluation | 20% | 52 |
+| Simulation & lab trial | 10% | 26 |
+| Project management & documentation | 5% | 13 |
+| **Total** | 100% | **260** |
 
 #### 1.3 Project Risks
 
