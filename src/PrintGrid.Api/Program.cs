@@ -1,6 +1,7 @@
 using Hangfire;
 using Hangfire.PostgreSql;
 using Serilog;
+using PrintGrid.Api.BackgroundJobs;
 using PrintGrid.Api.Bootstrap;
 using PrintGrid.Api.Extensions;
 using PrintGrid.Api.Hubs;
@@ -35,6 +36,8 @@ builder.Services.AddHangfire(config => config
     .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString)));
 builder.Services.AddHangfireServer();
 
+builder.Services.AddScoped<AnalyzeModelJob>();
+
 builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "postgres")
     .AddRedis(redisConnection, name: "redis");
@@ -58,6 +61,10 @@ else
 app.UseCors("PrintGridSpa");
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Demo seeding removed (26/09): the product runs on real data only.
+// A dedicated, explicit dev/demo data tool is scheduled as the W1 "Seed lại"
+// task in planning/Plan-ToanDu-An.xlsx — never auto-run at startup.
 
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");

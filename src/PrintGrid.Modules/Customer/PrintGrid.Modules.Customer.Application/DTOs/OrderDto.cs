@@ -1,11 +1,9 @@
-using PrintGrid.Modules.Customer.Domain.Enums;
-
 namespace PrintGrid.Modules.Customer.Application.DTOs;
 
 public record OrderDto(
     Guid Id,
     string OrderNumber,
-    OrderStatus Status,
+    string Status,
     decimal TotalAmount,
     string Currency,
     DateOnly PromisedDeliveryDate,

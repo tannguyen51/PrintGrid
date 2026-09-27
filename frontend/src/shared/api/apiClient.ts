@@ -1,5 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import { clearTokens, getAccessToken, getRefreshToken, setTokens } from './tokenStore'
+import { clearTokens, getAccessToken, getRefreshToken, setTokens, isRemembered } from './tokenStore'
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api/v1',
@@ -25,7 +25,7 @@ async function refreshAccessToken(): Promise<string> {
     { refreshToken },
   )
 
-  setTokens(data.accessToken, data.refreshToken)
+  setTokens(data.accessToken, data.refreshToken, isRemembered())
   return data.accessToken
 }
 

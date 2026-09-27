@@ -55,7 +55,7 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
     private static OrderDto Map(Order order) => new(
         order.Id,
         order.OrderNumber,
-        order.Status,
+        order.Status.ToString(),
         order.TotalPrice.Amount,
         order.TotalPrice.Currency,
         order.PromisedDeliveryDate,

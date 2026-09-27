@@ -1,5 +1,44 @@
 # Non-Functional Requirements - PrintGrid Platform
 
+## 0. Requirement Matrix (submission format)
+
+16 core NFRs selected per Step-11 guideline (8–15±); each row carries the four measurable elements
+(metric · threshold · measurement condition · method, packed in Acceptance Criteria), its own Req ID
+matching the detailed blocks below (§1–§11), and maps 1-to-1 to the 12 bullets of register item d)
+(P-69→P-80). Rows marked ★new have their detailed block in §11; everything not in this matrix is an
+engineering standard (not part of the Report 5 test plan).
+
+| Req ID | Type | Requirement Description | Category | Priority | Source | Acceptance Criteria | Status | Notes |
+|--------|------|-------------------------|----------|----------|--------|---------------------|--------|-------|
+| NFR-PERF-001 | NFR | Quoting runs asynchronously; preliminary estimate and committed quote returned within bounded times | Performance | Must | P-69 | Preliminary ≤ 5 s; committed quote ≤ 60 s (p95); staging, meshes ≤ 50 MB, 30 concurrent sessions; k6/JMeter script attached to Report 5 | Approved | Block §1 |
+| NFR-PERF-002 | NFR | Rescheduling always completes within a hard time budget and keeps a feasible fallback | Performance | Must | P-70 · BR-SCHED-005 | Repair ≤ 30 s hard / ≤ 15 s mean; fallback schedule committed at timeout; load: 50 labs / 300 machines via UC-027 harness | Approved (B4, 23/09) | Block §1 |
+| NFR-PERF-003 | NFR | Interactive API stays responsive under normal load | Performance | Should | supports P-69 | p95 ≤ 2 s under realistic traffic profile; k6 on staging | Approved | Block §1 |
+| NFR-SCALE-001 | NFR | Network data model and algorithms scale without architectural change | Scalability | Must | P-79 | Functional at 50 labs / 300 machines / 1,000 orders-month / 500 active jobs; verified through NFR-PERF-001/002 and NFR-REL-004 runs at that configuration | Approved | Block §2 |
+| NFR-REL-002 | NFR | Zero loss of committed orders, assignments and customer models | Reliability | Must | P-72 (data correctness) | Kill process mid-transaction ⇒ no corrupted records; backup/restore drill monthly with 0 loss on committed entities | Approved | Block §3 |
+| NFR-REL-004 | NFR | Machine double-booking is impossible by construction | Consistency | Must | P-72 | 0 overlapping placements with N concurrent workers on one machine queue; race tests + DB constraints | Approved | Block §3 |
+| NFR-REL-005 ★new | NFR | A job is never assigned to a machine that cannot physically produce it | Correctness | Must | P-71 · BR-ASSIGN-001 | 0 violations on the "deliberately infeasible" job suite, executed independently of the scoring logic | Specified | Block §11 · enforced by FR-SCHED-003 |
+| NFR-REL-006 ★new | NFR | Committed delivery dates change only under approved conditions | Stability/Trust | Must | P-73 · B16 | Committed-vs-final date diff = 0 outside the approved list: (1) customer-requested change (2) force majeure (3) deadline unrecoverable after 2 reprints; each change notified and approved | Approved (B16, 23/09) | Block §11 · test on reschedule audit dataset |
+| NFR-SEC-007 | NFR | Model files accessible only within the assigned job, logged, never in bulk | Security/IP | Must | P-75 · P-18 · BR-ACCESS-001..004 | 0 access outside job window (+4 h grace, B15 pending); 0 bulk downloads; 100 % accesses logged; adversarial suite (Practical bullet 11) | Approved · ⚠ B15 | Block §4 |
+| NFR-SEC-009 ★new | NFR | Real-money payments keep card data off the platform and reconcile every transaction | Security/Payment | Must | P-25 · decision 23/09 · BR-PAY-005/006 | 0 PAN/CVV/expiry in DB or logs (token + txn id only); 100 % invalid-signature webhooks rejected; daily reconciliation: 0 unexplained diffs; 0 double refunds (idempotency key) | Approved (23/09) | Block §11 · links FR-CUST-008, FR-ANAL-005, UC-028 |
+| NFR-USE-001 | NFR | A first-time customer completes an order without training | Usability | Should | — | 5 of 5 untrained users finish registration→order in ≤ 10 min; moderated usability test | Approved | Block §5 |
+| NFR-USE-006 ★new | NFR | Lab interface works at the machine: few taps, tablet-sized, tolerates bad wifi | Usability | Must | P-78 | State update reachable within ≤ 3 taps from queue (B13 pending); input survives 2-min connection loss; measured by scripted test at partner lab (lab secured 23/09) | Draft ⚠ B13 | Block §11 · supersedes generic USE-002 for shop-floor |
+| NFR-LEGAL-002 | NFR | Assignments, overrides, refunds and quality decisions are fully auditable | Auditability | Must | P-76 | Any 50 randomly sampled decisions reconstructible with candidate set, scores and config version (FR-SCHED-009) | Approved | Block §8 |
+| NFR-MAINT-005 ★new | NFR | Commercial parameters are tunable without redeployment | Configurability | Must | P-77 · BR-CONFIG-001..003 | Threshold/weight change effective ≤ 1 min, no service restart; quotes and assignments created earlier keep their frozen version | Specified | Block §11 · e2e through FR-ADMIN-002 |
+| NFR-TEST-003 | NFR | Scheduler claims are measured against baselines, not asserted | Research/QA | Must | P-82 · BR-OPS-008 | ≥ 3 baselines on identical seeded workload; protocol version pinned; same seed ⇒ same result (nondeterministic runs quarantined) | Approved | Block §10 · executed on UC-027 |
+| NFR-ACC-001 ★new | NFR | Slicer estimate accuracy is continuously measured and corrected | Accuracy | Should | P-74 · BR-ESTIM-005 | MAPE < 25 % per machine model and trending down after each calibration cycle; dashboard metric + evaluation-run export | Specified | Block §11 · requires partner-lab data (secured 23/09) |
+
+**Coverage check vs register item d):** P-69→PERF-001 · P-70→PERF-002 · P-71→REL-005 · P-72→REL-002/004 ·
+P-73→REL-006 · P-74→ACC-001 · P-75→SEC-007 · P-76→LEGAL-002 · P-77→MAINT-005 · P-78→USE-006 ·
+P-79→SCALE-001 · P-80→(out of MVP: fair distribution, declared in Out of scope) — 11/12 covered, 1
+deliberately excluded with reason.
+
+**Engineering standards (blocks kept below §1–§10 for architecture review; NOT in Report 5 test plan):**
+PERF-004..007 · SCALE-002/003 · REL-001/003 · SEC-001..006, 008 · USE-002..005 · MAINT-001..004 ·
+COMPAT-001..003 · LEGAL-001/003 · DEPLOY-001..003 · TEST-001/002.
+
+
+---
+
 ## 1. Performance Requirements (NFR-PERF)
 
 ### NFR-PERF-001: Quote Response Time
@@ -545,21 +584,63 @@
 
 ---
 
+## 11. Detailed blocks — core NFRs created by the v1.1 / 23-09 sync
+
+### NFR-REL-005: Feasibility Correctness
+**Category:** Correctness · **Priority:** Critical · **Requirement:** The system must never assign a job to a machine that cannot physically produce it (build volume, tolerance, technology, material).
+**Metric:** count of infeasible assignments · **Target:** 0 · **Condition:** adversarial suite of jobs deliberately infeasible per machine, run independently of the scoring component
+**Rationale:** register calls this a correctness requirement, not quality-of-result; one infeasible assignment wastes a full print window and breaks the trust chain. **Tests:** integration suite + UC-027 stress runs. **Traces:** P-71 · BR-ASSIGN-001 · FR-SCHED-003 · NFR-PERF-002 co-tested.
+
+### NFR-REL-006: Stability of Committed Promises
+**Category:** Trust/Stability · **Priority:** Critical · **Requirement:** A committed delivery date may change only under the approved list: (1) customer-requested change, (2) force majeure, (3) deadline unrecoverable after two reprints. Every change is notified and re-approved before commit.
+**Metric:** diff between committed and final dates outside the list · **Target:** 0
+**Condition:** full reschedule history on staging dataset · **Tests:** audit diff query + notification check per event. **Traces:** P-73 · B16 decision 23/09 · BR-SCHED-008, BR-NOTIFY-002 · FR-SCHED-007, FR-ANAL-004.
+
+### NFR-SEC-009: Payment Data Protection & Reconciliation
+**Category:** Security/Payment · **Priority:** Critical · **Requirement:** Real-money payments must keep card/wallet credentials off the platform (hosted checkout; token + transaction id only) and every transaction must be reconcilable daily.
+**Metric:** PAN/CVV fields in DB/logs; invalid-signature webhook acceptance; daily reconciliation diff; double-refund count · **Target:** 0 / 0 / 0 unexplained / 0
+**Condition:** DB + log inspection, webhook replay, T-1 report on test-settlement data
+**Tests:** security review + reconciliation drill. **Traces:** P-25 · decision 23/09 · BR-PAY-005/006 · FR-CUST-008, FR-ANAL-005 · UC-001, UC-028.
+
+### NFR-USE-006: Shop-Floor Usability
+**Category:** Usability · **Priority:** High · **Requirement:** Lab operators must reach any job-state update within ≤ 3 taps from the queue on a tablet, and entered data must survive a 2-minute connectivity loss.
+**Metric:** tap count; input loss events · **Target:** ≤ 3 taps (B13 pending confirmation); 0 lost inputs
+**Condition:** scripted test at partner lab on real tablets with throttled network · **Traces:** P-78 · FR-LAB-005 · UC-005/015.
+
+### NFR-MAINT-005: Configurability Without Redeployment
+**Category:** Configurability · **Priority:** Critical · **Requirement:** Pricing parameters, score weights, scheduling limits and thresholds are edited through the admin UI, effective ≤ 1 minute, without service restart; existing records keep their frozen version.
+**Metric:** time-to-effect; restart count; retro-application count · **Target:** ≤ 60 s / 0 / 0
+**Tests:** e2e via FR-ADMIN-002 while traffic runs. **Traces:** P-77 · BR-CONFIG-001..003.
+
+### NFR-ACC-001: Estimation Accuracy & Calibration
+**Category:** Accuracy · **Priority:** High · **Requirement:** The gap between slicer estimates and actual print durations is measured per machine model (MAPE) and corrected through calibration factors applied to quoting and scheduling.
+**Metric:** MAPE per machine model · **Target:** < 25 % and decreasing after each calibration cycle (BR-ESTIM-005)
+**Condition:** partner-lab production data + simulator runs · **Traces:** P-74 · BR-ESTIM-002..006 · FR-SCHED-008 · UC-018 · depends on lab secured 23/09.
+
+---
+
 ## Summary Matrix
 
 | Category | Requirements | Critical | High | Medium | Low |
 |----------|-------------|----------|------|--------|-----|
 | Performance | 7 | 2 | 3 | 2 | 0 |
 | Scalability | 3 | 0 | 1 | 2 | 0 |
-| Reliability | 4 | 2 | 1 | 1 | 0 |
-| Security | 8 | 6 | 1 | 0 | 0 |
-| Usability | 5 | 0 | 3 | 1 | 1 |
-| Maintainability | 4 | 0 | 3 | 1 | 0 |
+| Reliability (incl. ★REL-005/006) | 6 | 4 | 1 | 1 | 0 |
+| Security (incl. ★SEC-009) | 9 | 7 | 2 | 0 | 0 |
+| Usability (incl. ★USE-006) | 6 | 0 | 4 | 1 | 1 |
+| Maintainability (incl. ★MAINT-005) | 5 | 1 | 3 | 1 | 0 |
 | Compatibility | 3 | 0 | 2 | 1 | 0 |
 | Legal/Compliance | 3 | 0 | 2 | 1 | 0 |
 | Deployment | 3 | 0 | 3 | 0 | 0 |
 | Testing | 3 | 1 | 2 | 0 | 0 |
+| Accuracy ★ | 1 | 0 | 1 | 0 | 0 |
 
-**Total: 43 Non-Functional Requirements**
+**Total: 49 detailed blocks → 16 core NFRs (§0 matrix) + 33 engineering standards.**
 
-All requirements include **measurable targets**, **rationale**, and **testing approach**.
+Bản cũ 43 gạch đủ format 4 thành phần nhưng vượt chuẩn 8–15 và **lệch phách**: 5 ràng buộc của phiếu
+(P-71/73/74/76/77) chưa có NFR nào. Mục 0 đã sửa cả hai chiều: **11/12 gạch d) của phiếu có NFR đo
+được, 1 gạch (P-80 fair distribution) chủ trương loại khỏi MVP kèm lý do Out of scope**. §11 thêm 6
+block chi tiết cho các ID mới để mọi dòng bảng §0 trỏ vào một block thật. **Constraints tách riêng**
+ở `07-Assumptions-Constraints.md` — đúng chuẩn B11.
+
+Mọi NFR chủ đều hình dung được **một phép kiểm cụ thể ở Report 5** — điều kiện "xong" của Bước 11.

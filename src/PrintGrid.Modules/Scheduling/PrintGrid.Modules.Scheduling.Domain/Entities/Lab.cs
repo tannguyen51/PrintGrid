@@ -38,6 +38,8 @@ public class Lab : AggregateRoot<Guid>
 
     public void Deactivate() => IsActive = false;
 
+    public void Activate() => IsActive = true;
+
     public void UpdatePerformance(decimal onTimeDeliveryRate, decimal firstPassYield)
     {
         OnTimeDeliveryRate = Clamp(onTimeDeliveryRate);

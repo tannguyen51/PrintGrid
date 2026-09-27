@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PrintGrid.Modules.Scheduling.Domain\PrintGrid.Modules.Scheduling.Domain.csproj" />
+    <ProjectReference Include="..\..\Customer\PrintGrid.Modules.Customer.Domain\PrintGrid.Modules.Customer.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
