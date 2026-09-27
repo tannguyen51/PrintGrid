@@ -21,6 +21,15 @@ export function useAcceptJob() {
   return useMutation({ mutationFn: (id: string) => apiClient.post(`/jobs/${id}/accept`), onSuccess: invalidate })
 }
 
+export function useDeclineJob() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      apiClient.post(`/jobs/${id}/decline`, { reason }),
+    onSuccess: invalidate,
+  })
+}
+
 export function useStartJob() {
   const invalidate = useInvalidate()
   return useMutation({ mutationFn: (id: string) => apiClient.post(`/jobs/${id}/start`), onSuccess: invalidate })

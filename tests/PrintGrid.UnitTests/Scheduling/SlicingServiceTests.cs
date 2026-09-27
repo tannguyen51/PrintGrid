@@ -153,7 +153,7 @@ public class SlicingServiceTests
             sb.Append("  facet normal 0 0 1\n    outer loop\n");
             foreach (var (x, y, z) in tri)
             {
-                sb.Append($"      vertex {x:F6} {y:F6} {z:F6}\n");
+                sb.Append(FormattableString.Invariant($"      vertex {x:F6} {y:F6} {z:F6}\n"));
             }
             sb.Append("    endloop\n  endfacet\n");
         }
@@ -180,7 +180,7 @@ public class SlicingServiceTests
         };
 
         var sb = new StringBuilder("# cube\n");
-        foreach (var (x, y, z) in vertices) sb.Append($"v {x:F6} {y:F6} {z:F6}\n");
+        foreach (var (x, y, z) in vertices) sb.Append(FormattableString.Invariant($"v {x:F6} {y:F6} {z:F6}\n"));
         foreach (var (a, b, c) in cubeFaces) sb.Append($"f {a} {b} {c}\n");
         return sb.ToString();
     }

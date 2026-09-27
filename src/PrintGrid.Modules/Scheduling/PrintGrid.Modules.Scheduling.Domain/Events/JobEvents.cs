@@ -17,7 +17,13 @@ public sealed record JobFailedEvent(
     string Reason,
     int AttemptNumber) : DomainEvent;
 
+public sealed record JobDeclinedEvent(
+    Guid JobId,
+    Guid LabId,
+    string Reason) : DomainEvent;
+
 public sealed record ReschedulingTriggeredEvent(
     Guid JobId,
     string Trigger,
     DateOnly InternalDueDate) : DomainEvent;
+

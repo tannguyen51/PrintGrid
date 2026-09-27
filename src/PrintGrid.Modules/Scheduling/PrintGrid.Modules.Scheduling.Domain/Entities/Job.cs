@@ -21,6 +21,7 @@ public class Job : AggregateRoot<Guid>
     public Guid? MachineId { get; private set; }
     public DateTime? PlannedStartUtc { get; private set; }
     public DateTime? PlannedEndUtc { get; private set; }
+    public DateTime? AssignedAtUtc { get; private set; }
     public DateTime? StartedAtUtc { get; private set; }
     public DateTime? CompletedAtUtc { get; private set; }
     public string? FailureReason { get; private set; }
@@ -52,7 +53,7 @@ public class Job : AggregateRoot<Guid>
         };
     }
 
-    public Result AssignTo(Guid labId, Guid machineId, DateTime plannedStartUtc, DateTime plannedEndUtc, decimal score)
+    public Result AssignTo(Guid labId, Guid machineId, DateTime plannedStartUtc, DateTime plannedEndUtc, decimal score, DateTime? assignedAtUtc = null)
     {
         if (Status is not (JobStatus.Pending or JobStatus.Reassigned))
             return Result.Failure(Error.Conflict($"Job in state {Status} cannot be assigned"));
@@ -63,19 +64,58 @@ public class Job : AggregateRoot<Guid>
         MachineId = machineId;
         PlannedStartUtc = plannedStartUtc;
         PlannedEndUtc = plannedEndUtc;
+        AssignedAtUtc = assignedAtUtc ?? DateTime.UtcNow;
         Status = JobStatus.Assigned;
 
         AddDomainEvent(new JobAssignedEvent(Id, labId, machineId, plannedStartUtc, plannedEndUtc, score));
         return Result.Success();
     }
 
-    public Result Accept()
+    public Result Accept() => Accept(DateTime.UtcNow);
+
+    public Result Accept(DateTime nowUtc)
     {
         if (Status != JobStatus.Assigned)
             return Result.Failure(Error.Conflict("Only an assigned job can be accepted"));
 
+        if (AssignedAtUtc.HasValue && (nowUtc - AssignedAtUtc.Value) > TimeSpan.FromHours(2))
+        {
+            Decline("Acceptance window expired (2 hours timeout)");
+            return Result.Failure(Error.Conflict("Acceptance window expired; job returned to pending"));
+        }
+
         Status = JobStatus.Accepted;
         return Result.Success();
+    }
+
+    public Result Decline(string reason)
+    {
+        if (Status != JobStatus.Assigned)
+            return Result.Failure(Error.Conflict("Only an assigned job can be declined"));
+
+        var declinedLabId = LabId ?? Guid.Empty;
+        Status = JobStatus.Pending;
+        LabId = null;
+        MachineId = null;
+        PlannedStartUtc = null;
+        PlannedEndUtc = null;
+        AssignedAtUtc = null;
+        FailureReason = reason;
+
+        AddDomainEvent(new JobDeclinedEvent(Id, declinedLabId, reason));
+        AddDomainEvent(new ReschedulingTriggeredEvent(Id, "lab_decline", InternalDueDate));
+        return Result.Success();
+    }
+
+    public Result TimeoutAcceptance(DateTime nowUtc)
+    {
+        if (Status != JobStatus.Assigned)
+            return Result.Failure(Error.Conflict("Only an assigned job can time out"));
+
+        if (AssignedAtUtc.HasValue && (nowUtc - AssignedAtUtc.Value) < TimeSpan.FromHours(2))
+            return Result.Failure(Error.Conflict("Job acceptance window has not expired yet"));
+
+        return Decline("Acceptance window expired (2 hours timeout)");
     }
 
     public Result Start(DateTime startedAtUtc)
