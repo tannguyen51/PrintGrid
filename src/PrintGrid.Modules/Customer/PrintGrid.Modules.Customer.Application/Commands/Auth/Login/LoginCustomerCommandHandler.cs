@@ -1,5 +1,6 @@
 using MediatR;
 using PrintGrid.Modules.Customer.Application.Auth;
+
 using PrintGrid.Modules.Customer.Application.DTOs;
 using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.SharedKernel.Interfaces;
@@ -49,5 +50,5 @@ public class LoginCustomerCommandHandler : IRequestHandler<LoginCustomerCommand,
         customer.Id,
         customer.Email,
         customer.FullName,
-        DemoRoles.RolesFor(customer.Email));
+        customer.Roles);
 }
