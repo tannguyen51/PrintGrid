@@ -33,6 +33,12 @@ public class OrdersController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
+        var isEmailVerified = User.HasClaim(c => c.Type == "email_verified" && c.Value == "true");
+        if (!isEmailVerified)
+        {
+            return StatusCode(403, new { error = new { code = "EMAIL_NOT_VERIFIED", message = "Please verify your email to place an order." } });
+        }
+
         var result = await _sender.Send(
             new PlaceOrderCommand(
                 customerId.Value,

@@ -16,6 +16,7 @@ export interface AuthUser {
   email: string
   fullName: string
   roles: Role[]
+  isEmailVerified: boolean
 }
 
 export interface RegisterInput {
@@ -55,6 +56,7 @@ function userFromAccessToken(token: string): AuthUser | null {
       email: payload.email,
       fullName: payload.unique_name ?? payload.name ?? '',
       roles,
+      isEmailVerified: payload.email_verified === 'true' || payload.email_verified === true
     }
   } catch {
     return null

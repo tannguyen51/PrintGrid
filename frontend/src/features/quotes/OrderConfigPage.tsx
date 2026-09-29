@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { apiClient } from '../../shared/api/apiClient'
 import {
   Alert,
   Box,
@@ -52,6 +53,28 @@ export default function OrderConfigPage() {
   const [city, setCity] = useState('')
   const [postalCode, setPostalCode] = useState('')
   const [orderError, setOrderError] = useState<string | null>(null)
+
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const { user } = useAuth()
+
+  useEffect(() => {
+    let timer: any
+    if (resendCooldown > 0) {
+      timer = setInterval(() => setResendCooldown(c => c - 1), 1000)
+    }
+    return () => clearInterval(timer)
+  }, [resendCooldown])
+
+  async function handleResendVerification() {
+    if (!user) return
+    setOrderError(null)
+    try {
+      const res = await apiClient.post<{ waitTimeSeconds?: number }>('/auth/resend-verification', { email: user.email })
+      setResendCooldown(res.data.waitTimeSeconds || 60)
+    } catch (err: any) {
+      setOrderError(err.response?.data?.error?.message || 'Không thể gửi lại email.')
+    }
+  }
 
   const layer = QUALITY_GRADES[layerIndex]
 
@@ -247,6 +270,20 @@ export default function OrderConfigPage() {
 
               {orderError && <Alert severity="error">{orderError}</Alert>}
 
+              {user && !user.isEmailVerified && (
+                <Alert
+                  severity="warning"
+                  sx={{ display: 'flex', alignItems: 'center' }}
+                  action={
+                    <Button color="inherit" size="small" onClick={handleResendVerification} disabled={resendCooldown > 0}>
+                      {resendCooldown > 0 ? `Chờ ${resendCooldown}s` : 'Gửi lại email'}
+                    </Button>
+                  }
+                >
+                  Tài khoản của bạn chưa xác thực email. Bạn không thể đặt hàng.
+                </Alert>
+              )}
+
               {/* Address */}
               <Box>
                 <Typography variant="body2" sx={{ color: 'text.primary', mb: 1 }}>Địa chỉ giao hàng</Typography>
@@ -268,7 +305,7 @@ export default function OrderConfigPage() {
                 color="primary"
                 size="large"
                 onClick={handlePlaceOrder}
-                disabled={placeOrder.isPending || !street.trim() || !city.trim()}
+                disabled={placeOrder.isPending || !street.trim() || !city.trim() || (user && !user.isEmailVerified)}
                 endIcon={placeOrder.isPending ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}
               >
                 {placeOrder.isPending ? 'Đang đặt hàng…' : 'Xác nhận đặt hàng'}

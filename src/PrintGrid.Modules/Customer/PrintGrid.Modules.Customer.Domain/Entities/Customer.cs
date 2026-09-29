@@ -13,6 +13,11 @@ public class Customer : AggregateRoot<Guid>
     public DateTime? LastLoginAt { get; private set; }
     public bool IsActive { get; private set; } = true;
     public string[] Roles { get; private set; } = ["Customer"];
+    
+    public bool IsEmailVerified { get; private set; } = false;
+    public string? VerificationTokenHash { get; private set; }
+    public DateTime? VerificationTokenExpiresAt { get; private set; }
+
     private Customer() { }
 
     public static Customer Register(string email, string passwordHash, string fullName, string? phoneNumber)
@@ -41,5 +46,18 @@ public class Customer : AggregateRoot<Guid>
     public void AssignRole(string role)
     {
         Roles = [role];
+    }
+
+    public void SetVerificationToken(string hash, TimeSpan expiresIn)
+    {
+        VerificationTokenHash = hash;
+        VerificationTokenExpiresAt = DateTime.UtcNow.Add(expiresIn);
+    }
+
+    public void VerifyEmail()
+    {
+        IsEmailVerified = true;
+        VerificationTokenHash = null;
+        VerificationTokenExpiresAt = null;
     }
 }
