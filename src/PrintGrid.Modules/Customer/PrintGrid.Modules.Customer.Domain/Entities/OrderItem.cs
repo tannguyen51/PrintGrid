@@ -11,8 +11,11 @@ public class OrderItem : Entity<Guid>
     public int Quantity { get; private set; }
     public PrintConfiguration Configuration { get; private set; } = null!;
     public Money UnitPrice { get; private set; } = Money.Zero();
+    public string ItemStatus { get; private set; } = "Pending";
 
     public Money LineTotal => UnitPrice.Multiply(Quantity);
+
+    public void UpdateStatus(string newStatus) => ItemStatus = newStatus;
 
     private OrderItem() { }
 
@@ -23,6 +26,7 @@ public class OrderItem : Entity<Guid>
         ModelId = quoteItem.ModelId,
         Quantity = quoteItem.Quantity,
         Configuration = quoteItem.Configuration,
-        UnitPrice = quoteItem.UnitPrice
+        UnitPrice = quoteItem.UnitPrice,
+        ItemStatus = "Pending"
     };
 }

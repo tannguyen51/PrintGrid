@@ -25,6 +25,11 @@ public class OrderRepository : IOrderRepository
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    public Task<Order?> GetByItemIdAsync(Guid orderItemId, CancellationToken cancellationToken = default) =>
+        _context.Set<Order>()
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Items.Any(i => i.Id == orderItemId), cancellationToken);
+
     public Task<int> CountAsync(CancellationToken cancellationToken = default) =>
         _context.Set<Order>().CountAsync(cancellationToken);
 

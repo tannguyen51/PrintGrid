@@ -12,6 +12,7 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.HasKey(i => i.Id);
 
         builder.Property(i => i.Quantity).IsRequired();
+        builder.Property(i => i.ItemStatus).HasMaxLength(32).IsRequired();
         builder.HasIndex(i => i.OrderId);
 
         builder.OwnsOne(i => i.UnitPrice, price =>

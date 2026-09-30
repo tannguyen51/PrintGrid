@@ -48,7 +48,7 @@ function userFromAccessToken(token: string): AuthUser | null {
   try {
     const payload = JSON.parse(atob(token.split('.')[1] ?? ''))
     const id = payload.sub ?? payload.nameidentifier
-    const rolesRaw = payload.role ?? payload.roles
+    const rolesRaw = payload.role ?? payload.roles ?? payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']
     const roles: Role[] = typeof rolesRaw === 'string' ? rolesRaw.split(',') : rolesRaw ?? []
     if (!id || !payload.email) return null
     return {
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Khôi phục phiên đã ghi nhớ ngay từ state khởi tạo (sau khi reload trang).
   const [user, setUser] = useState<AuthUser | null>(() => {
     const token = getAccessToken()
-    return token && isRemembered() ? userFromAccessToken(token) : null
+    return token ? userFromAccessToken(token) : null
   })
 
   const login = useCallback(async (email: string, password: string, remember = false) => {

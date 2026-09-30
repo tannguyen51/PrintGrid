@@ -25,6 +25,16 @@ public class OrdersController : ControllerBase
         return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
     }
 
+    [HttpGet("{id:guid}/timeline")]
+    public async Task<IActionResult> GetOrderTimeline(Guid id, CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        if (customerId is null) return Forbid();
+
+        var result = await _sender.Send(new GetOrderTimelineQuery(id, customerId.Value), cancellationToken);
+        return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
+    }
+
     [HttpPost]
     public async Task<IActionResult> PlaceOrder(
         [FromBody] PlaceOrderRequest request,

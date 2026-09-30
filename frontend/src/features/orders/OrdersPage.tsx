@@ -14,6 +14,7 @@ import {
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 import { CloseRounded, VisibilityRounded, LibraryBooksRounded } from '@mui/icons-material'
 import { useOrders } from './useOrders'
+import { OrderTimelineView } from './OrderTimelineView'
 import type { Order, OrderStatus } from '../../shared/types/order'
 import { useAuth } from '../../app/AuthContext'
 
@@ -144,42 +145,14 @@ export default function OrdersPage() {
       >
         {selected && (
           <Stack sx={{ height: '100%' }}>
-            <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <Box>
-                <Typography sx={{ fontSize: '1.25rem', fontWeight: 800, color: 'text.primary' }}>{selected.orderNumber}</Typography>
-                <Chip size="small" label={statusLabel[selected.status] ?? selected.status} color={statusColor[selected.status] ?? 'info'} sx={{ mt: 0.75 }} />
-              </Box>
+            <Box sx={{ p: 3, display: 'flex', justifyContent: 'flex-end' }}>
               <Button onClick={() => setSelected(null)} size="small" sx={{ color: 'text.secondary', minWidth: 0 }} aria-label="Đóng"><CloseRounded /></Button>
             </Box>
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
             <Box sx={{ p: 3, flex: 1, overflowY: 'auto' }}>
-              <Stack spacing={2.5}>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography variant="caption" color="text.disabled">TỔNG TIỀN</Typography>
-                  <Typography sx={{ fontWeight: 800, color: 'text.primary' }}>{fmt(selected.totalAmount)} {selected.currency}</Typography>
-                </Stack>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography variant="caption" color="text.disabled">NGÀY GIAO HẸN</Typography>
-                  <Typography color="text.primary">{fmtDate(selected.promisedDeliveryDate)}</Typography>
-                </Stack>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography variant="caption" color="text.disabled">NGÀY TẠO</Typography>
-                  <Typography color="text.primary">{fmtDateTime(selected.createdAt)}</Typography>
-                </Stack>
-
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
-                <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>Chi tiết ({selected.items.length})</Typography>
-                {selected.items.map((it) => (
-                  <Box key={it.id} sx={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.08)', p: 1.5 }}>
-                    <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: 'text.primary' }}>
-                      {it.materialCode} · {it.colorCode} · ×{it.quantity}
-                    </Typography>
-                    <Typography variant="caption" color="text.disabled">
-                      Lớp {it.layerHeightMm}mm · Infill {it.infillPercent}% · {fmt(it.unitPrice)} đ/cái
-                    </Typography>
-                  </Box>
-                ))}
-
+              <OrderTimelineView orderId={selected.id} />
+              
+              <Box sx={{ mt: 4 }}>
                 <Button
                   variant="contained"
                   color="primary"
@@ -189,7 +162,7 @@ export default function OrdersPage() {
                 >
                   Đặt in model mới
                 </Button>
-              </Stack>
+              </Box>
             </Box>
           </Stack>
         )}
