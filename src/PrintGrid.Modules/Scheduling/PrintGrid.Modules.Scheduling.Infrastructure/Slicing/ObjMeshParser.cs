@@ -59,11 +59,17 @@ internal static class ObjMeshParser
         }
 
         double signedVolume = 0, absVolume = 0;
+        var edgeCounts = new Dictionary<(int A, int B), int>();
         foreach (var (a, b, c) in faces)
         {
+            if (a < 0 || b < 0 || c < 0 || a >= vertices.Count || b >= vertices.Count || c >= vertices.Count)
+                throw new InvalidDataException("OBJ face references a vertex that does not exist");
             var tri = SignedTetraVolume(vertices[a], vertices[b], vertices[c]);
             signedVolume += tri;
             absVolume += Math.Abs(tri);
+            CountEdge(edgeCounts, a, b);
+            CountEdge(edgeCounts, b, c);
+            CountEdge(edgeCounts, c, a);
         }
 
         var closed = faces.Count > 0 && Math.Abs(signedVolume) > 1e-6;
@@ -75,7 +81,9 @@ internal static class ObjMeshParser
             HeightMm: max[2] - min[2],
             VolumeCm3: volume / 1000.0,
             VertexCount: vertices.Count,
-            FaceCount: faces.Count);
+            FaceCount: faces.Count,
+            IsWatertight: edgeCounts.Count > 0 && edgeCounts.Values.All(count => count == 2),
+            IsManifold: edgeCounts.Values.All(count => count <= 2));
     }
 
     private static bool TryParse(string[] tokens, out (double X, double Y, double Z) point)
@@ -106,5 +114,11 @@ internal static class ObjMeshParser
         var cy = b.Z * c.X - b.X * c.Z;
         var cz = b.X * c.Y - b.Y * c.X;
         return (a.X * cx + a.Y * cy + a.Z * cz) / 6.0;
+    }
+
+    private static void CountEdge(Dictionary<(int A, int B), int> edges, int first, int second)
+    {
+        var edge = first <= second ? (first, second) : (second, first);
+        edges[edge] = edges.GetValueOrDefault(edge) + 1;
     }
 }

@@ -28,6 +28,7 @@ public class ModelConfiguration : IEntityTypeConfiguration<Model>
         builder.Property(m => m.BoundingHeightMm).HasPrecision(8, 2);
         builder.Property(m => m.VolumeCm3).HasPrecision(12, 3);
         builder.Property(m => m.GeometryMessage).HasMaxLength(500);
+        builder.Property(m => m.EstimatedMaterialGrams).HasPrecision(12, 2);
 
         // Simple postgres text[] storage for tags.
         builder.PrimitiveCollection(m => m.Tags);

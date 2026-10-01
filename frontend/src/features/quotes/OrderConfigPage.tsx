@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import axios from 'axios'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Alert,
@@ -70,8 +71,11 @@ export default function OrderConfigPage() {
         toleranceMm: 0.2,
       })
       setQuote(q)
-    } catch {
-      setConfigError('Không lấy được báo giá. Kiểm tra lại cấu hình.')
+    } catch (error) {
+      const apiMessage = axios.isAxiosError(error)
+        ? (error.response?.data as { error?: { message?: string } } | undefined)?.error?.message
+        : undefined
+      setConfigError(apiMessage ?? 'Không lấy được báo giá. Kiểm tra lại cấu hình.')
     }
   }
 
