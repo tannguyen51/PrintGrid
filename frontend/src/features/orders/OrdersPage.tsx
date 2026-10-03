@@ -17,6 +17,7 @@ import { useOrders } from './useOrders'
 import { OrderTimelineView } from './OrderTimelineView'
 import type { Order, OrderStatus } from '../../shared/types/order'
 import { useAuth } from '../../app/AuthContext'
+import { CustomerNavbar } from '../home/components/CustomerNavbar'
 
 const statusColor: Record<OrderStatus, 'warning' | 'info' | 'success' | 'error'> = {
   PaymentPending: 'warning',
@@ -94,6 +95,7 @@ export default function OrdersPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <CustomerNavbar />
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1200, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Box>

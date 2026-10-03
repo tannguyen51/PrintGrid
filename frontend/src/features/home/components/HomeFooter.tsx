@@ -7,7 +7,10 @@ interface HomeFooterProps {
   onRegister: () => void
 }
 
+import { useAuth } from '../../../app/AuthContext'
+
 export function HomeFooter({ onLogin, onRegister }: HomeFooterProps) {
+  const { isAuthenticated } = useAuth()
   return (
     <Box component="footer" sx={{ borderTop: '1px solid rgba(255,255,255,0.08)', py: 5, bgcolor: 'background.default' }}>
       <Container maxWidth="lg">
@@ -23,8 +26,12 @@ export function HomeFooter({ onLogin, onRegister }: HomeFooterProps) {
           </Stack>
 
           <Stack direction="row" spacing={3}>
-            <FooterLink label="Đăng nhập" onClick={onLogin} />
-            <FooterLink label="Tạo tài khoản" onClick={onRegister} />
+            {!isAuthenticated && (
+              <>
+                <FooterLink label="Đăng nhập" onClick={onLogin} />
+                <FooterLink label="Tạo tài khoản" onClick={onRegister} />
+              </>
+            )}
             <Typography
               component={RouterLink}
               to="/orders"
