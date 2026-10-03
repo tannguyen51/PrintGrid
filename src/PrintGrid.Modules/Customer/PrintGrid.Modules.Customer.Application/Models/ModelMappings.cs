@@ -21,5 +21,6 @@ public static class ModelMappings
         model.VolumeCm3,
         model.EstimatedPrintMinutes,
         model.GeometryMessage,
-        model.StorageKey);
+        model.StorageKey,
+        model.Sha256);
 }

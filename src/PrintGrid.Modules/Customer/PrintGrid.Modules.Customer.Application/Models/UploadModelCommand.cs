@@ -12,4 +12,5 @@ public record UploadModelCommand(
     string FileFormat,
     long SizeBytes,
     IReadOnlyList<string>? Tags,
-    string StorageKey) : IRequest<Result<ModelDto>>;
+    string StorageKey,
+    string Sha256) : IRequest<Result<ModelDto>>;

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Divider,
@@ -52,8 +53,21 @@ export default function OrderConfigPage() {
   const [city, setCity] = useState('')
   const [postalCode, setPostalCode] = useState('')
   const [orderError, setOrderError] = useState<string | null>(null)
+  const [acceptTerms, setAcceptTerms] = useState(false)
+
+  // Live expiry countdown for the quote (BR-QUOTE-003) — refreshed every 30 s.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(t)
+  }, [])
 
   const layer = QUALITY_GRADES[layerIndex]
+
+  function serverMessage(e: unknown, fallback: string): string {
+    const msg = (e as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
+    return msg || fallback
+  }
 
   async function handleGetQuote() {
     if (!modelId) return
@@ -70,8 +84,8 @@ export default function OrderConfigPage() {
         toleranceMm: 0.2,
       })
       setQuote(q)
-    } catch {
-      setConfigError('Không lấy được báo giá. Kiểm tra lại cấu hình.')
+    } catch (e) {
+      setConfigError(serverMessage(e, 'Không lấy được báo giá. Kiểm tra lại cấu hình.'))
     }
   }
 
@@ -86,14 +100,26 @@ export default function OrderConfigPage() {
         district: district.trim(),
         city: city.trim(),
         postalCode: postalCode.trim(),
+        acceptTerms,
       })
       navigate('/orders', { replace: true })
-    } catch {
-      setOrderError('Không thể đặt hàng. Vui lòng kiểm tra lại thông tin.')
+    } catch (e) {
+      setOrderError(serverMessage(e, 'Không thể đặt hàng. Vui lòng kiểm tra lại thông tin.'))
     }
   }
 
   const fmt = (n: number) => n.toLocaleString('vi-VN')
+
+  // BR-QUOTE-003 live countdown instead of a hard-coded "48 giờ" label.
+  const expiry = quote
+    ? (() => {
+        const ms = new Date(quote.expiresAt).getTime() - now
+        if (ms <= 0) return { label: 'Hết hiệu lực', expired: true }
+        const h = Math.floor(ms / 3_600_000)
+        const d = Math.floor(h / 24)
+        return { label: d > 0 ? `Còn ${d} ngày ${h % 24} giờ` : `Còn ${h} giờ ${Math.floor((ms % 3_600_000) / 60_000)} phút`, expired: false }
+      })()
+    : null
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -129,7 +155,7 @@ export default function OrderConfigPage() {
                 <InputLabel>Vật liệu</InputLabel>
                 <Select value={material} label="Vật liệu" onChange={(e) => setMaterial(e.target.value)}>
                   {MATERIALS.map((m) => (
-                    <MenuItem key={m.code} value={m.code}>{m.label} — {m.rate} · {m.desc}</MenuItem>
+                    <MenuItem key={m.code} value={m.code}>{m.label} — {m.desc}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
@@ -210,8 +236,8 @@ export default function OrderConfigPage() {
                   Báo giá của bạn
                 </Typography>
                 <Chip
-                  label={quote.status === 'Ready' ? 'Hiệu lực 48 giờ' : quote.status}
-                  color={quote.status === 'Ready' ? 'success' : 'warning'}
+                  label={expiry?.label ?? quote.status}
+                  color={expiry && !expiry.expired ? 'success' : 'error'}
                   size="small"
                 />
               </Stack>
@@ -223,6 +249,8 @@ export default function OrderConfigPage() {
                     <Row label="Vật liệu / màu" value={`${it.materialCode} · ${it.colorCode}`} />
                     <Row label="Phân tích" value={`${it.estimatedPrintMinutes} phút · ${it.estimatedMaterialGrams} g vật liệu`} />
                     <Row label="Đơn giá" value={`${fmt(it.unitPrice)} đ`} />
+                    <Row label="— vật liệu" value={`${fmt(it.materialCostAmount)} đ`} />
+                    <Row label="— giờ máy" value={`${fmt(it.machineTimeCostAmount)} đ`} />
                     <Row label="Số lượng" value={`${it.quantity}`} />
                   </Stack>
                 </Box>
@@ -238,9 +266,15 @@ export default function OrderConfigPage() {
                   </Typography>
                 </Box>
                 <Box textAlign={{ xs: 'left', sm: 'right' }}>
-                  <Typography variant="caption" color="text.disabled">NGÀY GIAO DỰ KIẾN</Typography>
+                  <Typography variant="caption" color="text.disabled">NGÀY GIAO CAM KẾT</Typography>
                   <Typography sx={{ fontWeight: 700, color: 'text.primary' }}>
                     {new Date(quote.promisedDeliveryDate + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {quote.placementBasis ?? 'tính theo lịch máy thật của mạng lưới'}
+                  </Typography>
+                  <Typography variant="caption" color="text.disabled">
+                    {' '}· kỳ giá {quote.pricingVersion}
                   </Typography>
                 </Box>
               </Stack>
@@ -263,15 +297,31 @@ export default function OrderConfigPage() {
                 </Stack>
               </Box>
 
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                    size="small"
+                  />
+                }
+                label={
+                  <Typography variant="body2" color="text.secondary">
+                    Tôi đồng ý <Box component="span" sx={{ textDecoration: 'underline' }}>điều khoản dịch vụ</Box> của PrintGrid
+                    (chất lượng kiểm tại hub, bảo hành 30 ngày, hoàn tiền theo quy định)
+                  </Typography>
+                }
+              />
+
               <Button
                 variant="contained"
                 color="primary"
                 size="large"
                 onClick={handlePlaceOrder}
-                disabled={placeOrder.isPending || !street.trim() || !city.trim()}
+                disabled={placeOrder.isPending || !street.trim() || !city.trim() || !acceptTerms || !!expiry?.expired}
                 endIcon={placeOrder.isPending ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}
               >
-                {placeOrder.isPending ? 'Đang đặt hàng…' : 'Xác nhận đặt hàng'}
+                {placeOrder.isPending ? 'Đang đặt hàng…' : expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}
               </Button>
             </Stack>
           </Box>

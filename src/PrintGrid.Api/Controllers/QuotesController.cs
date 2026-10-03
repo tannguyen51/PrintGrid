@@ -25,6 +25,18 @@ public class QuotesController : ControllerBase
         return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
     }
 
+    [HttpGet("{quoteId:guid}")]
+    public async Task<IActionResult> GetQuote(Guid quoteId, CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        if (customerId is null) return Forbid();
+
+        var result = await _sender.Send(new GetQuoteByIdQuery(customerId.Value, quoteId), cancellationToken);
+        return result.IsFailure
+            ? NotFound(new { error = new { code = result.Error.Code, message = result.Error.Message } })
+            : Ok(result.Value);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateQuoteRequest request, CancellationToken cancellationToken)
     {

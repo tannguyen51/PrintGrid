@@ -16,4 +16,9 @@ public sealed record OrderConfirmedItem(
     string ColorCode,
     decimal LayerHeightMm,
     int InfillPercent,
-    decimal ToleranceMm);
+    decimal ToleranceMm,
+    int EstimatedPrintMinutes,
+    decimal EstimatedMaterialGrams,
+    decimal? BoundingWidthMm,
+    decimal? BoundingDepthMm,
+    decimal? BoundingHeightMm);

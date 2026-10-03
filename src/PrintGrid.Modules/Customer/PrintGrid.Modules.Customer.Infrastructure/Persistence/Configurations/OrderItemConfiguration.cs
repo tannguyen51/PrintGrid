@@ -12,6 +12,11 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.HasKey(i => i.Id);
 
         builder.Property(i => i.Quantity).IsRequired();
+        builder.Property(i => i.EstimatedPrintMinutes).IsRequired().HasDefaultValue(0);
+        builder.Property(i => i.EstimatedMaterialGrams).HasPrecision(10, 2).IsRequired().HasDefaultValue(0m);
+        builder.Property(i => i.BoundingWidthMm).HasPrecision(8, 2);
+        builder.Property(i => i.BoundingDepthMm).HasPrecision(8, 2);
+        builder.Property(i => i.BoundingHeightMm).HasPrecision(8, 2);
         builder.HasIndex(i => i.OrderId);
 
         builder.OwnsOne(i => i.UnitPrice, price =>

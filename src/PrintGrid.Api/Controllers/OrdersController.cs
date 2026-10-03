@@ -41,7 +41,8 @@ public class OrdersController : ControllerBase
                 request.Ward,
                 request.District,
                 request.City,
-                request.PostalCode),
+                request.PostalCode,
+                request.AcceptTerms),
             cancellationToken);
 
         if (result.IsFailure)
@@ -57,4 +58,5 @@ public record PlaceOrderRequest(
     string Ward,
     string District,
     string City,
-    string PostalCode);
+    string PostalCode,
+    bool AcceptTerms);

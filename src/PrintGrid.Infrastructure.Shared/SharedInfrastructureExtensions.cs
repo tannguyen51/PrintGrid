@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PrintGrid.Infrastructure.Shared.Caching;
 using PrintGrid.Infrastructure.Shared.FileStorage;
+using PrintGrid.Infrastructure.Shared.Outbox;
 using PrintGrid.Infrastructure.Shared.Persistence;
 using PrintGrid.Infrastructure.Shared.Time;
 using PrintGrid.SharedKernel.Interfaces;
@@ -22,6 +23,7 @@ public static class SharedInfrastructureExtensions
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
+        services.AddScoped<IEmailOutbox, EmailOutboxStore>();
 
         services.AddStackExchangeRedisCache(options =>
             options.Configuration = configuration.GetConnectionString("Redis"));

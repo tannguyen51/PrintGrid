@@ -11,26 +11,32 @@ namespace PrintGrid.Modules.Customer.Application.Quotes;
 
 public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Result<QuoteDto>>
 {
+    public static readonly TimeSpan QuoteValidity = TimeSpan.FromHours(48); // BR-QUOTE-003 (cfg in FR-ADMIN-002 later)
+
     private readonly IModelRepository _models;
     private readonly IQuoteRepository _quotes;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _clock;
+    private readonly IProductionCapacityProbe _capacity;
 
     public CreateQuoteCommandHandler(
         IModelRepository models,
         IQuoteRepository quotes,
         IUnitOfWork unitOfWork,
-        IDateTimeProvider clock)
+        IDateTimeProvider clock,
+        IProductionCapacityProbe capacity)
     {
         _models = models;
         _quotes = quotes;
         _unitOfWork = unitOfWork;
         _clock = clock;
+        _capacity = capacity;
     }
 
     public async Task<Result<QuoteDto>> Handle(CreateQuoteCommand command, CancellationToken cancellationToken)
     {
-        if (!QuotePricing.IsSupported(command.MaterialCode))
+        var set = PricingParameterSet.Active;
+        if (!QuotePricing.IsSupported(set, command.MaterialCode))
             return Result.Failure<QuoteDto>(
                 Error.Validation($"Không hỗ trợ vật liệu '{command.MaterialCode}'"));
 
@@ -50,23 +56,53 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
             command.InfillPercent,
             command.ToleranceMm);
 
-        var effectiveMinutes = QuotePricing.EffectiveMinutes(baseMinutes, command.LayerHeightMm);
-        var grams = QuotePricing.MaterialGrams(volumeCm3, command.InfillPercent, command.MaterialCode);
-        var unitPrice = decimal.Round(
-            QuotePricing.MaterialCost(command.MaterialCode, grams) + QuotePricing.MachineTimeCost(effectiveMinutes), 0);
+        var line = QuotePricing.PriceLine(
+            set, volumeCm3, baseMinutes, command.InfillPercent, command.MaterialCode, command.LayerHeightMm);
 
-        var quote = Quote.CreatePending(command.CustomerId, TimeSpan.FromHours(48));
+        var quote = Quote.CreatePending(command.CustomerId, QuoteValidity);
         quote.AddItem(
             model.Id,
             command.Quantity,
             config,
-            Money.Of(unitPrice),
-            effectiveMinutes,
-            grams);
+            Money.Of(line.UnitPrice),
+            line.EffectiveMinutes,
+            line.Grams,
+            line.MaterialCostAmount,
+            line.MachineTimeCostAmount,
+            model.BoundingWidthMm,
+            model.BoundingDepthMm,
+            model.BoundingHeightMm);
 
-        // Speculative delivery: same-day + buffer; demo placeholder for the scheduler.
-        var promised = _clock.Today.AddDays(3);
-        var markResult = quote.MarkReady(promised);
+        // FR-SCHED-005: the promised date comes from a TRIAL placement against the real
+        // machine timelines (transit + hub buffers included) — never from a padded table.
+        var trial = await _capacity.FindEarliestFeasibleDeliveryAsync(
+            new[]
+            {
+                new TrialPlacementLine(
+                    model.BoundingWidthMm ?? 100m,
+                    model.BoundingDepthMm ?? 100m,
+                    model.BoundingHeightMm ?? 100m,
+                    command.MaterialCode,
+                    command.ColorCode,
+                    command.LayerHeightMm,
+                    command.ToleranceMm,
+                    line.EffectiveMinutes * command.Quantity,
+                    line.Grams * command.Quantity)
+            },
+            _clock.UtcNow,
+            cancellationToken);
+
+        if (trial is null)
+        {
+            // BR-QUOTE-006: never sell the impossible — record the failed quote for the audit trail.
+            quote.MarkFailed("Không có máy khả thi trong mạng lưới cho cấu hình này");
+            await _quotes.AddAsync(quote, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return Result.Failure<QuoteDto>(Error.Conflict(
+                "Mạng lưới hiện không nhận được cấu hình này — hãy đổi vật liệu/kích thước hoặc thử lại sau"));
+        }
+
+        var markResult = quote.MarkReady(trial.PromisedDeliveryDate, set.Version, trial.Basis);
         if (markResult.IsFailure)
             return Result.Failure<QuoteDto>(markResult.Error);
 

@@ -1,0 +1,322 @@
+<title>PrintGrid Project Overview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f4f5f7; --surface:#ffffff; --ink:#181b21; --muted:#5c636e; --line:#dfe3e8;
+  --accent:#ef5b1f; --accent-soft:#fdeee6; --blue:#2f6f9e; --blue-soft:#e8f0f6;
+  --chip:#eef1f4; --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#14161a; --surface:#1c1f25; --ink:#e9ebef; --muted:#9aa2ae; --line:#2c313a;
+  --accent:#ff7a42; --accent-soft:#3a251b; --blue:#6fa8d0; --blue-soft:#1d2b38;
+  --chip:#242830;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#14161a; --surface:#1c1f25; --ink:#e9ebef; --muted:#9aa2ae; --line:#2c313a;
+  --accent:#ff7a42; --accent-soft:#3a251b; --blue:#6fa8d0; --blue-soft:#1d2b38;
+  --chip:#242830;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:"Public Sans",system-ui,sans-serif;font-size:15px;line-height:1.45}
+.deck{height:100%;display:flex;flex-direction:column;padding:12px}
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.slide{display:none;width:min(1100px,100%);height:min(620px,100%);background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:clamp(18px,3.4vw,42px);
+  flex-direction:column;gap:14px;overflow:auto;position:relative}
+.slide.active{display:flex}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;align-items:center}
+.eyebrow .tick{width:26px;height:3px;background:var(--accent);border-radius:2px;display:inline-block}
+.eyebrow.blue .tick{background:var(--blue)}
+h1,h2{font-family:Archivo,system-ui,sans-serif;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:clamp(21px,3vw,30px);font-weight:800}
+.sub{color:var(--muted);max-width:65ch}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.card h3{font-family:Archivo;font-size:15.5px;font-weight:700}
+.card p{font-size:13.5px;color:var(--muted)}
+.card.flag{border-left:4px solid var(--accent)}
+.card.bluef{border-left:4px solid var(--blue)}
+.num{font-family:Archivo;font-weight:800;font-size:30px;color:var(--accent);font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;font-size:13px}
+.wrap{overflow-x:auto}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 10px;border-bottom:2px solid var(--line)}
+td{padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+td code{font-family:var(--mono);font-size:12px;color:var(--blue);white-space:nowrap}
+td .star{color:var(--accent)}
+tr.core td{background:var(--accent-soft)}
+.mo{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:20px;background:var(--chip);color:var(--muted);white-space:nowrap}
+.mo.must{color:var(--ink);background:var(--chip);box-shadow:inset 0 0 0 1px var(--line)}
+.title-slide{justify-content:center;gap:22px}
+.title-slide .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.2em;color:var(--accent);text-transform:uppercase}
+.title-slide h1{font-size:clamp(28px,5vw,52px);font-weight:800;line-height:1.08}
+.title-slide .tagline{font-size:clamp(15px,2vw,19px);color:var(--muted);max-width:62ch}
+.meta{display:flex;flex-wrap:wrap;gap:10px 26px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+.meta b{color:var(--ink);font-weight:600}
+.counts{display:flex;flex-wrap:wrap;gap:12px}
+.count{border:1px solid var(--line);border-radius:10px;padding:10px 18px;text-align:center;min-width:96px}
+.count .n{font-family:Archivo;font-weight:800;font-size:26px;font-variant-numeric:tabular-nums}
+.count .l{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.bar{display:flex;align-items:center;gap:4px;margin-top:4px;height:10px}
+.seg{height:100%;border-radius:3px}
+.hints{position:absolute;right:18px;bottom:12px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+footer{display:flex;justify-content:space-between;align-items:center;padding:10px 6px 0}
+footer .name{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--muted)}
+.nav{display:flex;gap:8px;align-items:center}
+.nav button{font-family:var(--mono);font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 14px;cursor:pointer}
+.nav button:hover{border-color:var(--accent);color:var(--accent)}
+.nav button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+#dots{display:flex;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line);border:none;padding:0;cursor:pointer}
+.dot.on{background:var(--accent)}
+.bcd{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.sysbox{background:var(--ink);color:var(--bg);border-radius:10px;padding:22px 18px;text-align:center;font-family:Archivo;font-weight:800;font-size:15px}
+.entcol{display:flex;flex-direction:column;gap:8px}
+.ent{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px;background:var(--bg);text-align:center}
+.ent.sys{border-color:var(--blue);color:var(--blue)}
+@media (max-width:640px){.bcd{grid-template-columns:1fr}.sysbox{order:-1}}
+</style>
+
+<div class="deck">
+<div class="stage">
+
+<!-- 1 TITLE -->
+<section class="slide title-slide active">
+  <div class="kicker">Capstone · FA26SE249 · FPT University · Fall 2026</div>
+  <h1>PrintGrid</h1>
+  <div class="tagline">Distributed 3D Printing Fulfillment &amp; Scheduling Platform for a Network of Independent Printing Labs</div>
+  <div class="meta">
+    <span><b>Team</b> Tân · Minh · Nhật · Tuấn</span>
+    <span><b>Supervisor</b> Nguyễn Tấn Phúc</span>
+    <span><b>Scope</b> Requirements → Working system → Measured research evidence</span>
+  </div>
+  <div class="hints">← → to navigate</div>
+</section>
+
+<!-- 2 CONTEXT -->
+<section class="slide">
+  <div class="eyebrow"><span class="tick"></span>01 · Project context</div>
+  <h2>Many small printing labs, one unmet demand — no system connects them</h2>
+  <div class="grid g3">
+    <div class="card"><h3>The supply</h3><p>Independent FFF/SLA labs — the university maker lab plus a confirmed partner workshop — each with idle machines, declared capacities and their own queues managed over chat apps.</p></div>
+    <div class="card"><h3>The demand</h3><p>Students, researchers and small businesses want parts printed to a date they can trust, at a price that does not change per lab.</p></div>
+    <div class="card"><h3>The thesis</h3><p>Treat the whole network as one virtual factory: uniform pricing, capacity-based delivery promises, central quality control at a hub — decided by software, not WhatsApp.</p></div>
+  </div>
+  <div class="bcd">
+    <div class="entcol">
+      <div class="ent">Customer</div><div class="ent">Lab Manager</div><div class="ent">Lab Operator</div><div class="ent">Hub QC · Fulfillment Staff</div>
+    </div>
+    <div class="sysbox">PrintGrid<br><span style="font-weight:500;font-size:11px;opacity:.8">1 system · 9 external entities · 24 information flows</span></div>
+    <div class="entcol">
+      <div class="ent">Operations Manager</div><div class="ent">System Administrator</div><div class="ent sys">«sys» Payment Gateway</div><div class="ent sys">«sys» Notification Service</div>
+    </div>
+  </div>
+  <p class="sub">Business Context Diagram (GVHD standard, group-confirmed): the system is a black box; everything else exchanges named information across its boundary.</p>
+</section>
+
+<!-- 3 PROBLEMS -->
+<section class="slide">
+  <div class="eyebrow"><span class="tick"></span>02 · Problems to solve</div>
+  <h2>Five failures of the chat-group print shop</h2>
+  <div class="grid g2">
+    <div class="card flag"><div class="num">P1</div><h3>Idle machines beside refused orders</h3><p>Capacity is fragmented per lab; nobody sees the whole network, so jobs queue at one machine while three sit idle two buildings away.</p></div>
+    <div class="card flag"><div class="num">P2</div><h3>Delivery dates are guesses</h3><p>Quotes promise "3–5 days" from a static table. Without trial placement against real schedules, commitments are fiction and late parts are normal.</p></div>
+    <div class="card flag"><div class="num">P3</div><h3>Quality drifts with no accountability</h3><p>No inspection standard, no fault attribution between lab, hub and model file — defects become he-said-she-said instead of a reprinted part.</p></div>
+    <div class="card flag"><div class="num">P4</div><h3>Handoffs and disruptions are manual</h3><p>Declines, failed prints, breakdowns are negotiated person-to-person; a disruption mid-run costs hours of chat, not seconds of replanning.</p></div>
+    <div class="card flag"><div class="num">P5</div><h3>Price depends on who asks which lab</h3><p>Per-lab haggling destroys trust in the network brand; prices must come from one versioned formula, identical for every customer.</p></div>
+    <div class="card"><h3>What success looks like</h3><p>One real-money order travels upload → quote → pay → assign → print → QC → ship → delivered with zero manual dispatch, and a disruption is repaired in ≤ 30 s.</p></div>
+  </div>
+</section>
+
+<!-- 4 SOLUTION PILLARS -->
+<section class="slide">
+  <div class="eyebrow"><span class="tick"></span>02b · The mechanism that answers them</div>
+  <h2>Four pillars, one core contribution</h2>
+  <div class="grid g2">
+    <div class="card bluef"><h3>Network-uniform pricing</h3><p>One formula over versioned parameter sets; the version is frozen onto every quote — change the rates tomorrow, yesterday's quote still reproduces. <code style="font-family:var(--mono);font-size:11px;color:var(--muted)">FR-SCHED-010</code></p></div>
+    <div class="card flag"><h3>Speculative quote-time scheduling ★ core</h3><p>At quote time the engine runs a trial placement on the real machine timelines and returns the earliest feasible date (with rush surcharge). The promise is computed, not looked up. <code style="font-family:var(--mono);font-size:11px;color:var(--muted)">FR-SCHED-005</code></p></div>
+    <div class="card bluef"><h3>Hub-mediated quality</h3><p>Parts route through a central hub: batch reconciliation, grade-bound checklists, defect taxonomy with fault attribution, reprint inheriting the original deadline. <code style="font-family:var(--mono);font-size:11px;color:var(--muted)">FR-HUB-001…005</code></p></div>
+    <div class="card bluef"><h3>Event-driven rescheduling</h3><p>Decline, print failure, breakdown, QC-fault each trigger plan repair within a 30 s hard budget with a committed fallback — in-progress jobs untouched. <code style="font-family:var(--mono);font-size:11px;color:var(--muted)">FR-SCHED-007</code></p></div>
+  </div>
+  <p class="sub">Customers never see which lab prints their part; labs never see each other's prices. Uniformity is enforced by architecture, not policy.</p>
+</section>
+
+<!-- 5 FR MAP -->
+<section class="slide">
+  <div class="eyebrow blue"><span class="tick"></span>03 · Functional requirements</div>
+  <h2>49 functional requirements across six subsystems <span style="font-size:.6em;color:var(--muted)">· incl. 6 added by GVHD Review 1</span></h2>
+  <div class="counts">
+    <div class="count"><div class="n">13</div><div class="l">Customer</div></div>
+    <div class="count"><div class="n">8</div><div class="l">Lab</div></div>
+    <div class="count"><div class="n">6</div><div class="l">Hub</div></div>
+    <div class="count"><div class="n" style="color:var(--accent)">10</div><div class="l">Scheduling ★</div></div>
+    <div class="count"><div class="n">7</div><div class="l">Analytics &amp; Ops</div></div>
+    <div class="count"><div class="n">5</div><div class="l">Administration</div></div>
+  </div>
+  <div class="grid g2" style="margin-top:6px">
+    <div class="card"><h3>Traced, not invented</h3><p>Every FR carries source P-xx from the proposal — including P-106→P-119 extracted from GVHD Review 1 — and binds to its business rules, use case and user stories: 49/49 rows in the traceability matrix.</p></div>
+    <div class="card"><h3>Prioritised MoSCoW</h3><p>Must-have items are the end-to-end golden path plus its failure handling; Should covers visibility (timelines, standing, reports); Could is explicitly cuttable (preview 3D, model library) to protect the schedule.</p></div>
+  </div>
+</section>
+
+<!-- 6 FR LIST customer+lab -->
+<section class="slide">
+  <div class="eyebrow blue"><span class="tick"></span>03a · Functional requirements — Customer &amp; Lab</div>
+  <div class="wrap"><table>
+    <tr><th>Code</th><th>Requirement</th><th>MoSCoW</th><th>Code</th><th>Requirement</th><th>MoSCoW</th></tr>
+    <tr><td>CUST-001</td><td>Register, sign in, manage profile &amp; addresses</td><td><span class="mo must">Must</span></td><td>LAB-001</td><td>Lab registration: calendar, capacity, transfer time, admin approval</td><td><span class="mo must">Must</span></td></tr>
+    <tr><td>CUST-002</td><td>Upload STL/OBJ/3MF ≤ 50 MB into secure storage</td><td><span class="mo must">Must</span></td><td>LAB-002</td><td>Machine registry with full capability spec</td><td><span class="mo must">Must</span></td></tr>
+    <tr><td>CUST-003</td><td>In-browser 3D preview with bounding box</td><td><span class="mo">Should</span></td><td>LAB-003</td><td>Material/colour inventory, auto-deduct on completion</td><td><span class="mo must">Must</span></td></tr>
+    <tr><td>CUST-004</td><td>Mesh integrity &amp; oversize validation feedback</td><td><span class="mo must">Must</span></td><td>LAB-004</td><td>Accept/decline job within 2 h window, reason required</td><td><span class="mo must">Must</span></td></tr>
+    <tr><td>CUST-005</td><td>Per-item print configuration &amp; service level</td><td><span class="mo must">Must</span></td><td>LAB-005</td><td>Operator workflow: queue, actuals, incidents, handover</td><td><span class="mo must">Must</span></td></tr>
+    <tr><td>CUST-006</td><td>Automatic quote: breakdown + committed date + expiry</td><td><span class="mo must">Must</span></td><td>LAB-006</td><td>Machine-level schedule timeline</td><td><span class="mo">Should</span></td></tr>
+    <tr><td>CUST-007</td><td>Confirm quote into order (address + terms)</td><td><span class="mo must">Must</span></td><td>LAB-007</td><td>Own performance standing with anonymised comparison</td><td><span class="mo">Should</span></td></tr>
+    <tr><td>CUST-008</td><td>Real-money payment: SEPay QR, commit only on verified webhook + confirmation API</td><td><span class="mo must">Must</span></td><td colspan="3"></td></tr>
+    <tr><td>CUST-009</td><td>Real-time tracking without lab visibility</td><td><span class="mo must">Must</span></td><td colspan="3"></td></tr>
+    <tr><td>CUST-010</td><td>Personal model library with one-click reorder</td><td><span class="mo">Could</span></td><td colspan="3"></td></tr>
+    <tr><td>CUST-011</td><td>Reprint/complaint request in 30-day guarantee window</td><td><span class="mo must">Must</span></td><td colspan="3"></td></tr>
+    <tr><td class="star">CUST-012 ★R1</td><td>Staged payment: verified deposit → production; balance → pack gate</td><td><span class="mo must">Must</span></td><td class="star">LAB-008 ★R1</td><td>Lab→hub shipment batches with weight &amp; allowance preview</td><td><span class="mo">Should</span></td></tr>
+    <tr><td class="star">CUST-013 ★R1</td><td>Design-request intake: idea → paid deliverable, customer-owned (no reuse)</td><td><span class="mo">Should</span></td><td colspan="3"></td></tr>
+  </table></div>
+</section>
+
+<!-- 7 FR list hub+sched -->
+<section class="slide">
+  <div class="eyebrow blue"><span class="tick"></span>03b · Functional requirements — Hub &amp; Scheduling (core)</div>
+  <div class="grid g2" style="align-items:start">
+    <div class="wrap"><table>
+      <tr><th>Code</th><th>Hub Operations</th><th>M</th></tr>
+      <tr><td>HUB-001</td><td>Receive lab batches, reconcile against expected jobs</td><td><span class="mo must">Must</span></td></tr>
+      <tr><td>HUB-002</td><td>Grade-bound inspection: pass/fail, defect, fault attribution</td><td><span class="mo must">Must</span></td></tr>
+      <tr><td>HUB-003</td><td>Trigger reprint inheriting original deadline (limit 2)</td><td><span class="mo must">Must</span></td></tr>
+      <tr><td>HUB-004</td><td>Consolidate order items; pack gated on all-QC-passed</td><td><span class="mo must">Must</span></td></tr>
+      <tr><td>HUB-005</td><td>Pack, waybill, ship, confirm delivery; open guarantee clock</td><td><span class="mo must">Must</span></td></tr>
+      <tr class="core"><td class="star">HUB-006 ★R1</td><td><b>Auto-merge shipments for same customer + address (24 h window)</b></td><td><span class="mo">Should</span></td></tr>
+    </table></div>
+    <div class="wrap"><table>
+      <tr><th>Code</th><th>Scheduling &amp; Assignment ★</th><th>M</th></tr>
+      <tr class="core"><td class="star">SCHED-005</td><td><b>Speculative quote-time placement → earliest feasible date + surcharge</b></td><td><span class="mo must">Must</span></td></tr>
+      <tr><td>SCHED-001</td><td>Geometry analysis: bbox, volume, watertight, manifold</td><td><span class="mo must">Must</span></td></tr>
+      <tr><td>SCHED-002</td><td>Headless slicing → print-time &amp; material estimate</td><td><span class="mo must">Must</span></td></tr>
+      <tr><td>SCHED-003</td><td>Hard feasibility filter (tech, volume, tolerance, stock)</td><td><span class="mo must">Must</span></td></tr>
+      <tr><td>SCHED-004</td><td>Multi-criteria weighted scoring over feasible set</td><td><span class="mo must">Must</span></td></tr>
+      <tr><td>SCHED-006</td><td>Decompose order→jobs, backward due dates, no double-booking</td><td><span class="mo must">Must</span></td></tr>
+      <tr><td>SCHED-007</td><td>Repair unstarted plan on events within 30 s budget</td><td><span class="mo must">Must</span></td></tr>
+      <tr><td>SCHED-008</td><td>Calibration loop: estimate-vs-actual correction factors</td><td><span class="mo">Should</span></td></tr>
+      <tr><td>SCHED-009</td><td>Assignment decision log: candidates, scores, config version</td><td><span class="mo must">Must</span></td></tr>
+      <tr><td>SCHED-010</td><td>Pricing engine: one formula, parameter set frozen onto quote</td><td><span class="mo must">Must</span></td></tr>
+    </table></div>
+  </div>
+</section>
+
+<!-- 8 FR list anal+admin -->
+<section class="slide">
+  <div class="eyebrow blue"><span class="tick"></span>03c · Functional requirements — Analytics, Ops &amp; Administration</div>
+  <div class="wrap"><table>
+    <tr><th>Code</th><th>Requirement</th><th>MoSCoW</th><th>Code</th><th>Requirement</th><th>MoSCoW</th></tr>
+    <tr><td>ANAL-001</td><td>Network monitor: open orders, at-risk jobs, load per lab</td><td><span class="mo">Should</span></td><td>ADMIN-001</td><td>Manage accounts, roles, permissions across all parties</td><td><span class="mo must">Must</span></td></tr>
+    <tr><td>ANAL-002</td><td>Lab performance ledger over sliding windows</td><td><span class="mo">Should</span></td><td>ADMIN-002</td><td>Configure pricing/weights/limits without redeployment</td><td><span class="mo must">Must</span></td></tr>
+    <tr><td>ANAL-003</td><td>SLA reports with CSV/PDF export</td><td><span class="mo">Should</span></td><td>ADMIN-003</td><td>Shared catalogues (materials, colours, grades); deprecate-only</td><td><span class="mo must">Must</span></td></tr>
+    <tr><td>ANAL-004</td><td>Manual override: reassign, priority, suspend — reasoned, audited</td><td><span class="mo">Should</span></td><td>ADMIN-004</td><td>Audit-log viewer + background job / storage health</td><td><span class="mo">Should</span></td></tr>
+    <tr><td>ANAL-005</td><td>Refund processing (full/partial) with gateway reconciliation</td><td><span class="mo must">Must</span></td><td>ADMIN-005</td><td>Manage inspection checklists &amp; defect taxonomy, versioned</td><td><span class="mo">Should</span></td></tr>
+    <tr><td class="star">ANAL-006 ★R1</td><td>Quote review workbench: staff approves/edits engine draft within band, then publish</td><td><span class="mo must">Must</span></td><td colspan="3"></td></tr>
+    <tr><td class="star">ANAL-007 ★R1</td><td>Lab QC-proof approval queue unlocking handover</td><td><span class="mo must">Must</span></td><td colspan="3"></td></tr>
+  </table></div>
+  <div class="grid g2" style="margin-top:4px">
+    <div class="card bluef"><h3>Payment is real money</h3><p>SEPay hosted QR at team decision 23/09. Order commits only when the verified webhook <i>and</i> the order-confirmation API agree; the browser redirect proves nothing.</p></div>
+    <div class="card bluef"><h3>Every list item is testable</h3><p>Each FR ships with acceptance criteria in the SRS — e.g. "re-run an old quote with its frozen version ⇒ identical price", "pack blocked unless all items passed QC".</p></div>
+  </div>
+</section>
+
+<!-- 9 NFR part 1 -->
+<section class="slide">
+  <div class="eyebrow blue"><span class="tick"></span>04 · Non-functional requirements (1/2)</div>
+  <h2>Seventeen commitments, each with a number and a test <span style="font-size:.6em;color:var(--muted)">· incl. 1 added by Review 1</span></h2>
+  <div class="wrap"><table>
+    <tr><th>Code</th><th>Requirement</th><th>Measured by</th></tr>
+    <tr><td>PERF-001</td><td>Bounded quoting: preliminary ≤ 5 s, committed quote ≤ 60 s (p95)</td><td>k6 on staging, 30 sessions, ≤ 50 MB meshes</td></tr>
+    <tr><td>PERF-002</td><td>Reschedule always within budget: ≤ 30 s hard, ≤ 15 s mean, fallback committed</td><td>Load 50 labs / 300 machines via simulator harness</td></tr>
+    <tr><td>PERF-003</td><td>Interactive API p95 ≤ 2 s under realistic traffic</td><td>k6 traffic profile</td></tr>
+    <tr><td>SCALE-001</td><td>50 labs / 300 machines / 1,000 orders-month / 500 active jobs without re-architecture</td><td>Verified through PERF + REL runs</td></tr>
+    <tr><td>REL-002</td><td>Zero loss of committed orders, assignments, customer models</td><td>Kill-process mid-transaction; monthly backup/restore drill</td></tr>
+    <tr><td>REL-004</td><td>Machine double-booking impossible by construction</td><td>Concurrency race test + DB exclusion constraint, 0 overlaps</td></tr>
+    <tr><td>REL-005</td><td>Never assign a job a machine physically cannot produce</td><td>"Deliberately infeasible" suite run independently of scoring</td></tr>
+    <tr><td>REL-006</td><td>Committed dates change only under three approved conditions</td><td>Date-diff audit = 0 outside the list; each change notified + approved</td></tr>
+  </table></div>
+</section>
+
+<!-- 10 NFR part 2 -->
+<section class="slide">
+  <div class="eyebrow blue"><span class="tick"></span>04 · Non-functional requirements (2/2)</div>
+  <div class="wrap"><table>
+    <tr><th>Code</th><th>Requirement</th><th>Measured by</th></tr>
+    <tr><td>SEC-007</td><td>Model files reachable only inside the assigned job window, logged, no bulk access</td><td>Adversarial access suite; 100 % logged</td></tr>
+    <tr><td>SEC-009</td><td>No card data on platform; every transaction reconciled</td><td>0 PAN/CVV in DB or logs; invalid signatures rejected; 0 double refunds</td></tr>
+    <tr><td>USE-001</td><td>First-time customer orders without training</td><td>5/5 untrained users complete in ≤ 10 min (moderated test)</td></tr>
+    <tr><td>USE-006</td><td>Lab app works at the machine: few taps, survives bad Wi-Fi</td><td>≤ 3 taps to any state update; offline input survives 2-min outage</td></tr>
+    <tr><td>LEGAL-002</td><td>Assignments, overrides, refunds, QC decisions fully auditable</td><td>50 sampled decisions reconstructible with candidates + scores + config version</td></tr>
+    <tr><td>MAINT-005</td><td>Commercial parameters tunable without redeployment</td><td>Change effective ≤ 1 min, no restart; old quotes keep frozen version</td></tr>
+    <tr><td>TEST-003</td><td>Scheduler claims measured against baselines, not asserted</td><td>≥ 3 baselines, identical seeds, reproducible runs (quarantine on drift)</td></tr>
+    <tr><td>ACC-001</td><td>Slicer estimate accuracy continuously measured and corrected</td><td>MAPE &lt; 25 % per machine model, trending down after each calibration</td></tr>
+    <tr class="core"><td class="star">LEGAL-003 ★R1</td><td>Every file handover is provable: hash at upload, customer email receipt, partner acknowledgement</td><td>100% hashes + emails ≤1 min; 100% accepts carry matching hash; dispute sample reconstructs file/hash/time/sender/receiver</td></tr>
+  </table></div>
+  <p class="sub" style="margin-top:6px">NFR pattern per GVHD standard: statement → metric → environment → method. Sixteen here are the core set; 33 further standards-traceable items live in the SRS appendix.</p>
+</section>
+
+<!-- 11 CLOSE -->
+<section class="slide">
+  <div class="eyebrow"><span class="tick"></span>Closing</div>
+  <h2>One requirement set, fully wired</h2>
+  <div class="counts">
+    <div class="count"><div class="n">104</div><div class="l">P-xx extracted</div></div>
+    <div class="count"><div class="n">103</div><div class="l">Business rules</div></div>
+    <div class="count"><div class="n">49</div><div class="l">Functional req.</div></div>
+    <div class="count"><div class="n">17</div><div class="l">Core NFR</div></div>
+    <div class="count"><div class="n">33</div><div class="l">Use cases</div></div>
+    <div class="count"><div class="n">44</div><div class="l">User stories</div></div>
+  </div>
+  <div class="grid g3" style="margin-top:8px">
+    <div class="card"><h3>Traceable</h3><p>Matrix binds every FR to proposal source, rules, entities, actors, use cases; every BCD flow is handled by at least one use case.</p></div>
+    <div class="card flag"><h3>Falsifiable</h3><p>Core claims are numbers: 60 s quote, 30 s repair, 0 double-bookings, 0 infeasible assignments — each with a harness that can prove us wrong.</p></div>
+    <div class="card"><h3>Buildable now</h3><p>API and event contracts locked (openapi.yaml + events.md); shared docker stack running; golden-path sprint underway.</p></div>
+  </div>
+  <p class="sub">Questions welcome — PrintGrid, FA26SE249.</p>
+</section>
+
+</div>
+<footer>
+  <span class="name">PRINTGRID · PROJECT OVERVIEW · FA26SE249</span>
+  <div class="nav">
+    <button id="prev" aria-label="Previous slide">←</button>
+    <div id="dots" role="tablist" aria-label="Slides"></div>
+    <button id="next" aria-label="Next slide">→</button>
+    <span id="counter" style="font-family:var(--mono);font-size:11px;color:var(--muted);min-width:44px;text-align:right">1 / 11</span>
+  </div>
+</footer>
+</div>
+
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide')),i=0;
+  var dots=document.getElementById('dots'),counter=document.getElementById('counter');
+  slides.forEach(function(s,n){var b=document.createElement('button');b.className='dot';b.setAttribute('aria-label','Go to slide '+(n+1));b.onclick=function(){go(n)};dots.appendChild(b);});
+  function go(n){i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach(function(s,k){s.classList.toggle('active',k===i);s.setAttribute('aria-hidden',k!==i);});
+    [].forEach.call(dots.children,function(d,k){d.classList.toggle('on',k===i);});
+    counter.textContent=(i+1)+' / '+slides.length;
+    slides[i].scrollTop=0;}
+  document.getElementById('prev').onclick=function(){go(i-1)};
+  document.getElementById('next').onclick=function(){go(i+1)};
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key==='PageDown'){go(i+1);e.preventDefault();}
+    if(e.key==='ArrowLeft'||e.key==='PageUp'){go(i-1);e.preventDefault();}
+    if(e.key==='Home'){go(0);} if(e.key==='End'){go(slides.length-1);}});
+  go(0);
+})();
+</script>

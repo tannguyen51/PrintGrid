@@ -14,6 +14,8 @@ public static class QuoteMappings
         quote.CreatedAt,
         quote.ExpiresAt,
         quote.FailureReason,
+        quote.PricingVersion,
+        quote.PlacementBasis,
         quote.Items.Select(i => new QuoteItemDto(
             i.Id,
             i.ModelId,
@@ -23,6 +25,8 @@ public static class QuoteMappings
             i.Configuration.LayerHeightMm,
             i.Configuration.InfillPercent,
             i.UnitPrice.Amount,
+            i.MaterialCostAmount,
+            i.MachineTimeCostAmount,
             i.EstimatedPrintMinutes,
             i.EstimatedMaterialGrams)).ToList());
 }

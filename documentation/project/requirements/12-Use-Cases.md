@@ -55,6 +55,59 @@ the v1.1 sync, to be frozen in register v1.2 · `⚠` = open item (see `capstone
 | UC-026 | Manage Account, Addresses & Model Library | Customer | Self-service profile, addresses, library with one-click reorder | Authenticated session | Profile edit + re-auth → address CRUD (delete guard) → library list → reorder loads model+config → quota check | A1 quota reached → block + prune guidance | Account data current; models private per IP rules | FR-CUST-001/010; BR-ACCESS-001/002/006 | Must/Could split | Approved |
 | UC-027 | Configure & Run Network Simulation (Algorithm Evaluation) | Evaluator (WP1/WP2 research role) | **Order generator + fault injection harness driving the real engines** to produce measured evaluation evidence | Engines in simulation mode; seed chosen | Configure network (50 labs/300 machines, declared-vs-delivered bias) → **order stream (Poisson rate, size/grade mix, deadline tightness)** → **fault injection: decline rate, print failure with stage distribution, machine breakdown+MTTR, inspection failure per lab** → pick 4 strategies → run virtual clock → metrics (tardiness, on-time %, Gini…) → export to UC-021 | A1 seed non-reproducible → run quarantined · A2 saturated-load collapse → kept as stress scenario · A3 time-budget breach counted as NFR metric | Reproducible metric dataset for Algorithm Evaluation Report + demo scenario | Register e)-Practical 8–9, f)-P-92/93; BR-OPS-008, SCHED-005; NFR-TEST-003 | Must (research) | Specified (WP5 harness due wk 4) |
 | UC-028 | Process Refund & Reconciliation | Operations Manager | Approve and execute real refunds via gateway with idempotency and daily reconciliation | Order paid via real gateway; trigger per BR-PAY-004/B16 | Refund queue → scope full/partial per item → reason + approval → idempotent gateway call → webhook confirm → state + notify → T-1 reconciliation → audit | A1 gateway error → safe retry, no silent commit · A2 reconciliation mismatch → auto-freeze txn · A3 5-day SLA breach → escalation | Refund executed and reconciled; customer informed | FR-ANAL-005; BR-PAY-004/005/006, NOTIFY-002; NFR-SEC-009 | Must | Specified (23/09) ⚠4-eyes BR? |
+| UC-029 | Approve Quote Draft | Order Staff | Review engine-drafted quote (price/date/breakdown), adjust within band, publish to customer | Engine draft produced (≤60s); staff authenticated | Queue (or auto-lane skip under threshold) → inspect breakdown + placement basis → edit within cfg band + reason → approve → quote publishes, expiry starts → notify customer | A1 outside band → escalate pricing admin · A2 queue SLA (2h cfg) breached → flag + notify ops · A3 reject draft → re-draft loop | Published quote customer-visible; before/after logged | FR-ANAL-006; BR-QUOTE-008, CONFIG-001/002 | Must | **New (Review 1 30/09)** |
+| UC-030 | Approve Lab QC Proof | Order Staff | Judge lab self-QC photos+report before batch may ship to hub; release or return | Job completed with proof attached (BR-QC-011) | Open proof → compare vs grade criteria → approve → handover unlocked / reject + reason → lab reworks or incident | A1 reject ×2 → force hub-inspection anyway (QC decides) · A2 dispute → hub re-check wins | Handover authorized w/ audit; bad batches stopped pre-transport | FR-ANAL-007; BR-QC-011/012 | Must | **New (Review 1 30/09)** |
+| UC-031 | Pay Deposit & Balance | Customer | Pay deposit to start production; settle balance when order nears shipping | Quote approved (UC-029); gateway available | Deposit QR (cfg % of total) → webhook+API confirm → production starts → balance invoice auto on pack-readiness → 2nd QR → settled → pack gate opens | A1 deposit expired → re-quote · A2 balance unpaid 48h → escalation, pack held · A3 dispute → UC-028 | Production + shipping commits backed by staged real payments | FR-CUST-012; BR-PAY-007/008; NFR-SEC-009 | Must | **New (Review 1) ⚠B19/B20 (%, forfeit policy)** |
+| UC-032 | Request Design Service | Customer | Turn an idea with no 3D file into a paid design deliverable + linked order | Authenticated customer | Intake form (description + reference images) → ops quotes design stages → staged payment (reuses UC-031 machinery) → designer delivers STL → attaches to order draft → customer-owned, reuse prohibited (BR-IP-004) | A1 rejected brief → refund design deposit per B20 policy · A2 iteration rounds > cap → re-quote | Order draft with owned deliverable; IP record complete | FR-CUST-013; BR-IP-004 | Should | **New (Review 1) — design work itself = runbook/out-of-system** |
+| UC-033 | Plan Lab→Hub Shipment Batch | Lab Manager | Accumulate proof-approved jobs into scheduled hub-bound batch with waybill | ≥1 approved job at lab | Open batch view → group jobs → weight + zone allowance preview → seal → waybill → IN_TRANSIT (replaces per-parcel flow) | A1 urgent single job → early-release exception, reason logged · A2 calendar conflict → next run | One physical trip per schedule; allowance visible pre-seal | FR-LAB-008; BR-LOG-005, SCHED-009 | Should | **New (Review 1)** |
+
+## 0.1 Use Case List — auxiliary columns (UCD guide §8.2 sync, group-confirmed 28/09)
+
+§0 above carries ID/Name/Primary Actor/Description/Precondition/Priority; this companion supplies the
+three remaining §8.2 columns keyed by the same immutable code. Modeling decisions confirmed by the team:
+**(D1)** UC-027's "Evaluator" role is modeled as System Administrator granted Simulation access (keeps UCD
+actors 1:1 with BCD entities); **(D2)** no Scheduler/Time actor — automatic engine UCs are reached through
+their base UCs via include/extend (guide rule 4.1.6). Diagram source: `project/design/PrintGrid-UseCase.drawio`.
+
+| UC ID | Secondary Actor(s) | Subsystem | Relationships |
+|---|---|---|---|
+| UC-001 | Payment Gateway, Notification Service | Customer Portal | include UC-002, UC-010, UC-011 |
+| UC-002 | — | Scheduling & Assignment | included by UC-001, UC-026 |
+| UC-003 | Notification Service | Customer Portal | — |
+| UC-004 | — | Lab Network | extended by UC-012 (decline / 2 h timeout) |
+| UC-005 | — | Lab Network | extended by UC-012 (print failure / breakdown) |
+| UC-006 | — | Hub Operations | extended by UC-013 (lab-fault); consumes checklist version from UC-024 |
+| UC-007 | — | Customer Portal | — (denial may hand off to UC-028 via ops, not a UML relation) |
+| UC-008 | — | Lab Network | — |
+| UC-009 | — | Platform Administration | — |
+| UC-010 | — | Scheduling & Assignment | included by UC-001, UC-026 |
+| UC-011 | — | Scheduling & Assignment | included by UC-001, UC-013; invoked manually by UC-020, in-sandbox by UC-027 |
+| UC-012 | — | Scheduling & Assignment | extends UC-004, UC-005, UC-016; invoked by UC-020, in-sandbox by UC-027 |
+| UC-013 | — | Scheduling & Assignment | extends UC-006; include UC-011 |
+| UC-014 | System Administrator (approval) | Lab Network | — |
+| UC-015 | Notification Service | Lab Network | — |
+| UC-016 | — | Hub Operations | extended by UC-012 (in-transit damage) |
+| UC-017 | Notification Service | Hub Operations | — |
+| UC-018 | — | Scheduling & Assignment | — |
+| UC-019 | — | Analytics, Operations & Evaluation | — |
+| UC-020 | — | Analytics, Operations & Evaluation | uses UC-011/UC-012 outcomes (no diagram relation — ambiguous per guide 4.4) |
+| UC-021 | — | Analytics, Operations & Evaluation | receives UC-027 metric exports (data flow, not UML relation) |
+| UC-022 | — | Platform Administration | — |
+| UC-023 | — | Platform Administration | — |
+| UC-024 | — | Platform Administration | feeds UC-006/UC-016 checklists |
+| UC-025 | — | Platform Administration | — |
+| UC-026 | — | Customer Portal | triggers UC-002/UC-010 on reorder |
+| UC-027 | — | Analytics, Operations & Evaluation | runs UC-011/UC-012 in simulation mode (relation described here only, per guide "when unsure, don't draw") |
+| UC-028 | Payment Gateway | Analytics, Operations & Evaluation | — |
+| UC-029 | Notification Service | Customer Portal (draft source: Scheduling) | include-adjacent: refines UC-001's quote step; UC-001 precond now "quote PUBLISHED (staff/auto-lane)" |
+| UC-030 | — | Hub Operations | gate between UC-005 and UC-015; rejection → incident path of UC-005 |
+| UC-031 | Payment Gateway, Notification Service | Customer Portal | includes/refines UC-001 payment step (CUST-008 machinery reused twice) |
+| UC-032 | Order Staff (ops queue) | Customer Portal | extends none — independent entry; reuses UC-031 staged-payment flow |
+| UC-033 | — | Lab Network | extends UC-015 (per-parcel handover generalized to batch run); consumes UC-030 approval |
+
+**Consistency checks passed:** 28/28 UC have Subsystem + Relationships rows; actor set = 7 primary + 2 secondary,
+all present on BCD; every BCD information flow handled by ≥1 UC (`PrintGrid-UCD-table.md` §E); no Log-In includes;
+codes unchanged (immutable per guide 8.1 rules 4–5).
 
 ---
 
@@ -344,7 +397,7 @@ the v1.1 sync, to be frozen in register v1.2 · `⚠` = open item (see `capstone
 13. Operator performs post-processing (support removal)
 14. Operator clicks "Report Completion"
 15. System prompts for:
-    - Actual print duration
+    - Actual print durationV
     - Actual material consumed
 16. Operator enters data and confirms
 17. System records actual values

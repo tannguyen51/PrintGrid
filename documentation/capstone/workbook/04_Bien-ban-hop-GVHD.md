@@ -69,4 +69,14 @@ Kết luận nào cũng phải ghi được vào 1 dòng Record of Changes phi�
 - [ ] Chốt deadline lab đối tác (B3) vào lịch trình + WP1 Report 2 — hạn: ___
 - [ ] B9 (bảng chuyển trạng thái Job/Order/Quote) + Conceptual ERD hoàn tất trước khi đăng ký lịch Review 1 — hạn: ___
 
+### Review 1 (GVHD, 30/09) — mục mở mới B19–B24
+
+- [ ] **B19** — Deposit: % bao nhiêu (đề xuất 50), áp MỌI đơn theo thầy hay có ngưỡng miễn cho đơn nhỏ? (hệ lụy USE-001 đã trình) — GVHD chốt
+- [ ] **B20** — Khách hủy sau khi trả deposit: giữ/mất bao nhiêu % deposit? (= nợ cũ **B17**, giờ bắt buộc vì deposit-toàn-bộ) — GVHD chốt
+- [ ] **B21** — Offer fan-out: k = 3 đồng ý? Tie-break khi 2 partner accept gần đồng thời: điểm cao hơn thắng hay ai nhanh hơn? Đơn giá trị nào bắt buộc ops duyệt?
+- [ ] **B22** — Transport allowance: bảng zone (đề xuất) vs chi phí thực khai; nguồn tiền từ margin nền tảng (đề xuất) OK? Lab đối tác thuộc zone nào → hiệu lực từ đâu?
+- [ ] **B23** — Staff quote-review: duyệt 100% hay auto-lane dưới ngưỡng tiền nào (đề xuất < 300k Đ + không ngoại lệ)?
+- [ ] **B24** — Voucher: thầy đề xuất nhưng nhóm từng chủ động cắt (C1); xác nhận bật lại + quy mô tối thiểu (mã cố định, không campaign engine)?
+✅ Đã chốt tại Review 1 (ghi vào 08 §14): phân lô BR-SCHED-010, hash-chain BR-IP-001..003, self-QC BR-QC-011/012, batch chuyến BR-LOG-005, category BR-ASSIGN-009, tồn kho giao dịch BR-STOCK-001..003, ship-line BR-LOG-004, thiết kế-dịch-vụ UC-032 (luồng ghi nhận + bản quyền BR-IP-004).
+
 **Chữ ký:**  GVHD ______________________   Nhóm trưởng ______________________
