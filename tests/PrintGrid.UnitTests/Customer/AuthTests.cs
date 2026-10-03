@@ -16,6 +16,8 @@ public class RegisterLoginTests
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IPasswordHasher _hasher = Substitute.For<IPasswordHasher>();
     private readonly ITokenService _tokens = Substitute.For<ITokenService>();
+    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration = Substitute.For<Microsoft.Extensions.Configuration.IConfiguration>();
 
     private readonly AuthTokenPairDto _pair = new("access-token", "refresh-token");
 
@@ -24,13 +26,14 @@ public class RegisterLoginTests
         _hasher.Hash(Arg.Any<string>()).Returns("hashed-password");
         _hasher.Verify(Arg.Any<string>(), Arg.Any<string>()).Returns(true);
         _tokens.CreateTokenPair(Arg.Any<AuthUserDto>()).Returns(_pair);
+        _configuration["App:FrontendUrl"].Returns("http://localhost:5173");
     }
 
     [Fact]
     public async Task Register_creates_customer_and_returns_a_session()
     {
         _customers.EmailExistsAsync("a@b.com", Arg.Any<CancellationToken>()).Returns(false);
-        var handler = new RegisterCustomerCommandHandler(_customers, _unitOfWork, _hasher, _tokens);
+        var handler = new RegisterCustomerCommandHandler(_customers, _unitOfWork, _hasher, _tokens, _emailService, _configuration);
 
         var result = await handler.Handle(
             new RegisterCustomerCommand("Nguyen A", "a@b.com", "secret123", null),
@@ -42,13 +45,14 @@ public class RegisterLoginTests
         result.Value.User.Roles.Should().Contain("Customer");
         await _customers.Received(1).AddAsync(Arg.Is<CustomerEntity>(c => c.Email == "a@b.com"), Arg.Any<CancellationToken>());
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _emailService.Received(1).SendEmailAsync("a@b.com", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Register_rejects_a_duplicate_email()
     {
         _customers.EmailExistsAsync("a@b.com", Arg.Any<CancellationToken>()).Returns(true);
-        var handler = new RegisterCustomerCommandHandler(_customers, _unitOfWork, _hasher, _tokens);
+        var handler = new RegisterCustomerCommandHandler(_customers, _unitOfWork, _hasher, _tokens, _emailService, _configuration);
 
         var result = await handler.Handle(
             new RegisterCustomerCommand("Nguyen A", "a@b.com", "secret123", null),

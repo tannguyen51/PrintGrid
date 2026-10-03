@@ -50,5 +50,6 @@ public class LoginCustomerCommandHandler : IRequestHandler<LoginCustomerCommand,
         customer.Id,
         customer.Email,
         customer.FullName,
-        customer.Roles);
+        customer.Roles,
+        customer.IsEmailVerified);
 }

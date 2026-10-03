@@ -27,7 +27,8 @@ public record AuthUserDto(
     Guid Id,
     string Email,
     string FullName,
-    IReadOnlyList<string> Roles);
+    IReadOnlyList<string> Roles,
+    bool IsEmailVerified);
 
 public record QuoteDto(
     Guid Id,

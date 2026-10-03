@@ -64,6 +64,8 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
     formState: { errors },
   } = useForm<RegisterFormValues>({ resolver: zodResolver(registerSchema) })
 
+  const [isRegistered, setIsRegistered] = useState(false)
+
   async function onSubmit(values: RegisterFormValues) {
     setSubmitting(true)
     setServerError(null)
@@ -74,13 +76,31 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
         password: values.password,
         phoneNumber: values.phoneNumber?.trim() || undefined,
       })
-      if (onSuccess) onSuccess()
-      else navigate('/', { replace: true })
+      setIsRegistered(true)
     } catch {
       setServerError('Không thể tạo tài khoản. Vui lòng thử lại.')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (isRegistered) {
+    return (
+      <Box sx={{ flex: { xs: '1 1 auto', md: fullBleed ? '1 1 100%' : '1 1 48%' }, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', p: { xs: 4, md: 6 } }}>
+        <Box sx={{ width: '100%', maxWidth: 420, bgcolor: 'background.paper', border: '1px solid', borderColor: 'rgba(255,255,255,0.12)', borderRadius: 4, p: 5, textAlign: 'center' }}>
+          <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>Đăng ký thành công</Typography>
+          <Alert severity="success" sx={{ mb: 4, textAlign: 'left' }}>
+            Vui lòng kiểm tra email của bạn để xác thực tài khoản trước khi tiếp tục.
+          </Alert>
+          <Button variant="contained" fullWidth onClick={() => {
+            if (onSuccess) onSuccess()
+            else navigate('/')
+          }}>
+            {onSuccess ? 'Đóng' : 'Trở về trang chủ'}
+          </Button>
+        </Box>
+      </Box>
+    )
   }
 
   return (

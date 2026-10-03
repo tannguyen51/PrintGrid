@@ -30,6 +30,8 @@ public static class SharedInfrastructureExtensions
         services.Configure<MinioOptions>(configuration.GetSection(MinioOptions.SectionName));
         services.AddSingleton<IFileStorage, MinioFileStorage>();
 
+        services.AddScoped<IEmailService, PrintGrid.Infrastructure.Shared.Services.DummyEmailService>();
+
         return services;
     }
 }

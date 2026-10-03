@@ -5,6 +5,9 @@ using PrintGrid.Modules.Customer.Application.Commands.Auth.Login;
 using PrintGrid.Modules.Customer.Application.Commands.Auth.Refresh;
 using PrintGrid.Modules.Customer.Application.Commands.Auth.Register;
 
+using PrintGrid.Modules.Customer.Application.Commands.Auth.VerifyEmail;
+using PrintGrid.Modules.Customer.Application.Commands.Auth.ResendVerification;
+
 namespace PrintGrid.Api.Controllers;
 
 [ApiController]
@@ -69,8 +72,39 @@ public class AuthController : ControllerBase
 
         return Ok(result.Value);
     }
+
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail(
+        [FromBody] VerifyEmailRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new VerifyEmailCommand(request.Email, request.Token), cancellationToken);
+        if (result.IsFailure)
+        {
+            return BadRequest(new { error = new { code = result.Error.Code, message = result.Error.Message } });
+        }
+        return Ok();
+    }
+
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerification(
+        [FromBody] ResendVerificationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new ResendVerificationCommand(request.Email), cancellationToken);
+        if (result.IsFailure)
+        {
+            var status = result.Error.Code == "rate_limit_exceeded" || result.Error.Code == "cooldown_active"
+                ? StatusCodes.Status429TooManyRequests
+                : StatusCodes.Status400BadRequest;
+            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
+        }
+        return Ok(result.Value);
+    }
 }
 
 public record RegisterRequest(string FullName, string Email, string Password, string? PhoneNumber);
 public record LoginRequest(string Email, string Password);
 public record RefreshRequest(string RefreshToken);
+public record VerifyEmailRequest(string Email, string Token);
+public record ResendVerificationRequest(string Email);
