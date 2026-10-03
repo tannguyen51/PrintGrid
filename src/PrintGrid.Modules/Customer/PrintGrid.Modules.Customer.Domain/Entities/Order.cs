@@ -73,7 +73,12 @@ public class Order : AggregateRoot<Guid>
                 i.Configuration.ColorCode,
                 i.Configuration.LayerHeightMm,
                 i.Configuration.InfillPercent,
-                i.Configuration.ToleranceMm)).ToList()));
+                i.Configuration.ToleranceMm,
+                i.EstimatedPrintMinutes,
+                i.EstimatedMaterialGrams,
+                i.BoundingWidthMm,
+                i.BoundingDepthMm,
+                i.BoundingHeightMm)).ToList()));
 
         return Result.Success();
     }

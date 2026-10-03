@@ -13,6 +13,8 @@ public class QuoteConfiguration : IEntityTypeConfiguration<Quote>
 
         builder.Property(q => q.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(q => q.FailureReason).HasMaxLength(500);
+        builder.Property(q => q.PricingVersion).HasMaxLength(16).IsRequired().HasDefaultValue("");
+        builder.Property(q => q.PlacementBasis).HasMaxLength(300);
         builder.HasIndex(q => new { q.CustomerId, q.Status });
         builder.HasIndex(q => q.ExpiresAt);
 

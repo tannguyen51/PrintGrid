@@ -37,6 +37,7 @@ builder.Services.AddHangfire(config => config
 builder.Services.AddHangfireServer();
 
 builder.Services.AddScoped<AnalyzeModelJob>();
+builder.Services.AddScoped<EmailDeliveryJob>();
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "postgres")
@@ -74,5 +75,10 @@ app.MapHangfireDashboard("/jobs", new DashboardOptions
 {
     Authorization = [new HangfireDashboardAuthorizationFilter()]
 });
+
+RecurringJob.AddOrUpdate<EmailDeliveryJob>(
+    "email-outbox-delivery",
+    job => job.ExecuteAsync(CancellationToken.None),
+    Cron.Minutely());
 
 app.Run();

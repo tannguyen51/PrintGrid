@@ -5,6 +5,7 @@ using PrintGrid.Modules.Scheduling.Domain.Services;
 using PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Repositories;
 using PrintGrid.Modules.Scheduling.Infrastructure.Scheduling;
 using PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
+using PrintGrid.SharedKernel.Interfaces;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure;
 
@@ -15,6 +16,7 @@ internal static class SchedulingModuleRegistration
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<ILabRepository, LabRepository>();
         services.AddScoped<IMachineTimelineService, MachineTimelineService>();
+        services.AddScoped<IProductionCapacityProbe, ProductionCapacityProbe>();
 
         services.AddSingleton<ISlicingService, PrintSlicingService>();
 

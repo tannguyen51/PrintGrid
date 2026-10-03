@@ -95,7 +95,7 @@ paths:
     get:  { tags: [quotes], summary: Danh sách báo giá của tôi (existing), responses: { '200': { description: "QuoteDto[]" } } }
     post:
       tags: [quotes]
-      summary: "Tạo báo giá (existing) — từ T2: ngày giao do XẾP LỊCH THỬ tính ra, giá từ KỲ GIÁ đóng băng"
+      summary: "Tạo báo giá (existing) — T2-DONE: ngày giao do XẾP LỊCH THỬ tính ra, giá từ KỲ GIÁ đóng băng (surcharge/requiredBy: T3)"
       requestBody:
         content: { application/json: { schema: { $ref: '#/components/schemas/CreateQuoteRequest' } } }
       responses:
@@ -103,10 +103,9 @@ paths:
   /quotes/{quoteId}:
     get:
       tags: [quotes]
-      x-milestone: T2
-      summary: Đọc 1 báo giá — nguồn duy nhất cho màn xác nhận
+      summary: "Đọc 1 báo giá (T2-DONE)"
       parameters: [ { name: quoteId, in: path, required: true, schema: { type: string, format: uuid } } ]
-      responses: { '200': { description: QuoteDto, có configVersionId } }
+      responses: { '200': { description: "QuoteDto — có pricingVersion + placementBasis" } }
 
   # ============ ĐƠN HÀNG & DÒNG TIỀN (ghế Đơn hàng — T2..T7) ============
   /orders:
@@ -321,7 +320,8 @@ components:
         createdAt: { type: string, format: date-time }
         expiresAt: { type: string, format: date-time }
         failureReason: { type: string, nullable: true }
-        configVersionId: { type: string, format: uuid, description: '*T2 — kỳ giá đóng băng' }
+        pricingVersion: { type: string, example: "2026.10", description: 'T2-DONE — kỳ giá đóng băng lên báo giá (thay cho configVersionId UUID)' }
+        placementBasis: { type: string, nullable: true, description: 'T2-DONE — dòng giải thích ngày giao: lab/máy + transit + hub buffer' }
         surcharge: { type: number, default: 0, description: '*T2 — phụ phí chọn cấp EXPRESS' }
         breakdown:
           type: array
@@ -339,15 +339,23 @@ components:
         layerHeightMm: { type: number }
         infillPercent: { type: integer }
         unitPrice: { type: number }
+        materialCostAmount: { type: number, description: 'T2-DONE — phần vật liệu của đơn giá (BR-QUOTE-005)' }
+        machineTimeCostAmount: { type: number, description: 'T2-DONE — phần giờ máy; mat+mach = unitPrice ±2' }
         estimatedPrintMinutes: { type: integer }
         estimatedMaterialGrams: { type: number }
     PlaceOrderRequest:
       type: object
-      required: [quoteId]
+      required: [quoteId, street, city, acceptTerms]
       properties:
         quoteId: { type: string, format: uuid }
-        addressId: { type: string, format: uuid, description: '*T1/T2 — thay cho gõ tay' }
-        acceptedTermsVersion: { type: string, description: '*T2' }
+        street: { type: string }
+        ward: { type: string }
+        district: { type: string }
+        city: { type: string }
+        postalCode: { type: string }
+        acceptTerms: { type: boolean, description: 'T2-DONE — false ⇒ 400 validation_error (FR-CUST-007)' }
+        addressId: { type: string, format: uuid, description: '*T3 — thay cho gõ tay' }
+        acceptedTermsVersion: { type: string, description: '*T3 — khi có nhiều phiên bản điều khoản' }
     OrderDto:
       type: object
       properties:

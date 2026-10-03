@@ -14,6 +14,11 @@ public class QuoteItemConfiguration : IEntityTypeConfiguration<QuoteItem>
         builder.Property(i => i.Quantity).IsRequired();
         builder.Property(i => i.EstimatedPrintMinutes).IsRequired();
         builder.Property(i => i.EstimatedMaterialGrams).HasPrecision(10, 2).IsRequired();
+        builder.Property(i => i.MaterialCostAmount).HasPrecision(18, 2).IsRequired().HasDefaultValue(0m);
+        builder.Property(i => i.MachineTimeCostAmount).HasPrecision(18, 2).IsRequired().HasDefaultValue(0m);
+        builder.Property(i => i.BoundingWidthMm).HasPrecision(8, 2);
+        builder.Property(i => i.BoundingDepthMm).HasPrecision(8, 2);
+        builder.Property(i => i.BoundingHeightMm).HasPrecision(8, 2);
         builder.HasIndex(i => i.QuoteId);
 
         builder.OwnsOne(i => i.UnitPrice, price =>

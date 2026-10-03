@@ -27,6 +27,8 @@ export interface PlaceOrderInput {
   district: string
   city: string
   postalCode: string
+  /** FR-CUST-007 — server rejects the order without this (validation_error). */
+  acceptTerms: boolean
 }
 
 export function usePlaceOrder() {

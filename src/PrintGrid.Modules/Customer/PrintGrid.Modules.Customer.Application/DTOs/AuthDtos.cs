@@ -21,7 +21,8 @@ public record ModelDto(
     bool? IsManifold,
     bool? IsPrintable,
     string? GeometryMessage,
-    string? StorageKey);
+    string? StorageKey,
+    string? Sha256);
 
 public record AuthUserDto(
     Guid Id,
@@ -40,6 +41,8 @@ public record QuoteDto(
     DateTime CreatedAt,
     DateTime ExpiresAt,
     string? FailureReason,
+    string PricingVersion,
+    string? PlacementBasis,
     IReadOnlyList<QuoteItemDto> Items);
 
 public record QuoteItemDto(
@@ -51,6 +54,8 @@ public record QuoteItemDto(
     decimal LayerHeightMm,
     int InfillPercent,
     decimal UnitPrice,
+    decimal MaterialCostAmount,
+    decimal MachineTimeCostAmount,
     int EstimatedPrintMinutes,
     decimal EstimatedMaterialGrams);
 

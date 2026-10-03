@@ -13,6 +13,13 @@ public class OrderItem : Entity<Guid>
     public Money UnitPrice { get; private set; } = Money.Zero();
     public string ItemStatus { get; private set; } = "Pending";
 
+    /// <summary>Production estimates copied from the frozen quote — feeds real job decomposition (FR-SCHED-006).</summary>
+    public int EstimatedPrintMinutes { get; private set; }
+    public decimal EstimatedMaterialGrams { get; private set; }
+    public decimal? BoundingWidthMm { get; private set; }
+    public decimal? BoundingDepthMm { get; private set; }
+    public decimal? BoundingHeightMm { get; private set; }
+
     public Money LineTotal => UnitPrice.Multiply(Quantity);
 
     public void UpdateStatus(string newStatus) => ItemStatus = newStatus;
@@ -27,6 +34,11 @@ public class OrderItem : Entity<Guid>
         Quantity = quoteItem.Quantity,
         Configuration = quoteItem.Configuration,
         UnitPrice = quoteItem.UnitPrice,
+        EstimatedPrintMinutes = quoteItem.EstimatedPrintMinutes,
+        EstimatedMaterialGrams = quoteItem.EstimatedMaterialGrams,
+        BoundingWidthMm = quoteItem.BoundingWidthMm,
+        BoundingDepthMm = quoteItem.BoundingDepthMm,
+        BoundingHeightMm = quoteItem.BoundingHeightMm
         ItemStatus = "Pending"
     };
 }

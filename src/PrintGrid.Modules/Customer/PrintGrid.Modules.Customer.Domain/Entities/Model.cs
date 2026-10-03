@@ -24,6 +24,9 @@ public class Model : AggregateRoot<Guid>
     /// </summary>
     public string? StorageKey { get; private set; }
 
+    /// <summary>SHA-256 of the uploaded bytes — integrity + ownership evidence (BR-IP-001).</summary>
+    public string? Sha256 { get; private set; }
+
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
@@ -58,7 +61,8 @@ public class Model : AggregateRoot<Guid>
         string fileFormat,
         long sizeBytes,
         IEnumerable<string>? tags,
-        string? storageKey = null)
+        string? storageKey = null,
+        string? sha256 = null)
     {
         if (customerId == Guid.Empty) throw new ArgumentException("Customer id is required", nameof(customerId));
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name is required", nameof(name));
@@ -74,6 +78,7 @@ public class Model : AggregateRoot<Guid>
             FileFormat = (fileFormat ?? string.Empty).Trim().ToUpperInvariant(),
             SizeBytes = sizeBytes,
             StorageKey = storageKey,
+            Sha256 = sha256?.ToLowerInvariant(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -81,6 +86,14 @@ public class Model : AggregateRoot<Guid>
         if (tags is not null)
         {
             model._tags.AddRange(tags.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct());
+        }
+
+        // Electronic handover evidence chain (BR-IP-001/002): every real upload emits
+        // the event that drives the customer confirmation email.
+        if (storageKey is not null && sha256 is not null)
+        {
+            model.AddDomainEvent(new Events.ModelUploadedEvent(
+                customerId, model.Id, model.FileName, storageKey, sha256.ToLowerInvariant(), sizeBytes));
         }
 
         return model;

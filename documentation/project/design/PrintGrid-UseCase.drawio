@@ -1,0 +1,442 @@
+<mxfile host="app.diagrams.net" agent="PrintGrid-capstone" pages="7">
+  <diagram id="ucd-level0" name="Cấp 0 - Tổng quan">
+    <mxGraphModel dx="1414" dy="777" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="s0" parent="1" style="rounded=0;html=1;verticalAlign=top;fontStyle=1;fontSize=13;fillColor=none;strokeColor=#000000;whiteSpace=wrap;" value="PrintGrid — Distributed 3D Printing Fulfillment System" vertex="1">
+          <mxGeometry height="470" width="440" x="360" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;" value="Customer Portal" vertex="1">
+          <mxGeometry height="46" width="220" x="470" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;" value="Lab Network" vertex="1">
+          <mxGeometry height="46" width="220" x="470" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;" value="Hub Operations" vertex="1">
+          <mxGeometry height="46" width="220" x="470" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Scheduling &amp; Assignment (Core Contribution)" vertex="1">
+          <mxGeometry height="46" width="220" x="470" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="p5" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;" value="Analytics, Operations &amp; Evaluation" vertex="1">
+          <mxGeometry height="46" width="220" x="470" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="p6" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;" value="Platform Administration" vertex="1">
+          <mxGeometry height="46" width="220" x="470" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="ac1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" value="Customer" vertex="1">
+          <mxGeometry height="70" width="40" x="90" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ac2" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" value="Lab Manager" vertex="1">
+          <mxGeometry height="70" width="40" x="90" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="ac3" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" value="Lab Operator" vertex="1">
+          <mxGeometry height="70" width="40" x="90" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="ac4" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" value="Hub QC Staff" vertex="1">
+          <mxGeometry height="70" width="40" x="90" y="375" as="geometry" />
+        </mxCell>
+        <mxCell id="ac5" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" value="Hub Fulfillment Staff" vertex="1">
+          <mxGeometry height="84" width="40" x="90" y="481" as="geometry" />
+        </mxCell>
+        <mxCell id="ac6" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" value="Operations Manager" vertex="1">
+          <mxGeometry height="70" width="40" x="910" y="348" as="geometry" />
+        </mxCell>
+        <mxCell id="ac7" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" value="System Administrator" vertex="1">
+          <mxGeometry height="70" width="40" x="910" y="474" as="geometry" />
+        </mxCell>
+        <mxCell id="ac8" parent="1" style="rounded=0;html=1;fontSize=11;fillColor=#d5e8d4;strokeColor=#82b366;whiteSpace=wrap;" value="«actor»&lt;br&gt;Payment Gateway" vertex="1">
+          <mxGeometry height="40" width="160" x="860" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="ac9" parent="1" style="rounded=0;html=1;fontSize=11;fillColor=#d5e8d4;strokeColor=#82b366;whiteSpace=wrap;" value="«actor»&lt;br&gt;Notification Service" vertex="1">
+          <mxGeometry height="40" width="160" x="860" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="l1" edge="1" parent="1" source="ac1" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="p1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2" edge="1" parent="1" source="ac2" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.35;" target="p2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l3" edge="1" parent="1" source="ac3" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.65;" target="p2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l4" edge="1" parent="1" source="ac4" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.35;" target="p3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l5" edge="1" parent="1" source="ac5" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.65;" target="p3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l6" edge="1" parent="1" source="ac6" style="endArrow=none;html=1;strokeColor=#666666;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="p5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l7" edge="1" parent="1" source="ac7" style="endArrow=none;html=1;strokeColor=#666666;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="p6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l8" edge="1" parent="1" source="ac8" style="endArrow=none;html=1;strokeColor=#82b366;exitX=0;exitY=0.5;entryX=1;entryY=0.35;" target="p1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l9" edge="1" parent="1" source="ac9" style="endArrow=none;html=1;strokeColor=#82b366;exitX=0;exitY=0.5;entryX=1;entryY=0.65;" target="p1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lg0" parent="1" style="text;html=1;fontSize=11;fontStyle=1;align=left;" value="LEGEND" vertex="1">
+          <mxGeometry height="20" width="90" x="40" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="" vertex="1">
+          <mxGeometry height="40" width="24" x="40" y="665" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1t" parent="1" style="text;html=1;fontSize=10;align=left;" value="Actor người (Primary trái · Secondary phải)" vertex="1">
+          <mxGeometry height="20" width="280" x="75" y="675" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2" parent="1" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
+          <mxGeometry height="16" width="24" x="370" y="672" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2t" parent="1" style="text;html=1;fontSize=10;align=left;" value="«actor» hệ thống ngoài" vertex="1">
+          <mxGeometry height="20" width="180" x="402" y="672" as="geometry" />
+        </mxCell>
+        <mxCell id="lg3" parent="1" style="ellipse;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="" vertex="1">
+          <mxGeometry height="18" width="26" x="580" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="lg3t" parent="1" style="text;html=1;fontSize=10;align=left;" value="UC Core Contribution" vertex="1">
+          <mxGeometry height="20" width="170" x="612" y="672" as="geometry" />
+        </mxCell>
+        <mxCell id="lg4" parent="1" style="ellipse;html=1;fillColor=#f5f5f5;dashed=1;strokeColor=#999999;" value="" vertex="1">
+          <mxGeometry height="18" width="26" x="780" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="lg4t" parent="1" style="text;html=1;fontSize=10;align=left;" value="Ghost UC (ở phân hệ khác — cùng mã cùng tên)" vertex="1">
+          <mxGeometry height="20" width="270" x="812" y="672" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="ucd-cust" name="Cấp 1 - Customer Portal">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="tc" value="CẤP 1 · Phân hệ Customer Portal (4 UC · 1 primary + 2 secondary actor)" style="text;html=1;fontSize=12;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="700" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bc" value="PrintGrid — Customer Portal" style="rounded=0;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fillColor=none;strokeColor=#000000;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="320" y="70" width="340" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="u001" value="UC-001 Place Order for 3D Printing" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="95" width="260" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u003" value="UC-003 Track Order" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="170" width="260" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u007" value="UC-007 Customer Requests Reprint" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="245" width="260" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u026" value="UC-026 Manage Account, Addresses &amp; Model Library" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="325" width="260" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="acuc" value="Customer" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="80" y="195" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="acpg" value="«actor»&lt;br&gt;Payment Gateway" style="rounded=0;html=1;fontSize=11;fillColor=#d5e8d4;strokeColor=#82b366;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="780" y="100" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="acns" value="«actor»&lt;br&gt;Notification Service" style="rounded=0;html=1;fontSize=11;fillColor=#d5e8d4;strokeColor=#82b366;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="780" y="180" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ec1" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acuc" target="u001">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec2" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.35;" edge="1" parent="1" source="acuc" target="u003">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec3" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acuc" target="u007">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec4" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acuc" target="u026">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec5" style="endArrow=none;html=1;strokeColor=#82b366;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="acpg" target="u001">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec6" style="endArrow=none;html=1;strokeColor=#82b366;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="acns" target="u003">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nc" value="UC-001 include UC-002/010/011 — mũi tên vẽ ở sơ đồ phân hệ Scheduling (trang 4). Đăng nhập là Precondition, không phải UC." style="text;html=1;fontSize=10;fontColor=#666666;align=left;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="320" y="460" width="620" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="ucd-lab" name="Cấp 1 - Lab Network">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="620" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="tl" value="CẤP 1 · Phân hệ Lab Network (5 UC · 2 primary + 1 secondary actor)" style="text;html=1;fontSize=12;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="700" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bl" value="PrintGrid — Lab Network" style="rounded=0;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fillColor=none;strokeColor=#000000;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="320" y="70" width="340" height="440" as="geometry" />
+        </mxCell>
+        <mxCell id="u004" value="UC-004 Lab Accepts Job Assignment" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="95" width="260" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u005" value="UC-005 Execute Print Job" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="170" width="260" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u008" value="UC-008 Lab Manager Views Performance" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="245" width="260" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u014" value="UC-014 Onboard Lab, Machines &amp; Inventory" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="320" width="260" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="u015" value="UC-015 Hand Over Completed Parts to Hub" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="400" width="260" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="aclm" value="Lab Manager" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="90" y="160" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="aclo" value="Lab Operator" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="90" y="330" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="acadm2" value="System Administrator" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="850" y="320" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="el1" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="aclm" target="u004">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="el2" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="aclm" target="u008">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="el3" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.4;" edge="1" parent="1" source="aclm" target="u014">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="el4" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="aclo" target="u005">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="el5" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="aclo" target="u015">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="el6" style="endArrow=none;html=1;strokeColor=#666666;exitX=0;exitY=0.5;entryX=1;entryY=0.6;" edge="1" parent="1" source="acadm2" target="u014">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nl" value="UC-004/005 là gốc của «extend» UC-012 (reschedule khi từ chối / in hỏng) — mũi tên vẽ ở sơ đồ Scheduling (trang 4)." style="text;html=1;fontSize=10;fontColor=#666666;align=left;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="320" y="540" width="620" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="ucd-hub" name="Cấp 1 - Hub Operations">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="520" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="th" value="CẤP 1 · Phân hệ Hub Operations (3 UC · 2 primary actor)" style="text;html=1;fontSize=12;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="700" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bh" value="PrintGrid — Hub Operations" style="rounded=0;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fillColor=none;strokeColor=#000000;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="320" y="70" width="340" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="u016" value="UC-016 Receive &amp; Reconcile Hub Batch" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="95" width="260" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u006" value="UC-006 Inspect Part Quality" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="175" width="260" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u017" value="UC-017 Consolidate, Pack &amp; Ship Order" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="255" width="260" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="acqc" value="Hub QC Staff" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="90" y="120" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="achf" value="Hub Fulfillment Staff" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="90" y="250" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="eh1" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acqc" target="u016">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eh2" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acqc" target="u006">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eh3" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="achf" target="u017">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nh" value="UC-006 là gốc «extend» của UC-013 (reprint khi lỗi tại lab) — mũi tên vẽ ở sơ đồ Scheduling. Checklist của UC-006/016 lấy từ phiên bản do UC-024 quản trị." style="text;html=1;fontSize=10;fontColor=#666666;align=left;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="320" y="395" width="660" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="ucd-sched" name="Cấp 1 - Scheduling Engine (Core)">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1250" pageHeight="720" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ts" value="CẤP 1 · Phân hệ Scheduling &amp; Assignment — Core Contribution (6 UC · UC gốc ở phân hệ khác vẽ xám ngoài boundary)" style="text;html=1;fontSize=12;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1100" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bs" value="PrintGrid — Scheduling &amp; Assignment Engine" style="rounded=0;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fillColor=none;strokeColor=#000000;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="330" y="60" width="560" height="530" as="geometry" />
+        </mxCell>
+        <mxCell id="u010" value="UC-010 System Runs Speculative Scheduling" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="430" y="100" width="300" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="u002" value="UC-002 Analyze Model Geometry" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="430" y="185" width="300" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u011" value="UC-011 System Assigns Job to Lab" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="430" y="260" width="300" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u013" value="UC-013 System Creates Reprint Job" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="430" y="335" width="300" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u012" value="UC-012 System Reschedules on Event" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="430" y="410" width="300" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u018" value="UC-018 Update Estimate Calibration Factors" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="430" y="495" width="300" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="g001" value="UC-001 Place Order for 3D Printing" style="ellipse;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f5f5f5;dashed=1;fontColor=#999999;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="230" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="g004" value="UC-004 Lab Accepts Job Assignment" style="ellipse;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f5f5f5;dashed=1;fontColor=#999999;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="980" y="380" width="230" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="g005" value="UC-005 Execute Print Job" style="ellipse;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f5f5f5;dashed=1;fontColor=#999999;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="980" y="460" width="230" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="acads" value="System Administrator" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="120" y="490" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="is1" value="«include»" style="endArrow=open;dashed=1;html=1;strokeColor=#666666;fontSize=10;exitX=1;exitY=0.4;entryX=0;entryY=0.5;" edge="1" parent="1" source="g001" target="u010">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="is2" value="«include»" style="endArrow=open;dashed=1;html=1;strokeColor=#666666;fontSize=10;exitX=1;exitY=0.6;entryX=0;entryY=0.5;" edge="1" parent="1" source="g001" target="u002">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="is3" value="«include» (sau thanh toán)" style="endArrow=open;dashed=1;html=1;strokeColor=#666666;fontSize=10;exitX=0.5;exitY=1;entryX=0;entryY=0.35;" edge="1" parent="1" source="g001" target="u011">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ex1" value="«extend» từ chối / hết hạn 2h" style="endArrow=open;dashed=1;html=1;strokeColor=#666666;fontSize=10;exitX=1;exitY=0.35;entryX=0;entryY=0.5;" edge="1" parent="1" source="u012" target="g004">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ex2" value="«extend» in hỏng / chết máy" style="endArrow=open;dashed=1;html=1;strokeColor=#666666;fontSize=10;exitX=1;exitY=0.65;entryX=0;entryY=0.5;" edge="1" parent="1" source="u012" target="g005">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ead" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acads" target="u018">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nsc" value="Ghi chú (không vẽ mũi tên để giữ ≤5 quan hệ/sơ đồ): UC-013 «extend» UC-006 · UC-013 «include» UC-011 · UC-012 «extend» UC-016 · UC-010 dùng chung cho UC-026 reorder · UC-027 (simulator) chạy lại UC-011/012 trong chế độ mô phỏng." style="text;html=1;fontSize=10;fontColor=#666666;align=left;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="625" width="1170" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="ucd-anal" name="Cấp 1 - Analytics, Ops and Eval">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="620" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ta" value="CẤP 1 · Phân hệ Analytics, Operations &amp; Evaluation (5 UC · 2 primary + 1 secondary actor)" style="text;html=1;fontSize=12;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="800" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ba" value="PrintGrid — Analytics, Operations &amp; Evaluation" style="rounded=0;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fillColor=none;strokeColor=#000000;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="320" y="70" width="380" height="440" as="geometry" />
+        </mxCell>
+        <mxCell id="u019" value="UC-019 Monitor Network &amp; At-Risk Orders" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="95" width="300" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u020" value="UC-020 Override Assignment, Priority &amp; Lab Standing" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="170" width="300" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="u021" value="UC-021 Generate &amp; Export SLA / Performance Reports" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="250" width="300" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="u027" value="UC-027 Configure &amp; Run Network Simulation" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="330" width="300" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u028" value="UC-028 Process Refund &amp; Reconciliation" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="360" y="405" width="300" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="acops" value="Operations Manager" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="90" y="210" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="acadm3" value="System Administrator" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="880" y="318" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="acpg2" value="«actor»&lt;br&gt;Payment Gateway" style="rounded=0;html=1;fontSize=11;fillColor=#d5e8d4;strokeColor=#82b366;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="840" y="408" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ea1" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acops" target="u019">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea2" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acops" target="u020">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea3" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acops" target="u021">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea4" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acops" target="u028">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea5" style="endArrow=none;html=1;strokeColor=#666666;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="acadm3" target="u027">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea6" style="endArrow=none;html=1;strokeColor=#82b366;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="acpg2" target="u028">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="na" value="UC-027: vai Evaluator (nghiên cứu WP1/WP2) được mô hình hóa là System Administrator được cấp quyền Simulator — không thêm actor lạ ngoài BCD (lỗi #31)." style="text;html=1;fontSize=10;fontColor=#666666;align=left;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="320" y="535" width="660" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="ucd-admin" name="Cấp 1 - Administration">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="620" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="tm" value="CẤP 1 · Phân hệ Platform Administration (5 UC · 1 primary actor)" style="text;html=1;fontSize=12;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="700" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bm" value="PrintGrid — Platform Administration" style="rounded=0;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fillColor=none;strokeColor=#000000;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="320" y="70" width="380" height="440" as="geometry" />
+        </mxCell>
+        <mxCell id="u009" value="UC-009 Admin Configures Pricing" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="370" y="95" width="280" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u022" value="UC-022 Manage Users, Roles &amp; Permissions" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="370" y="170" width="280" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u023" value="UC-023 Manage Shared Catalogs" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="370" y="245" width="280" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="u024" value="UC-024 Manage Inspection Checklists &amp; Defect Taxonomy" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="370" y="320" width="280" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="u025" value="UC-025 Review Audit Log &amp; System Health" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="370" y="400" width="280" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="acadm4" value="System Administrator" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="90" y="240" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="em1" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acadm4" target="u009">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="em2" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acadm4" target="u022">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="em3" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acadm4" target="u023">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="em4" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acadm4" target="u024">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="em5" style="endArrow=none;html=1;strokeColor=#666666;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="acadm4" target="u025">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nm" value="UC-022/023/024 là Use Case tổng hợp Manage X — các thao tác con (Create/Update/Deprecate…) liệt kê ở cột Description của Use Case List, không có mã riêng (mục 8.1 quy tắc 8)." style="text;html=1;fontSize=10;fontColor=#666666;align=left;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="320" y="535" width="660" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

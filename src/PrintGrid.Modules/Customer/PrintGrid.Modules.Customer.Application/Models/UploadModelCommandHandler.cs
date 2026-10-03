@@ -27,7 +27,8 @@ public class UploadModelCommandHandler : IRequestHandler<UploadModelCommand, Res
             command.FileFormat,
             command.SizeBytes,
             command.Tags,
-            command.StorageKey);
+            command.StorageKey,
+            command.Sha256);
 
         await _models.AddAsync(model, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

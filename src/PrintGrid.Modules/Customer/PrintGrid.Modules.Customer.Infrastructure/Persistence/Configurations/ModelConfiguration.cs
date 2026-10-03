@@ -19,6 +19,7 @@ public class ModelConfiguration : IEntityTypeConfiguration<Model>
         builder.Property(m => m.FileFormat).HasMaxLength(10).IsRequired();
         builder.Property(m => m.SizeBytes).IsRequired();
         builder.Property(m => m.StorageKey).HasMaxLength(512);
+        builder.Property(m => m.Sha256).HasMaxLength(64);
         builder.Property(m => m.CreatedAt).IsRequired();
         builder.Property(m => m.UpdatedAt).IsRequired();
 

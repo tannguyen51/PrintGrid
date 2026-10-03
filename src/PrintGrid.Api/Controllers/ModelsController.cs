@@ -130,11 +130,21 @@ public class ModelsController : ControllerBase
 
         await using var stream = request.File.OpenReadStream();
 
+        // Compute SHA-256 of the exact bytes received (BR-IP-001) while buffering for
+        // the MinIO upload; files are capped at 60 MB by RequestSizeLimit so buffering
+        // is safe at this scale.
+        using var buffer = new MemoryStream();
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        await stream.CopyToAsync(buffer, cancellationToken);
+        buffer.Position = 0;
+        var sha256 = Convert.ToHexString(await sha.ComputeHashAsync(buffer, cancellationToken)).ToLowerInvariant();
+        buffer.Position = 0;
+
         // Object key: printgrid-models/{customerId}/{guid}.{ext}
         var ext = Path.GetExtension(request.File.FileName).ToLowerInvariant();
         var randomId = Guid.NewGuid();
         var objectName = $"{customerId}/{randomId}{ext}";
-        await _files.UploadAsync(_minio.ModelBucket, objectName, stream, request.File.ContentType, cancellationToken);
+        await _files.UploadAsync(_minio.ModelBucket, objectName, buffer, request.File.ContentType, cancellationToken);
 
         var result = await _sender.Send(
             new UploadModelCommand(
@@ -145,7 +155,8 @@ public class ModelsController : ControllerBase
                 ext.TrimStart('.'),
                 request.File.Length,
                 request.Tags,
-                $"{_minio.ModelBucket}/{objectName}"),
+                $"{_minio.ModelBucket}/{objectName}",
+                sha256),
             cancellationToken);
 
         if (result.IsFailure)

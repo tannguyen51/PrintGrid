@@ -14,6 +14,15 @@ public class QuoteItem : Entity<Guid>
     public int EstimatedPrintMinutes { get; private set; }
     public decimal EstimatedMaterialGrams { get; private set; }
 
+    /// <summary>Per-unit cost split frozen with the quote (BR-QUOTE-005 itemized breakdown).</summary>
+    public decimal MaterialCostAmount { get; private set; }
+    public decimal MachineTimeCostAmount { get; private set; }
+
+    /// <summary>Part bounding box (mm) from geometry analysis — carried to order/jobs for real placement (FR-SCHED-006).</summary>
+    public decimal? BoundingWidthMm { get; private set; }
+    public decimal? BoundingDepthMm { get; private set; }
+    public decimal? BoundingHeightMm { get; private set; }
+
     private QuoteItem() { }
 
     internal static QuoteItem Create(
@@ -23,7 +32,12 @@ public class QuoteItem : Entity<Guid>
         PrintConfiguration configuration,
         Money unitPrice,
         int estimatedPrintMinutes,
-        decimal estimatedMaterialGrams)
+        decimal estimatedMaterialGrams,
+        decimal materialCostAmount,
+        decimal machineTimeCostAmount,
+        decimal? boundingWidthMm,
+        decimal? boundingDepthMm,
+        decimal? boundingHeightMm)
     {
         if (quantity < 1) throw new ArgumentOutOfRangeException(nameof(quantity), "Quantity must be at least 1");
 
@@ -36,7 +50,12 @@ public class QuoteItem : Entity<Guid>
             Configuration = configuration,
             UnitPrice = unitPrice,
             EstimatedPrintMinutes = estimatedPrintMinutes,
-            EstimatedMaterialGrams = estimatedMaterialGrams
+            EstimatedMaterialGrams = estimatedMaterialGrams,
+            MaterialCostAmount = materialCostAmount,
+            MachineTimeCostAmount = machineTimeCostAmount,
+            BoundingWidthMm = boundingWidthMm,
+            BoundingDepthMm = boundingDepthMm,
+            BoundingHeightMm = boundingHeightMm
         };
     }
 }

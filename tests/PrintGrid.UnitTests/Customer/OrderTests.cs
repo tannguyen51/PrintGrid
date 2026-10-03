@@ -1,3 +1,4 @@
+using PrintGrid.Modules.Customer.Application.Quotes;
 using PrintGrid.Modules.Customer.Domain.Entities;
 using PrintGrid.Modules.Customer.Domain.Enums;
 using PrintGrid.Modules.Customer.Domain.ValueObjects;
@@ -75,8 +76,13 @@ public class OrderTests
             PrintConfiguration.Create("PLA", "BLACK", 0.2m, 20, 0.3m),
             Money.Of(150_000m),
             estimatedPrintMinutes: 180,
-            estimatedMaterialGrams: 40m);
-        quote.MarkReady(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)));
+            estimatedMaterialGrams: 40m,
+            materialCostAmount: 90_000m,
+            machineTimeCostAmount: 60_000m,
+            boundingWidthMm: 60m,
+            boundingDepthMm: 60m,
+            boundingHeightMm: 40m);
+        quote.MarkReady(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)), PricingParameterSet.Active.Version, "test basis");
 
         var address = Address.Create("1 Dai Co Viet", "Bach Khoa", "Hai Ba Trung", "Ha Noi", "100000");
         return Order.CreateFromQuote(quote, address, "PG-20260902-00001");

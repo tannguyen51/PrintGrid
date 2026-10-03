@@ -132,3 +132,26 @@ Must ≈ 60% khối lượng đặc tả — **sát trần cho phép của tài 
 - [ ] Điền TC- khi Report 5 map AC→test case (13-AC đã ở Gherkin, thuận lợi)
 - [x] UC-014→UC-026 đã viết vào `12-Use-Cases.md` (13→26 UC, có exception branch + change note ánh xạ số UC cũ trong sơ đồ); cột UC của ma trận này đã điền tương ứng
 - [ ] Đối chiếu 09-FR: mỗi FR cần thêm **actor chính + pre/postcondition + ≥1 exception branch** theo đúng form Bước 10
+
+## Review 1 (30/09) — trích xuất P-106 → P-119 và ánh xạ
+
+Nguồn: biên bản `06_Bien-ban-Review-1-GVHD.md`. Quy ước như B1: mỗi phát biểu nghiệp vụ mới = một P.
+
+| Mã | Phát biểu (tóm) | FR | BR | UC | Actor mới |
+|---|---|---|---|---|---|
+| P-106 | In không kịp: phân lô số lượng; SLL thì liên hệ KH đề xuất tiến độ | FR-SCHED-006/007 (AC sửa) | BR-SCHED-010/011 | UC-011/012 | — |
+| P-107 | Tính giá có nhân viên thẩm định, không auto hoàn toàn | FR-ANAL-006 🆕 | BR-QUOTE-008 | UC-029 🆕 | **Order Staff** |
+| P-108 | Nhà in nhận offer, pick/accept; nhân viên/hệ thống chọn | FR-LAB-004 (AC sửa) | BR-ASSIGN-010 (supersedes 008) | UC-004 (sửa) | — |
+| P-109 | Deposit mọi đơn + trả theo tiến độ giao hàng; hủy đơn sau đặt phải xử | FR-CUST-012 🆕 | BR-PAY-007/008/010 ⚠B19/B20 | UC-031 🆕 | — |
+| P-110 | Lab tự QC + ảnh proof; nhân viên duyệt mới được gửi về hub | FR-ANAL-007 🆕, FR-LAB-005 (AC) | BR-QC-011/012 | UC-030 🆕 | **Order Staff** |
+| P-111 | Chuỗi bằng chứng file: hash + email KH + partner ack (mục tiêu = chứng minh bàn giao/SHTT) | FR-CUST-002 (AC), FR-LAB-004 (AC) | BR-IP-001..003 | UC-001/004 (sửa) | — |
+| P-112 | Gom đơn giao tối ưu tự động; batch công việc mỗi lab về hub theo chuyến | FR-HUB-006 🆕, FR-LAB-008 🆕 | BR-LOG-001/002/005 | UC-017 (sửa), UC-033 🆕 | — |
+| P-113 | Phí vận chuyển tính vào đơn KH, cho phép lỗ có ngưỡng, thành BR | FR-CUST-006 (AC) | BR-LOG-004 | UC-001 (sửa) | — |
+| P-114 | Điều phối theo category (chất liệu/giá/feedback/%) | FR-SCHED-004 (AC), FR-LAB-002 (AC) | BR-ASSIGN-009 | UC-011 (sửa) | — |
+| P-115 | Khách không có file: luồng thiết kế thu phí nhiều giai đoạn; bản quyền của KH, cấm dùng lại | FR-CUST-013 🆕 | BR-IP-004 | UC-032 🆕 | — |
+| P-116 | Tồn kho: nhập/xuất có mã GD, +- liên tục, sai số 1–5%, đề xuất khi thiếu | FR-LAB-003 (AC) | BR-STOCK-001..003 | UC-004/005 (sửa) | — |
+| P-117 | Xử trễ phía khách: log mỗi request; timeout → giữ promise gốc / đóng STALE | FR-ANAL-004, FR-CUST-011 (AC) | BR-NOTIFY-003/004 | UC-007/012 (sửa) | — |
+| P-118 | Công khai giá + thương lượng % với partner; allowance vận chuyển lab→hub | FR-ANAL-003 (AC) | BR-PAY-009, BR-LOG-003 ⚠B22 | UC-021 (sửa) | — |
+| P-119 | Partner là hộp đen: 1 máy tính + file server; không quản máy nội bộ | FR-LAB-002 (AC) | BR-LAB-009 | UC-014 (sửa) | — |
+
+**Số mới sau Review 1:** 103 BR · 49 FR · 33 UC · 17 NFR core · actor mới **Order Staff** → BCD phải nâng lên **10 entity (vượt trần 9!)** — hướng xử lý đề xuất: gộp *Hub QC Staff + Hub Fulfillment Staff + Order Staff* thành 1 entity **Hub & Order Staff** ở BCD (is-a hợp lệ) để về 8; UCD cấp 1 giữ actor tách. Chờ nhóm duyệt (B25).

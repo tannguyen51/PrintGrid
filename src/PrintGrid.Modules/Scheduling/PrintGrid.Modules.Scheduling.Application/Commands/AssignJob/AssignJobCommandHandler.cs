@@ -83,31 +83,51 @@ public class AssignJobCommandHandler : IRequestHandler<AssignJobCommand, Result<
                 Error.Conflict("No capable machine has capacity before the internal due date"));
 
         var maxCost = proposals.Max(p => p.EstimatedCost);
-        var best = _scorer.Rank(job, proposals, maxCost)[0];
+        var ranked = _scorer.Rank(job, proposals, maxCost);
 
-        var assignment = job.AssignTo(
-            best.Placement.Candidate.Lab.Id,
-            best.Placement.Candidate.Machine.Id,
-            best.Placement.PlannedStartUtc,
-            best.Placement.PlannedEndUtc,
-            best.Score);
+        // Try candidates best-score-first; the DB EXCLUDE constraint on scheduling.jobs
+        // (machine_id, planned window) is the final arbiter against concurrent placers
+        // (NFR-REL-004 "impossible by construction"). On conflict the tracked changes are
+        // discarded, the job is re-read fresh, and the next candidate is attempted.
+        foreach (var best in ranked)
+        {
+            var assignment = job.AssignTo(
+                best.Placement.Candidate.Lab.Id,
+                best.Placement.Candidate.Machine.Id,
+                best.Placement.PlannedStartUtc,
+                best.Placement.PlannedEndUtc,
+                best.Score);
 
-        if (assignment.IsFailure)
-            return Result.Failure<AssignmentResultDto>(assignment.Error);
+            if (assignment.IsFailure)
+                return Result.Failure<AssignmentResultDto>(assignment.Error);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (await _unitOfWork.TrySaveChangesSafeAsync(cancellationToken))
+            {
+                _logger.LogInformation(
+                    "Job {JobId} assigned to lab {LabId} machine {MachineId} with score {Score}",
+                    job.Id, job.LabId, job.MachineId, best.Score);
 
-        _logger.LogInformation(
-            "Job {JobId} assigned to lab {LabId} machine {MachineId} with score {Score}",
-            job.Id, job.LabId, job.MachineId, best.Score);
+                return Result.Success(new AssignmentResultDto(
+                    job.Id,
+                    best.Placement.Candidate.Lab.Id,
+                    best.Placement.Candidate.Machine.Id,
+                    best.Placement.PlannedStartUtc,
+                    best.Placement.PlannedEndUtc,
+                    best.Score,
+                    best.Breakdown));
+            }
 
-        return Result.Success(new AssignmentResultDto(
-            job.Id,
-            best.Placement.Candidate.Lab.Id,
-            best.Placement.Candidate.Machine.Id,
-            best.Placement.PlannedStartUtc,
-            best.Placement.PlannedEndUtc,
-            best.Score,
-            best.Breakdown));
+            _logger.LogWarning(
+                "Placement race on job {JobId} for machine {MachineId} — trying next candidate",
+                job.Id, best.Placement.Candidate.Machine.Id);
+
+            var reloaded = await _jobs.GetByIdAsync(command.JobId, cancellationToken);
+            if (reloaded is null)
+                return Result.Failure<AssignmentResultDto>(Error.NotFound("Job", command.JobId));
+            job = reloaded;
+        }
+
+        return Result.Failure<AssignmentResultDto>(
+            Error.Conflict("Every candidate placement collided with a concurrent booking — retry shortly"));
     }
 }

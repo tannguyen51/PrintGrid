@@ -74,7 +74,7 @@ Hanoi, March 2027
 | 7.5 | W5 | Checklist & defect-taxonomy manager (FR-ADMIN-005) | Medium | 4 |
 | 7.6 | W5 | System health monitor + job replay (UC-025) | Medium | 5 |
 | 8 | | **Payments & Security (decision 23/09)** | | **12** |
-| 8.1 | W6 | Gateway integration: hosted checkout + webhook verification (FR-CUST-008, BR-PAY-005) | Complex | 7 |
+| 8.1 | W6 | SEPay gateway: hosted QR checkout + webhook&order-confirmation verification (FR-CUST-008, BR-PAY-005) + staged deposit/balance (FR-CUST-012, BR-PAY-007/008) | Complex | 7 |
 | 8.2 | W7 | Card-data hardening + reconciliation drills (NFR-SEC-009) | Medium | 5 |
 | 9 | | **Simulation, Evaluation & Real-lab Trial** | | **22** |
 | 9.1 | W4+ | Simulation framework (order generator + fault injection) + baseline comparison | Complex | 12 |
@@ -85,11 +85,11 @@ Hanoi, March 2027
 | 10.3 | W2 | Async job & object-storage infrastructure | Medium | 5 |
 | 11 | | **Quality & Process** | | **20** |
 | 11.1 | ongoing | Integration testing & bug fixing | Complex | 12 |
-| 11.2 | W8–9 | NFR verification suite (16 core NFRs, Report 5 link) | Medium | 5 |
+| 11.2 | W8–9 | NFR verification suite (17 core NFRs, Report 5 link) | Medium | 5 |
 | 11.3 | ongoing | Documentation sync (SRS/SDD/user guides) | Simple | 3 |
 | | | **Total Estimated Effort (man-days)** | | **260** |
 
-*FR details from `documentation/project/requirements/09-Functional-Requirements.md` (§0 matrix, 43 FRs); complexity grading: Simple ≤ 4 man-days, Medium 5–6, Complex ≥ 8. Rows 5.9 and parts of 6/7 are Should/Could — they are the planned cut buffer.*
+*FR details from `documentation/project/requirements/09-Functional-Requirements.md` (§0 matrix, 49 FRs — incl. 6 added by GVHD Review 1, 30/09); complexity grading: Simple ≤ 4 man-days, Medium 5–6, Complex ≥ 8. Rows 5.9 and parts of 6/7 are Should/Could — they are the planned cut buffer.*
 
 **Summary per phase (semester plan, 5 team members):**
 
@@ -102,6 +102,8 @@ Hanoi, March 2027
 | | | **Total** | | **260** |
 
 > **Capacity note:** the register budget is 6 credits × 5 members × 26 weeks × 2 man-days/week = **260 man-days**; the WBS consumes it exactly. Of the estimate, **Must-have ≈ 215 man-days** and ≈ 45 man-days sit in Should/Could rows (5.9, 7.6, 11.3, advanced parts of 6.x) — this buffer is the agreed cut-list from `capstone/workbook/02_Phan-bien-de-tai.md` §4, so slippage cuts scope, never quality.
+
+> **Review 1 rebalance (30/09):** GVHD Review 1 added ~17 man-days of work (staged deposit 3d, quote-review workbench 3d, proof-approval queue 2d, hash+email evidence 2d, shipment merge 2d, lab→hub batch runs 2d, split-quantity 1d, design intake 2d, + settlement columns 1d). The 260-day envelope is **kept** by funding it from the Should/Could buffer: 5.9 batch-consolidation (3d→cut first), machine Gantt 6.x advanced view (LAB-006, ~3d→cut candidate), 7.6 and advanced parts of 6.x (~11d). Must-have work did not shrink; the plan's cut list simply got a concrete first victim list. Tracker of record: `capstone/planning/PrintGrid-Ke-hoach-1-Trang.xlsx` (62 rows, markers 🆕R1/🔧R1/❌R1).
 
 #### 1.2 Project Objectives
 
@@ -169,7 +171,7 @@ Overall objective: build and evaluate a platform that demonstrates **capacity-aw
 ```mermaid
 flowchart LR
     subgraph P0["Phase 0 — Analysis & Design (Weeks 1–4)"]
-        A["Requirements<br/>44 FR · 43 NFR · 71 BR"]
+        A["Requirements<br/>49 FR · 33 UC · 103 BR · 17 NFR"]
         B["Design<br/>Architecture · ERD · API contract (OpenAPI)"]
         C["Sprint Backlog<br/>~280 story points, MVP-first"]
     end
@@ -201,7 +203,7 @@ flowchart LR
 
 #### 2.2 Quality Management
 
-- **Defect Prevention**: capture business rules (71 BR) during analysis; define OpenAPI spec before frontend coding to avoid contract mismatch.
+- **Defect Prevention**: capture business rules (103 BR after Review 1) during analysis; define OpenAPI spec before frontend coding to avoid contract mismatch.
 - **Reviewing**: every PR reviewed by at least 1 reviewer; checklist (logic, style, tests).
 - **Unit Testing**: test domain/scheduling logic first (highest risk); xUnit + NSubstitute.
 - **Integration Testing**: WebApplicationFactory tests for main APIs.
