@@ -44,11 +44,20 @@ export function useCompleteJob() {
   })
 }
 
+export interface InspectJobPayload {
+  id: string
+  passed: boolean
+  checklistResults: { itemName: string; status: 'Pass' | 'Fail' | 'NotApplicable'; note?: string }[]
+  photoUrls: string[]
+  faultAttribution?: 'Lab' | 'Hub' | 'Customer'
+  note?: string
+}
+
 export function useInspectJob() {
   const invalidate = useInvalidate()
   return useMutation({
-    mutationFn: ({ id, passed, note }: { id: string; passed: boolean; note?: string }) =>
-      apiClient.post(`/jobs/${id}/inspect`, { passed, note }),
+    mutationFn: ({ id, passed, checklistResults, photoUrls, faultAttribution, note }: InspectJobPayload) =>
+      apiClient.post(`/jobs/${id}/inspect`, { passed, checklistResults, photoUrls, faultAttribution, note }),
     onSuccess: invalidate,
   })
 }

@@ -99,4 +99,115 @@ public class JobLifecycleTests
         result.IsFailure.Should().BeTrue();
         job.Status.Should().Be(JobStatus.Assigned);
     }
+
+    [Fact]
+    public void Validator_fails_when_no_photo_evidence_provided_AC01()
+    {
+        var validator = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommandValidator();
+        var command = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommand(
+            Guid.NewGuid(),
+            Passed: true,
+            ChecklistResults: new[] { new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.ChecklistItemResult("Kích thước", "Pass") },
+            PhotoUrls: Array.Empty<string>()
+        );
+
+        var result = validator.Validate(command);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "PhotoUrls");
+    }
+
+    [Fact]
+    public void Validator_fails_when_checklist_item_has_invalid_status_AC02()
+    {
+        var validator = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommandValidator();
+        var command = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommand(
+            Guid.NewGuid(),
+            Passed: true,
+            ChecklistResults: new[] { new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.ChecklistItemResult("Kích thước", "InvalidStatus") },
+            PhotoUrls: new[] { "https://cdn.printgrid.dev/qc/sample.jpg" }
+        );
+
+        var result = validator.Validate(command);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("PASS, FAIL, or NotApplicable"));
+    }
+
+    [Fact]
+    public void Validator_fails_when_failed_inspection_lacks_fault_attribution_AC03()
+    {
+        var validator = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommandValidator();
+        var command = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommand(
+            Guid.NewGuid(),
+            Passed: false,
+            ChecklistResults: new[] { new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.ChecklistItemResult("Kích thước", "Fail") },
+            PhotoUrls: new[] { "https://cdn.printgrid.dev/qc/defect.jpg" },
+            FaultAttribution: null
+        );
+
+        var result = validator.Validate(command);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "FaultAttribution");
+    }
+
+    [Fact]
+    public void Job_FailInspectionWithReprint_creates_events_and_fails_job_FR_HUB_003_AC01()
+    {
+        var job = CreateAssignedJob();
+        job.Accept();
+        job.Start(DateTime.UtcNow);
+        job.Complete(DateTime.UtcNow, 60);
+
+        var reprintJobId = Guid.NewGuid();
+        var photoUrls = new[] { "https://cdn.printgrid.dev/qc/defect.jpg" };
+
+        var result = job.FailInspectionWithReprint(reprintJobId, FaultAttribution.Lab, "Bề mặt nứt", photoUrls);
+
+        result.IsSuccess.Should().BeTrue();
+        job.Status.Should().Be(JobStatus.Failed);
+        job.FailureReason.Should().Be("Bề mặt nứt");
+
+        job.DomainEvents.Should().ContainSingle(e => e is JobInspectionFailedReprintTriggeredEvent);
+        var reprintEvt = job.DomainEvents.OfType<JobInspectionFailedReprintTriggeredEvent>().Single();
+        reprintEvt.ReprintJobId.Should().Be(reprintJobId);
+        reprintEvt.FaultAttribution.Should().Be("Lab");
+        reprintEvt.IsUrgent.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Job_FailInspectionCustomerFault_emits_notification_event_FR_HUB_003_AC02()
+    {
+        var job = CreateAssignedJob();
+        job.Accept();
+        job.Start(DateTime.UtcNow);
+        job.Complete(DateTime.UtcNow, 60);
+
+        var photoUrls = new[] { "https://cdn.printgrid.dev/qc/defect.jpg" };
+        var message = "Lỗi file 3D của khách hàng";
+
+        var result = job.FailInspectionCustomerFault("Lỗi mesh", photoUrls, message);
+
+        result.IsSuccess.Should().BeTrue();
+        job.Status.Should().Be(JobStatus.Failed);
+
+        job.DomainEvents.Should().ContainSingle(e => e is CustomerFaultInspectionFailedEvent);
+        var custEvt = job.DomainEvents.OfType<CustomerFaultInspectionFailedEvent>().Single();
+        custEvt.CustomerNotificationMessage.Should().Be(message);
+    }
+
+    [Fact]
+    public void Job_MarkInspectionPassed_completes_job_and_emits_event()
+    {
+        var job = CreateAssignedJob();
+        job.Accept();
+        job.Start(DateTime.UtcNow);
+        job.Complete(DateTime.UtcNow, 60);
+
+        var photoUrls = new[] { "https://cdn.printgrid.dev/qc/ok.jpg" };
+        var result = job.MarkInspectionPassed(photoUrls);
+
+        result.IsSuccess.Should().BeTrue();
+        job.Status.Should().Be(JobStatus.Completed);
+        job.DomainEvents.Should().ContainSingle(e => e is JobInspectionPassedEvent);
+    }
 }
+

@@ -167,5 +167,58 @@ public class Job : AggregateRoot<Guid>
         return Result.Success();
     }
 
-    public void MarkInspectionPassed() => Status = JobStatus.Completed;
+    public Result MarkInspectionPassed(IReadOnlyList<string> photoUrls)
+    {
+        if (Status != JobStatus.AwaitingInspection)
+            return Result.Failure(Error.Conflict($"Job in state {Status} cannot be inspected"));
+
+        Status = JobStatus.Completed;
+        AddDomainEvent(new JobInspectionPassedEvent(Id, photoUrls));
+        return Result.Success();
+    }
+
+    public Result FailInspectionWithReprint(
+        Guid reprintJobId,
+        FaultAttribution fault,
+        string failureReason,
+        IReadOnlyList<string> photoUrls)
+    {
+        if (Status != JobStatus.AwaitingInspection)
+            return Result.Failure(Error.Conflict($"Job in state {Status} cannot be inspected"));
+
+        Status = JobStatus.Failed;
+        FailureReason = failureReason;
+
+        AddDomainEvent(new JobFailedEvent(Id, LabId ?? Guid.Empty, MachineId ?? Guid.Empty, failureReason, AttemptNumber));
+        AddDomainEvent(new JobInspectionFailedReprintTriggeredEvent(
+            Id,
+            reprintJobId,
+            fault.ToString(),
+            failureReason,
+            photoUrls,
+            InternalDueDate,
+            IsUrgent: true));
+
+        return Result.Success();
+    }
+
+    public Result FailInspectionCustomerFault(
+        string failureReason,
+        IReadOnlyList<string> photoUrls,
+        string customerNotificationMessage)
+    {
+        if (Status != JobStatus.AwaitingInspection)
+            return Result.Failure(Error.Conflict($"Job in state {Status} cannot be inspected"));
+
+        Status = JobStatus.Failed;
+        FailureReason = failureReason;
+
+        AddDomainEvent(new CustomerFaultInspectionFailedEvent(
+            Id,
+            failureReason,
+            photoUrls,
+            customerNotificationMessage));
+
+        return Result.Success();
+    }
 }

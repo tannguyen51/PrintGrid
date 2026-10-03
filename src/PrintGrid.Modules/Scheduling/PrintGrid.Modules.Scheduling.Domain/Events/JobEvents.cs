@@ -27,3 +27,22 @@ public sealed record ReschedulingTriggeredEvent(
     string Trigger,
     DateOnly InternalDueDate) : DomainEvent;
 
+public sealed record JobInspectionPassedEvent(
+    Guid JobId,
+    IReadOnlyList<string> PhotoUrls) : DomainEvent;
+
+public sealed record JobInspectionFailedReprintTriggeredEvent(
+    Guid OriginalJobId,
+    Guid ReprintJobId,
+    string FaultAttribution,
+    string? FailureReason,
+    IReadOnlyList<string> PhotoUrls,
+    DateOnly InternalDueDate,
+    bool IsUrgent) : DomainEvent;
+
+public sealed record CustomerFaultInspectionFailedEvent(
+    Guid JobId,
+    string? FailureReason,
+    IReadOnlyList<string> PhotoUrls,
+    string CustomerNotificationMessage) : DomainEvent;
+
