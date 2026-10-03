@@ -16,6 +16,10 @@ export interface ThreeDModel {
   boundingHeightMm?: number | null
   volumeCm3?: number | null
   estimatedPrintMinutes?: number | null
+  estimatedMaterialGrams?: number | null
+  isWatertight?: boolean | null
+  isManifold?: boolean | null
+  isPrintable?: boolean | null
   geometryMessage?: string | null
   storageKey?: string | null
 }

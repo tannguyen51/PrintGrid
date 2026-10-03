@@ -24,6 +24,8 @@ public class SlicingServiceTests
         geometry.HeightMm.Should().BeApproximately(10m, 1e-4m);
         geometry.VolumeCm3.Should().BeApproximately(ExpectedVolumeCm3, 1e-4m);
         geometry.FaceCount.Should().Be(12);
+        geometry.IsWatertight.Should().BeTrue();
+        geometry.IsManifold.Should().BeTrue();
     }
 
     [Fact]
@@ -56,6 +58,20 @@ public class SlicingServiceTests
 
         geometry.IsValid.Should().BeFalse();
         geometry.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_open_mesh_reports_not_watertight()
+    {
+        const string triangle = "v 0 0 0\nv 10 0 0\nv 0 10 0\nf 1 2 3\n";
+
+        var geometry = await _slicing.AnalyzeAsync(
+            new MemoryStream(Encoding.ASCII.GetBytes(triangle)), "OBJ");
+
+        geometry.IsValid.Should().BeTrue();
+        geometry.IsWatertight.Should().BeFalse();
+        geometry.IsManifold.Should().BeTrue();
+        geometry.ErrorMessage.Should().Contain("not watertight");
     }
 
     [Fact]

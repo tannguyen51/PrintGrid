@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PrintGrid.Infrastructure.Shared.Persistence;
@@ -12,9 +13,11 @@ using PrintGrid.Infrastructure.Shared.Persistence;
 namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 {
     [DbContext(typeof(PrintGridDbContext))]
-    partial class PrintGridDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261001152858_AddModelPrintabilityAnalysis")]
+    partial class AddModelPrintabilityAnalysis
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -42,14 +45,6 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("IsEmailVerified")
-                        .HasColumnType("boolean");
-
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -61,16 +56,6 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
-
-                    b.Property<string[]>("Roles")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<DateTime?>("VerificationTokenExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("VerificationTokenHash")
-                        .HasColumnType("text");
 
                     b.HasKey("Id");
 

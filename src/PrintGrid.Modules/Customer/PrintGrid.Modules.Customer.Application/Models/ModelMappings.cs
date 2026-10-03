@@ -20,6 +20,10 @@ public static class ModelMappings
         model.BoundingHeightMm,
         model.VolumeCm3,
         model.EstimatedPrintMinutes,
+        model.EstimatedMaterialGrams,
+        model.IsWatertight,
+        model.IsManifold,
+        model.IsPrintable,
         model.GeometryMessage,
         model.StorageKey);
 }

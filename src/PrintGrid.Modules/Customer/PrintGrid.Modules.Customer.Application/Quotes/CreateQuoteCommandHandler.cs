@@ -38,10 +38,17 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
         if (model is null)
             return Result.Failure<QuoteDto>(Error.NotFound("Model", command.ModelId));
 
+        if (model.GeometryStatus != Domain.Enums.GeometryStatus.Ready)
+            return Result.Failure<QuoteDto>(Error.Validation("Model chưa được phân tích hình học xong"));
+
+        if (model.IsPrintable != true)
+            return Result.Failure<QuoteDto>(Error.Validation(
+                model.GeometryMessage ?? "Model không thể in trên bất kỳ máy nào trong mạng lưới"));
+
         // Volume & reference print time come from the async geometry analysis; fall back to
         // a deterministic envelope if analysis hasn't run yet.
-        var volumeCm3 = model.VolumeCm3 ?? 1m;
-        var baseMinutes = model.EstimatedPrintMinutes ?? 60;
+        var volumeCm3 = model.VolumeCm3!.Value;
+        var baseMinutes = model.EstimatedPrintMinutes!.Value;
 
         var config = PrintConfiguration.Create(
             command.MaterialCode,

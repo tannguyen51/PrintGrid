@@ -35,6 +35,10 @@ public class Model : AggregateRoot<Guid>
     public decimal? BoundingHeightMm { get; private set; }
     public decimal? VolumeCm3 { get; private set; }
     public int? EstimatedPrintMinutes { get; private set; }
+    public decimal? EstimatedMaterialGrams { get; private set; }
+    public bool? IsWatertight { get; private set; }
+    public bool? IsManifold { get; private set; }
+    public bool? IsPrintable { get; private set; }
     public string? GeometryMessage { get; private set; }
 
     /// <summary>
@@ -112,15 +116,24 @@ public class Model : AggregateRoot<Guid>
         decimal boundingDepthMm,
         decimal boundingHeightMm,
         decimal volumeCm3,
-        int estimatedPrintMinutes)
+        int estimatedPrintMinutes,
+        decimal estimatedMaterialGrams,
+        bool isWatertight,
+        bool isManifold,
+        bool isPrintable,
+        string? message = null)
     {
         BoundingWidthMm = boundingWidthMm;
         BoundingDepthMm = boundingDepthMm;
         BoundingHeightMm = boundingHeightMm;
         VolumeCm3 = volumeCm3;
         EstimatedPrintMinutes = estimatedPrintMinutes;
+        EstimatedMaterialGrams = estimatedMaterialGrams;
+        IsWatertight = isWatertight;
+        IsManifold = isManifold;
+        IsPrintable = isPrintable;
         GeometryStatus = GeometryStatus.Ready;
-        GeometryMessage = null;
+        GeometryMessage = message;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -131,6 +144,7 @@ public class Model : AggregateRoot<Guid>
     public void MarkGeometryFailed(string reason)
     {
         GeometryStatus = GeometryStatus.Failed;
+        IsPrintable = false;
         GeometryMessage = reason;
         UpdatedAt = DateTime.UtcNow;
     }

@@ -16,6 +16,10 @@ public record ModelDto(
     decimal? BoundingHeightMm,
     decimal? VolumeCm3,
     int? EstimatedPrintMinutes,
+    decimal? EstimatedMaterialGrams,
+    bool? IsWatertight,
+    bool? IsManifold,
+    bool? IsPrintable,
     string? GeometryMessage,
     string? StorageKey);
 

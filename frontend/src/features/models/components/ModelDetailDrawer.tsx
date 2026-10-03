@@ -112,9 +112,17 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder }:
                         <Typography variant="caption" color="text.disabled">Ước tính in</Typography>
                         <Typography color="text.primary" sx={{ fontSize: '0.9rem' }}>
                           {model.estimatedPrintMinutes != null ? `${model.estimatedPrintMinutes} phút` : '—'}
+                          {model.estimatedMaterialGrams != null ? ` · ${model.estimatedMaterialGrams.toFixed(1)} g` : ''}
                         </Typography>
                       </Box>
                     </Stack>
+                    <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+                      <Chip size="small" color={model.isWatertight ? 'success' : 'error'} label={model.isWatertight ? 'Kín' : 'Không kín'} />
+                      <Chip size="small" color={model.isManifold ? 'success' : 'error'} label={model.isManifold ? 'Manifold' : 'Non-manifold'} />
+                    </Stack>
+                    {model.isPrintable === false && (
+                      <Typography color="#ff453a" sx={{ mt: 1.5 }}>{model.geometryMessage ?? 'Model không thể in trong mạng lưới hiện tại.'}</Typography>
+                    )}
                   </Box>
                 )}
               </Box>
@@ -138,7 +146,7 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder }:
               fullWidth
               startIcon={<LocalShippingOutlined />}
               onClick={() => onOrder(model)}
-              disabled={model.geometryStatus === 'Failed'}
+              disabled={model.geometryStatus !== 'Ready' || model.isPrintable !== true}
             >
               Đặt in
             </Button>

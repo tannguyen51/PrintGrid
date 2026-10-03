@@ -52,6 +52,7 @@ internal static class StlMeshParser
         var max = new double[] { double.MinValue, double.MinValue, double.MinValue };
         double signedVolume = 0, absVolume = 0;
         var faceCount = 0;
+        var edges = new Dictionary<Edge, int>();
 
         for (var i = 0; i < triangleCount; i++)
         {
@@ -63,6 +64,7 @@ internal static class StlMeshParser
             var v3 = ReadVector(record, 36);
 
             UpdateBounds(min, max, v1, v2, v3);
+            CountEdges(edges, v1, v2, v3);
             var tri = SignedTetraVolume(v1, v2, v3);
             signedVolume += tri;
             absVolume += Math.Abs(tri);
@@ -78,7 +80,9 @@ internal static class StlMeshParser
             HeightMm: max[2] - min[2],
             VolumeCm3: volume / 1000.0,
             VertexCount: faceCount * 3,
-            FaceCount: faceCount);
+            FaceCount: faceCount,
+            IsWatertight: edges.Count > 0 && edges.Values.All(count => count == 2),
+            IsManifold: edges.Values.All(count => count <= 2));
     }
 
     private static MeshStats? TryParseAscii(Stream stream)
@@ -88,6 +92,7 @@ internal static class StlMeshParser
         var min = new double[] { double.MaxValue, double.MaxValue, double.MaxValue };
         var max = new double[] { double.MinValue, double.MinValue, double.MinValue };
         double signedVolume = 0, absVolume = 0;
+        var edges = new Dictionary<Edge, int>();
 
         string? line;
         var sawFacet = false;
@@ -136,6 +141,7 @@ internal static class StlMeshParser
             if (verts.Count == 3)
             {
                 var tri = SignedTetraVolume(verts[0], verts[1], verts[2]);
+                CountEdges(edges, verts[0], verts[1], verts[2]);
                 signedVolume += tri;
                 absVolume += Math.Abs(tri);
                 verts.Clear();
@@ -151,7 +157,9 @@ internal static class StlMeshParser
             HeightMm: max[2] == double.MinValue ? 0 : max[2] - min[2],
             VolumeCm3: volume / 1000.0,
             VertexCount: facetCount * 3,
-            FaceCount: facetCount);
+            FaceCount: facetCount,
+            IsWatertight: edges.Count > 0 && edges.Values.All(count => count == 2),
+            IsManifold: edges.Values.All(count => count <= 2));
     }
 
     private static (double, double, double) ReadVector(ReadOnlySpan<byte> record, int offset)
@@ -193,5 +201,33 @@ internal static class StlMeshParser
         var cy = b.Z * c.X - b.X * c.Z;
         var cz = b.X * c.Y - b.Y * c.X;
         return (a.X * cx + a.Y * cy + a.Z * cz) / 6.0;
+    }
+
+    private static void CountEdges(Dictionary<Edge, int> edges, Point a, Point b, Point c)
+    {
+        Increment(edges, Edge.Create(a, b));
+        Increment(edges, Edge.Create(b, c));
+        Increment(edges, Edge.Create(c, a));
+    }
+
+    private static void Increment(Dictionary<Edge, int> edges, Edge edge) =>
+        edges[edge] = edges.GetValueOrDefault(edge) + 1;
+
+    private readonly record struct Point(double X, double Y, double Z) : IComparable<Point>
+    {
+        public int CompareTo(Point other)
+        {
+            var x = X.CompareTo(other.X);
+            if (x != 0) return x;
+            var y = Y.CompareTo(other.Y);
+            return y != 0 ? y : Z.CompareTo(other.Z);
+        }
+
+        public static implicit operator Point((double X, double Y, double Z) value) => new(value.X, value.Y, value.Z);
+    }
+
+    private readonly record struct Edge(Point A, Point B)
+    {
+        public static Edge Create(Point a, Point b) => a.CompareTo(b) <= 0 ? new(a, b) : new(b, a);
     }
 }
