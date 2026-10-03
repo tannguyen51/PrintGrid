@@ -11,7 +11,8 @@ public class Customer : AggregateRoot<Guid>
     public string? PhoneNumber { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
-
+    public bool IsActive { get; private set; } = true;
+    public string[] Roles { get; private set; } = ["Customer"];
     private Customer() { }
 
     public static Customer Register(string email, string passwordHash, string fullName, string? phoneNumber)
@@ -34,4 +35,11 @@ public class Customer : AggregateRoot<Guid>
     }
 
     public void RecordLogin() => LastLoginAt = DateTime.UtcNow;
+
+    public void Deactivate() => IsActive = false;
+    public void Activate() => IsActive = true;
+    public void AssignRole(string role)
+    {
+        Roles = [role];
+    }
 }
