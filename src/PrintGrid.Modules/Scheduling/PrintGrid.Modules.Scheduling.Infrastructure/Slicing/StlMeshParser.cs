@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using System.Globalization;
 using System.Text;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
@@ -103,9 +102,9 @@ internal static class StlMeshParser
                     break;
                 case "vertex":
                     if (tokens.Length >= 4 &&
-                        double.TryParse(tokens[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var vx) &&
-                        double.TryParse(tokens[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var vy) &&
-                        double.TryParse(tokens[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var vz))
+                        double.TryParse(tokens[1], out var vx) &&
+                        double.TryParse(tokens[2], out var vy) &&
+                        double.TryParse(tokens[3], out var vz))
                     {
                         UpdatePoint(min, max, vx, vy, vz);
                     }
@@ -128,9 +127,9 @@ internal static class StlMeshParser
             var tokens = vline.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (tokens.Length == 0 || tokens[0] != "vertex" || tokens.Length < 4) continue;
 
-            if (!double.TryParse(tokens[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var vx) ||
-                !double.TryParse(tokens[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var vy) ||
-                !double.TryParse(tokens[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var vz)) continue;
+            if (!double.TryParse(tokens[1], out var vx) ||
+                !double.TryParse(tokens[2], out var vy) ||
+                !double.TryParse(tokens[3], out var vz)) continue;
 
             verts.Add((vx, vy, vz));
             if (verts.Count == 3)

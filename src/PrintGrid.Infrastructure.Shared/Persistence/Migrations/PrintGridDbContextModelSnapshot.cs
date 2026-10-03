@@ -283,9 +283,6 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<int?>("ActualPrintMinutes")
                         .HasColumnType("integer");
 
-                    b.Property<DateTime?>("AssignedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<int>("AttemptNumber")
                         .HasColumnType("integer");
 
