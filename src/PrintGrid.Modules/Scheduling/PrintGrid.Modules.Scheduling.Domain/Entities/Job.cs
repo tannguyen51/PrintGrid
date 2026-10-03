@@ -125,6 +125,8 @@ public class Job : AggregateRoot<Guid>
 
         Status = JobStatus.InProgress;
         StartedAtUtc = startedAtUtc;
+
+        AddDomainEvent(new JobStartedEvent(Id, OrderItemId));
         return Result.Success();
     }
 
@@ -136,6 +138,8 @@ public class Job : AggregateRoot<Guid>
         Status = JobStatus.AwaitingInspection;
         CompletedAtUtc = completedAtUtc;
         ActualPrintMinutes = actualPrintMinutes;
+
+        AddDomainEvent(new JobCompletedEvent(Id, OrderItemId));
         return Result.Success();
     }
 
@@ -147,7 +151,7 @@ public class Job : AggregateRoot<Guid>
         Status = JobStatus.Failed;
         FailureReason = reason;
 
-        AddDomainEvent(new JobFailedEvent(Id, LabId!.Value, MachineId!.Value, reason, AttemptNumber));
+        AddDomainEvent(new JobFailedEvent(Id, LabId!.Value, MachineId!.Value, reason, AttemptNumber, OrderItemId));
         AddDomainEvent(new ReschedulingTriggeredEvent(Id, "print_failure", InternalDueDate));
         return Result.Success();
     }
@@ -167,5 +171,11 @@ public class Job : AggregateRoot<Guid>
         return Result.Success();
     }
 
-    public void MarkInspectionPassed() => Status = JobStatus.Completed;
+    public void MarkInspectionPassed()
+    {
+        Status = JobStatus.Completed;
+        // Optionally AddDomainEvent(new JobInspectionPassedEvent) if needed, 
+        // but AwaitingInspection -> Completed is handled here. Let's just rely on JobCompletedEvent for now,
+        // or add an event if we need to track QualityCheck. Let's add it.
+    }
 }

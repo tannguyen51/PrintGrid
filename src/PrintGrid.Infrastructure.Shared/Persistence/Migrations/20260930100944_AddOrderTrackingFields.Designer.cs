@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PrintGrid.Infrastructure.Shared.Persistence;
@@ -12,9 +13,11 @@ using PrintGrid.Infrastructure.Shared.Persistence;
 namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 {
     [DbContext(typeof(PrintGridDbContext))]
-    partial class PrintGridDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260930100944_AddOrderTrackingFields")]
+    partial class AddOrderTrackingFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -108,10 +111,6 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
-                    b.Property<decimal?>("EstimatedMaterialGrams")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
                     b.Property<int?>("EstimatedPrintMinutes")
                         .HasColumnType("integer");
 
@@ -133,15 +132,6 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
-
-                    b.Property<bool?>("IsManifold")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("IsPrintable")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("IsWatertight")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()

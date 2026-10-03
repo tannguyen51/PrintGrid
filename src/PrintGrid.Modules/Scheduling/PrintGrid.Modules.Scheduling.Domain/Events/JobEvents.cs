@@ -15,7 +15,8 @@ public sealed record JobFailedEvent(
     Guid LabId,
     Guid MachineId,
     string Reason,
-    int AttemptNumber) : DomainEvent;
+    int AttemptNumber,
+    Guid OrderItemId) : DomainEvent;
 
 public sealed record JobDeclinedEvent(
     Guid JobId,
@@ -26,4 +27,12 @@ public sealed record ReschedulingTriggeredEvent(
     Guid JobId,
     string Trigger,
     DateOnly InternalDueDate) : DomainEvent;
+
+public sealed record JobStartedEvent(
+    Guid JobId,
+    Guid OrderItemId) : DomainEvent;
+
+public sealed record JobCompletedEvent(
+    Guid JobId,
+    Guid OrderItemId) : DomainEvent;
 

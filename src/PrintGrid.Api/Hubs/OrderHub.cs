@@ -1,14 +1,21 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using PrintGrid.Api.Authorization;
 
 namespace PrintGrid.Api.Hubs;
 
+[Authorize(Policy = Policies.RequireCustomer)]
 public class OrderHub : Hub
 {
-    public Task SubscribeToOrder(string orderId) =>
-        Groups.AddToGroupAsync(Context.ConnectionId, OrderGroup(orderId));
+    public override Task OnConnectedAsync()
+    {
+        var customerId = Context.User?.GetCustomerId()?.ToString();
+        if (customerId != null)
+        {
+            Groups.AddToGroupAsync(Context.ConnectionId, CustomerGroup(customerId));
+        }
+        return base.OnConnectedAsync();
+    }
 
-    public Task UnsubscribeFromOrder(string orderId) =>
-        Groups.RemoveFromGroupAsync(Context.ConnectionId, OrderGroup(orderId));
-
-    public static string OrderGroup(string orderId) => $"order:{orderId}";
+    public static string CustomerGroup(string customerId) => $"customer:{customerId}";
 }

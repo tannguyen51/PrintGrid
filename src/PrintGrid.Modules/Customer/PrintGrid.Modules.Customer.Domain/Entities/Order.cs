@@ -20,8 +20,11 @@ public class Order : AggregateRoot<Guid>
     public DateTime CreatedAt { get; private set; }
     public DateTime? ConfirmedAt { get; private set; }
     public string? PaymentTransactionId { get; private set; }
+    public bool IsDelayed { get; private set; }
 
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
+
+    public void MarkAsDelayed() => IsDelayed = true;
 
     private Order() { }
 
@@ -37,7 +40,8 @@ public class Order : AggregateRoot<Guid>
             TotalPrice = quote.TotalPrice,
             PromisedDeliveryDate = quote.PromisedDeliveryDate,
             DeliveryAddress = deliveryAddress,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            IsDelayed = false
         };
 
         foreach (var quoteItem in quote.Items)
