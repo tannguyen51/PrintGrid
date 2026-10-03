@@ -26,6 +26,14 @@ public class JobRepository : IJobRepository
             .OrderBy(j => j.InternalDueDate)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Job>> GetByStatusAsync(
+        JobStatus status,
+        CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .Where(j => j.Status == status)
+            .OrderBy(j => j.InternalDueDate)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Job>> GetActiveByMachineAsync(
         Guid machineId,
         CancellationToken cancellationToken = default) =>

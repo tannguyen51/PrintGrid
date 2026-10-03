@@ -1,11 +1,16 @@
 import { Suspense, lazy } from 'react'
 import { CircularProgress, Box } from '@mui/material'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 
 const LoginPage = lazy(() => import('../features/auth/LoginPage'))
+const RegisterPage = lazy(() => import('../features/auth/RegisterPage'))
+const HomePage = lazy(() => import('../features/home/HomePage'))
+const ModelLibraryPage = lazy(() => import('../features/models/ModelLibraryPage'))
+const OrderConfigPage = lazy(() => import('../features/quotes/OrderConfigPage'))
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'))
 const LabQueuePage = lazy(() => import('../features/lab/LabQueuePage'))
+const HubQCPage = lazy(() => import('../features/hub/HubQCPage'))
 const SchedulingBoardPage = lazy(() => import('../features/scheduling/SchedulingBoardPage'))
 
 function RouteFallback() {
@@ -16,11 +21,34 @@ function RouteFallback() {
   )
 }
 
+/**
+ * Role-based areas. Each demo account (demo@ / lab@ / qc@ / ops@) lands in its own
+ * area only: customers see models/orders, lab staff see the lab queue, hub staff the
+ * QC console, ops the scheduling board. Matches the strict backend role policies.
+ */
 export function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/" element={<HomePage />} />
+        <Route
+          path="/models"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <ModelLibraryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/models/:modelId/order"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <OrderConfigPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/orders"
           element={
@@ -38,6 +66,14 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/hub/qc"
+          element={
+            <ProtectedRoute allowedRoles={['HubQC', 'HubFulfillment']}>
+              <HubQCPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/scheduling"
           element={
             <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
@@ -45,7 +81,6 @@ export function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route path="/" element={<Navigate to="/orders" replace />} />
       </Routes>
     </Suspense>
   )
