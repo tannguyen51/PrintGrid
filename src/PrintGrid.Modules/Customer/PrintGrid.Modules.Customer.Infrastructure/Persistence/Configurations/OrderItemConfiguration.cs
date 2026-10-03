@@ -17,6 +17,7 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.Property(i => i.BoundingWidthMm).HasPrecision(8, 2);
         builder.Property(i => i.BoundingDepthMm).HasPrecision(8, 2);
         builder.Property(i => i.BoundingHeightMm).HasPrecision(8, 2);
+        builder.Property(i => i.ItemStatus).HasMaxLength(32).IsRequired();
         builder.HasIndex(i => i.OrderId);
 
         builder.OwnsOne(i => i.UnitPrice, price =>

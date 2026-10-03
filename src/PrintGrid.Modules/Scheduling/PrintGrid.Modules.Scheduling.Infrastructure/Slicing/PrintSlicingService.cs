@@ -57,7 +57,16 @@ public class PrintSlicingService : ISlicingService
                 HeightMm: decimal.Round((decimal)mesh.HeightMm, 2),
                 VolumeCm3: decimal.Round((decimal)mesh.VolumeCm3, 3),
                 mesh.VertexCount,
-                mesh.FaceCount);
+                mesh.FaceCount,
+                mesh.IsWatertight,
+                mesh.IsManifold,
+                mesh.IsWatertight && mesh.IsManifold
+                    ? null
+                    : string.Join("; ", new[]
+                    {
+                        mesh.IsWatertight ? null : "Mesh is not watertight (open boundary detected)",
+                        mesh.IsManifold ? null : "Mesh is non-manifold (an edge is not shared by exactly two faces)"
+                    }.Where(message => message is not null)));
 
             return Task.FromResult(analysis);
         }
@@ -97,7 +106,9 @@ public class PrintSlicingService : ISlicingService
             HeightMm: (decimal)Math.Round(fakeHeight, 2),
             VolumeCm3: (decimal)Math.Round(solidMm3 / 1000.0, 3),
             VertexCount: 0,
-            FaceCount: 0);
+            FaceCount: 0,
+            IsWatertight: true,
+            IsManifold: true);
     }
 
     public PrintEstimate EstimateFromMetadata(

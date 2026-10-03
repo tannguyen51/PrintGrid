@@ -27,6 +27,8 @@ export interface Job {
   colorCode: string
   layerHeightMm: number
   attemptNumber: number
+  assignedAtUtc?: string | null
+  acceptanceDeadlineUtc?: string | null
 }
 
 export const JOB_LABELS: Record<JobStatus, string> = {

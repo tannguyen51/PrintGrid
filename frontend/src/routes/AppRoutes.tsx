@@ -5,6 +5,7 @@ import { ProtectedRoute } from './ProtectedRoute'
 
 const LoginPage = lazy(() => import('../features/auth/LoginPage'))
 const RegisterPage = lazy(() => import('../features/auth/RegisterPage'))
+const VerifyEmailPage = lazy(() => import('../features/auth/VerifyEmailPage'))
 const HomePage = lazy(() => import('../features/home/HomePage'))
 const ModelLibraryPage = lazy(() => import('../features/models/ModelLibraryPage'))
 const OrderConfigPage = lazy(() => import('../features/quotes/OrderConfigPage'))
@@ -32,6 +33,7 @@ export function AppRoutes() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/" element={<HomePage />} />
         <Route
           path="/models"

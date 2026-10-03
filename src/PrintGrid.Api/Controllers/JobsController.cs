@@ -35,6 +35,14 @@ public class JobsController : ControllerBase
         return ToResult(result);
     }
 
+    [HttpPost("{jobId:guid}/decline")]
+    [Authorize(Policy = Policies.RequireLab)]
+    public async Task<IActionResult> Decline(Guid jobId, [FromBody] DeclineJobRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new DeclineJobCommand(jobId, request.Reason), cancellationToken);
+        return ToResult(result);
+    }
+
     [HttpPost("{jobId:guid}/start")]
     [Authorize(Policy = Policies.RequireLab)]
     public async Task<IActionResult> Start(Guid jobId, CancellationToken cancellationToken)
@@ -74,3 +82,4 @@ public class JobsController : ControllerBase
 
 public record CompleteJobRequest(int ActualPrintMinutes);
 public record InspectRequest(bool Passed, string? Note);
+public record DeclineJobRequest(string Reason);

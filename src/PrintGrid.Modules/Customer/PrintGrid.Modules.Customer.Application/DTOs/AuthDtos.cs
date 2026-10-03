@@ -16,6 +16,10 @@ public record ModelDto(
     decimal? BoundingHeightMm,
     decimal? VolumeCm3,
     int? EstimatedPrintMinutes,
+    decimal? EstimatedMaterialGrams,
+    bool? IsWatertight,
+    bool? IsManifold,
+    bool? IsPrintable,
     string? GeometryMessage,
     string? StorageKey,
     string? Sha256);
@@ -24,7 +28,8 @@ public record AuthUserDto(
     Guid Id,
     string Email,
     string FullName,
-    IReadOnlyList<string> Roles);
+    IReadOnlyList<string> Roles,
+    bool IsEmailVerified);
 
 public record QuoteDto(
     Guid Id,

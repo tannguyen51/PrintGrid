@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import axios from 'axios'
 import { useNavigate, useParams } from 'react-router-dom'
+import { apiClient } from '../../shared/api/apiClient'
 import {
   Alert,
   Box,
@@ -62,6 +64,28 @@ export default function OrderConfigPage() {
     return () => clearInterval(t)
   }, [])
 
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const { user } = useAuth()
+
+  useEffect(() => {
+    let timer: any
+    if (resendCooldown > 0) {
+      timer = setInterval(() => setResendCooldown(c => c - 1), 1000)
+    }
+    return () => clearInterval(timer)
+  }, [resendCooldown])
+
+  async function handleResendVerification() {
+    if (!user) return
+    setOrderError(null)
+    try {
+      const res = await apiClient.post<{ waitTimeSeconds?: number }>('/auth/resend-verification', { email: user.email })
+      setResendCooldown(res.data.waitTimeSeconds || 60)
+    } catch (err: any) {
+      setOrderError(err.response?.data?.error?.message || 'Không thể gửi lại email.')
+    }
+  }
+
   const layer = QUALITY_GRADES[layerIndex]
 
   function serverMessage(e: unknown, fallback: string): string {
@@ -84,8 +108,11 @@ export default function OrderConfigPage() {
         toleranceMm: 0.2,
       })
       setQuote(q)
-    } catch (e) {
-      setConfigError(serverMessage(e, 'Không lấy được báo giá. Kiểm tra lại cấu hình.'))
+    } catch (error) {
+      const apiMessage = axios.isAxiosError(error)
+        ? (error.response?.data as { error?: { message?: string } } | undefined)?.error?.message
+        : undefined
+      setConfigError(apiMessage ?? 'Không lấy được báo giá. Kiểm tra lại cấu hình.')
     }
   }
 
@@ -281,6 +308,20 @@ export default function OrderConfigPage() {
 
               {orderError && <Alert severity="error">{orderError}</Alert>}
 
+              {user && !user.isEmailVerified && (
+                <Alert
+                  severity="warning"
+                  sx={{ display: 'flex', alignItems: 'center' }}
+                  action={
+                    <Button color="inherit" size="small" onClick={handleResendVerification} disabled={resendCooldown > 0}>
+                      {resendCooldown > 0 ? `Chờ ${resendCooldown}s` : 'Gửi lại email'}
+                    </Button>
+                  }
+                >
+                  Tài khoản của bạn chưa xác thực email. Bạn không thể đặt hàng.
+                </Alert>
+              )}
+
               {/* Address */}
               <Box>
                 <Typography variant="body2" sx={{ color: 'text.primary', mb: 1 }}>Địa chỉ giao hàng</Typography>
@@ -318,7 +359,7 @@ export default function OrderConfigPage() {
                 color="primary"
                 size="large"
                 onClick={handlePlaceOrder}
-                disabled={placeOrder.isPending || !street.trim() || !city.trim() || !acceptTerms || !!expiry?.expired}
+                disabled={placeOrder.isPending || !street.trim() || !city.trim() || (user && !user.isEmailVerified)}
                 endIcon={placeOrder.isPending ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}
               >
                 {placeOrder.isPending ? 'Đang đặt hàng…' : expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}

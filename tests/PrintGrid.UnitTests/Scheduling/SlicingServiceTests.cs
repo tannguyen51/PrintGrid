@@ -24,6 +24,8 @@ public class SlicingServiceTests
         geometry.HeightMm.Should().BeApproximately(10m, 1e-4m);
         geometry.VolumeCm3.Should().BeApproximately(ExpectedVolumeCm3, 1e-4m);
         geometry.FaceCount.Should().Be(12);
+        geometry.IsWatertight.Should().BeTrue();
+        geometry.IsManifold.Should().BeTrue();
     }
 
     [Fact]
@@ -56,6 +58,20 @@ public class SlicingServiceTests
 
         geometry.IsValid.Should().BeFalse();
         geometry.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_open_mesh_reports_not_watertight()
+    {
+        const string triangle = "v 0 0 0\nv 10 0 0\nv 0 10 0\nf 1 2 3\n";
+
+        var geometry = await _slicing.AnalyzeAsync(
+            new MemoryStream(Encoding.ASCII.GetBytes(triangle)), "OBJ");
+
+        geometry.IsValid.Should().BeTrue();
+        geometry.IsWatertight.Should().BeFalse();
+        geometry.IsManifold.Should().BeTrue();
+        geometry.ErrorMessage.Should().Contain("not watertight");
     }
 
     [Fact]
@@ -153,7 +169,7 @@ public class SlicingServiceTests
             sb.Append("  facet normal 0 0 1\n    outer loop\n");
             foreach (var (x, y, z) in tri)
             {
-                sb.Append($"      vertex {x:F6} {y:F6} {z:F6}\n");
+                sb.Append(FormattableString.Invariant($"      vertex {x:F6} {y:F6} {z:F6}\n"));
             }
             sb.Append("    endloop\n  endfacet\n");
         }
@@ -180,7 +196,7 @@ public class SlicingServiceTests
         };
 
         var sb = new StringBuilder("# cube\n");
-        foreach (var (x, y, z) in vertices) sb.Append($"v {x:F6} {y:F6} {z:F6}\n");
+        foreach (var (x, y, z) in vertices) sb.Append(FormattableString.Invariant($"v {x:F6} {y:F6} {z:F6}\n"));
         foreach (var (a, b, c) in cubeFaces) sb.Append($"f {a} {b} {c}\n");
         return sb.ToString();
     }

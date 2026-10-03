@@ -1,5 +1,6 @@
 using MediatR;
 using PrintGrid.Modules.Customer.Application.Auth;
+
 using PrintGrid.Modules.Customer.Application.DTOs;
 using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.SharedKernel.Interfaces;
@@ -32,7 +33,7 @@ public class RefreshSessionCommandHandler : IRequestHandler<RefreshSessionComman
         if (customer is null)
             return Result.Failure<AuthSessionDto>(Error.Unauthorized("Account no longer exists"));
 
-        var user = new AuthUserDto(customer.Id, customer.Email, customer.FullName, DemoRoles.RolesFor(customer.Email));
+        var user = new AuthUserDto(customer.Id, customer.Email, customer.FullName, customer.Roles, customer.IsEmailVerified);
         var tokens = _tokenService.CreateTokenPair(user);
         return Result.Success(new AuthSessionDto(tokens.AccessToken, tokens.RefreshToken, user));
     }

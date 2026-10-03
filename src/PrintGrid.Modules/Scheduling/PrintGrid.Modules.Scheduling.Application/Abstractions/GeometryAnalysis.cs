@@ -11,8 +11,10 @@ public record GeometryAnalysis(
     decimal VolumeCm3,
     int VertexCount,
     int FaceCount,
+    bool IsWatertight = true,
+    bool IsManifold = true,
     string? ErrorMessage = null)
 {
     public static GeometryAnalysis Failed(string reason) =>
-        new(false, 0, 0, 0, 0, 0, 0, reason);
+        new(false, 0, 0, 0, 0, 0, 0, false, false, reason);
 }

@@ -80,6 +80,14 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsEmailVerified")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -91,6 +99,16 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<string[]>("Roles")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<DateTime?>("VerificationTokenExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VerificationTokenHash")
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -128,6 +146,10 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<decimal?>("EstimatedMaterialGrams")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
                     b.Property<int?>("EstimatedPrintMinutes")
                         .HasColumnType("integer");
 
@@ -149,6 +171,15 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
+
+                    b.Property<bool?>("IsManifold")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool?>("IsPrintable")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool?>("IsWatertight")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -198,6 +229,11 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
                     b.Property<Guid>("CustomerId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDelayed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("OrderNumber")
                         .IsRequired()
@@ -382,6 +418,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
                     b.Property<int?>("ActualPrintMinutes")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("AssignedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("AttemptNumber")
                         .HasColumnType("integer");
