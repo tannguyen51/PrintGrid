@@ -24,6 +24,11 @@ public class LabConfiguration : IEntityTypeConfiguration<Lab>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(l => l.Machines).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.HasMany(l => l.MaterialStocks)
+            .WithOne()
+            .HasForeignKey(s => s.LabId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(l => l.MaterialStocks).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Ignore(l => l.DomainEvents);
     }
 }
