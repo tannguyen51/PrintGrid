@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '../../shared/api/apiClient'
@@ -139,9 +139,9 @@ export default function OrderConfigPage() {
   const fmt = (n: number) => n.toLocaleString('vi-VN')
 
   // BR-QUOTE-003 live countdown instead of a hard-coded "48 giờ" label.
-  const expiry = quote
+  const expiry = quote?.expiresAt
     ? (() => {
-        const ms = new Date(quote.expiresAt).getTime() - now
+        const ms = new Date(quote.expiresAt!).getTime() - now
         if (ms <= 0) return { label: 'Hết hiệu lực', expired: true }
         const h = Math.floor(ms / 3_600_000)
         const d = Math.floor(h / 24)
@@ -310,6 +310,12 @@ export default function OrderConfigPage() {
 
               {orderError && <Alert severity="error">{orderError}</Alert>}
 
+              {quote.status === 'Draft' && (
+                <Alert severity="info">
+                  Engine đã tạo bản nháp. Báo giá đang chờ nhân viên thẩm định; thời hạn chỉ bắt đầu sau khi được duyệt.
+                </Alert>
+              )}
+
               {user && !user.isEmailVerified && (
                 <Alert
                   severity="warning"
@@ -361,7 +367,7 @@ export default function OrderConfigPage() {
                 color="primary"
                 size="large"
                 onClick={handlePlaceOrder}
-                disabled={placeOrder.isPending || !street.trim() || !city.trim() || (user && !user.isEmailVerified)}
+                disabled={quote.status !== 'Ready' || placeOrder.isPending || !street.trim() || !city.trim() || Boolean(user && !user.isEmailVerified)}
                 endIcon={placeOrder.isPending ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}
               >
                 {placeOrder.isPending ? 'Đang đặt hàng…' : expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}

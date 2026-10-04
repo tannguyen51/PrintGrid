@@ -39,10 +39,16 @@ public record QuoteDto(
     string Currency,
     DateOnly PromisedDeliveryDate,
     DateTime CreatedAt,
-    DateTime ExpiresAt,
+    DateTime? ExpiresAt,
     string? FailureReason,
     string PricingVersion,
     string? PlacementBasis,
+    DateTime? ApprovedAt,
+    Guid? ReviewedBy,
+    bool AutoApproved,
+    decimal? EngineTotalAmount,
+    DateOnly? EnginePromisedDeliveryDate,
+    string? AdjustmentReason,
     IReadOnlyList<QuoteItemDto> Items);
 
 public record QuoteItemDto(

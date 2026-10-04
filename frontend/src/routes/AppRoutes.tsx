@@ -13,6 +13,7 @@ const OrdersPage = lazy(() => import('../features/orders/OrdersPage'))
 const LabQueuePage = lazy(() => import('../features/lab/LabQueuePage'))
 const HubQCPage = lazy(() => import('../features/hub/HubQCPage'))
 const SchedulingBoardPage = lazy(() => import('../features/scheduling/SchedulingBoardPage'))
+const QuoteReviewPage = lazy(() => import('../features/quotes/QuoteReviewPage'))
 
 function RouteFallback() {
   return (
@@ -72,6 +73,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['HubQC', 'HubFulfillment']}>
               <HubQCPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/quote-reviews"
+          element={
+            <ProtectedRoute allowedRoles={['OrderStaff', 'OpsManager', 'Admin']}>
+              <QuoteReviewPage />
             </ProtectedRoute>
           }
         />

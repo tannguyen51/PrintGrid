@@ -15,6 +15,8 @@ public class QuoteConfiguration : IEntityTypeConfiguration<Quote>
         builder.Property(q => q.FailureReason).HasMaxLength(500);
         builder.Property(q => q.PricingVersion).HasMaxLength(16).IsRequired().HasDefaultValue("");
         builder.Property(q => q.PlacementBasis).HasMaxLength(300);
+        builder.Property(q => q.AdjustmentReason).HasMaxLength(500);
+        builder.Property(q => q.EngineTotalAmount).HasPrecision(18, 2);
         builder.HasIndex(q => new { q.CustomerId, q.Status });
         builder.HasIndex(q => q.ExpiresAt);
 
