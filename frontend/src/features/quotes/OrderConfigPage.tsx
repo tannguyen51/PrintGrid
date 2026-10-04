@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '../../shared/api/apiClient'
@@ -361,7 +361,7 @@ export default function OrderConfigPage() {
                 color="primary"
                 size="large"
                 onClick={handlePlaceOrder}
-                disabled={placeOrder.isPending || !street.trim() || !city.trim() || (user && !user.isEmailVerified)}
+                disabled={placeOrder.isPending || !street.trim() || !city.trim() || (!!user && !user.isEmailVerified)}
                 endIcon={placeOrder.isPending ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}
               >
                 {placeOrder.isPending ? 'Đang đặt hàng…' : expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}

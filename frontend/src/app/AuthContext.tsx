@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { apiClient } from '../shared/api/apiClient'
-import { clearTokens, getAccessToken, setTokens, isRemembered } from '../shared/api/tokenStore'
+import { clearTokens, getAccessToken, setTokens } from '../shared/api/tokenStore'
 
 export type Role =
   | 'Customer'
