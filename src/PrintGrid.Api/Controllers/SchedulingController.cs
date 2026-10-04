@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Scheduling.Application.Commands.AssignJob;
+using PrintGrid.Modules.Scheduling.Application.Commands.RepairSchedule;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -23,6 +24,14 @@ public class SchedulingController : ControllerBase
         if (result.IsFailure)
             return Conflict(new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
+        return Ok(result.Value);
+    }
+
+    [HttpPost("jobs/{jobId:guid}/repair-risk")]
+    public async Task<IActionResult> RepairRisk(Guid jobId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new RepairAtRiskJobCommand(jobId), cancellationToken);
+        if (result.IsFailure) return Conflict(new { error = new { code = result.Error.Code, message = result.Error.Message } });
         return Ok(result.Value);
     }
 }

@@ -16,6 +16,8 @@ public class Job : AggregateRoot<Guid>
     public int EstimatedPrintMinutes { get; private set; }
     public int? ActualPrintMinutes { get; private set; }
     public int AttemptNumber { get; private set; }
+    public int Quantity { get; private set; }
+    public Guid? ParentJobId { get; private set; }
 
     public Guid? LabId { get; private set; }
     public Guid? MachineId { get; private set; }
@@ -34,10 +36,11 @@ public class Job : AggregateRoot<Guid>
         Guid modelId,
         JobSpecification specification,
         int estimatedPrintMinutes,
-        DateOnly internalDueDate)
+        DateOnly internalDueDate, int quantity = 1, Guid? parentJobId = null)
     {
         if (estimatedPrintMinutes <= 0)
             throw new ArgumentOutOfRangeException(nameof(estimatedPrintMinutes), "Estimate must be positive");
+        if (quantity <= 0) throw new ArgumentOutOfRangeException(nameof(quantity));
 
         return new Job
         {
@@ -49,8 +52,19 @@ public class Job : AggregateRoot<Guid>
             InternalDueDate = internalDueDate,
             Status = JobStatus.Pending,
             AttemptNumber = 1,
+            Quantity = quantity,
+            ParentJobId = parentJobId,
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    public Result<IReadOnlyList<Job>> Split(IReadOnlyList<int> quantities)
+    {
+        if (Status is not (JobStatus.Pending or JobStatus.Reassigned)) return Result.Failure<IReadOnlyList<Job>>(Error.Conflict("Only an unstarted job can be split"));
+        if (Quantity < 2 || quantities.Count < 2 || quantities.Any(x => x <= 0) || quantities.Sum() != Quantity) return Result.Failure<IReadOnlyList<Job>>(Error.Validation("Split quantities must be positive and sum to the original quantity"));
+        var jobs = quantities.Select(q => { var ratio = (decimal)q / Quantity; var spec = JobSpecification.Create(Specification.RequiredVolume, Specification.MaterialCode, Specification.ColorCode, Specification.LayerHeightMm, Specification.ToleranceMm, Specification.Technology, decimal.Round(Specification.MaterialGrams * ratio, 2)); return Create(OrderItemId, ModelId, spec, Math.Max(1, (int)Math.Ceiling(EstimatedPrintMinutes * ratio)), InternalDueDate, q, Id); }).ToList();
+        Status = JobStatus.Cancelled; FailureReason = "Split into quantity batches due to schedule risk";
+        return Result.Success<IReadOnlyList<Job>>(jobs);
     }
 
     public Result AssignTo(Guid labId, Guid machineId, DateTime plannedStartUtc, DateTime plannedEndUtc, decimal score, DateTime? assignedAtUtc = null)

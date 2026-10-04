@@ -57,7 +57,7 @@ public class OrderConfirmedEventHandler : INotificationHandler<OrderConfirmedEve
                 item.ModelId,
                 spec,
                 totalMinutes,
-                internalDue);
+                internalDue, item.Quantity);
 
             await _jobs.AddAsync(job, cancellationToken);
         }

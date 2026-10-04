@@ -29,6 +29,8 @@ export interface Job {
   attemptNumber: number
   assignedAtUtc?: string | null
   acceptanceDeadlineUtc?: string | null
+  quantity: number
+  parentJobId?: string | null
 }
 
 export const JOB_LABELS: Record<JobStatus, string> = {

@@ -15,6 +15,7 @@ internal static class SchedulingModuleRegistration
     {
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<ILabRepository, LabRepository>();
+        services.AddScoped<IDateChangeRequestRepository, DateChangeRequestRepository>();
         services.AddScoped<IMachineTimelineService, MachineTimelineService>();
         services.AddScoped<IProductionCapacityProbe, ProductionCapacityProbe>();
 
