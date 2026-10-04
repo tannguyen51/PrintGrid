@@ -35,7 +35,7 @@ export function OrderTimelineView({ orderId }: { orderId: string }) {
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
 
       <Stepper activeStep={activeStep === -1 ? timeline.stages.length : activeStep} orientation="vertical">
-        {timeline.stages.map((stage, index) => (
+        {timeline.stages.map((stage) => (
           <Step key={stage.stageName}>
             <StepLabel>
               <Typography sx={{ fontWeight: stage.isCurrent ? 700 : 400, color: stage.isCurrent ? 'primary.main' : 'text.primary' }}>
