@@ -7,26 +7,56 @@ import { FeatureGrid } from './components/FeatureGrid'
 import { HowItWorks } from './components/HowItWorks'
 import { CTABand } from './components/CTABand'
 import { HomeFooter } from './components/HomeFooter'
+import { useAuth } from '../../app/AuthContext'
+import { QuickActions } from './components/QuickActions'
+import { CustomerNavbar } from './components/CustomerNavbar'
+import { NetworkStatsSection } from './components/NetworkStatsSection'
+import { HowItWorksSection } from './components/HowItWorksSection'
+import { WhyPrintGridSection } from './components/WhyPrintGridSection'
+import { MaterialsSection } from './components/MaterialsSection'
+import { SampleModelsSection } from './components/SampleModelsSection'
+import { DesignRequestBanner } from './components/DesignRequestBanner'
+import { FaqSection } from './components/FaqSection'
 
-/**
- * Public landing page for PrintGrid.
- * Built on the same design system as the auth pages (dark #050505,
- * orange accent, premium-minimal). Auth actions open a large modal instead of
- * navigating away; login shows form + 3D showcase, register shows form only.
- */
 export default function HomePage() {
   const [authMode, setAuthMode] = useState<AuthMode | null>(null)
+  const { isAuthenticated, user } = useAuth()
 
   const openLogin = () => setAuthMode('login')
   const openRegister = () => setAuthMode('register')
 
+  // Chỉ hiện giao diện mới cho Customer đã đăng nhập
+  const isCustomer = user?.roles?.includes('Customer') ?? false;
+  const showCustomerDashboard = isAuthenticated && isCustomer;
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <HomeHeader onLogin={openLogin} onRegister={openRegister} />
-      <Hero onLogin={openLogin} onRegister={openRegister} />
-      <FeatureGrid />
-      <HowItWorks />
-      <CTABand onLogin={openLogin} onRegister={openRegister} />
+      {showCustomerDashboard ? (
+        <CustomerNavbar onLogin={openLogin} onRegister={openRegister} />
+      ) : (
+        <HomeHeader onLogin={openLogin} onRegister={openRegister} />
+      )}
+
+      {showCustomerDashboard ? (
+        <>
+          <QuickActions />
+          <NetworkStatsSection />
+          <HowItWorksSection />
+          <WhyPrintGridSection />
+          <MaterialsSection />
+          <SampleModelsSection />
+          <DesignRequestBanner />
+          <FaqSection />
+        </>
+      ) : (
+        <>
+          <Hero onLogin={openLogin} onRegister={openRegister} />
+          <FeatureGrid />
+          <HowItWorks />
+          <CTABand onLogin={openLogin} onRegister={openRegister} />
+        </>
+      )}
+
       <HomeFooter onLogin={openLogin} onRegister={openRegister} />
 
       <AuthDialog

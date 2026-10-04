@@ -23,6 +23,7 @@ import { ModelDetailDrawer } from './components/ModelDetailDrawer'
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
 import { useAuth } from '../../app/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import { CustomerNavbar } from '../home/components/CustomerNavbar'
 
 function formatSize(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
@@ -183,6 +184,7 @@ export default function ModelLibraryPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <CustomerNavbar />
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1200, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Box>

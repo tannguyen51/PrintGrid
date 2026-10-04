@@ -26,6 +26,7 @@ import type { Quote } from './quoteTypes'
 import { COLORS, INFILL_OPTIONS, MATERIALS, QUALITY_GRADES } from './quoteTypes'
 import { useCreateQuote, usePlaceOrder } from './useQuotes'
 import { useAuth } from '../../app/AuthContext'
+import { CustomerNavbar } from '../home/components/CustomerNavbar'
 
 /**
  * G3 — Print configuration & pre-order flow.
@@ -150,6 +151,7 @@ export default function OrderConfigPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <CustomerNavbar />
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 860, mx: 'auto' }} spacing={2.5}>
         {/* Header */}
         <Stack direction="row" justifyContent="space-between" alignItems="center">
