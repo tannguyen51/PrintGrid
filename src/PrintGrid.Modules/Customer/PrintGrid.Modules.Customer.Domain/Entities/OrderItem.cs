@@ -38,7 +38,7 @@ public class OrderItem : Entity<Guid>
         EstimatedMaterialGrams = quoteItem.EstimatedMaterialGrams,
         BoundingWidthMm = quoteItem.BoundingWidthMm,
         BoundingDepthMm = quoteItem.BoundingDepthMm,
-        BoundingHeightMm = quoteItem.BoundingHeightMm
+        BoundingHeightMm = quoteItem.BoundingHeightMm,
         ItemStatus = "Pending"
     };
 }

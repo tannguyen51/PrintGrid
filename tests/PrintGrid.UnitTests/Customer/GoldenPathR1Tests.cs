@@ -123,7 +123,7 @@ public class GoldenPathR1Tests
     {
         var models = Substitute.For<IModelRepository>();
         var model = Model.Create(customerId, "bracket", null, "bracket.stl", "STL", 1_048_576, null);
-        model.ApplyGeometry(60m, 60m, 40m, 20m, 60);
+        model.ApplyGeometry(60m, 60m, 40m, 20m, 60, 12m, true, true, true);
         models.GetByIdForCustomerAsync(customerId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<Model?>(model));
 

@@ -1,5 +1,6 @@
 using Hangfire;
 using Hangfire.PostgreSql;
+using MediatR;
 using Serilog;
 using PrintGrid.Api.BackgroundJobs;
 using PrintGrid.Api.Bootstrap;
@@ -31,6 +32,10 @@ builder.Services.AddCors(options => options.AddPolicy("PrintGridSpa", policy => 
 
 builder.Services.AddSharedInfrastructure(builder.Configuration);
 builder.Services.AddApplicationModules(builder.Configuration);
+
+// Handlers that depend on API-layer infrastructure (SignalR hub contexts) live here,
+// not in a module — register the composition-root assembly too or they silently never run.
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
 builder.Services.AddHangfire(config => config
     .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString)));
@@ -82,3 +87,6 @@ RecurringJob.AddOrUpdate<EmailDeliveryJob>(
     Cron.Minutely());
 
 app.Run();
+
+/// <summary>Exposed for WebApplicationFactory in PrintGrid.IntegrationTests.</summary>
+public partial class Program { }
