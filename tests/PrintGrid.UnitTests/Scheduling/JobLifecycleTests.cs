@@ -99,4 +99,18 @@ public class JobLifecycleTests
         result.IsFailure.Should().BeTrue();
         job.Status.Should().Be(JobStatus.Assigned);
     }
+
+    [Fact]
+    public void Completion_requires_positive_actual_time_and_material()
+    {
+        var job = CreateAssignedJob();
+        job.Accept().IsSuccess.Should().BeTrue();
+        job.Start(DateTime.UtcNow).IsSuccess.Should().BeTrue();
+
+        job.Complete(DateTime.UtcNow, 0, 10m).IsFailure.Should().BeTrue();
+        job.Complete(DateTime.UtcNow, 60, 0m).IsFailure.Should().BeTrue();
+        job.Complete(DateTime.UtcNow, 60, 42m).IsSuccess.Should().BeTrue();
+        job.ActualPrintMinutes.Should().Be(60);
+        job.ActualMaterialGrams.Should().Be(42m);
+    }
 }

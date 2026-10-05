@@ -55,7 +55,7 @@ public class JobsController : ControllerBase
     [Authorize(Policy = Policies.RequireLab)]
     public async Task<IActionResult> Complete(Guid jobId, [FromBody] CompleteJobRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new CompleteJobCommand(jobId, request.ActualPrintMinutes), cancellationToken);
+        var result = await _sender.Send(new CompleteJobCommand(jobId, request.ActualPrintMinutes, request.ActualMaterialGrams), cancellationToken);
         return ToResult(result);
     }
 
@@ -80,6 +80,6 @@ public class JobsController : ControllerBase
     }
 }
 
-public record CompleteJobRequest(int ActualPrintMinutes);
+public record CompleteJobRequest(int ActualPrintMinutes, decimal ActualMaterialGrams);
 public record InspectRequest(bool Passed, string? Note);
 public record DeclineJobRequest(string Reason);

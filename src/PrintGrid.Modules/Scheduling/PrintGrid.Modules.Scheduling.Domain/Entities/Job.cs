@@ -15,6 +15,7 @@ public class Job : AggregateRoot<Guid>
     public DateOnly InternalDueDate { get; private set; }
     public int EstimatedPrintMinutes { get; private set; }
     public int? ActualPrintMinutes { get; private set; }
+    public decimal? ActualMaterialGrams { get; private set; }
     public int AttemptNumber { get; private set; }
     public int Quantity { get; private set; }
     public Guid? ParentJobId { get; private set; }
@@ -144,14 +145,19 @@ public class Job : AggregateRoot<Guid>
         return Result.Success();
     }
 
-    public Result Complete(DateTime completedAtUtc, int actualPrintMinutes)
+    public Result Complete(DateTime completedAtUtc, int actualPrintMinutes, decimal actualMaterialGrams)
     {
         if (Status != JobStatus.InProgress)
             return Result.Failure(Error.Conflict("Only an in-progress job can complete"));
+        if (actualPrintMinutes <= 0)
+            return Result.Failure(Error.Validation("Actual print time must be positive"));
+        if (actualMaterialGrams <= 0)
+            return Result.Failure(Error.Validation("Actual material usage must be positive"));
 
         Status = JobStatus.AwaitingInspection;
         CompletedAtUtc = completedAtUtc;
         ActualPrintMinutes = actualPrintMinutes;
+        ActualMaterialGrams = actualMaterialGrams;
 
         AddDomainEvent(new JobCompletedEvent(Id, OrderItemId));
         return Result.Success();

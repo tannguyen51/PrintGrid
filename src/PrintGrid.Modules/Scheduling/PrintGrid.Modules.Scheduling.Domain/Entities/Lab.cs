@@ -6,6 +6,8 @@ public class Lab : AggregateRoot<Guid>
 {
     private readonly List<Machine> _machines = new();
     private readonly List<MaterialStock> _materialStocks = new();
+    private readonly List<StockTransaction> _stockTransactions = new();
+    private readonly List<MaterialReservation> _materialReservations = new();
 
     public string Name { get; private set; } = string.Empty;
     public string City { get; private set; } = string.Empty;
@@ -18,6 +20,8 @@ public class Lab : AggregateRoot<Guid>
 
     public IReadOnlyCollection<Machine> Machines => _machines.AsReadOnly();
     public IReadOnlyCollection<MaterialStock> MaterialStocks => _materialStocks.AsReadOnly();
+    public IReadOnlyCollection<StockTransaction> StockTransactions => _stockTransactions.AsReadOnly();
+    public IReadOnlyCollection<MaterialReservation> MaterialReservations => _materialReservations.AsReadOnly();
 
     private Lab() { }
 
@@ -47,22 +51,67 @@ public class Lab : AggregateRoot<Guid>
 
     public void RestoreGoodStanding() => IsInGoodStanding = true;
 
-    public void SetMaterialStock(string materialCode, string colorCode, decimal availableGrams)
+    public void SetMaterialStock(string materialCode, string colorCode, decimal availableGrams, decimal reorderPointGrams = 0m)
     {
         var material = NormalizeStockCode(materialCode);
         var color = NormalizeStockCode(colorCode);
         var existing = _materialStocks.SingleOrDefault(s => s.MaterialCode == material && s.ColorCode == color);
         if (existing is null)
-            _materialStocks.Add(MaterialStock.Create(Id, material, color, availableGrams));
-        else
-            existing.SetAvailable(availableGrams);
+        {
+            existing = MaterialStock.Create(Id, material, color, 0m, reorderPointGrams);
+            _materialStocks.Add(existing);
+        }
+        else existing.ConfigureReorderPoint(reorderPointGrams);
+
+        var delta = availableGrams - existing.AvailableGrams;
+        if (delta != 0) AdjustMaterialStock(material, color, delta, "Stock count adjustment");
+    }
+
+    public void AdjustMaterialStock(string materialCode, string colorCode, decimal deltaGrams, string reason)
+    {
+        if (deltaGrams == 0) throw new ArgumentOutOfRangeException(nameof(deltaGrams), "Adjustment must be non-zero");
+        var stock = FindStock(materialCode, colorCode) ?? throw new InvalidOperationException("Material stock does not exist");
+        stock.Adjust(deltaGrams);
+        _stockTransactions.Add(StockTransaction.Create(Id, stock.Id, deltaGrams, stock.AvailableGrams, reason));
+    }
+
+    public void ReserveMaterial(Guid jobId, string materialCode, string colorCode, decimal estimatedGrams, decimal tolerancePercent = 0.03m)
+    {
+        if (tolerancePercent is < 0.01m or > 0.05m) throw new ArgumentOutOfRangeException(nameof(tolerancePercent));
+        if (_materialReservations.Any(r => r.JobId == jobId)) return;
+        var stock = FindStock(materialCode, colorCode) ?? throw new InvalidOperationException("Material stock does not exist");
+        var reserved = decimal.Round(estimatedGrams * (1m + tolerancePercent), 2);
+        stock.Reserve(reserved);
+        _materialReservations.Add(MaterialReservation.Create(Id, stock.Id, jobId, reserved));
+    }
+
+    public void ReleaseMaterial(Guid jobId)
+    {
+        var reservation = _materialReservations.SingleOrDefault(r => r.JobId == jobId);
+        if (reservation is null) return;
+        var stock = _materialStocks.Single(s => s.Id == reservation.MaterialStockId);
+        stock.Release(reservation.ReservedGrams);
+        _materialReservations.Remove(reservation);
+    }
+
+    public void SettleMaterial(Guid jobId, decimal actualGrams)
+    {
+        var reservation = _materialReservations.SingleOrDefault(r => r.JobId == jobId)
+            ?? throw new InvalidOperationException("Job has no material reservation");
+        var stock = _materialStocks.Single(s => s.Id == reservation.MaterialStockId);
+        stock.Settle(reservation.ReservedGrams, actualGrams);
+        _stockTransactions.Add(StockTransaction.Create(Id, stock.Id, -actualGrams, stock.AvailableGrams, "Job completion", jobId));
+        _materialReservations.Remove(reservation);
     }
 
     public bool HasStock(string materialCode, string colorCode, decimal requiredGrams) =>
         _materialStocks.Any(s =>
             s.MaterialCode == NormalizeStockCode(materialCode)
             && s.ColorCode == NormalizeStockCode(colorCode)
-            && s.AvailableGrams >= requiredGrams);
+            && s.AssignableGrams >= requiredGrams);
+
+    private MaterialStock? FindStock(string materialCode, string colorCode) =>
+        _materialStocks.SingleOrDefault(s => s.MaterialCode == NormalizeStockCode(materialCode) && s.ColorCode == NormalizeStockCode(colorCode));
 
     public void UpdatePerformance(decimal onTimeDeliveryRate, decimal firstPassYield)
     {

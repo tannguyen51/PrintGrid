@@ -16,6 +16,9 @@ export interface Job {
   status: JobStatus
   internalDueDate: string
   estimatedPrintMinutes: number
+  estimatedMaterialGrams: number
+  actualPrintMinutes?: number | null
+  actualMaterialGrams?: number | null
   labId?: string | null
   machineId?: string | null
   plannedStartUtc?: string | null

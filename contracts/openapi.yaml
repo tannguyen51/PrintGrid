@@ -189,10 +189,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [actualMinutes, materialGrams]
+              required: [actualPrintMinutes, actualMaterialGrams]
               properties:
-                actualMinutes: { type: integer, minimum: 1 }
-                materialGrams: { type: number, minimum: 0 }
+                actualPrintMinutes: { type: integer, minimum: 1 }
+                actualMaterialGrams: { type: number, exclusiveMinimum: 0 }
       responses: { '200': { description: Completed; dữ liệu vào job_actuals } }
   /jobs/{jobId}/incidents:
     post:
@@ -211,9 +211,16 @@ paths:
                 photoKeys: { type: array, items: { type: string } }
                 note: { type: string }
       responses: { '202': { description: "Đã nhận; engine đang vá lịch" } }
-  /lab/inventory:
-    get:  { tags: [lab], x-milestone: T3, summary: Tồn kho theo màu, responses: { '200': { description: "InventoryItemDto[]" } } }
-    put:  { tags: [lab], x-milestone: T3, summary: Nhập/cập nhật tồn kho, responses: { '200': { description: OK } } }
+  /labs/{labId}/inventory:
+    parameters: [ { name: labId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get:  { tags: [lab], summary: Tồn kho theo vật liệu và màu, responses: { '200': { description: "MaterialStockDto[]" } } }
+    put:  { tags: [lab], summary: Kiểm kê/cấu hình ngưỡng tồn kho, responses: { '200': { description: "MaterialStockDto" } } }
+  /labs/{labId}/inventory/adjustments:
+    parameters: [ { name: labId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    post: { tags: [lab], summary: Nhập hoặc xuất kho có mã giao dịch và số dư liên tục, responses: { '200': { description: "MaterialStockDto" } } }
+  /labs/{labId}/inventory/transactions:
+    parameters: [ { name: labId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get: { tags: [lab], summary: Lịch sử giao dịch kho, responses: { '200': { description: "StockTransactionDto[]" } } }
   /lab/handover:
     post:
       tags: [lab]

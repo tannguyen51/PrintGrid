@@ -8,12 +8,14 @@ namespace PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 public class CompleteJobCommandHandler : IRequestHandler<CompleteJobCommand, Result>
 {
     private readonly IJobRepository _jobs;
+    private readonly ILabRepository _labs;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _clock;
 
-    public CompleteJobCommandHandler(IJobRepository jobs, IUnitOfWork unitOfWork, IDateTimeProvider clock)
+    public CompleteJobCommandHandler(IJobRepository jobs, ILabRepository labs, IUnitOfWork unitOfWork, IDateTimeProvider clock)
     {
         _jobs = jobs;
+        _labs = labs;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
@@ -23,8 +25,15 @@ public class CompleteJobCommandHandler : IRequestHandler<CompleteJobCommand, Res
         var job = await _jobs.GetByIdAsync(command.JobId, cancellationToken);
         if (job is null) return Result.Failure(Error.NotFound("Job", command.JobId));
 
-        var result = job.Complete(_clock.UtcNow, command.ActualPrintMinutes);
+        if (job.LabId is null) return Result.Failure(Error.Conflict("Job has no assigned lab"));
+        var lab = await _labs.GetByIdAsync(job.LabId.Value, cancellationToken);
+        if (lab is null) return Result.Failure(Error.NotFound("Lab", job.LabId.Value));
+
+        var result = job.Complete(_clock.UtcNow, command.ActualPrintMinutes, command.ActualMaterialGrams);
         if (result.IsFailure) return result;
+
+        try { lab.SettleMaterial(job.Id, command.ActualMaterialGrams); }
+        catch (InvalidOperationException ex) { return Result.Failure(Error.Conflict(ex.Message)); }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();

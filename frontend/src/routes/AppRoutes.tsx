@@ -11,6 +11,7 @@ const ModelLibraryPage = lazy(() => import('../features/models/ModelLibraryPage'
 const OrderConfigPage = lazy(() => import('../features/quotes/OrderConfigPage'))
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'))
 const LabQueuePage = lazy(() => import('../features/lab/LabQueuePage'))
+const InventoryPage = lazy(() => import('../features/lab/InventoryPage'))
 const HubQCPage = lazy(() => import('../features/hub/HubQCPage'))
 const SchedulingBoardPage = lazy(() => import('../features/scheduling/SchedulingBoardPage'))
 const QuoteReviewPage = lazy(() => import('../features/quotes/QuoteReviewPage'))
@@ -65,6 +66,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['LabManager', 'LabOperator']}>
               <LabQueuePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/lab/:labId/inventory"
+          element={
+            <ProtectedRoute allowedRoles={['LabManager']}>
+              <InventoryPage />
             </ProtectedRoute>
           }
         />

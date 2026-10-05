@@ -120,6 +120,21 @@ export default function LabQueuePage() {
 
   const [completeTarget, setCompleteTarget] = useState<Job | null>(null)
   const [actualMinutes, setActualMinutes] = useState(0)
+  const [actualMaterialGrams, setActualMaterialGrams] = useState(0)
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+
+  useEffect(() => {
+    const online = () => setIsOnline(true)
+    const offline = () => setIsOnline(false)
+    window.addEventListener('online', online)
+    window.addEventListener('offline', offline)
+    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline) }
+  }, [])
+
+  useEffect(() => {
+    if (!completeTarget) return
+    localStorage.setItem(`printgrid:completion:${completeTarget.id}`, JSON.stringify({ actualMinutes, actualMaterialGrams, savedAt: Date.now() }))
+  }, [completeTarget, actualMinutes, actualMaterialGrams])
 
   // Decline dialog state
   const [declineTarget, setDeclineTarget] = useState<Job | null>(null)
@@ -166,7 +181,8 @@ export default function LabQueuePage() {
     if (!completeTarget) return
     try {
       setActionError(null)
-      await complete.mutateAsync({ id: completeTarget.id, actualMinutes: Math.max(actualMinutes, 1) })
+      await complete.mutateAsync({ id: completeTarget.id, actualMinutes, actualMaterialGrams })
+      localStorage.removeItem(`printgrid:completion:${completeTarget.id}`)
       setCompleteTarget(null)
     } catch (err: any) {
       setActionError(err?.response?.data?.error?.message || 'Không thể ghi nhận hoàn thành.')
@@ -181,11 +197,11 @@ export default function LabQueuePage() {
             <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
               Hàng đợi sản xuất — Lab
             </Typography>
-            <Typography color="text.secondary">Nhận / từ chối job (hạn 2 giờ) → Bắt đầu in → Báo hoàn thành (FR-LAB-004)</Typography>
+            <Typography color="text.secondary">Nhận / từ chối job (hạn 2 giờ) → Bắt đầu in → Báo hoàn thành (FR-LAB-005)</Typography>
           </Box>
           <Stack direction="row" spacing={1.5}>
-            <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} onClick={() => navigate('/models')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
-              Thư viện model
+            <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} disabled={!jobs[0]?.j.labId} onClick={() => navigate(`/lab/${jobs[0]?.j.labId}/inventory`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+              Kho vật liệu
             </Button>
             <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
               Đăng xuất
@@ -193,6 +209,7 @@ export default function LabQueuePage() {
           </Stack>
         </Stack>
 
+        {!isOnline ? <Alert severity="warning">Đang mất mạng. Dữ liệu form được giữ trên thiết bị; hãy gửi khi kết nối lại.</Alert> : null}
         {actionError ? <Alert severity="error" onClose={() => setActionError(null)}>{actionError}</Alert> : null}
         {error ? <Alert severity="error">Không tải được hàng đợi.</Alert> : null}
         {loading && jobs.length === 0 ? <CircularProgress sx={{ alignSelf: 'center' }} /> : null}
@@ -257,7 +274,13 @@ export default function LabQueuePage() {
                       </Button>
                     )}
                     {action === 'complete' && (
-                      <Button variant="contained" color="success" startIcon={<CheckRounded />} onClick={() => { setCompleteTarget(j); setActualMinutes(j.estimatedPrintMinutes) }}>
+                      <Button variant="contained" color="success" startIcon={<CheckRounded />} onClick={() => {
+                        const saved = localStorage.getItem(`printgrid:completion:${j.id}`)
+                        const draft = saved ? JSON.parse(saved) : null
+                        setCompleteTarget(j)
+                        setActualMinutes(draft?.actualMinutes ?? j.estimatedPrintMinutes)
+                        setActualMaterialGrams(draft?.actualMaterialGrams ?? j.estimatedMaterialGrams)
+                      }}>
                         Báo hoàn thành
                       </Button>
                     )}
@@ -348,10 +371,20 @@ export default function LabQueuePage() {
             fullWidth
             autoFocus
           />
+          <TextField
+            label="Vật liệu thực tế (gram)"
+            type="number"
+            inputProps={{ min: 0.01, step: 0.01 }}
+            value={actualMaterialGrams}
+            onChange={(e) => setActualMaterialGrams(Number(e.target.value))}
+            fullWidth
+            sx={{ mt: 2 }}
+            helperText={completeTarget ? `Ước tính: ${completeTarget.estimatedMaterialGrams} g` : undefined}
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={() => setCompleteTarget(null)} color="inherit" sx={{ color: 'text.secondary' }}>Hủy</Button>
-          <Button onClick={handleComplete} variant="contained" color="primary" disabled={complete.isPending || actualMinutes < 1}>
+          <Button onClick={handleComplete} variant="contained" color="primary" disabled={!isOnline || complete.isPending || actualMinutes < 1 || actualMaterialGrams <= 0}>
             {complete.isPending ? 'Đang lưu…' : 'Hoàn thành'}
           </Button>
         </DialogActions>

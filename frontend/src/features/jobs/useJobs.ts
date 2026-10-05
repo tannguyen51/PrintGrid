@@ -38,8 +38,8 @@ export function useStartJob() {
 export function useCompleteJob() {
   const invalidate = useInvalidate()
   return useMutation({
-    mutationFn: ({ id, actualMinutes }: { id: string; actualMinutes: number }) =>
-      apiClient.post(`/jobs/${id}/complete`, { actualPrintMinutes: actualMinutes }),
+    mutationFn: ({ id, actualMinutes, actualMaterialGrams }: { id: string; actualMinutes: number; actualMaterialGrams: number }) =>
+      apiClient.post(`/jobs/${id}/complete`, { actualPrintMinutes: actualMinutes, actualMaterialGrams }),
     onSuccess: invalidate,
   })
 }
