@@ -30,6 +30,8 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
         {
             if (job.Status != Domain.Enums.JobStatus.AwaitingInspection)
                 return Result.Failure(Error.Conflict($"Job in state {job.Status} cannot be inspected"));
+            if (job.QcProofStatus != Domain.Enums.QcProofStatus.Approved)
+                return Result.Failure(Error.Conflict("Lab QC proof must be approved before hub inspection"));
             job.MarkInspectionPassed();
             result = Result.Success();
         }

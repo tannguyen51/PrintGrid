@@ -25,6 +25,12 @@ public class Job : AggregateRoot<Guid>
     public DateTime? StartedAtUtc { get; private set; }
     public DateTime? CompletedAtUtc { get; private set; }
     public string? FailureReason { get; private set; }
+    public QcProofStatus QcProofStatus { get; private set; }
+    public string? QcSelfReport { get; private set; }
+    public string? QcProofPhotoKeys { get; private set; }
+    public Guid? QcReviewedBy { get; private set; }
+    public DateTime? QcReviewedAtUtc { get; private set; }
+    public string? QcRejectionReason { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     private Job() { }
@@ -130,16 +136,51 @@ public class Job : AggregateRoot<Guid>
         return Result.Success();
     }
 
-    public Result Complete(DateTime completedAtUtc, int actualPrintMinutes)
+    public Result Complete(DateTime completedAtUtc, int actualPrintMinutes, string selfReport, IReadOnlyCollection<string> photoKeys)
     {
         if (Status != JobStatus.InProgress)
             return Result.Failure(Error.Conflict("Only an in-progress job can complete"));
+        if (actualPrintMinutes <= 0)
+            return Result.Failure(Error.Validation("Actual print time must be positive"));
+        if (string.IsNullOrWhiteSpace(selfReport))
+            return Result.Failure(Error.Validation("QC self-report is required"));
+        if (photoKeys.Count is < 1 or > 5 || photoKeys.Any(string.IsNullOrWhiteSpace))
+            return Result.Failure(Error.Validation("Between 1 and 5 QC proof photos are required"));
 
         Status = JobStatus.AwaitingInspection;
         CompletedAtUtc = completedAtUtc;
         ActualPrintMinutes = actualPrintMinutes;
+        QcSelfReport = selfReport.Trim();
+        QcProofPhotoKeys = string.Join('|', photoKeys);
+        QcProofStatus = QcProofStatus.Pending;
+        QcReviewedBy = null;
+        QcReviewedAtUtc = null;
+        QcRejectionReason = null;
 
         AddDomainEvent(new JobCompletedEvent(Id, OrderItemId));
+        return Result.Success();
+    }
+
+    public IReadOnlyList<string> GetQcProofPhotoKeys() =>
+        string.IsNullOrWhiteSpace(QcProofPhotoKeys)
+            ? []
+            : QcProofPhotoKeys.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    public Result ReviewQcProof(bool approved, Guid staffId, string? reason, DateTime reviewedAtUtc)
+    {
+        if (Status != JobStatus.AwaitingInspection || QcProofStatus != QcProofStatus.Pending)
+            return Result.Failure(Error.Conflict("Only a pending QC proof can be reviewed"));
+        if (!approved && string.IsNullOrWhiteSpace(reason))
+            return Result.Failure(Error.Validation("A rejection reason is required"));
+
+        QcReviewedBy = staffId;
+        QcReviewedAtUtc = reviewedAtUtc;
+        QcProofStatus = approved ? QcProofStatus.Approved : QcProofStatus.Rejected;
+        QcRejectionReason = approved ? null : reason!.Trim();
+
+        if (!approved)
+            Status = JobStatus.InProgress;
+
         return Result.Success();
     }
 
@@ -173,6 +214,8 @@ public class Job : AggregateRoot<Guid>
 
     public void MarkInspectionPassed()
     {
+        if (QcProofStatus != QcProofStatus.Approved)
+            throw new InvalidOperationException("Lab QC proof must be approved before hub inspection");
         Status = JobStatus.Completed;
         // Optionally AddDomainEvent(new JobInspectionPassedEvent) if needed, 
         // but AwaitingInspection -> Completed is handled here. Let's just rely on JobCompletedEvent for now,

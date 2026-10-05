@@ -6,6 +6,8 @@ using PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 using PrintGrid.Modules.Scheduling.Application.Queries;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.SharedKernel.Results;
+using PrintGrid.Infrastructure.Shared.FileStorage;
+using Microsoft.Extensions.Options;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -15,8 +17,15 @@ namespace PrintGrid.Api.Controllers;
 public class JobsController : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly IFileStorage _files;
+    private readonly MinioOptions _minio;
 
-    public JobsController(ISender sender) => _sender = sender;
+    public JobsController(ISender sender, IFileStorage files, IOptions<MinioOptions> minio)
+    {
+        _sender = sender;
+        _files = files;
+        _minio = minio.Value;
+    }
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireProduction)]
@@ -24,7 +33,12 @@ public class JobsController : ControllerBase
     public async Task<IActionResult> GetJobs([FromQuery] JobStatus? status, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetJobsQuery(status ?? JobStatus.Pending), cancellationToken);
-        return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
+        if (result.IsFailure) return BadRequest(result.Error);
+        var jobs = result.Value;
+        if (status == JobStatus.AwaitingInspection &&
+            (User.IsInRole(Roles.HubQc) || User.IsInRole(Roles.HubFulfillment)))
+            jobs = jobs.Where(j => j.QcProofStatus == "Approved").ToList();
+        return Ok(jobs);
     }
 
     [HttpPost("{jobId:guid}/accept")]
@@ -53,9 +67,67 @@ public class JobsController : ControllerBase
 
     [HttpPost("{jobId:guid}/complete")]
     [Authorize(Policy = Policies.RequireLab)]
-    public async Task<IActionResult> Complete(Guid jobId, [FromBody] CompleteJobRequest request, CancellationToken cancellationToken)
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(26 * 1024 * 1024)]
+    public async Task<IActionResult> Complete(Guid jobId, [FromForm] CompleteJobRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new CompleteJobCommand(jobId, request.ActualPrintMinutes), cancellationToken);
+        if (request.Photos is null || request.Photos.Count is < 1 or > 5)
+            return BadRequest(new { error = new { code = "validation_error", message = "Tải lên từ 1 đến 5 ảnh QC." } });
+        if (request.Photos.Any(photo =>
+                photo.Length == 0 ||
+                photo.Length > 5 * 1024 * 1024 ||
+                !photo.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)))
+            return BadRequest(new { error = new { code = "validation_error", message = "Mỗi ảnh QC phải là tệp ảnh không quá 5 MB." } });
+
+        var photoKeys = new List<string>();
+        foreach (var photo in request.Photos)
+        {
+            var extension = Path.GetExtension(photo.FileName).ToLowerInvariant();
+            var objectName = $"qc/{jobId}/{Guid.NewGuid()}{extension}";
+            await using var stream = photo.OpenReadStream();
+            await _files.UploadAsync(_minio.PhotoBucket, objectName, stream, photo.ContentType, cancellationToken);
+            photoKeys.Add(objectName);
+        }
+
+        var result = await _sender.Send(
+            new CompleteJobCommand(jobId, request.ActualPrintMinutes, request.SelfReport, photoKeys),
+            cancellationToken);
+        if (result.IsFailure)
+        {
+            foreach (var key in photoKeys)
+                await _files.DeleteAsync(_minio.PhotoBucket, key, cancellationToken);
+        }
+        return ToResult(result);
+    }
+
+    [HttpGet("qc-proofs")]
+    [Authorize(Policy = Policies.RequireOps)]
+    public async Task<IActionResult> GetQcProofs(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetJobsQuery(JobStatus.AwaitingInspection), cancellationToken);
+        if (result.IsFailure) return BadRequest(result.Error);
+
+        var pending = result.Value.Where(j => j.QcProofStatus == "Pending").ToList();
+        var response = new List<object>();
+        foreach (var job in pending)
+        {
+            var urls = new List<string>();
+            foreach (var key in job.QcProofPhotoKeys)
+                urls.Add(await _files.GetPresignedUrlAsync(_minio.PhotoBucket, key, TimeSpan.FromMinutes(15)));
+            response.Add(new { Job = job, PhotoUrls = urls });
+        }
+        return Ok(response);
+    }
+
+    [HttpPost("{jobId:guid}/qc-proof/review")]
+    [Authorize(Policy = Policies.RequireOps)]
+    public async Task<IActionResult> ReviewQcProof(Guid jobId, [FromBody] ReviewQcProofRequest request, CancellationToken cancellationToken)
+    {
+        var staffId = User.GetCustomerId();
+        if (staffId is null) return Forbid();
+        var result = await _sender.Send(
+            new ReviewQcProofCommand(jobId, staffId.Value, request.Approved, request.Reason),
+            cancellationToken);
         return ToResult(result);
     }
 
@@ -80,6 +152,12 @@ public class JobsController : ControllerBase
     }
 }
 
-public record CompleteJobRequest(int ActualPrintMinutes);
+public sealed class CompleteJobRequest
+{
+    public int ActualPrintMinutes { get; init; }
+    public string SelfReport { get; init; } = string.Empty;
+    public List<IFormFile>? Photos { get; init; }
+}
+public record ReviewQcProofRequest(bool Approved, string? Reason);
 public record InspectRequest(bool Passed, string? Note);
 public record DeclineJobRequest(string Reason);

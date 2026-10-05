@@ -18,6 +18,7 @@ import { OrderTimelineView } from './OrderTimelineView'
 import type { Order, OrderStatus } from '../../shared/types/order'
 import { useAuth } from '../../app/AuthContext'
 import { CustomerNavbar } from '../home/components/CustomerNavbar'
+import { PageBackButton } from '../../shared/components/PageBackButton'
 
 const statusColor: Record<OrderStatus, 'warning' | 'info' | 'success' | 'error'> = {
   PaymentPending: 'warning',
@@ -98,12 +99,15 @@ export default function OrdersPage() {
       <CustomerNavbar />
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1200, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
-          <Box>
-            <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
-              Đơn hàng của tôi
-            </Typography>
-            <Typography color="text.secondary">Theo dõi trạng thái các đơn đã đặt</Typography>
-          </Box>
+          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+            <PageBackButton />
+            <Box>
+              <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
+                Đơn hàng của tôi
+              </Typography>
+              <Typography color="text.secondary">Theo dõi trạng thái các đơn đã đặt</Typography>
+            </Box>
+          </Stack>
           <Stack direction="row" spacing={1.5}>
             <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} onClick={() => navigate('/models')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
               Thư viện model

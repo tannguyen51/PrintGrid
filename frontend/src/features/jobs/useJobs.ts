@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../shared/api/apiClient'
-import type { Job, JobStatus } from './jobTypes'
+import type { Job, JobStatus, QcProofQueueItem } from './jobTypes'
 
 const JOBS_KEY = ['jobs'] as const
 
@@ -38,8 +38,29 @@ export function useStartJob() {
 export function useCompleteJob() {
   const invalidate = useInvalidate()
   return useMutation({
-    mutationFn: ({ id, actualMinutes }: { id: string; actualMinutes: number }) =>
-      apiClient.post(`/jobs/${id}/complete`, { actualPrintMinutes: actualMinutes }),
+    mutationFn: ({ id, actualMinutes, selfReport, photos }: { id: string; actualMinutes: number; selfReport: string; photos: File[] }) => {
+      const form = new FormData()
+      form.append('actualPrintMinutes', String(actualMinutes))
+      form.append('selfReport', selfReport)
+      photos.forEach((photo) => form.append('photos', photo))
+      return apiClient.post(`/jobs/${id}/complete`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    },
+    onSuccess: invalidate,
+  })
+}
+
+export function useQcProofQueue() {
+  return useQuery({
+    queryKey: [...JOBS_KEY, 'qc-proofs'],
+    queryFn: () => apiClient.get<QcProofQueueItem[]>('/jobs/qc-proofs').then((r) => r.data),
+  })
+}
+
+export function useReviewQcProof() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: ({ id, approved, reason }: { id: string; approved: boolean; reason?: string }) =>
+      apiClient.post(`/jobs/${id}/qc-proof/review`, { approved, reason }),
     onSuccess: invalidate,
   })
 }

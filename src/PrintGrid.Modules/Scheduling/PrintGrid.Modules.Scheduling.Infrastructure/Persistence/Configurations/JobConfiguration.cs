@@ -14,6 +14,10 @@ public class JobConfiguration : IEntityTypeConfiguration<Job>
         builder.Property(j => j.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(j => j.FailureReason).HasMaxLength(500);
         builder.Property(j => j.EstimatedPrintMinutes).IsRequired();
+        builder.Property(j => j.QcProofStatus).HasConversion<string>().HasMaxLength(16).IsRequired();
+        builder.Property(j => j.QcSelfReport).HasMaxLength(2000);
+        builder.Property(j => j.QcProofPhotoKeys).HasMaxLength(4000);
+        builder.Property(j => j.QcRejectionReason).HasMaxLength(1000);
 
         builder.HasIndex(j => new { j.Status, j.MachineId });
         builder.HasIndex(j => j.InternalDueDate);
