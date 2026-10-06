@@ -181,7 +181,7 @@ export default function LabQueuePage() {
             <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
               Hàng đợi sản xuất — Lab
             </Typography>
-            <Typography color="text.secondary">Nhận / từ chối job (hạn 2 giờ) → Bắt đầu in → Báo hoàn thành (FR-LAB-004)</Typography>
+            <Typography color="text.secondary">Quy trình sản xuất: Nhận / Từ chối (hạn 2 giờ) → Bắt đầu in → Báo hoàn thành</Typography>
           </Box>
           <Stack direction="row" spacing={1.5}>
             <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} onClick={() => navigate('/models')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
@@ -337,7 +337,7 @@ export default function LabQueuePage() {
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>Hoàn thành job</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: 'text.secondary', mb: 2 }}>
-            Ghi thời gian in thực tế (phút) để hệ thống hiệu chuẩn ước lượng (FR-SCHED-008).
+            Nhập thời gian in thực tế (phút) để cập nhật dữ liệu vận hành sản xuất.
           </DialogContentText>
           <TextField
             label="Thời gian thực tế (phút)"

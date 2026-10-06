@@ -18,7 +18,7 @@ namespace PrintGrid.Api.Auth;
 /// </summary>
 public class JwtTokenService : ITokenService
 {
-    private const string RefreshTokenType = "refresh";
+    private const string _refreshTokenType = "refresh";
 
     private readonly JwtOptions _options;
     private readonly TokenValidationParameters _validationParameters;
@@ -69,7 +69,7 @@ public class JwtTokenService : ITokenService
             new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Typ, RefreshTokenType),
+                new Claim(JwtRegisteredClaimNames.Typ, _refreshTokenType),
             },
             DateTime.UtcNow,
             DateTime.UtcNow.AddDays(_options.RefreshTokenDays));
@@ -94,7 +94,7 @@ public class JwtTokenService : ITokenService
             var principal = handler.ValidateToken(refreshToken, _validationParameters, out var validatedToken);
 
             var isRefresh = validatedToken is JwtSecurityToken jwt &&
-                            jwt.Claims.Any(c => c.Type == JwtRegisteredClaimNames.Typ && c.Value == RefreshTokenType);
+                            jwt.Claims.Any(c => c.Type == JwtRegisteredClaimNames.Typ && c.Value == _refreshTokenType);
             if (!isRefresh) return null;
 
             var sub = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);

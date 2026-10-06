@@ -21,5 +21,7 @@ public static class JobMappings
         job.Specification.MaterialCode,
         job.Specification.ColorCode,
         job.Specification.LayerHeightMm,
-        job.AttemptNumber);
+        job.AttemptNumber,
+        job.AssignedAtUtc,
+        job.AssignedAtUtc.HasValue ? job.AssignedAtUtc.Value.AddHours(2) : null);
 }

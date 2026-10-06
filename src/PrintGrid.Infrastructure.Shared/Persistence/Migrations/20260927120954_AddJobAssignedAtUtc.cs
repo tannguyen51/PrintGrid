@@ -3,29 +3,28 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
+namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations;
+
+/// <inheritdoc />
+public partial class AddJobAssignedAtUtc : Migration
 {
     /// <inheritdoc />
-    public partial class AddJobAssignedAtUtc : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<DateTime>(
-                name: "AssignedAtUtc",
-                schema: "scheduling",
-                table: "jobs",
-                type: "timestamp with time zone",
-                nullable: true);
-        }
+        migrationBuilder.AddColumn<DateTime>(
+            name: "AssignedAtUtc",
+            schema: "scheduling",
+            table: "jobs",
+            type: "timestamp with time zone",
+            nullable: true);
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "AssignedAtUtc",
-                schema: "scheduling",
-                table: "jobs");
-        }
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            name: "AssignedAtUtc",
+            schema: "scheduling",
+            table: "jobs");
     }
 }

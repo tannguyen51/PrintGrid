@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { apiClient } from '../shared/api/apiClient'
-import { clearTokens, getAccessToken, setTokens, isRemembered } from '../shared/api/tokenStore'
+import { clearTokens, getAccessToken, setTokens } from '../shared/api/tokenStore'
 
 export type Role =
   | 'Customer'
@@ -29,7 +29,7 @@ interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
   /** remember=true lưu token vào localStorage (giữ qua nhiều phiên mở trình duyệt). */
-  login: (email: string, password: string, remember?: boolean) => Promise<void>
+  login: (email: string, password: string, remember?: boolean) => Promise<AuthUser>
   register: (input: RegisterInput) => Promise<void>
   logout: () => void
 }
@@ -47,8 +47,11 @@ function userFromAccessToken(token: string): AuthUser | null {
   try {
     const payload = JSON.parse(atob(token.split('.')[1] ?? ''))
     const id = payload.sub ?? payload.nameidentifier
-    const rolesRaw = payload.role ?? payload.roles
-    const roles: Role[] = typeof rolesRaw === 'string' ? rolesRaw.split(',') : rolesRaw ?? []
+    const rolesRaw =
+      payload.role ??
+      payload.roles ??
+      payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']
+    const roles: Role[] = typeof rolesRaw === 'string' ? rolesRaw.split(',') : Array.isArray(rolesRaw) ? rolesRaw : []
     if (!id || !payload.email) return null
     return {
       id,
@@ -62,16 +65,17 @@ function userFromAccessToken(token: string): AuthUser | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Khôi phục phiên đã ghi nhớ ngay từ state khởi tạo (sau khi reload trang).
+  // Khôi phục phiên ngay từ state khởi tạo khi có access token.
   const [user, setUser] = useState<AuthUser | null>(() => {
     const token = getAccessToken()
-    return token && isRemembered() ? userFromAccessToken(token) : null
+    return token ? userFromAccessToken(token) : null
   })
 
-  const login = useCallback(async (email: string, password: string, remember = false) => {
+  const login = useCallback(async (email: string, password: string, remember = false): Promise<AuthUser> => {
     const { data } = await apiClient.post<LoginResponse>('/auth/login', { email, password })
     setTokens(data.accessToken, data.refreshToken, remember)
     setUser(data.user)
+    return data.user
   }, [])
 
   const register = useCallback(async (input: RegisterInput) => {

@@ -151,7 +151,7 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                     Bảng điều phối
                   </Button>
                 )}
-                <Button variant="contained" color="primary" onClick={() => go(isCustomer ? '/models' : isOps ? '/scheduling' : '/lab/queue')} sx={{ px: 2.5, py: 0.9, fontSize: '0.9rem' }}>
+                <Button variant="contained" color="primary" onClick={() => go(isCustomer ? '/models' : isOps ? '/scheduling' : isHub ? '/hub/qc' : '/lab/queue')} sx={{ px: 2.5, py: 0.9, fontSize: '0.9rem' }}>
                   {isCustomer ? 'Bắt đầu in' : isOps ? 'Điều phối' : 'Vào việc'}
                 </Button>
                 <Button

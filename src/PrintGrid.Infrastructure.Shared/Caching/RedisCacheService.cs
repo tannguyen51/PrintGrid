@@ -5,7 +5,7 @@ namespace PrintGrid.Infrastructure.Shared.Caching;
 
 public class RedisCacheService : ICacheService
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _serializerOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IDistributedCache _cache;
 
@@ -14,12 +14,12 @@ public class RedisCacheService : ICacheService
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
         var payload = await _cache.GetStringAsync(key, cancellationToken);
-        return payload is null ? default : JsonSerializer.Deserialize<T>(payload, SerializerOptions);
+        return payload is null ? default : JsonSerializer.Deserialize<T>(payload, _serializerOptions);
     }
 
     public Task SetAsync<T>(string key, T value, TimeSpan ttl, CancellationToken cancellationToken = default)
     {
-        var payload = JsonSerializer.Serialize(value, SerializerOptions);
+        var payload = JsonSerializer.Serialize(value, _serializerOptions);
         var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = ttl };
         return _cache.SetStringAsync(key, payload, options, cancellationToken);
     }

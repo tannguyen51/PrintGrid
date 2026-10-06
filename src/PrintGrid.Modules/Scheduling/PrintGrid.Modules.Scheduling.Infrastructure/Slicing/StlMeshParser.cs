@@ -10,8 +10,8 @@ namespace PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
 /// </summary>
 internal static class StlMeshParser
 {
-    private const int BinaryHeaderSize = 80;
-    private const int TriangleRecordSize = 50; // normal(12) + 3 verts(36) + attr(2)
+    private const int _binaryHeaderSize = 80;
+    private const int _triangleRecordSize = 50; // normal(12) + 3 verts(36) + attr(2)
 
     public static MeshStats Parse(Stream stream)
     {
@@ -38,7 +38,7 @@ internal static class StlMeshParser
 
     private static MeshStats ParseBinary(Stream stream)
     {
-        Span<byte> header = stackalloc byte[BinaryHeaderSize];
+        Span<byte> header = stackalloc byte[_binaryHeaderSize];
         ReadExact(stream, header);
 
         Span<byte> countBytes = stackalloc byte[4];
@@ -47,7 +47,7 @@ internal static class StlMeshParser
         if (triangleCount is 0 or > 10_000_000)
             throw new InvalidDataException($"Suspicious triangle count {triangleCount}");
 
-        Span<byte> record = stackalloc byte[TriangleRecordSize];
+        Span<byte> record = stackalloc byte[_triangleRecordSize];
         var min = new double[] { double.MaxValue, double.MaxValue, double.MaxValue };
         var max = new double[] { double.MinValue, double.MinValue, double.MinValue };
         double signedVolume = 0, absVolume = 0;

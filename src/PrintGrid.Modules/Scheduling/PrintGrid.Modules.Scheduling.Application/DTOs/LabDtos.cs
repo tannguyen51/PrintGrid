@@ -44,4 +44,6 @@ public record JobDto(
     string MaterialCode,
     string ColorCode,
     decimal LayerHeightMm,
-    int AttemptNumber);
+    int AttemptNumber,
+    DateTime? AssignedAtUtc = null,
+    DateTime? AcceptanceDeadlineUtc = null);

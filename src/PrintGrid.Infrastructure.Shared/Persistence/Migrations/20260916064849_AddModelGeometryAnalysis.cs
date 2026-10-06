@@ -2,14 +2,14 @@
 
 #nullable disable
 
-namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
+namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations;
+
+/// <inheritdoc />
+public partial class AddModelGeometryAnalysis : Migration
 {
     /// <inheritdoc />
-    public partial class AddModelGeometryAnalysis : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
             migrationBuilder.AddColumn<decimal>(
                 name: "BoundingDepthMm",
                 schema: "customer",
@@ -110,4 +110,4 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                 table: "models");
         }
     }
-}
+

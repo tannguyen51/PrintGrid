@@ -85,7 +85,7 @@ export default function HubQCPage() {
         status: 'Pass',
       }))
     )
-    setPhotoUrls(['https://cdn.printgrid.dev/qc/sample-evidence.jpg'])
+    setPhotoUrls([])
     setNewPhotoInput('')
     setFaultAttribution('Lab')
     setNote('')
@@ -117,22 +117,30 @@ export default function HubQCPage() {
     if (!activeJob) return
     setErrorMessage(null)
 
-    // AC01: không ảnh => không lưu kết luận
-    if (photoUrls.length === 0) {
-      setErrorMessage('Bắt buộc phải có ít nhất 1 ảnh nghiệm thu chụp chi tiết (AC01 - BR-QC-003).')
+    // Lấy danh sách ảnh gồm photoUrls hiện tại và cả URL vừa gõ dở nếu có
+    const effectivePhotos = [...photoUrls]
+    if (newPhotoInput.trim() && !effectivePhotos.includes(newPhotoInput.trim())) {
+      effectivePhotos.push(newPhotoInput.trim())
+      setPhotoUrls(effectivePhotos)
+      setNewPhotoInput('')
+    }
+
+    // Yêu cầu bắt buộc phải có ít nhất 1 ảnh bằng chứng nghiệm thu
+    if (effectivePhotos.length === 0) {
+      setErrorMessage('Bắt buộc phải có ít nhất 1 ảnh chụp nghiệm thu chi tiết trước khi lưu kết luận.')
       return
     }
 
-    // AC02: mọi mục kiểm phải có đậu/trượt/không áp dụng
+    // Mọi mục kiểm tra trong checklist phải có đánh giá Đậu / Trượt / NA
     const allEvaluated = checklist.every((c) => ['Pass', 'Fail', 'NotApplicable'].includes(c.status))
     if (!allEvaluated) {
-      setErrorMessage('Mọi mục kiểm tra trong checklist phải có đánh giá rõ ràng (AC02).')
+      setErrorMessage('Mọi mục trong danh mục kiểm tra phải được đánh giá (Đạt / Trượt / N/A).')
       return
     }
 
-    // AC03: trượt thiếu quy trách => không chuyển in lại
+    // Trượt thì bắt buộc phải quy trách nhiệm
     if (!passed && !faultAttribution) {
-      setErrorMessage('Khi đánh trượt, bắt buộc phải quy trách nhiệm (Xưởng / Hub / Khách hàng) (AC03).')
+      setErrorMessage('Khi đánh trượt, bắt buộc phải chọn nguyên nhân quy trách nhiệm (Xưởng / Hub / Khách hàng).')
       return
     }
 
@@ -141,7 +149,7 @@ export default function HubQCPage() {
         id: activeJob.id,
         passed,
         checklistResults: checklist.map((c) => ({ itemName: c.name, status: c.status })),
-        photoUrls,
+        photoUrls: effectivePhotos,
         faultAttribution: passed ? undefined : faultAttribution,
         note: note.trim() || (passed ? 'Đạt tiêu chuẩn QC Hub' : `Trượt QC (${faultAttribution})`),
       })
@@ -169,7 +177,7 @@ export default function HubQCPage() {
             <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
               Kiểm tra chất lượng — Hub
             </Typography>
-            <Typography color="text.secondary">Duyệt job đã in xong (FR-HUB-002 & FR-HUB-003)</Typography>
+            <Typography color="text.secondary">Kiểm định và đánh giá chất lượng sản phẩm in hoàn thiện</Typography>
           </Box>
           <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
             Đăng xuất
@@ -230,7 +238,7 @@ export default function HubQCPage() {
         PaperProps={{ sx: { bgcolor: '#121212', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.15)' } }}
       >
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 800, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          Biên bản kiểm tra chất lượng sản phẩm (FR-HUB-002)
+          Biên bản kiểm tra chất lượng sản phẩm
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
           {errorMessage && (
@@ -250,9 +258,9 @@ export default function HubQCPage() {
             </Box>
           )}
 
-          {/* Section 1: Checklist (AC02) */}
+          {/* Section 1: Checklist */}
           <Typography variant="h6" sx={{ fontSize: '1.05rem', fontWeight: 700, color: 'text.primary', mb: 1.5 }}>
-            1. Danh mục tiêu chí kiểm tra (Mọi mục bắt buộc đánh giá Đậu / Trượt / NA)
+            1. Danh mục tiêu chí kiểm tra (Đánh giá Đậu / Trượt / Không áp dụng)
           </Typography>
           <Stack spacing={1.5} sx={{ mb: 3 }}>
             {checklist.map((item, idx) => (
@@ -305,30 +313,50 @@ export default function HubQCPage() {
 
           <Divider sx={{ my: 2.5, borderColor: 'rgba(255,255,255,0.08)' }} />
 
-          {/* Section 2: Photo Evidence (AC01) */}
+          {/* Section 2: Photo Evidence */}
           <Typography variant="h6" sx={{ fontSize: '1.05rem', fontWeight: 700, color: 'text.primary', mb: 1 }}>
-            2. Ảnh chụp nghiệm thu (Bắt buộc ít nhất 1 ảnh - AC01)
+            2. Ảnh chụp nghiệm thu (Bắt buộc tối thiểu 1 ảnh)
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             Không có ảnh chụp bằng chứng =&gt; hệ thống không cho phép lưu kết luận nghiệm thu.
           </Typography>
 
-          <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }}>
             <TextField
               size="small"
               fullWidth
               placeholder="Nhập đường dẫn URL ảnh nghiệm thu..."
               value={newPhotoInput}
               onChange={(e) => setNewPhotoInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleAddPhoto()
+                }
+              }}
             />
-            <Button variant="outlined" startIcon={<AddPhotoAlternateRounded />} onClick={handleAddPhoto}>
-              Thêm ảnh
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button variant="outlined" startIcon={<AddPhotoAlternateRounded />} onClick={handleAddPhoto}>
+                Thêm ảnh
+              </Button>
+              <Button
+                variant="text"
+                size="small"
+                sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}
+                onClick={() => {
+                  if (!photoUrls.includes('https://cdn.printgrid.dev/qc/sample-evidence.jpg')) {
+                    setPhotoUrls((prev) => [...prev, 'https://cdn.printgrid.dev/qc/sample-evidence.jpg'])
+                  }
+                }}
+              >
+                + Ảnh mẫu
+              </Button>
+            </Stack>
           </Stack>
 
           {photoUrls.length === 0 ? (
             <Alert severity="warning" sx={{ mb: 3 }}>
-              Chưa có ảnh bằng chứng nào được tải lên! Vui lòng thêm URL ảnh chụp sản phẩm.
+              Chưa có ảnh bằng chứng nào được tải lên! Vui lòng thêm URL ảnh chụp sản phẩm (bấm "Xác nhận" lúc này hệ thống sẽ chặn và báo lỗi).
             </Alert>
           ) : (
             <Stack direction="row" spacing={1.5} sx={{ mb: 3, flexWrap: 'wrap', gap: 1 }}>
@@ -347,7 +375,7 @@ export default function HubQCPage() {
 
           <Divider sx={{ my: 2.5, borderColor: 'rgba(255,255,255,0.08)' }} />
 
-          {/* Section 3: Fault Attribution & Decision (AC03 & FR-HUB-003) */}
+          {/* Section 3: Fault Attribution & Decision */}
           <Typography variant="h6" sx={{ fontSize: '1.05rem', fontWeight: 700, color: 'text.primary', mb: 1.5 }}>
             3. Kết luận nghiệm thu &amp; Quy trách nhiệm (nếu trượt)
           </Typography>
