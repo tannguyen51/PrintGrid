@@ -60,6 +60,7 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
         order.TotalPrice.Currency,
         order.PromisedDeliveryDate,
         order.CreatedAt,
+        order.DeliveredAt,
         order.Items.Select(i => new OrderItemDto(
             i.Id,
             i.ModelId,

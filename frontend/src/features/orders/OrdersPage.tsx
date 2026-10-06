@@ -19,6 +19,7 @@ import type { Order, OrderStatus } from '../../shared/types/order'
 import { useAuth } from '../../app/AuthContext'
 import { CustomerNavbar } from '../home/components/CustomerNavbar'
 import { PageBackButton } from '../../shared/components/PageBackButton'
+import { ReprintRequestPanel } from './ReprintRequestPanel'
 
 const statusColor: Record<OrderStatus, 'warning' | 'info' | 'success' | 'error'> = {
   PaymentPending: 'warning',
@@ -157,6 +158,9 @@ export default function OrdersPage() {
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
             <Box sx={{ p: 3, flex: 1, overflowY: 'auto' }}>
               <OrderTimelineView orderId={selected.id} />
+
+              <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.08)' }} />
+              <ReprintRequestPanel order={selected} />
               
               <Box sx={{ mt: 4 }}>
                 <Button
