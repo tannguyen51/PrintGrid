@@ -58,9 +58,19 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
     setSubmitting(true)
     setServerError(null)
     try {
-      await login(values.email, values.password, remember)
+      const user = await login(values.email, values.password, remember)
       if (onSuccess) onSuccess()
-      else navigate('/', { replace: true })
+      
+      const roles = user?.roles ?? []
+      if (roles.includes('HubQC') || roles.includes('HubFulfillment')) {
+        navigate('/hub/qc', { replace: true })
+      } else if (roles.includes('LabManager') || roles.includes('LabOperator')) {
+        navigate('/lab/queue', { replace: true })
+      } else if (roles.includes('OpsManager') || roles.includes('Admin')) {
+        navigate('/scheduling', { replace: true })
+      } else {
+        navigate('/models', { replace: true })
+      }
     } catch {
       setServerError('Email hoặc mật khẩu không đúng')
     } finally {

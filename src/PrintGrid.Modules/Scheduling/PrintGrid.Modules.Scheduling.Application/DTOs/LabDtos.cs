@@ -51,4 +51,6 @@ public record JobDto(
     IReadOnlyList<string> QcProofPhotoKeys,
     Guid? QcReviewedBy,
     DateTime? QcReviewedAtUtc,
-    string? QcRejectionReason);
+    string? QcRejectionReason,
+    DateTime? AssignedAtUtc,
+    DateTime? AcceptanceDeadlineUtc);

@@ -28,5 +28,8 @@ public static class JobMappings
         job.GetQcProofPhotoKeys(),
         job.QcReviewedBy,
         job.QcReviewedAtUtc,
-        job.QcRejectionReason);
+        job.QcRejectionReason,
+        job.AssignedAtUtc,
+        // The lab has two hours to accept a placement (Accept timeout, BR-ASSIGN-007).
+        job.AssignedAtUtc.HasValue ? job.AssignedAtUtc.Value.AddHours(2) : null);
 }

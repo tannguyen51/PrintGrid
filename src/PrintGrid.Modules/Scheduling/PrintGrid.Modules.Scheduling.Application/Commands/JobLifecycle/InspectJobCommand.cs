@@ -1,8 +1,15 @@
-using MediatR;
-using PrintGrid.SharedKernel.Interfaces;
+﻿using MediatR;
+using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.SharedKernel.Results;
-using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 
-public record InspectJobCommand(Guid JobId, bool Passed, string? Note) : IRequest<Result>;
+public record ChecklistItemResult(string ItemName, string Status, string? Note = null);
+
+public record InspectJobCommand(
+    Guid JobId,
+    bool Passed,
+    IReadOnlyList<ChecklistItemResult> ChecklistResults,
+    IReadOnlyList<string> PhotoUrls,
+    FaultAttribution? FaultAttribution = null,
+    string? Note = null) : IRequest<Result>;

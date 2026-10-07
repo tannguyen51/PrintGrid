@@ -9,9 +9,15 @@ using PrintGrid.SharedKernel.Results;
 namespace PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 
 /// <summary>
-/// Hub QC decision (FR-HUB-002): PASS closes the job; FAIL records the failure and hands off
-/// to the urgent-reprint flow (FR-HUB-003), which creates a NEW job that inherits the original
-/// deadline and is charged to the at-fault lab.
+/// Hub QC decision (FR-HUB-002). PASS closes the job; FAIL must carry photographic evidence,
+/// a fully evaluated checklist and a fault attribution (BR-QC-002/003/004):
+/// <list type="bullet">
+/// <item>customer fault — the job is closed as failed, NO reprint is created and the customer
+/// is told the model file is the problem (FR-HUB-002 AC02);</item>
+/// <item>lab/hub fault — the failure is recorded and handed to the urgent-reprint flow
+/// (FR-HUB-003), which owns the URGENT priority, the inherited deadline, the cost
+/// attribution, the cap of two reprints and the decision log.</item>
+/// </list>
 /// </summary>
 public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Result>
 {
@@ -42,20 +48,48 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
         if (job.Status != JobStatus.AwaitingInspection)
             return Result.Failure(Error.Conflict($"Job in state {job.Status} cannot be inspected"));
 
+        // AC01/AC02 (BR-QC-002/003): no conclusion without evidence, none with a half-done checklist.
+        if (command.PhotoUrls is null || command.PhotoUrls.Count == 0)
+            return Result.Failure(Error.Validation("Photographic evidence is required for inspection"));
+        if (command.ChecklistResults is null || command.ChecklistResults.Count == 0)
+            return Result.Failure(Error.Validation("Inspection checklist items are mandatory"));
+
         if (command.Passed)
         {
-            // Lab self-QC evidence must be approved before the hub signs the job off. The domain
-            // also enforces this (Job.MarkInspectionPassed throws); checking here keeps the
-            // answer a 409 instead of a 500. Deliberately not applied to FAIL: an inspector who
-            // can see a defect must still be able to record it.
-            if (job.QcProofStatus != QcProofStatus.Approved)
-                return Result.Failure(Error.Conflict("Lab QC proof must be approved before hub inspection"));
-            job.MarkInspectionPassed();
+            var passed = job.MarkInspectionPassed(command.PhotoUrls.ToList());
+            if (passed.IsFailure) return passed;
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return Result.Success();
         }
 
-        var reason = command.Note ?? "Failed hub inspection";
+        // AC03 (BR-QC-004): a failure without attribution cannot be routed to anyone.
+        if (command.FaultAttribution is null)
+            return Result.Failure(Error.Validation(
+                "Fault attribution (Lab, Hub or Customer) is required when inspection fails"));
+
+        var fault = command.FaultAttribution.Value;
+        var reason = command.Note ?? $"Failed hub inspection ({fault} fault)";
+
+        if (fault == FaultAttribution.Customer)
+        {
+            // AC02: the customer's own file is at fault — no reprint job, and the customer is told.
+            var message =
+                $"Chi tiết in '{job.Specification.MaterialCode}' không đạt kiểm chuẩn do vấn đề mô hình file 3D từ khách hàng. " +
+                "Vui lòng liên hệ để xác nhận in lại có phí hoặc hoàn tiền.";
+
+            var customerFault = job.FailInspectionCustomerFault(
+                reason, command.PhotoUrls.ToList(), message);
+            if (customerFault.IsFailure) return customerFault;
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Job {JobId} failed inspection attributed to the customer — no reprint created",
+                job.Id);
+            return Result.Success();
+        }
+
         var failedAtLabId = job.LabId;
 
         var fail = job.Fail(reason);
@@ -64,7 +98,7 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var reprint = await _sender.Send(
-            new CreateUrgentReprintCommand(job.Id, reason, failedAtLabId),
+            new CreateUrgentReprintCommand(job.Id, reason, Fault: fault),
             cancellationToken);
 
         if (reprint.IsFailure)
@@ -82,6 +116,12 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
             _logger.LogWarning(
                 "Job {JobId} failed inspection again; reprint limit reached, escalated to operations",
                 job.Id);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Job {JobId} failed inspection ({Fault} fault) — reprint {ReprintJobId} created, charged to the at-fault party; lab of the failed print was {FailedAtLabId}",
+                job.Id, fault, reprint.Value.ReprintJobId, failedAtLabId);
         }
 
         return Result.Success();

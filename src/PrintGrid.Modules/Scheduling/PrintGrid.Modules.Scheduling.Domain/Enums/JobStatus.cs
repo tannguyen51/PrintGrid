@@ -12,3 +12,10 @@ public enum JobStatus
     Reassigned,
     Cancelled
 }
+
+public enum FaultAttribution
+{
+    Lab,
+    Hub,
+    Customer
+}

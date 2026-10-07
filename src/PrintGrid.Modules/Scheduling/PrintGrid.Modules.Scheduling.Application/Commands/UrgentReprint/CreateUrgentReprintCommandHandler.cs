@@ -46,6 +46,21 @@ public class CreateUrgentReprintCommandHandler
         _logger = logger;
     }
 
+    /// <summary>
+    /// Who is at fault decides both the cost and whether a lab is kept out of the replan:
+    /// a lab fault blames the lab that printed the original, a hub fault blames nobody in the
+    /// network, and an ops-triggered reprint without an explicit lab follows the contract
+    /// default (the lab that printed the original).
+    /// </summary>
+    private static Guid? ResolveFaultLabId(CreateUrgentReprintCommand command, Job original) =>
+        command.Fault switch
+        {
+            FaultAttribution.Lab => original.LabId,
+            FaultAttribution.Hub => null,
+            FaultAttribution.Customer => null,
+            _ => command.FaultLabId ?? original.LabId
+        };
+
     public async Task<Result<UrgentReprintResultDto>> Handle(
         CreateUrgentReprintCommand command,
         CancellationToken cancellationToken)
@@ -86,7 +101,7 @@ public class CreateUrgentReprintCommandHandler
         var reprint = Job.CreateUrgentReprint(
             original,
             reprintIndex,
-            command.FaultLabId,
+            ResolveFaultLabId(command, original),
             createdAtUtc: _clock.UtcNow);
 
         // Commit the reprint job before placing it: the job is a fact of its own. This also

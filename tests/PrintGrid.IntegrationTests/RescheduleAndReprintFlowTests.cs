@@ -185,8 +185,15 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
             return (await db.Set<Job>().FirstAsync(j => j.Id == jobId)).LabId!.Value;
         });
 
+        // FR-HUB-002: a FAIL must carry evidence, a full checklist and a fault attribution.
         var inspected = await InScope(sp =>
-            sp.GetRequiredService<ISender>().Send(new InspectJobCommand(jobId, Passed: false, Note: "Layer shift")));
+            sp.GetRequiredService<ISender>().Send(new InspectJobCommand(
+                jobId,
+                Passed: false,
+                ChecklistResults: new[] { new ChecklistItemResult("layer_adhesion", "fail", "Layer shift") },
+                PhotoUrls: new[] { "qc/defect.jpg" },
+                FaultAttribution: FaultAttribution.Lab,
+                Note: "Layer shift")));
         inspected.IsSuccess.Should().BeTrue();
 
         var state = await InScope(async sp =>

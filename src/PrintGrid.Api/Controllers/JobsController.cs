@@ -135,7 +135,13 @@ public class JobsController : ControllerBase
     [Authorize(Policy = Policies.RequireHub)]
     public async Task<IActionResult> Inspect(Guid jobId, [FromBody] InspectRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new InspectJobCommand(jobId, request.Passed, request.Note), cancellationToken);
+        var result = await _sender.Send(new InspectJobCommand(
+            jobId,
+            request.Passed,
+            request.ChecklistResults ?? Array.Empty<ChecklistItemResult>(),
+            request.PhotoUrls ?? Array.Empty<string>(),
+            request.FaultAttribution,
+            request.Note), cancellationToken);
         return ToResult(result);
     }
 
@@ -159,5 +165,10 @@ public sealed class CompleteJobRequest
     public List<IFormFile>? Photos { get; init; }
 }
 public record ReviewQcProofRequest(bool Approved, string? Reason);
-public record InspectRequest(bool Passed, string? Note);
+public record InspectRequest(
+    bool Passed,
+    IReadOnlyList<ChecklistItemResult>? ChecklistResults = null,
+    IReadOnlyList<string>? PhotoUrls = null,
+    FaultAttribution? FaultAttribution = null,
+    string? Note = null);
 public record DeclineJobRequest(string Reason);

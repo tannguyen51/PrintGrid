@@ -164,4 +164,130 @@ public class JobLifecycleTests
         result.IsFailure.Should().BeTrue();
         job.Status.Should().Be(JobStatus.Assigned);
     }
+
+    [Fact]
+    public void Validator_fails_when_no_photo_evidence_provided_AC01()
+    {
+        var validator = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommandValidator();
+        var command = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommand(
+            Guid.NewGuid(),
+            Passed: true,
+            ChecklistResults: new[] { new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.ChecklistItemResult("Kích thước", "Pass") },
+            PhotoUrls: Array.Empty<string>()
+        );
+
+        var result = validator.Validate(command);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "PhotoUrls");
+    }
+
+    [Fact]
+    public void Validator_fails_when_checklist_item_has_invalid_status_AC02()
+    {
+        var validator = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommandValidator();
+        var command = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommand(
+            Guid.NewGuid(),
+            Passed: true,
+            ChecklistResults: new[] { new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.ChecklistItemResult("Kích thước", "InvalidStatus") },
+            PhotoUrls: new[] { "https://cdn.printgrid.dev/qc/sample.jpg" }
+        );
+
+        var result = validator.Validate(command);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("PASS, FAIL, or NotApplicable"));
+    }
+
+    [Fact]
+    public void Validator_fails_when_failed_inspection_lacks_fault_attribution_AC03()
+    {
+        var validator = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommandValidator();
+        var command = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommand(
+            Guid.NewGuid(),
+            Passed: false,
+            ChecklistResults: new[] { new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.ChecklistItemResult("Kích thước", "Fail") },
+            PhotoUrls: new[] { "https://cdn.printgrid.dev/qc/defect.jpg" },
+            FaultAttribution: null
+        );
+
+        var result = validator.Validate(command);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "FaultAttribution");
+    }
+
+    [Fact]
+    public void Job_Fail_records_the_failure_and_asks_for_a_replan_FR_HUB_003_AC01()
+    {
+        var job = CreateAssignedJob();
+        job.Accept();
+        job.Start(DateTime.UtcNow);
+        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", new[] { "qc/ok.jpg" });
+
+        var result = job.Fail("Bề mặt nứt");
+
+        result.IsSuccess.Should().BeTrue();
+        job.Status.Should().Be(JobStatus.Failed);
+        job.FailureReason.Should().Be("Bề mặt nứt");
+
+        // The urgent reprint itself (URGENT, inherited deadline, cost bearer, cap of two) is
+        // created by CreateUrgentReprintCommand — see UrgentReprintTests and the
+        // RescheduleAndReprintFlowTests integration run. The aggregate's part is recording the
+        // failure and asking for a replan.
+        job.DomainEvents.Should().ContainSingle(e => e is JobFailedEvent);
+        job.DomainEvents.OfType<ReschedulingTriggeredEvent>().Single().Trigger.Should().Be("print_failure");
+    }
+
+    [Fact]
+    public void Job_FailInspectionCustomerFault_emits_notification_event_FR_HUB_003_AC02()
+    {
+        var job = CreateAssignedJob();
+        job.Accept();
+        job.Start(DateTime.UtcNow);
+        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", new[] { "qc/ok.jpg" });
+
+        var photoUrls = new[] { "https://cdn.printgrid.dev/qc/defect.jpg" };
+        var message = "Lỗi file 3D của khách hàng";
+
+        var result = job.FailInspectionCustomerFault("Lỗi mesh", photoUrls, message);
+
+        result.IsSuccess.Should().BeTrue();
+        job.Status.Should().Be(JobStatus.Failed);
+
+        job.DomainEvents.Should().ContainSingle(e => e is CustomerFaultInspectionFailedEvent);
+        var custEvt = job.DomainEvents.OfType<CustomerFaultInspectionFailedEvent>().Single();
+        custEvt.CustomerNotificationMessage.Should().Be(message);
+    }
+
+    [Fact]
+    public void Job_MarkInspectionPassed_completes_job_and_emits_event()
+    {
+        var job = CreateAssignedJob();
+        job.Accept();
+        job.Start(DateTime.UtcNow);
+        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", new[] { "qc/ok.jpg" });
+        // The lab's own QC evidence must be approved before the hub signs the job off.
+        job.ReviewQcProof(approved: true, Guid.NewGuid(), null, DateTime.UtcNow);
+
+        var photoUrls = new[] { "https://cdn.printgrid.dev/qc/ok.jpg" };
+        var result = job.MarkInspectionPassed(photoUrls);
+
+        result.IsSuccess.Should().BeTrue();
+        job.Status.Should().Be(JobStatus.Completed);
+        job.DomainEvents.Should().ContainSingle(e => e is JobInspectionPassedEvent);
+    }
+
+    [Fact]
+    public void Job_MarkInspectionPassed_is_refused_until_the_lab_proof_is_approved()
+    {
+        var job = CreateAssignedJob();
+        job.Accept();
+        job.Start(DateTime.UtcNow);
+        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", new[] { "qc/ok.jpg" });
+
+        var result = job.MarkInspectionPassed(new[] { "https://cdn.printgrid.dev/qc/ok.jpg" });
+
+        result.IsFailure.Should().BeTrue(
+            "the hub only signs off on work whose lab QC evidence has been approved");
+        job.Status.Should().Be(JobStatus.AwaitingInspection);
+    }
 }
+

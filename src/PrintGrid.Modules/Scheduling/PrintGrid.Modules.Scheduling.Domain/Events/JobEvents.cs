@@ -53,3 +53,13 @@ public sealed record JobCompletedEvent(
     Guid JobId,
     Guid OrderItemId) : DomainEvent;
 
+public sealed record JobInspectionPassedEvent(
+    Guid JobId,
+    IReadOnlyList<string> PhotoUrls) : DomainEvent;
+
+public sealed record CustomerFaultInspectionFailedEvent(
+    Guid JobId,
+    string? FailureReason,
+    IReadOnlyList<string> PhotoUrls,
+    string CustomerNotificationMessage) : DomainEvent;
+

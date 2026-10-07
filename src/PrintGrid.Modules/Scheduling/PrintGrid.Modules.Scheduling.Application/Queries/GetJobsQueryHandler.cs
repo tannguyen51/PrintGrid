@@ -10,7 +10,7 @@ namespace PrintGrid.Modules.Scheduling.Application.Queries;
 public class GetJobsQueryHandler : IRequestHandler<GetJobsQuery, Result<IReadOnlyList<JobDto>>>
 {
     private readonly IJobRepository _jobs;
-    private readonly PrintGrid.SharedKernel.Interfaces.IUnitOfWork _unitOfWork;
+    private readonly SharedKernel.Interfaces.IUnitOfWork _unitOfWork;
 
     public GetJobsQueryHandler(IJobRepository jobs, PrintGrid.SharedKernel.Interfaces.IUnitOfWork unitOfWork)
     {

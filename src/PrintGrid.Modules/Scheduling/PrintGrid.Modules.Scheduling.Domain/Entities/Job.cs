@@ -82,6 +82,8 @@ public class Job : AggregateRoot<Guid>
     /// specification, URGENT priority, and the ORIGINAL internal due date inherited so the
     /// customer's promised delivery date is preserved. Cost is charged to the at-fault
     /// party (default: the lab, per 13-Acceptance-Criteria.md:330).
+    /// <paramref name="faultLabId"/> is stored exactly as given — the caller decides who is
+    /// at fault, including "nobody in the network" (null) for a hub-caused failure.
     /// </summary>
     public static Job CreateUrgentReprint(
         Job original,
@@ -116,7 +118,7 @@ public class Job : AggregateRoot<Guid>
             OriginalJobId = original.OriginalJobId ?? original.Id,
             ReprintIndex = reprintIndex,
             CostBearer = costBearer,
-            FaultLabId = faultLabId ?? original.LabId,
+            FaultLabId = faultLabId,
             CreatedAt = createdAtUtc ?? DateTime.UtcNow
         };
 
@@ -295,13 +297,44 @@ public class Job : AggregateRoot<Guid>
         return Result.Success();
     }
 
-    public void MarkInspectionPassed()
+    /// <summary>
+    /// Hub QC pass (FR-HUB-002): the inspection evidence is recorded and the job closes.
+    /// The lab's own QC evidence must already be approved; that is returned as a failure
+    /// rather than thrown so the API answers 409 instead of 500.
+    /// </summary>
+    public Result MarkInspectionPassed(IReadOnlyList<string> photoUrls)
     {
+        if (Status != JobStatus.AwaitingInspection)
+            return Result.Failure(Error.Conflict($"Job in state {Status} cannot be inspected"));
         if (QcProofStatus != QcProofStatus.Approved)
-            throw new InvalidOperationException("Lab QC proof must be approved before hub inspection");
+            return Result.Failure(Error.Conflict("Lab QC proof must be approved before hub inspection"));
+
         Status = JobStatus.Completed;
-        // Optionally AddDomainEvent(new JobInspectionPassedEvent) if needed, 
-        // but AwaitingInspection -> Completed is handled here. Let's just rely on JobCompletedEvent for now,
-        // or add an event if we need to track QualityCheck. Let's add it.
+        AddDomainEvent(new JobInspectionPassedEvent(Id, photoUrls));
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Hub QC fail where the customer is at fault (FR-HUB-002 AC02 / BR-QC-004): the job fails,
+    /// no reprint is created and the customer is notified that the model file is the problem.
+    /// </summary>
+    public Result FailInspectionCustomerFault(
+        string failureReason,
+        IReadOnlyList<string> photoUrls,
+        string customerNotificationMessage)
+    {
+        if (Status != JobStatus.AwaitingInspection)
+            return Result.Failure(Error.Conflict($"Job in state {Status} cannot be inspected"));
+
+        Status = JobStatus.Failed;
+        FailureReason = failureReason;
+
+        AddDomainEvent(new CustomerFaultInspectionFailedEvent(
+            Id,
+            failureReason,
+            photoUrls,
+            customerNotificationMessage));
+
+        return Result.Success();
     }
 }
