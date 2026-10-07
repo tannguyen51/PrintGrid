@@ -90,6 +90,24 @@ public class Lab : AggregateRoot<Guid>
         _materialReservations.Add(MaterialReservation.Create(Id, stock.Id, jobId, reserved));
     }
 
+    /// <summary>
+    /// Credits material back to the lab for a print the PLATFORM caused — a hub fault
+    /// (BR-RESCHED-003, decided 07/10). The consumption is still recorded by
+    /// <see cref="SettleMaterial"/>, so the ledger shows both the usage and the compensation
+    /// instead of hiding one of them. Labs that do not track the material are left alone, in
+    /// line with the opt-in ledger.
+    /// </summary>
+    public void CompensateMaterial(Guid jobId, string materialCode, string colorCode, decimal grams, string reason)
+    {
+        if (grams <= 0) return;
+
+        var stock = FindStock(materialCode, colorCode);
+        if (stock is null) return;
+
+        stock.Adjust(grams);
+        _stockTransactions.Add(StockTransaction.Create(Id, stock.Id, grams, stock.AvailableGrams, reason, jobId));
+    }
+
     public void ReleaseMaterial(Guid jobId)
     {
         var reservation = _materialReservations.SingleOrDefault(r => r.JobId == jobId);

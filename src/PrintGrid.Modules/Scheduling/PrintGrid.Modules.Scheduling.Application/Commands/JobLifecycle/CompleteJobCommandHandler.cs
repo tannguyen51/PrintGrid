@@ -1,6 +1,7 @@
 using MediatR;
 using PrintGrid.SharedKernel.Interfaces;
 using PrintGrid.SharedKernel.Results;
+using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
@@ -37,12 +38,29 @@ public class CompleteJobCommandHandler : IRequestHandler<CompleteJobCommand, Res
             command.ActualMaterialGrams);
         if (result.IsFailure) return result;
 
-        // The stock ledger only moves when the lab reports what it actually used. Until the
-        // completion form collects grams, the ledger is settled only when they are supplied.
-        if (command.ActualMaterialGrams is { } actualGrams)
+        // The lab reports what it used; when it does not, what it reserved on acceptance is the
+        // honest estimate of what the print consumed — settling on that also releases the
+        // reservation instead of leaving it held forever.
+        var reservedGrams = lab.MaterialReservations
+            .FirstOrDefault(r => r.JobId == job.Id)?.ReservedGrams;
+        var consumedGrams = command.ActualMaterialGrams ?? reservedGrams;
+
+        if (consumedGrams is { } consumed)
         {
-            try { lab.SettleMaterial(job.Id, actualGrams); }
+            try { lab.SettleMaterial(job.Id, consumed); }
             catch (InvalidOperationException ex) { return Result.Failure(Error.Conflict(ex.Message)); }
+        }
+
+        // A print the platform caused must not cost the lab material: the reprint of a
+        // hub-caused failure is credited back to whoever printed it (CostBearer.System).
+        if (job.CostBearer == CostBearer.System && consumedGrams is { } compensated)
+        {
+            lab.CompensateMaterial(
+                job.Id,
+                job.Specification.MaterialCode,
+                job.Specification.ColorCode,
+                compensated,
+                "Bồi hoàn do lỗi hub (hệ thống chịu phí)");
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
