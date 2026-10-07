@@ -33,11 +33,14 @@ export function AuthDialog({ open, mode, onClose, onSwitchMode }: AuthDialogProp
           borderRadius: { xs: 3, md: 5 },
           bgcolor: 'background.default',
           backgroundImage: 'none',
-          width: { md: 1360 },
-          maxWidth: { md: '95vw' },
-          height: { md: 760 },
+          // The dialog frame belongs to the mode: login keeps the wide split panel,
+          // register hugs its own form so the login frame never appears around it.
+          width: { md: mode === 'login' ? 1360 : 560 },
+          maxWidth: { md: mode === 'login' ? '95vw' : '92vw' },
+          height: { md: mode === 'login' ? 760 : 'auto' },
           maxHeight: { md: '92vh' },
           margin: { xs: 1.5, md: 0 },
+          transition: 'width .22s ease, height .22s ease',
         },
       }}
     >
@@ -48,6 +51,9 @@ export function AuthDialog({ open, mode, onClose, onSwitchMode }: AuthDialogProp
           height: '100%',
           width: '100%',
           overflow: 'hidden',
+          // Short screens / tall register form scroll inside the rounded paper
+          // instead of clipping the submit button.
+          overflowY: 'auto',
         }}
       >
         {mode === 'login' ? (

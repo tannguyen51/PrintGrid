@@ -19,7 +19,7 @@ import {
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AuthContext'
 import { MenuRounded, CloseRounded, NotificationsOutlined } from '@mui/icons-material'
-import { BrandGlyph } from './HomeHeader'
+import { BrandGlyph } from '../../../shared/components/BrandGlyph'
 
 interface CustomerNavbarProps {
   onLogin?: () => void

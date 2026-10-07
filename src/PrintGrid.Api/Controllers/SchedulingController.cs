@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Scheduling.Application.Commands.AssignJob;
+using PrintGrid.Modules.Scheduling.Application.Commands.UrgentReprint;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -25,4 +26,35 @@ public class SchedulingController : ControllerBase
 
         return Ok(result.Value);
     }
+
+    /// <summary>
+    /// POST /scheduling/jobs/{jobId}/reprint — manual trigger for the URGENT reprint of a
+    /// failed job (FR-HUB-003). The hub QC failure path raises the same command automatically.
+    /// </summary>
+    [HttpPost("jobs/{jobId:guid}/reprint")]
+    public async Task<IActionResult> CreateUrgentReprint(
+        Guid jobId,
+        [FromBody] CreateUrgentReprintRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new CreateUrgentReprintCommand(jobId, request.Reason, request.FaultLabId),
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            var status = result.Error.Code switch
+            {
+                "not_found" => StatusCodes.Status404NotFound,
+                "conflict" => StatusCodes.Status409Conflict,
+                _ => StatusCodes.Status400BadRequest
+            };
+
+            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
+        }
+
+        return Ok(result.Value);
+    }
 }
+
+public record CreateUrgentReprintRequest(string Reason, Guid? FaultLabId = null);

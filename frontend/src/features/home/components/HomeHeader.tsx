@@ -14,6 +14,7 @@ import {
 } from '@mui/material'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AuthContext'
+import { BrandGlyph } from '../../../shared/components/BrandGlyph'
 import { MenuRounded, CloseRounded, LogoutRounded } from '@mui/icons-material'
 
 const NAV_ITEMS = [
@@ -79,7 +80,7 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
         position: 'sticky',
         top: 0,
         zIndex: 1200,
-        bgcolor: 'rgba(5,5,5,0.82)',
+        bgcolor: 'rgba(0,0,0,0.78)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid',
         borderColor: 'rgba(255,255,255,0.08)',
@@ -260,31 +261,6 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
           </ListItem>
         </List>
       </Drawer>
-    </Box>
-  )
-}
-
-/** Small grid glyph — same motif as the login brand mark. */
-export function BrandGlyph({ size = 40 }: { size?: number }) {
-  return (
-    <Box
-      sx={{
-        width: size,
-        height: size,
-        borderRadius: 2.5,
-        display: 'grid',
-        placeItems: 'center',
-        background: 'linear-gradient(140deg, #8B5CF6, #7C3AED)',
-        boxShadow: '0 8px 22px rgba(139,92,246,0.4)',
-        flexShrink: 0,
-      }}
-    >
-      <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(2, ${size * 0.25}px)`, gap: size * 0.065 }}>
-        <Box sx={{ width: size * 0.25, height: size * 0.25, borderRadius: 1, bgcolor: 'rgba(255,255,255,0.4)' }} />
-        <Box sx={{ width: size * 0.25, height: size * 0.25, borderRadius: 1, bgcolor: 'common.white' }} />
-        <Box sx={{ width: size * 0.25, height: size * 0.25, borderRadius: 1, bgcolor: 'rgba(5,5,5,0.85)' }} />
-        <Box sx={{ width: size * 0.25, height: size * 0.25, borderRadius: 1, bgcolor: 'rgba(255,255,255,0.4)' }} />
-      </Box>
     </Box>
   )
 }

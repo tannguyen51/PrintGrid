@@ -17,6 +17,9 @@ import { MaterialsSection } from './components/MaterialsSection'
 import { SampleModelsSection } from './components/SampleModelsSection'
 import { DesignRequestBanner } from './components/DesignRequestBanner'
 import { FaqSection } from './components/FaqSection'
+import { PublicNavbar } from './landing/PublicNavbar'
+import { PublicHero } from './landing/PublicHero'
+import { PublicSections } from './landing/PublicSections'
 
 export default function HomePage() {
   const [authMode, setAuthMode] = useState<AuthMode | null>(null)
@@ -28,16 +31,25 @@ export default function HomePage() {
   // Chỉ hiện giao diện mới cho Customer đã đăng nhập
   const isCustomer = user?.roles?.includes('Customer') ?? false;
   const showCustomerDashboard = isAuthenticated && isCustomer;
+  // Khách (chưa đăng nhập) xem landing redesign theo Figma "PrintGrid homepage"
+  const showPublicLanding = !isAuthenticated;
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      {showCustomerDashboard ? (
+    <Box sx={{ minHeight: '100vh', bgcolor: showPublicLanding ? '#000000' : 'background.default' }}>
+      {showPublicLanding ? (
+        <PublicNavbar onLogin={openLogin} onRegister={openRegister} />
+      ) : showCustomerDashboard ? (
         <CustomerNavbar onLogin={openLogin} onRegister={openRegister} />
       ) : (
         <HomeHeader onLogin={openLogin} onRegister={openRegister} />
       )}
 
-      {showCustomerDashboard ? (
+      {showPublicLanding ? (
+        <>
+          <PublicHero onRegister={openRegister} />
+          <PublicSections />
+        </>
+      ) : showCustomerDashboard ? (
         <>
           <QuickActions />
           <NetworkStatsSection />
