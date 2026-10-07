@@ -74,7 +74,13 @@ paths:
         '201': { description: Accepted; GeometryStatus=Pending }
         '413': { description: Vượt 50MB (siết server-side — T3) }
         '415': { description: "Sai định dạng — kiểm nội dung thật (T3)" }
-        '429': { description: Vượt quota tài khoản — T3 }
+        '409': { description: Vượt quota tài khoản; trả usage và hướng dẫn dọn thư viện }
+  /models/quota:
+    get:
+      tags: [customer]
+      summary: Mức sử dụng thư viện model của khách hiện tại
+      responses:
+        '200': { description: ModelQuotaDto (used/max models và bytes) }
   /models/{modelId}:
     put: { tags: [customer], summary: Sửa tên/mô tả/tag (existing), parameters: [ { $ref: '#/components/parameters/modelId' } ], responses: { '200': { description: ModelDto } } }
   /me/addresses:

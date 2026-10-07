@@ -70,6 +70,9 @@ services:
       MinIO__PublicEndpoint: "localhost:9000"
       MinIO__AccessKey: ${MINIO_ROOT_USER:-minioadmin}
       MinIO__SecretKey: ${MINIO_ROOT_PASSWORD}
+      ModelUpload__MaxFileBytes: ${MODEL_UPLOAD_MAX_FILE_BYTES:-52428800}
+      ModelUpload__MaxModelsPerCustomer: ${MODEL_UPLOAD_MAX_MODELS:-20}
+      ModelUpload__MaxStorageBytesPerCustomer: ${MODEL_UPLOAD_MAX_STORAGE_BYTES:-1073741824}
       Cors__AllowedOrigins__0: "http://localhost:5173"
       Cors__AllowedOrigins__1: "http://localhost:3000"
     ports:

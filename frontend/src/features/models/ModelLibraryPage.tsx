@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import axios from 'axios'
 import {
   Alert,
   Box,
@@ -15,7 +16,7 @@ import {
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 import { AddRounded, DeleteOutlineRounded, EditRounded, LogoutRounded, SearchRounded, VisibilityRounded } from '@mui/icons-material'
 import type { ThreeDModel } from './modelTypes'
-import { useDeleteModel, useCreateModel, useUpdateModel, useModels, useUploadModel } from './useModels'
+import { useDeleteModel, useCreateModel, useUpdateModel, useModels, useUploadModel, useModelQuota } from './useModels'
 import type { ModelFormValues } from './modelSchema'
 import { toModelInput } from './modelSchema'
 import { ModelFormDialog } from './components/ModelFormDialog'
@@ -51,6 +52,7 @@ export default function ModelLibraryPage() {
   }
 
   const { data, isLoading, isError } = useModels(search)
+  const quota = useModelQuota()
   const createMutation = useCreateModel()
   const uploadMutation = useUploadModel()
   const updateMutation = useUpdateModel()
@@ -165,8 +167,11 @@ export default function ModelLibraryPage() {
       }
       setFormOpen(false)
       setEditing(null)
-    } catch {
-      setFormError('Không thể lưu model. Vui lòng thử lại.')
+    } catch (error) {
+      const message = axios.isAxiosError(error)
+        ? (error.response?.data as { error?: { message?: string } } | undefined)?.error?.message
+        : undefined
+      setFormError(message ?? 'Không thể lưu model. Vui lòng thử lại.')
     }
   }
 
@@ -212,6 +217,22 @@ export default function ModelLibraryPage() {
             </Button>
           </Stack>
         </Stack>
+
+        {quota.data && (
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
+            <Chip
+              label={`${quota.data.usedModels}/${quota.data.maxModels} model`}
+              color={quota.data.usedModels >= quota.data.maxModels ? 'error' : 'default'}
+            />
+            <Chip
+              label={`${formatSize(quota.data.usedBytes)} / ${formatSize(quota.data.maxBytes)} đã dùng`}
+              color={quota.data.usedBytes >= quota.data.maxBytes ? 'error' : 'default'}
+            />
+            {(quota.data.usedModels >= quota.data.maxModels || quota.data.usedBytes >= quota.data.maxBytes) && (
+              <Typography variant="body2" color="error">Hãy xóa model không còn sử dụng trước khi tải file mới.</Typography>
+            )}
+          </Stack>
+        )}
 
         <TextField
           placeholder="Tìm theo tên hoặc mô tả…"

@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Text;
+using System.IO.Compression;
 using PrintGrid.Modules.Scheduling.Application.Abstractions;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
@@ -58,6 +59,18 @@ public class SlicingServiceTests
 
         geometry.IsValid.Should().BeFalse();
         geometry.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_valid_3mf_returns_mesh_statistics()
+    {
+        var geometry = await _slicing.AnalyzeAsync(new MemoryStream(WriteThreeMfTriangle()), "3MF");
+
+        geometry.IsValid.Should().BeTrue();
+        geometry.WidthMm.Should().Be(10m);
+        geometry.HeightMm.Should().Be(0m);
+        geometry.VertexCount.Should().Be(3);
+        geometry.FaceCount.Should().Be(1);
     }
 
     [Fact]
@@ -225,5 +238,27 @@ public class SlicingServiceTests
             new[] { (-H, -H, -H), (H, -H, H), (H, -H, -H) },
         };
         return tri;
+    }
+
+    private static byte[] WriteThreeMfTriangle()
+    {
+        const string xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <model unit="millimeter" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
+              <resources><object id="1" type="model"><mesh>
+                <vertices><vertex x="0" y="0" z="0"/><vertex x="10" y="0" z="0"/><vertex x="0" y="10" z="0"/></vertices>
+                <triangles><triangle v1="0" v2="1" v3="2"/></triangles>
+              </mesh></object></resources>
+              <build><item objectid="1"/></build>
+            </model>
+            """;
+        using var output = new MemoryStream();
+        using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var entry = archive.CreateEntry("3D/3dmodel.model");
+            using var writer = new StreamWriter(entry.Open(), Encoding.UTF8);
+            writer.Write(xml);
+        }
+        return output.ToArray();
     }
 }

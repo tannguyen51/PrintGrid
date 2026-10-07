@@ -1,0 +1,2 @@
+This file deliberately has an STL extension but is not an STL mesh.
+It must be rejected with HTTP 415 / invalid_file_content.

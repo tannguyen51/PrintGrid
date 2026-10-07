@@ -37,6 +37,25 @@ Then the upload is rejected
 And the system displays "File size exceeds 50 MB limit"
 ```
 
+### Scenario: Reject renamed or malformed model content
+```gherkin
+Given the customer selected a file named "fake.stl"
+And its bytes cannot be parsed as an STL mesh
+When the customer clicks "Upload"
+Then the upload is rejected with HTTP 415 and code "invalid_file_content"
+And no model metadata or object-storage file is retained
+```
+
+### Scenario: Reject upload when customer quota is exhausted
+```gherkin
+Given the customer already stores 20 models or 1 GiB of model data
+When the customer uploads another otherwise-valid model
+Then the upload is rejected with HTTP 409 and code "quota_exceeded"
+And the response includes usedModels, maxModels, usedBytes and maxBytes
+And the interface guides the customer to delete unused models
+And no model metadata or object-storage file is retained
+```
+
 ### Scenario: Validate watertight mesh
 ```gherkin
 Given a customer has uploaded a valid STL file
