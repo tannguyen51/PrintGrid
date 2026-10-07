@@ -7,4 +7,5 @@ public record CompleteJobCommand(
     Guid JobId,
     int ActualPrintMinutes,
     string SelfReport,
-    IReadOnlyCollection<string> PhotoKeys) : IRequest<Result>;
+    IReadOnlyCollection<string> PhotoKeys,
+    decimal? ActualMaterialGrams = null) : IRequest<Result>;

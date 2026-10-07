@@ -16,13 +16,15 @@ export interface Job {
   status: JobStatus
   internalDueDate: string
   estimatedPrintMinutes: number
+  estimatedMaterialGrams: number
+  actualPrintMinutes?: number | null
+  actualMaterialGrams?: number | null
   labId?: string | null
   machineId?: string | null
   plannedStartUtc?: string | null
   plannedEndUtc?: string | null
   startedAtUtc?: string | null
   completedAtUtc?: string | null
-  actualPrintMinutes?: number | null
   failureReason?: string | null
   materialCode: string
   colorCode: string
@@ -36,6 +38,8 @@ export interface Job {
   qcReviewedBy?: string | null
   qcReviewedAtUtc?: string | null
   qcRejectionReason?: string | null
+  quantity: number
+  parentJobId?: string | null
 }
 
 export interface QcProofQueueItem {

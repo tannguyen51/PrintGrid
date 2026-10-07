@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PrintGrid.Infrastructure.Shared.Persistence;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
+using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Repositories;
@@ -23,4 +24,8 @@ public class DateChangeRequestRepository : IDateChangeRequestRepository
 
     public Task<DateChangeRequest?> GetByTokenAsync(string token, CancellationToken cancellationToken = default) =>
         _context.Set<DateChangeRequest>().FirstOrDefaultAsync(r => r.Token == token, cancellationToken);
+
+    public Task<bool> HasPendingAsync(Guid jobId, CancellationToken cancellationToken = default) =>
+        _context.Set<DateChangeRequest>()
+            .AnyAsync(r => r.JobId == jobId && r.Status == DateChangeRequestStatus.Proposed, cancellationToken);
 }

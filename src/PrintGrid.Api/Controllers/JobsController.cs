@@ -90,7 +90,7 @@ public class JobsController : ControllerBase
         }
 
         var result = await _sender.Send(
-            new CompleteJobCommand(jobId, request.ActualPrintMinutes, request.SelfReport, photoKeys),
+            new CompleteJobCommand(jobId, request.ActualPrintMinutes, request.SelfReport, photoKeys, request.ActualMaterialGrams),
             cancellationToken);
         if (result.IsFailure)
         {
@@ -163,6 +163,9 @@ public sealed class CompleteJobRequest
     public int ActualPrintMinutes { get; init; }
     public string SelfReport { get; init; } = string.Empty;
     public List<IFormFile>? Photos { get; init; }
+
+    /// <summary>Material the lab actually used, for the stock ledger. Optional until the form collects it.</summary>
+    public decimal? ActualMaterialGrams { get; init; }
 }
 public record ReviewQcProofRequest(bool Approved, string? Reason);
 public record InspectRequest(

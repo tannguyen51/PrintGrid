@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Configuration;
 using PrintGrid.Modules.Customer.Application.DTOs;
 using PrintGrid.Modules.Customer.Domain.Entities;
 using PrintGrid.Modules.Customer.Domain.Repositories;
@@ -18,19 +19,22 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _clock;
     private readonly IProductionCapacityProbe _capacity;
+    private readonly IConfiguration? _configuration;
 
     public CreateQuoteCommandHandler(
         IModelRepository models,
         IQuoteRepository quotes,
         IUnitOfWork unitOfWork,
         IDateTimeProvider clock,
-        IProductionCapacityProbe capacity)
+        IProductionCapacityProbe capacity,
+        IConfiguration? configuration = null)
     {
         _models = models;
         _quotes = quotes;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _capacity = capacity;
+        _configuration = configuration;
     }
 
     public async Task<Result<QuoteDto>> Handle(CreateQuoteCommand command, CancellationToken cancellationToken)
@@ -109,13 +113,29 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
                 "Mạng lưới hiện không nhận được cấu hình này — hãy đổi vật liệu/kích thước hoặc thử lại sau"));
         }
 
-        var markResult = quote.MarkReady(trial.PromisedDeliveryDate, set.Version, trial.Basis);
+        var markResult = quote.MarkDraft(trial.PromisedDeliveryDate, set.Version, trial.Basis);
         if (markResult.IsFailure)
             return Result.Failure<QuoteDto>(markResult.Error);
+
+        // BR-QUOTE-008: inexpensive, ordinary drafts may bypass the staff queue. The
+        // threshold is hot configuration; zero disables the auto-lane.
+        var autoLaneThreshold = ReadDecimal("QuoteReview:AutoLaneThreshold", 300_000m);
+        if (autoLaneThreshold > 0 && quote.TotalPrice.Amount < autoLaneThreshold)
+        {
+            var validityHours = (double)ReadDecimal("QuoteReview:ValidityHours", (decimal)QuoteValidity.TotalHours);
+            var approved = quote.Approve(
+                null, quote.TotalPrice.Amount, quote.PromisedDeliveryDate, null,
+                _clock.UtcNow, TimeSpan.FromHours(validityHours), true, 0m);
+            if (approved.IsFailure)
+                return Result.Failure<QuoteDto>(approved.Error);
+        }
 
         await _quotes.AddAsync(quote, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(QuoteMappings.ToDto(quote));
     }
+
+    private decimal ReadDecimal(string key, decimal fallback) =>
+        decimal.TryParse(_configuration?[key], out var value) ? value : fallback;
 }

@@ -9,6 +9,7 @@ export type Role =
   | 'HubQC'
   | 'HubFulfillment'
   | 'OpsManager'
+  | 'OrderStaff'
   | 'Admin'
 
 export interface AuthUser {

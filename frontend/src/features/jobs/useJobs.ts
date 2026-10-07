@@ -38,10 +38,12 @@ export function useStartJob() {
 export function useCompleteJob() {
   const invalidate = useInvalidate()
   return useMutation({
-    mutationFn: ({ id, actualMinutes, selfReport, photos }: { id: string; actualMinutes: number; selfReport: string; photos: File[] }) => {
+    mutationFn: ({ id, actualMinutes, selfReport, photos, actualMaterialGrams }: { id: string; actualMinutes: number; selfReport: string; photos: File[]; actualMaterialGrams?: number }) => {
       const form = new FormData()
       form.append('actualPrintMinutes', String(actualMinutes))
       form.append('selfReport', selfReport)
+      // Drives the stock ledger when the lab reports what it actually used.
+      if (actualMaterialGrams !== undefined) form.append('actualMaterialGrams', String(actualMaterialGrams))
       photos.forEach((photo) => form.append('photos', photo))
       return apiClient.post(`/jobs/${id}/complete`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
     },

@@ -324,13 +324,30 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AdjustmentReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("AutoApproved")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("CustomerId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("ExpiresAt")
+                    b.Property<DateOnly?>("EnginePromisedDeliveryDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("EngineTotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("FailureReason")
@@ -350,6 +367,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
                     b.Property<DateOnly>("PromisedDeliveryDate")
                         .HasColumnType("date");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -609,6 +629,10 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("ActualMaterialGrams")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
                     b.Property<int?>("ActualPrintMinutes")
                         .HasColumnType("integer");
 
@@ -657,6 +681,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<Guid?>("OriginalJobId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ParentJobId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("PlannedEndUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -691,6 +718,11 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<int>("Quantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<int>("ReprintIndex")
                         .HasColumnType("integer");
 
@@ -709,6 +741,8 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.HasIndex("OrderItemId");
 
                     b.HasIndex("OriginalJobId");
+
+                    b.HasIndex("ParentJobId");
 
                     b.HasIndex("Status", "MachineId");
 
@@ -734,6 +768,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasColumnType("numeric(5,4)");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsInGoodStanding")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
@@ -808,6 +845,80 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.ToTable("machines", "scheduling");
                 });
 
+            modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.MaterialReservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LabId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MaterialStockId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ReservedGrams")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId")
+                        .IsUnique();
+
+                    b.HasIndex("LabId");
+
+                    b.ToTable("material_reservations", "scheduling");
+                });
+
+            modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.MaterialStock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AvailableGrams")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("ColorCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("LabId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MaterialCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<decimal>("ReorderPointGrams")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<decimal>("ReservedGrams")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LabId", "MaterialCode", "ColorCode")
+                        .IsUnique();
+
+                    b.ToTable("material_stocks", "scheduling");
+                });
+
             modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.OpsEscalation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -848,6 +959,52 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.HasIndex("Status", "CreatedAtUtc");
 
                     b.ToTable("ops_escalations", "scheduling");
+                });
+
+            modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.StockTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("DeltaGrams")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<Guid?>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LabId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MaterialStockId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<decimal>("RunningTotalGrams")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("TransactionCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TransactionCode")
+                        .IsUnique();
+
+                    b.HasIndex("LabId", "CreatedAtUtc");
+
+                    b.ToTable("stock_transactions", "scheduling");
                 });
 
             modelBuilder.Entity("PrintGrid.Modules.Customer.Domain.Entities.Order", b =>
@@ -1256,6 +1413,33 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.MaterialReservation", b =>
+                {
+                    b.HasOne("PrintGrid.Modules.Scheduling.Domain.Entities.Lab", null)
+                        .WithMany("MaterialReservations")
+                        .HasForeignKey("LabId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.MaterialStock", b =>
+                {
+                    b.HasOne("PrintGrid.Modules.Scheduling.Domain.Entities.Lab", null)
+                        .WithMany("MaterialStocks")
+                        .HasForeignKey("LabId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.StockTransaction", b =>
+                {
+                    b.HasOne("PrintGrid.Modules.Scheduling.Domain.Entities.Lab", null)
+                        .WithMany("StockTransactions")
+                        .HasForeignKey("LabId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PrintGrid.Modules.Customer.Domain.Entities.Order", b =>
                 {
                     b.Navigation("Items");
@@ -1269,6 +1453,12 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
             modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.Lab", b =>
                 {
                     b.Navigation("Machines");
+
+                    b.Navigation("MaterialReservations");
+
+                    b.Navigation("MaterialStocks");
+
+                    b.Navigation("StockTransactions");
                 });
 #pragma warning restore 612, 618
         }

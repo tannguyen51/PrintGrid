@@ -11,9 +11,11 @@ const ModelLibraryPage = lazy(() => import('../features/models/ModelLibraryPage'
 const OrderConfigPage = lazy(() => import('../features/quotes/OrderConfigPage'))
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'))
 const LabQueuePage = lazy(() => import('../features/lab/LabQueuePage'))
+const InventoryPage = lazy(() => import('../features/lab/InventoryPage'))
 const HubQCPage = lazy(() => import('../features/hub/HubQCPage'))
 const SchedulingBoardPage = lazy(() => import('../features/scheduling/SchedulingBoardPage'))
 const QcProofReviewPage = lazy(() => import('../features/qcProof/QcProofReviewPage'))
+const QuoteReviewPage = lazy(() => import('../features/quotes/QuoteReviewPage'))
 
 function RouteFallback() {
   return (
@@ -69,6 +71,14 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/lab/:labId/inventory"
+          element={
+            <ProtectedRoute allowedRoles={['LabManager']}>
+              <InventoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/hub/qc"
           element={
             <ProtectedRoute allowedRoles={['HubQC', 'HubFulfillment']}>
@@ -81,6 +91,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <QcProofReviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/quote-reviews"
+          element={
+            <ProtectedRoute allowedRoles={['OrderStaff', 'OpsManager', 'Admin']}>
+              <QuoteReviewPage />
             </ProtectedRoute>
           }
         />

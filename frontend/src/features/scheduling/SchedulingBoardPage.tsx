@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import {
   Alert,
   Box,
@@ -27,10 +28,15 @@ export default function SchedulingBoardPage() {
   const { logout } = useAuth()
   const queryClient = useQueryClient()
   const pending = useJobs('Pending')
+  const [notice, setNotice] = useState<string | null>(null)
 
   const assign = useMutation({
     mutationFn: (jobId: string) => apiClient.post(`/scheduling/jobs/${jobId}/assign`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+  })
+  const repair = useMutation({
+    mutationFn: (jobId: string) => apiClient.post<{ message: string }>(`/scheduling/jobs/${jobId}/repair-risk`).then(r => r.data),
+    onSuccess: data => { setNotice(data.message); queryClient.invalidateQueries({ queryKey: ['jobs'] }) },
   })
 
   const jobs = pending.data ?? []
@@ -55,6 +61,8 @@ export default function SchedulingBoardPage() {
 
         {pending.isError ? <Alert severity="error">Không tải được danh sách job chờ.</Alert> : null}
         {pending.isLoading ? <CircularProgress sx={{ alignSelf: 'center' }} /> : null}
+        {notice ? <Alert severity="success" onClose={() => setNotice(null)}>{notice}</Alert> : null}
+        {repair.isError ? <Alert severity="error">{(repair.error as any)?.response?.data?.error?.message ?? 'Không thể xử lý nguy cơ trễ.'}</Alert> : null}
 
         {!pending.isLoading && jobs.length === 0 ? (
           <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed rgba(255,255,255,0.15)' }}>
@@ -72,9 +80,11 @@ export default function SchedulingBoardPage() {
                       <Chip label={JOB_LABELS[j.status]} size="small" color="default" />
                     </Stack>
                     <Typography variant="body2" color="text.secondary">
-                      Ước tính {j.estimatedPrintMinutes} phút · Lớp {j.layerHeightMm}mm · Hạn nội bộ {fmtDate(j.internalDueDate)}
+                      Số lượng {j.quantity} · Ước tính {j.estimatedPrintMinutes} phút · Lớp {j.layerHeightMm}mm · Hạn nội bộ {fmtDate(j.internalDueDate)}
                     </Typography>
                   </Box>
+                  <Stack direction="row" spacing={1}>
+                  {j.quantity > 1 && <Button variant="outlined" color="warning" disabled={repair.isPending} onClick={() => repair.mutate(j.id)}>Xử lý nguy cơ trễ</Button>}
                   <Button
                     variant="contained"
                     color="primary"
@@ -85,6 +95,7 @@ export default function SchedulingBoardPage() {
                   >
                     Gán cho lab
                   </Button>
+                  </Stack>
                 </Stack>
               </Box>
             ))}

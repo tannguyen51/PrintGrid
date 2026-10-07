@@ -123,6 +123,21 @@ export default function LabQueuePage() {
   const [actualMinutes, setActualMinutes] = useState(0)
   const [selfReport, setSelfReport] = useState('')
   const [proofPhotos, setProofPhotos] = useState<File[]>([])
+  const [actualMaterialGrams, setActualMaterialGrams] = useState(0)
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+
+  useEffect(() => {
+    const online = () => setIsOnline(true)
+    const offline = () => setIsOnline(false)
+    window.addEventListener('online', online)
+    window.addEventListener('offline', offline)
+    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline) }
+  }, [])
+
+  useEffect(() => {
+    if (!completeTarget) return
+    localStorage.setItem(`printgrid:completion:${completeTarget.id}`, JSON.stringify({ actualMinutes, actualMaterialGrams, savedAt: Date.now() }))
+  }, [completeTarget, actualMinutes, actualMaterialGrams])
 
   // Decline dialog state
   const [declineTarget, setDeclineTarget] = useState<Job | null>(null)
@@ -174,7 +189,9 @@ export default function LabQueuePage() {
         actualMinutes: Math.max(actualMinutes, 1),
         selfReport: selfReport.trim(),
         photos: proofPhotos,
+        actualMaterialGrams: actualMaterialGrams > 0 ? actualMaterialGrams : undefined,
       })
+      localStorage.removeItem(`printgrid:completion:${completeTarget.id}`)
       setCompleteTarget(null)
       setSelfReport('')
       setProofPhotos([])
@@ -197,8 +214,8 @@ export default function LabQueuePage() {
             </Box>
           </Stack>
           <Stack direction="row" spacing={1.5}>
-            <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} onClick={() => navigate('/models')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
-              Thư viện model
+            <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} disabled={!jobs[0]?.j.labId} onClick={() => navigate(`/lab/${jobs[0]?.j.labId}/inventory`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+              Kho vật liệu
             </Button>
             <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
               Đăng xuất
@@ -206,6 +223,7 @@ export default function LabQueuePage() {
           </Stack>
         </Stack>
 
+        {!isOnline ? <Alert severity="warning">Đang mất mạng. Dữ liệu form được giữ trên thiết bị; hãy gửi khi kết nối lại.</Alert> : null}
         {actionError ? <Alert severity="error" onClose={() => setActionError(null)}>{actionError}</Alert> : null}
         {error ? <Alert severity="error">Không tải được hàng đợi.</Alert> : null}
         {loading && jobs.length === 0 ? <CircularProgress sx={{ alignSelf: 'center' }} /> : null}
@@ -276,8 +294,11 @@ export default function LabQueuePage() {
                     )}
                     {action === 'complete' && (
                       <Button variant="contained" color="success" startIcon={<CheckRounded />} onClick={() => {
+                        const saved = localStorage.getItem(`printgrid:completion:${j.id}`)
+                        const draft = saved ? JSON.parse(saved) : null
                         setCompleteTarget(j)
-                        setActualMinutes(j.actualPrintMinutes ?? j.estimatedPrintMinutes)
+                        setActualMinutes(draft?.actualMinutes ?? j.estimatedPrintMinutes)
+                        setActualMaterialGrams(draft?.actualMaterialGrams ?? j.estimatedMaterialGrams ?? 0)
                         setSelfReport('')
                         setProofPhotos([])
                       }}>
@@ -396,10 +417,20 @@ export default function LabQueuePage() {
               Đã chọn {proofPhotos.length} ảnh
             </Typography>
           )}
+          <TextField
+            label="Vật liệu thực tế (gram)"
+            type="number"
+            inputProps={{ min: 0.01, step: 0.01 }}
+            value={actualMaterialGrams}
+            onChange={(e) => setActualMaterialGrams(Number(e.target.value))}
+            fullWidth
+            sx={{ mt: 2 }}
+            helperText={completeTarget ? `Ước tính: ${completeTarget.estimatedMaterialGrams} g` : undefined}
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={() => setCompleteTarget(null)} color="inherit" sx={{ color: 'text.secondary' }}>Hủy</Button>
-          <Button onClick={handleComplete} variant="contained" color="primary" disabled={complete.isPending || actualMinutes < 1 || !selfReport.trim() || proofPhotos.length === 0}>
+          <Button onClick={handleComplete} variant="contained" color="primary" disabled={!isOnline || complete.isPending || actualMinutes < 1 || !selfReport.trim() || proofPhotos.length === 0 || actualMaterialGrams <= 0}>
             {complete.isPending ? 'Đang lưu…' : 'Hoàn thành'}
           </Button>
         </DialogActions>

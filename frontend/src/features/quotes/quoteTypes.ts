@@ -13,7 +13,7 @@ export interface QuoteItem {
   estimatedMaterialGrams: number
 }
 
-export type QuoteStatus = 'Pending' | 'Ready' | 'Expired' | 'Converted' | 'Failed'
+export type QuoteStatus = 'Pending' | 'Draft' | 'Ready' | 'Expired' | 'Converted' | 'Failed'
 
 export interface Quote {
   id: string
@@ -23,12 +23,18 @@ export interface Quote {
   currency: string
   promisedDeliveryDate: string
   createdAt: string
-  expiresAt: string
+  expiresAt?: string | null
   failureReason?: string | null
   /** Pricing parameter-set version frozen onto this quote (FR-SCHED-010). */
   pricingVersion: string
   /** Why this delivery date — real machine timeline + buffers (FR-SCHED-005). */
   placementBasis?: string | null
+  approvedAt?: string | null
+  reviewedBy?: string | null
+  autoApproved: boolean
+  engineTotalAmount?: number | null
+  enginePromisedDeliveryDate?: string | null
+  adjustmentReason?: string | null
   items: QuoteItem[]
 }
 

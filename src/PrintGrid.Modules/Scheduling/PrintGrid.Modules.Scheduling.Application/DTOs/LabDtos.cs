@@ -27,6 +27,26 @@ public record LabDto(
     DateTime CreatedAt,
     IReadOnlyCollection<MachineDto> Machines);
 
+public record MaterialStockDto(
+    Guid Id,
+    string MaterialCode,
+    string ColorCode,
+    decimal AvailableGrams,
+    decimal ReservedGrams,
+    decimal AssignableGrams,
+    decimal ReorderPointGrams,
+    bool IsLowStock,
+    DateTime UpdatedAtUtc);
+
+public record StockTransactionDto(
+    string TransactionCode,
+    Guid MaterialStockId,
+    decimal DeltaGrams,
+    decimal RunningTotalGrams,
+    string Reason,
+    Guid? JobId,
+    DateTime CreatedAtUtc);
+
 public record JobDto(
     Guid Id,
     Guid OrderItemId,
@@ -34,23 +54,27 @@ public record JobDto(
     string Status,
     DateOnly InternalDueDate,
     int EstimatedPrintMinutes,
+    decimal EstimatedMaterialGrams,
+    int? ActualPrintMinutes,
+    decimal? ActualMaterialGrams,
     Guid? LabId,
     Guid? MachineId,
     DateTime? PlannedStartUtc,
     DateTime? PlannedEndUtc,
     DateTime? StartedAtUtc,
     DateTime? CompletedAtUtc,
-    int? ActualPrintMinutes,
+    DateTime? AssignedAtUtc,
+    DateTime? AcceptanceDeadlineUtc,
     string? FailureReason,
     string MaterialCode,
     string ColorCode,
     decimal LayerHeightMm,
     int AttemptNumber,
+    int Quantity,
+    Guid? ParentJobId,
     string QcProofStatus,
     string? QcSelfReport,
     IReadOnlyList<string> QcProofPhotoKeys,
     Guid? QcReviewedBy,
     DateTime? QcReviewedAtUtc,
-    string? QcRejectionReason,
-    DateTime? AssignedAtUtc,
-    DateTime? AcceptanceDeadlineUtc);
+    string? QcRejectionReason);

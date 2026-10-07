@@ -289,5 +289,21 @@ public class JobLifecycleTests
             "the hub only signs off on work whose lab QC evidence has been approved");
         job.Status.Should().Be(JobStatus.AwaitingInspection);
     }
+
+    /// <summary>FR-LAB-004: a completion needs a positive print time and material figure.</summary>
+    [Fact]
+    public void Completion_requires_positive_actual_time_and_material()
+    {
+        var job = CreateAssignedJob();
+        job.Accept().IsSuccess.Should().BeTrue();
+        job.Start(DateTime.UtcNow).IsSuccess.Should().BeTrue();
+
+        var photos = new[] { "qc/ok.jpg" };
+        job.Complete(DateTime.UtcNow, 0, "Bề mặt đạt", photos, 10m).IsFailure.Should().BeTrue();
+        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", photos, 0m).IsFailure.Should().BeTrue();
+        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", photos, 42m).IsSuccess.Should().BeTrue();
+        job.ActualPrintMinutes.Should().Be(60);
+        job.ActualMaterialGrams.Should().Be(42m);
+    }
 }
 
