@@ -16,7 +16,6 @@ import { CloseRounded, VisibilityRounded, LibraryBooksRounded } from '@mui/icons
 import { useOrders } from './useOrders'
 import { OrderTimelineView } from './OrderTimelineView'
 import type { Order, OrderStatus } from '../../shared/types/order'
-import { useAuth } from '../../app/AuthContext'
 import { CustomerNavbar } from '../home/components/CustomerNavbar'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { ReprintRequestPanel } from './ReprintRequestPanel'
@@ -47,7 +46,6 @@ const fmtDateTime = (d: string) => new Date(d).toLocaleString('vi-VN', { day: '2
 
 export default function OrdersPage() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
   const { data, isLoading, isError } = useOrders()
   const [selected, setSelected] = useState<Order | null>(null)
 
@@ -112,9 +110,6 @@ export default function OrdersPage() {
           <Stack direction="row" spacing={1.5}>
             <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} onClick={() => navigate('/models')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
               Thư viện model
-            </Button>
-            <Button variant="outlined" color="error" onClick={() => { logout(); navigate('/login', { replace: true }) }}>
-              Đăng xuất
             </Button>
           </Stack>
         </Stack>

@@ -14,7 +14,7 @@ import {
   Typography,
 } from '@mui/material'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
-import { AddRounded, DeleteOutlineRounded, EditRounded, LogoutRounded, SearchRounded, VisibilityRounded } from '@mui/icons-material'
+import { AddRounded, DeleteOutlineRounded, EditRounded, SearchRounded, VisibilityRounded } from '@mui/icons-material'
 import type { ThreeDModel } from './modelTypes'
 import { useDeleteModel, useCreateModel, useUpdateModel, useModels, useUploadModel, useModelQuota } from './useModels'
 import type { ModelFormValues } from './modelSchema'
@@ -22,7 +22,6 @@ import { toModelInput } from './modelSchema'
 import { ModelFormDialog } from './components/ModelFormDialog'
 import { ModelDetailDrawer } from './components/ModelDetailDrawer'
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
-import { useAuth } from '../../app/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { CustomerNavbar } from '../home/components/CustomerNavbar'
 import { PageBackButton } from '../../shared/components/PageBackButton'
@@ -37,7 +36,6 @@ function formatSize(bytes: number): string {
  * Customer's 3D model library — a full CRUD demo (list / create / read / update / delete / search).
  */
 export default function ModelLibraryPage() {
-  const { logout } = useAuth()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -45,11 +43,6 @@ export default function ModelLibraryPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [detail, setDetail] = useState<ThreeDModel | null>(null)
   const [deleting, setDeleting] = useState<ThreeDModel | null>(null)
-
-  const handleLogout = () => {
-    logout()
-    navigate('/login', { replace: true })
-  }
 
   const { data, isLoading, isError } = useModels(search)
   const quota = useModelQuota()
@@ -199,19 +192,10 @@ export default function ModelLibraryPage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Thư viện model 3D
               </Typography>
-              <Typography color="text.secondary">Quản lý các model đã tải lên của bạn (đủ thao tác CRUD)</Typography>
+              <Typography color="text.secondary">Quản lý các model đã tải lên của bạn</Typography>
             </Box>
           </Stack>
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ justifyContent: { xs: 'space-between', sm: 'flex-end' } }}>
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<LogoutRounded />}
-              onClick={handleLogout}
-              sx={{ borderColor: 'rgba(255,71,87,0.35)', '&:hover': { borderColor: 'error.main' } }}
-            >
-              Đăng xuất
-            </Button>
             <Button variant="contained" color="primary" startIcon={<AddRounded />} onClick={() => { setEditing(null); setFormError(null); setFormOpen(true) }}>
               Thêm model
             </Button>
