@@ -74,13 +74,27 @@ paths:
         '201': { description: Accepted; GeometryStatus=Pending }
         '413': { description: Vượt 50MB (siết server-side — T3) }
         '415': { description: "Sai định dạng — kiểm nội dung thật (T3)" }
-        '429': { description: Vượt quota tài khoản — T3 }
+        '409': { description: Vượt quota tài khoản; trả usage và hướng dẫn dọn thư viện }
+  /models/quota:
+    get:
+      tags: [customer]
+      summary: Mức sử dụng thư viện model của khách hiện tại
+      responses:
+        '200': { description: ModelQuotaDto (used/max models và bytes) }
   /models/{modelId}:
     put: { tags: [customer], summary: Sửa tên/mô tả/tag (existing), parameters: [ { $ref: '#/components/parameters/modelId' } ], responses: { '200': { description: ModelDto } } }
   /me/addresses:
     get:  { tags: [customer], x-milestone: T1, summary: Liệt kê địa chỉ, responses: { '200': { description: "AddressDto[]" } } }
     post: { tags: [customer], x-milestone: T1, summary: Thêm địa chỉ, responses: { '201': { description: AddressDto } } }
   /me/addresses/{addressId}:
+    put:
+      tags: [customer]
+      summary: Cập nhật địa chỉ và chọn mặc định
+      parameters: [ { name: addressId, in: path, required: true, schema: { type: string, format: uuid } } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AddressInput' } } }
+      responses: { '200': { description: AddressDto }, '404': { description: Không tìm thấy } }
     delete:
       tags: [customer]
       x-milestone: T1
@@ -89,6 +103,12 @@ paths:
       responses:
         '204': { description: Đã xóa }
         '409': { description: Còn đơn chưa giao đang dùng địa chỉ này }
+  /me:
+    get: { tags: [customer], summary: Đọc hồ sơ khách hiện tại, responses: { '200': { description: CustomerProfileDto } } }
+    put:
+      tags: [customer]
+      summary: Cập nhật họ tên và số điện thoại
+      responses: { '200': { description: CustomerProfileDto } }
 
   # ============ BÁO GIÁ (ghế Engine + Đơn hàng — T2) ============
   /quotes:
@@ -384,6 +404,20 @@ components:
         email: { type: string, format: email }
         password: { type: string, minLength: 8 }
         fullName: { type: string }
+    AddressInput:
+      type: object
+      required: [label, recipientName, phoneNumber, street, city, isDefault]
+      properties:
+        label: { type: string, maxLength: 50 }
+        recipientName: { type: string, maxLength: 200 }
+        phoneNumber: { type: string, maxLength: 32 }
+        street: { type: string, maxLength: 300 }
+        ward: { type: string, maxLength: 100 }
+        district: { type: string, maxLength: 100 }
+        city: { type: string, maxLength: 100 }
+        postalCode: { type: string, maxLength: 20 }
+        country: { type: string, minLength: 2, maxLength: 2, default: VN }
+        isDefault: { type: boolean }
     CreateQuoteRequest:
       type: object
       required: [items, requiredBy]

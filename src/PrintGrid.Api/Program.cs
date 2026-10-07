@@ -8,6 +8,7 @@ using PrintGrid.Api.Extensions;
 using PrintGrid.Api.Hubs;
 using PrintGrid.Api.Middleware;
 using PrintGrid.Infrastructure.Shared;
+using PrintGrid.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,7 @@ builder.Services.AddControllers();
 builder.Services.AddApiDocumentation();
 builder.Services.AddApiSecurity(builder.Configuration);
 builder.Services.AddSignalR();
+builder.Services.Configure<ModelUploadOptions>(builder.Configuration.GetSection(ModelUploadOptions.SectionName));
 
 builder.Services.AddCors(options => options.AddPolicy("PrintGridSpa", policy => policy
     .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])

@@ -3,10 +3,13 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using System.Collections.Concurrent;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Api.BackgroundJobs;
+using PrintGrid.Api.Models;
 using PrintGrid.Infrastructure.Shared.FileStorage;
 using PrintGrid.Modules.Customer.Application.Models;
+using PrintGrid.Modules.Scheduling.Application.Abstractions;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -18,12 +21,31 @@ public class ModelsController : ControllerBase
     private readonly ISender _sender;
     private readonly IFileStorage _files;
     private readonly MinioOptions _minio;
+    private readonly ModelUploadOptions _uploadOptions;
+    private readonly ISlicingService _slicingService;
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> UploadLocks = new();
 
-    public ModelsController(ISender sender, IFileStorage files, IOptions<MinioOptions> minio)
+    public ModelsController(
+        ISender sender,
+        IFileStorage files,
+        IOptions<MinioOptions> minio,
+        IOptions<ModelUploadOptions> uploadOptions,
+        ISlicingService slicingService)
     {
         _sender = sender;
         _files = files;
         _minio = minio.Value;
+        _uploadOptions = uploadOptions.Value;
+        _slicingService = slicingService;
+    }
+
+    [HttpGet("quota")]
+    public async Task<IActionResult> GetQuota(CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        if (customerId is null) return Forbid();
+        var result = await GetQuotaAsync(customerId.Value, cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet]
@@ -110,15 +132,29 @@ public class ModelsController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
+        var existing = await _sender.Send(new GetModelQuery(customerId.Value, modelId), cancellationToken);
+        if (existing.IsFailure)
+            return NotFound(new { error = new { code = existing.Error.Code, message = existing.Error.Message } });
+
         var result = await _sender.Send(new DeleteModelCommand(customerId.Value, modelId), cancellationToken);
         if (result.IsFailure)
             return NotFound(new { error = new { code = result.Error.Code, message = result.Error.Message } });
+
+        if (!string.IsNullOrWhiteSpace(existing.Value.StorageKey))
+        {
+            var separator = existing.Value.StorageKey.IndexOf('/');
+            if (separator > 0 && separator < existing.Value.StorageKey.Length - 1)
+                await _files.DeleteAsync(
+                    existing.Value.StorageKey[..separator],
+                    existing.Value.StorageKey[(separator + 1)..],
+                    cancellationToken);
+        }
 
         return NoContent();
     }
 
     [HttpPost("upload")]
-    [RequestSizeLimit(60 * 1024 * 1024)] // 60 MB cap (FR-CUST-002 allows 50 MB per file)
+    [RequestSizeLimit(52 * 1024 * 1024)] // 50 MiB file + multipart envelope.
     public async Task<IActionResult> Upload(
         [FromForm] UploadModelRequest request,
         CancellationToken cancellationToken)
@@ -128,45 +164,110 @@ public class ModelsController : ControllerBase
         if (request.File is null || request.File.Length == 0)
             return BadRequest(new { error = new { code = "validation_error", message = "File is required" } });
 
-        await using var stream = request.File.OpenReadStream();
+        if (request.File.Length > _uploadOptions.MaxFileBytes)
+            return StatusCode(StatusCodes.Status413PayloadTooLarge, new
+            {
+                error = new { code = "file_too_large", message = "Kích thước file vượt giới hạn 50 MiB.", maxBytes = _uploadOptions.MaxFileBytes }
+            });
 
-        // Compute SHA-256 of the exact bytes received (BR-IP-001) while buffering for
-        // the MinIO upload; files are capped at 60 MB by RequestSizeLimit so buffering
-        // is safe at this scale.
-        using var buffer = new MemoryStream();
-        using var sha = System.Security.Cryptography.SHA256.Create();
-        await stream.CopyToAsync(buffer, cancellationToken);
-        buffer.Position = 0;
-        var sha256 = Convert.ToHexString(await sha.ComputeHashAsync(buffer, cancellationToken)).ToLowerInvariant();
-        buffer.Position = 0;
-
-        // Object key: printgrid-models/{customerId}/{guid}.{ext}
         var ext = Path.GetExtension(request.File.FileName).ToLowerInvariant();
-        var randomId = Guid.NewGuid();
-        var objectName = $"{customerId}/{randomId}{ext}";
-        await _files.UploadAsync(_minio.ModelBucket, objectName, buffer, request.File.ContentType, cancellationToken);
+        if (!ModelFileInspector.IsAllowedExtension(ext))
+            return StatusCode(StatusCodes.Status415UnsupportedMediaType, new
+            {
+                error = new { code = "unsupported_format", message = "Định dạng không được hỗ trợ. Chỉ chấp nhận STL, OBJ hoặc 3MF." }
+            });
 
-        var result = await _sender.Send(
-            new UploadModelCommand(
-                customerId.Value,
-                request.Name,
-                request.Description,
-                request.File.FileName,
-                ext.TrimStart('.'),
-                request.File.Length,
-                request.Tags,
-                $"{_minio.ModelBucket}/{objectName}",
-                sha256),
-            cancellationToken);
+        var uploadLock = UploadLocks.GetOrAdd(customerId.Value, _ => new SemaphoreSlim(1, 1));
+        await uploadLock.WaitAsync(cancellationToken);
+        try
+        {
+            var quota = await GetQuotaAsync(customerId.Value, cancellationToken);
+            if (quota.UsedModels >= quota.MaxModels || quota.UsedBytes + request.File.Length > quota.MaxBytes)
+                return Conflict(new
+                {
+                    error = new
+                    {
+                        code = "quota_exceeded",
+                        message = "Đã đạt giới hạn lưu trữ. Hãy xóa model không còn sử dụng rồi thử lại.",
+                        details = quota
+                    }
+                });
 
-        if (result.IsFailure)
-            return BadRequest(new { error = new { code = result.Error.Code, message = result.Error.Message } });
+            await using var stream = request.File.OpenReadStream();
 
-        // Async geometry analysis + reference print-time estimate (FR-SCHED-001/002).
-        BackgroundJob.Enqueue<AnalyzeModelJob>(job => job.ExecuteAsync(result.Value.Id, CancellationToken.None));
+            // Compute SHA-256 of the exact bytes received (BR-IP-001) while buffering.
+            using var buffer = new MemoryStream();
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            await stream.CopyToAsync(buffer, cancellationToken);
+            buffer.Position = 0;
 
-        return CreatedAtAction(nameof(GetModel), new { modelId = result.Value.Id }, result.Value);
+            var contentError = await ModelFileInspector.ValidateContentAsync(buffer, ext, _slicingService, cancellationToken);
+            if (contentError is not null)
+                return StatusCode(StatusCodes.Status415UnsupportedMediaType, new
+                {
+                    error = new { code = "invalid_file_content", message = contentError }
+                });
+
+            var sha256 = Convert.ToHexString(await sha.ComputeHashAsync(buffer, cancellationToken)).ToLowerInvariant();
+            buffer.Position = 0;
+
+            // Object key: printgrid-models/{customerId}/{guid}.{ext}
+            var randomId = Guid.NewGuid();
+            var objectName = $"{customerId}/{randomId}{ext}";
+            await _files.UploadAsync(_minio.ModelBucket, objectName, buffer, ContentTypeFor(ext), cancellationToken);
+
+            try
+            {
+                var result = await _sender.Send(
+                    new UploadModelCommand(
+                        customerId.Value,
+                        request.Name,
+                        request.Description,
+                        request.File.FileName,
+                        ext.TrimStart('.'),
+                        request.File.Length,
+                        request.Tags,
+                        $"{_minio.ModelBucket}/{objectName}",
+                        sha256),
+                    cancellationToken);
+
+                if (result.IsFailure)
+                {
+                    await _files.DeleteAsync(_minio.ModelBucket, objectName, cancellationToken);
+                    return BadRequest(new { error = new { code = result.Error.Code, message = result.Error.Message } });
+                }
+
+                BackgroundJob.Enqueue<AnalyzeModelJob>(job => job.ExecuteAsync(result.Value.Id, CancellationToken.None));
+                return CreatedAtAction(nameof(GetModel), new { modelId = result.Value.Id }, result.Value);
+            }
+            catch
+            {
+                await _files.DeleteAsync(_minio.ModelBucket, objectName, CancellationToken.None);
+                throw;
+            }
+        }
+        finally
+        {
+            uploadLock.Release();
+        }
     }
+
+    private async Task<ModelQuotaDto> GetQuotaAsync(Guid customerId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetModelQuotaQuery(
+            customerId,
+            _uploadOptions.MaxModelsPerCustomer,
+            _uploadOptions.MaxStorageBytesPerCustomer), cancellationToken);
+        return result.Value;
+    }
+
+    private static string ContentTypeFor(string extension) => extension.ToLowerInvariant() switch
+    {
+        ".stl" => "model/stl",
+        ".obj" => "model/obj",
+        ".3mf" => "model/3mf",
+        _ => "application/octet-stream"
+    };
 }
 
 public record CreateModelRequest(

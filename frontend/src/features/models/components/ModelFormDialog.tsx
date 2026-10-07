@@ -47,6 +47,7 @@ function defaultsFor(editing: ThreeDModel | null): ModelFormValues {
  */
 export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, error }: ModelFormDialogProps) {
   const [file, setFile] = useState<File | null>(null)
+  const [fileError, setFileError] = useState<string | null>(null)
   const isCreate = !editing
 
   const {
@@ -68,6 +69,20 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
   }, [open, editing, reset])
 
   function handleFileChange(next: File | null) {
+    setFileError(null)
+    if (next) {
+      const extension = next.name.split('.').pop()?.toLowerCase()
+      if (!extension || !['stl', 'obj', '3mf'].includes(extension)) {
+        setFile(null)
+        setFileError('Chỉ chấp nhận file STL, OBJ hoặc 3MF.')
+        return
+      }
+      if (next.size > 50 * 1024 * 1024) {
+        setFile(null)
+        setFileError('Kích thước file vượt giới hạn 50 MiB.')
+        return
+      }
+    }
     setFile(next)
     if (next && isCreate) {
       // Auto-fill name + fileName + format from the chosen file.
@@ -119,6 +134,7 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
                 >
                   {file ? `Đã chọn: ${file.name} (${(file.size / 1024).toFixed(1)} KB)` : 'Chọn file STL / OBJ / 3MF để tải lên'}
                 </Button>
+                {fileError && <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.75 }}>{fileError}</Typography>}
               </Box>
             )}
 
@@ -193,8 +209,8 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
             </Box>
 
             {isCreate && !file && (
-              <Typography variant="caption" color="text.secondary">
-                Chưa chọn file? Vẫn có thể lưu model dạng metadata (không kèm file).
+              <Typography variant="caption" color={fileError ? 'error' : 'text.secondary'}>
+                Hãy chọn một file model hợp lệ để tiếp tục.
               </Typography>
             )}
           </Stack>
@@ -204,8 +220,8 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
         <Button onClick={onClose} disabled={submitting} color="inherit" sx={{ color: 'text.secondary' }}>
           Hủy
         </Button>
-        <Button type="submit" form="model-form" variant="contained" color="primary" disabled={submitting} startIcon={<SaveRounded />}>
-          {submitting ? 'Đang lưu…' : isCreate ? (file ? 'Tải lên' : 'Lưu metadata') : 'Lưu thay đổi'}
+        <Button type="submit" form="model-form" variant="contained" color="primary" disabled={submitting || (isCreate && !file)} startIcon={<SaveRounded />}>
+          {submitting ? 'Đang lưu…' : isCreate ? 'Tải lên' : 'Lưu thay đổi'}
         </Button>
       </DialogActions>
     </Dialog>

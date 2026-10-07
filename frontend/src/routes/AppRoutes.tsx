@@ -21,6 +21,7 @@ const EscalationQueuePage = lazy(() => import('../features/ops/EscalationQueuePa
 const DecisionTracePage = lazy(() => import('../features/ops/DecisionTracePage'))
 const ForbiddenPage = lazy(() => import('../features/errors/ForbiddenPage'))
 const NotFoundPage = lazy(() => import('../features/errors/NotFoundPage'))
+const AccountPage = lazy(() => import('../features/account/AccountPage'))
 
 function RouteFallback() {
   return (
@@ -48,6 +49,22 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['Customer']}>
               <ModelLibraryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/library"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <ModelLibraryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <AccountPage />
             </ProtectedRoute>
           }
         />

@@ -14,6 +14,10 @@ public interface IModelRepository
 
     Task<Entities.Model?> GetByIdAsync(Guid modelId, CancellationToken cancellationToken = default);
 
+    Task<(int ModelCount, long UsedBytes)> GetStorageUsageAsync(
+        Guid customerId,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(Entities.Model model, CancellationToken cancellationToken = default);
     void Update(Entities.Model model);
     void Remove(Entities.Model model);
