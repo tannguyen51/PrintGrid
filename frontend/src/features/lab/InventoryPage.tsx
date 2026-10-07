@@ -3,6 +3,7 @@ import { Alert, Box, Button, Chip, Stack, TextField, Typography } from '@mui/mat
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '../../shared/api/apiClient'
+import { PageBackButton } from '../../shared/components/PageBackButton'
 
 interface Stock {
   id: string; materialCode: string; colorCode: string; availableGrams: number
@@ -31,7 +32,10 @@ export default function InventoryPage() {
   return <Box sx={{ minHeight: '100vh', p: { xs: 2, md: 4 }, maxWidth: 1000, mx: 'auto' }}>
     <Stack spacing={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="h4" fontWeight={800}>Kho vật liệu</Typography>
+        <Stack direction="row" spacing={1.5} alignItems="flex-start">
+          <PageBackButton />
+          <Typography variant="h4" fontWeight={800}>Kho vật liệu</Typography>
+        </Stack>
         <Button onClick={() => navigate('/lab/queue')}>Hàng đợi</Button>
       </Stack>
       {message && <Alert severity="success" onClose={() => setMessage(null)}>{message}</Alert>}

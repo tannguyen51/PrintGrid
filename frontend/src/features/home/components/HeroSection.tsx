@@ -8,9 +8,9 @@ export function HeroSection() {
 
   const handleCtaClick = () => {
     if (isAuthenticated) {
-      navigate('/order/new');
+      navigate('/models');
     } else {
-      navigate('/login?returnUrl=/order/new');
+      navigate('/login');
     }
   };
 

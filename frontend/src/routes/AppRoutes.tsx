@@ -16,6 +16,10 @@ const HubQCPage = lazy(() => import('../features/hub/HubQCPage'))
 const SchedulingBoardPage = lazy(() => import('../features/scheduling/SchedulingBoardPage'))
 const QcProofReviewPage = lazy(() => import('../features/qcProof/QcProofReviewPage'))
 const QuoteReviewPage = lazy(() => import('../features/quotes/QuoteReviewPage'))
+const EscalationQueuePage = lazy(() => import('../features/ops/EscalationQueuePage'))
+const DecisionTracePage = lazy(() => import('../features/ops/DecisionTracePage'))
+const ForbiddenPage = lazy(() => import('../features/errors/ForbiddenPage'))
+const NotFoundPage = lazy(() => import('../features/errors/NotFoundPage'))
 
 function RouteFallback() {
   return (
@@ -110,6 +114,25 @@ export function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/ops/escalations"
+          element={
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+              <EscalationQueuePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ops/decisions"
+          element={
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+              <DecisionTracePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/forbidden" element={<ForbiddenPage />} />
+        {/* Catch-all must stay last — unknown URLs used to render a blank page. */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   )

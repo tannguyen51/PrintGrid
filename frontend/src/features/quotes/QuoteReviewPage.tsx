@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, Box, Button, CircularProgress, Paper, Stack, TextField, Typography } from '@mui/material'
 import { apiClient } from '../../shared/api/apiClient'
+import { PageBackButton } from '../../shared/components/PageBackButton'
 import type { Quote } from './quoteTypes'
 
 export default function QuoteReviewPage() {
@@ -27,8 +28,13 @@ export default function QuoteReviewPage() {
 
   return (
     <Box sx={{ maxWidth: 960, mx: 'auto', p: { xs: 2, md: 4 } }}>
-      <Typography variant="h4" fontWeight={800} mb={1}>Duyệt báo giá</Typography>
-      <Typography color="text.secondary" mb={3}>Engine draft chờ thẩm định. Giá chỉ được chỉnh trong biên độ cấu hình; mọi thay đổi phải có lý do.</Typography>
+      <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 3 }}>
+        <PageBackButton />
+        <Box>
+          <Typography variant="h4" fontWeight={800} mb={1}>Duyệt báo giá</Typography>
+          <Typography color="text.secondary">Engine draft chờ thẩm định. Giá chỉ được chỉnh trong biên độ cấu hình; mọi thay đổi phải có lý do.</Typography>
+        </Box>
+      </Stack>
       {queue.isLoading && <CircularProgress />}
       {queue.isError && <Alert severity="error">Không tải được hàng đợi báo giá.</Alert>}
       {queue.data?.length === 0 && <Alert severity="success">Không có draft đang chờ duyệt.</Alert>}

@@ -100,6 +100,43 @@ public class JobsController : ControllerBase
         return ToResult(result);
     }
 
+    [HttpPost("{jobId:guid}/inspection-photos")]
+    [Authorize(Policy = Policies.RequireHub)]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(26 * 1024 * 1024)]
+    public async Task<IActionResult> UploadInspectionPhotos(Guid jobId, [FromForm] UploadInspectionPhotosRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Photos is null || request.Photos.Count is < 1 or > 5)
+            return BadRequest(new { error = new { code = "validation_error", message = "Tải lên từ 1 đến 5 ảnh QC." } });
+        if (request.Photos.Any(photo =>
+                photo.Length == 0 ||
+                photo.Length > 5 * 1024 * 1024 ||
+                !photo.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)))
+            return BadRequest(new { error = new { code = "validation_error", message = "Mỗi ảnh QC phải là tệp ảnh không quá 5 MB." } });
+
+        var photoKeys = new List<string>();
+        try
+        {
+            foreach (var photo in request.Photos)
+            {
+                var extension = Path.GetExtension(photo.FileName).ToLowerInvariant();
+                var objectName = $"qc/{jobId}/{Guid.NewGuid()}{extension}";
+                await using var stream = photo.OpenReadStream();
+                await _files.UploadAsync(_minio.PhotoBucket, objectName, stream, photo.ContentType, cancellationToken);
+                photoKeys.Add(objectName);
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup so a half-finished batch does not leak objects in the bucket.
+            foreach (var key in photoKeys)
+                await _files.DeleteAsync(_minio.PhotoBucket, key, cancellationToken);
+            throw;
+        }
+
+        return Ok(new { photoKeys });
+    }
+
     [HttpGet("qc-proofs")]
     [Authorize(Policy = Policies.RequireOps)]
     public async Task<IActionResult> GetQcProofs(CancellationToken cancellationToken)
@@ -167,6 +204,11 @@ public sealed class CompleteJobRequest
     /// <summary>Material the lab actually used, for the stock ledger. Optional until the form collects it.</summary>
     public decimal? ActualMaterialGrams { get; init; }
 }
+public sealed class UploadInspectionPhotosRequest
+{
+    public List<IFormFile>? Photos { get; init; }
+}
+
 public record ReviewQcProofRequest(bool Approved, string? Reason);
 public record InspectRequest(
     bool Passed,

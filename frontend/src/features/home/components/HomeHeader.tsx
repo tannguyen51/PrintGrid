@@ -148,9 +148,17 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                   </Button>
                 )}
                 {isOps && (
-                  <Button onClick={() => go('/scheduling')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
-                    Bảng điều phối
-                  </Button>
+                  <>
+                    <Button onClick={() => go('/scheduling')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                      Bảng điều phối
+                    </Button>
+                    <Button onClick={() => go('/ops/escalations')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                      Cảnh báo
+                    </Button>
+                    <Button onClick={() => go('/ops/decisions')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                      Vết quyết định
+                    </Button>
+                  </>
                 )}
                 <Button variant="contained" color="primary" onClick={() => go(isCustomer ? '/models' : isOps ? '/scheduling' : isHub ? '/hub/qc' : '/lab/queue')} sx={{ px: 2.5, py: 0.9, fontSize: '0.9rem' }}>
                   {isCustomer ? 'Bắt đầu in' : isOps ? 'Điều phối' : 'Vào việc'}
@@ -239,9 +247,17 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                     </Button>
                   )}
                   {isOps && (
-                    <Button fullWidth variant="contained" color="primary" onClick={() => go('/scheduling')}>
-                      Bảng điều phối
-                    </Button>
+                    <>
+                      <Button fullWidth variant="contained" color="primary" onClick={() => go('/scheduling')}>
+                        Bảng điều phối
+                      </Button>
+                      <Button fullWidth variant="outlined" color="inherit" onClick={() => go('/ops/escalations')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+                        Hàng đợi cảnh báo
+                      </Button>
+                      <Button fullWidth variant="outlined" color="inherit" onClick={() => go('/ops/decisions')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+                        Vết quyết định
+                      </Button>
+                    </>
                   )}
                   <Button fullWidth variant="outlined" color="error" onClick={handleLogout} startIcon={<LogoutRounded />}>
                     Đăng xuất

@@ -67,6 +67,25 @@ export function useReviewQcProof() {
   })
 }
 
+export interface InspectionPhotoUploadResult {
+  photoKeys: string[]
+}
+
+/** Uploads 1–5 QC evidence photos for a hub inspection and returns their storage object keys. */
+export function useUploadInspectionPhotos() {
+  return useMutation({
+    mutationFn: ({ id, photos }: { id: string; photos: File[] }) => {
+      const form = new FormData()
+      photos.forEach((photo) => form.append('photos', photo))
+      return apiClient
+        .post<InspectionPhotoUploadResult>(`/jobs/${id}/inspection-photos`, form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        .then((r) => r.data.photoKeys)
+    },
+  })
+}
+
 export interface InspectJobPayload {
   id: string
   passed: boolean

@@ -23,6 +23,8 @@ export default function LoginPage() {
         navigate('/lab/queue', { replace: true })
       } else if (roles.includes('OpsManager') || roles.includes('Admin')) {
         navigate('/scheduling', { replace: true })
+      } else if (roles.includes('OrderStaff')) {
+        navigate('/quote-reviews', { replace: true })
       } else {
         navigate('/models', { replace: true })
       }

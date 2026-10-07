@@ -76,10 +76,9 @@ export function CustomerNavbar({ onLogin, onRegister }: CustomerNavbarProps = {}
             </Button>
             {isAuthenticated && (
               <>
-                <Button onClick={() => go('/order/new')} color="inherit" sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}>Đặt in</Button>
-                <Button onClick={() => go('/library')} color="inherit" sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}>Thư viện model</Button>
+                <Button onClick={() => go('/models')} color="inherit" sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}>Đặt in</Button>
+                <Button onClick={() => go('/models')} color="inherit" sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}>Thư viện model</Button>
                 <Button onClick={() => go('/orders')} color="inherit" sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}>Đơn hàng</Button>
-                <Button onClick={() => go('/design-request')} color="inherit" sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}>Thiết kế theo yêu cầu</Button>
               </>
             )}
           </Stack>
@@ -106,7 +105,6 @@ export function CustomerNavbar({ onLogin, onRegister }: CustomerNavbarProps = {}
                   transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                   anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
                 >
-                  <MenuItem onClick={() => { setAnchorEl(null); go('/account'); }}>Hồ sơ & địa chỉ</MenuItem>
                   <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>Đăng xuất</MenuItem>
                 </Menu>
               </>
@@ -142,11 +140,9 @@ export function CustomerNavbar({ onLogin, onRegister }: CustomerNavbarProps = {}
           </ListItem>
           {isAuthenticated && (
             <>
-              <ListItem disablePadding><ListItemButton onClick={() => go('/order/new')}><ListItemText primary="Đặt in" /></ListItemButton></ListItem>
-              <ListItem disablePadding><ListItemButton onClick={() => go('/library')}><ListItemText primary="Thư viện model" /></ListItemButton></ListItem>
+              <ListItem disablePadding><ListItemButton onClick={() => go('/models')}><ListItemText primary="Đặt in" /></ListItemButton></ListItem>
+              <ListItem disablePadding><ListItemButton onClick={() => go('/models')}><ListItemText primary="Thư viện model" /></ListItemButton></ListItem>
               <ListItem disablePadding><ListItemButton onClick={() => go('/orders')}><ListItemText primary="Đơn hàng" /></ListItemButton></ListItem>
-              <ListItem disablePadding><ListItemButton onClick={() => go('/design-request')}><ListItemText primary="Thiết kế theo yêu cầu" /></ListItemButton></ListItem>
-              <ListItem disablePadding><ListItemButton onClick={() => go('/account')}><ListItemText primary="Hồ sơ & địa chỉ" /></ListItemButton></ListItem>
             </>
           )}
           <ListItem disablePadding sx={{ mt: 2 }}>

@@ -13,10 +13,12 @@ import {
   FormControl,
   FormControlLabel,
   FormLabel,
+  IconButton,
   Radio,
   RadioGroup,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 
@@ -31,10 +33,10 @@ import {
   ReportProblemRounded,
   CheckRounded,
 } from '@mui/icons-material'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { JOB_LABELS } from '../jobs/jobTypes'
 import type { Job } from '../jobs/jobTypes'
-import { useJobs, useInspectJob } from '../jobs/useJobs'
+import { useJobs, useInspectJob, useUploadInspectionPhotos } from '../jobs/useJobs'
 import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 
@@ -44,6 +46,15 @@ interface ChecklistItemState {
   name: string
   status: 'Pass' | 'Fail' | 'NotApplicable'
 }
+
+/** Một ảnh QC đã chọn từ thiết bị, kèm URL xem trước tạm thời (Object URL). */
+interface PhotoItem {
+  file: File
+  previewUrl: string
+}
+
+const MAX_PHOTOS = 5
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024
 
 const DEFAULT_CHECKLIST_TEMPLATE: string[] = [
   'Kích thước hình học & dung sai (±0.2mm)',
@@ -65,16 +76,29 @@ export default function HubQCPage() {
   const { logout } = useAuth()
   const awaiting = useJobs('AwaitingInspection')
   const inspect = useInspectJob()
+  const uploadPhotos = useUploadInspectionPhotos()
 
   const [activeJob, setActiveJob] = useState<Job | null>(null)
   const [checklist, setChecklist] = useState<ChecklistItemState[]>([])
-  const [photoUrls, setPhotoUrls] = useState<string[]>([])
-  const [newPhotoInput, setNewPhotoInput] = useState('')
+  const [photos, setPhotos] = useState<PhotoItem[]>([])
   const [faultAttribution, setFaultAttribution] = useState<'Lab' | 'Hub' | 'Customer'>('Lab')
   const [note, setNote] = useState('')
   const [modalMode, setModalMode] = useState<'inspect' | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successNotice, setSuccessNotice] = useState<string | null>(null)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  // Keep the latest photos so we can revoke their Object URLs when the page unmounts.
+  const photosRef = useRef<PhotoItem[]>([])
+  useEffect(() => {
+    photosRef.current = photos
+  }, [photos])
+  useEffect(
+    () => () => {
+      photosRef.current.forEach((p) => URL.revokeObjectURL(p.previewUrl))
+    },
+    []
+  )
 
   const jobs = awaiting.data ?? []
 
@@ -86,8 +110,10 @@ export default function HubQCPage() {
         status: 'Pass',
       }))
     )
-    setPhotoUrls([])
-    setNewPhotoInput('')
+    setPhotos((prev) => {
+      prev.forEach((p) => URL.revokeObjectURL(p.previewUrl))
+      return []
+    })
     setFaultAttribution('Lab')
     setNote('')
     setErrorMessage(null)
@@ -102,33 +128,57 @@ export default function HubQCPage() {
     })
   }
 
-  function handleAddPhoto() {
-    if (!newPhotoInput.trim()) return
-    setPhotoUrls((prev) => [...prev, newPhotoInput.trim()])
-    setNewPhotoInput('')
+  function handleFilesSelected(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return
+    setErrorMessage(null)
+
+    const next = [...photos]
+    let rejectedTypeOrSize = false
+    let rejectedTooMany = false
+
+    for (const file of Array.from(fileList)) {
+      if (next.length >= MAX_PHOTOS) {
+        rejectedTooMany = true
+        break
+      }
+      if (!file.type.startsWith('image/') || file.size > MAX_PHOTO_BYTES || file.size === 0) {
+        rejectedTypeOrSize = true
+        continue
+      }
+      const isDuplicate = next.some((p) => p.file.name === file.name && p.file.size === file.size)
+      if (isDuplicate) continue
+      next.push({ file, previewUrl: URL.createObjectURL(file) })
+    }
+
+    if (rejectedTypeOrSize) {
+      setErrorMessage('Chỉ nhận tệp ảnh (image/*), mỗi ảnh không quá 5 MB — một số tệp đã bị bỏ qua.')
+    } else if (rejectedTooMany) {
+      setErrorMessage(`Chỉ được chọn tối đa ${MAX_PHOTOS} ảnh cho một lần kiểm định.`)
+    }
+    setPhotos(next)
+    // Reset the input so the same file can be re-selected after removal.
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   function handleRemovePhoto(index: number) {
-    setPhotoUrls((prev) => prev.filter((_, i) => i !== index))
+    setPhotos((prev) => {
+      const copy = [...prev]
+      const [removed] = copy.splice(index, 1)
+      if (removed) URL.revokeObjectURL(removed.previewUrl)
+      return copy
+    })
   }
 
   const hasAnyFail = checklist.some((item) => item.status === 'Fail')
+  const isSubmitting = uploadPhotos.isPending || inspect.isPending
 
   async function handleSubmitDecision(passed: boolean) {
     if (!activeJob) return
     setErrorMessage(null)
 
-    // Lấy danh sách ảnh gồm photoUrls hiện tại và cả URL vừa gõ dở nếu có
-    const effectivePhotos = [...photoUrls]
-    if (newPhotoInput.trim() && !effectivePhotos.includes(newPhotoInput.trim())) {
-      effectivePhotos.push(newPhotoInput.trim())
-      setPhotoUrls(effectivePhotos)
-      setNewPhotoInput('')
-    }
-
-    // Yêu cầu bắt buộc phải có ít nhất 1 ảnh bằng chứng nghiệm thu
-    if (effectivePhotos.length === 0) {
-      setErrorMessage('Bắt buộc phải có ít nhất 1 ảnh chụp nghiệm thu chi tiết trước khi lưu kết luận.')
+    // Yêu cầu bắt buộc phải có ít nhất 1 ảnh bằng chứng nghiệm thu (AC01)
+    if (photos.length === 0) {
+      setErrorMessage('Bắt buộc phải tải lên ít nhất 1 ảnh chụp nghiệm thu chi tiết trước khi lưu kết luận.')
       return
     }
 
@@ -146,11 +196,17 @@ export default function HubQCPage() {
     }
 
     try {
+      // 1) Tải ảnh lên MinIO để lấy object keys, rồi 2) gửi keys vào kết luận kiểm định.
+      const photoKeys = await uploadPhotos.mutateAsync({
+        id: activeJob.id,
+        photos: photos.map((p) => p.file),
+      })
+
       await inspect.mutateAsync({
         id: activeJob.id,
         passed,
         checklistResults: checklist.map((c) => ({ itemName: c.name, status: c.status })),
-        photoUrls: effectivePhotos,
+        photoUrls: photoKeys,
         faultAttribution: passed ? undefined : faultAttribution,
         note: note.trim() || (passed ? 'Đạt tiêu chuẩn QC Hub' : `Trượt QC (${faultAttribution})`),
       })
@@ -163,6 +219,9 @@ export default function HubQCPage() {
         setSuccessNotice(`Job ${activeJob.id.slice(0, 8)} trượt do lỗi ${faultAttribution}: Đã tự động tạo lệnh in lại URGENT cho xưởng!`)
       }
 
+      // Cleanup Object URLs cho các ảnh đã xử lý xong.
+      photos.forEach((p) => URL.revokeObjectURL(p.previewUrl))
+      setPhotos([])
       setModalMode(null)
       setActiveJob(null)
     } catch (err: any) {
@@ -236,7 +295,9 @@ export default function HubQCPage() {
       {/* QC Inspection Modal */}
       <Dialog
         open={modalMode === 'inspect'}
-        onClose={() => setModalMode(null)}
+        onClose={() => {
+          if (!isSubmitting) setModalMode(null)
+        }}
         fullWidth
         maxWidth="md"
         PaperProps={{ sx: { bgcolor: '#121212', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.15)' } }}
@@ -325,54 +386,82 @@ export default function HubQCPage() {
             Không có ảnh chụp bằng chứng =&gt; hệ thống không cho phép lưu kết luận nghiệm thu.
           </Typography>
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }}>
-            <TextField
-              size="small"
-              fullWidth
-              placeholder="Nhập đường dẫn URL ảnh nghiệm thu..."
-              value={newPhotoInput}
-              onChange={(e) => setNewPhotoInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  handleAddPhoto()
-                }
-              }}
-            />
-            <Stack direction="row" spacing={1}>
-              <Button variant="outlined" startIcon={<AddPhotoAlternateRounded />} onClick={handleAddPhoto}>
-                Thêm ảnh
-              </Button>
-              <Button
-                variant="text"
-                size="small"
-                sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}
-                onClick={() => {
-                  if (!photoUrls.includes('https://cdn.printgrid.dev/qc/sample-evidence.jpg')) {
-                    setPhotoUrls((prev) => [...prev, 'https://cdn.printgrid.dev/qc/sample-evidence.jpg'])
-                  }
-                }}
-              >
-                + Ảnh mẫu
-              </Button>
-            </Stack>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => handleFilesSelected(e.target.files)}
+          />
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }} flexWrap="wrap">
+            <Button
+              variant="outlined"
+              startIcon={<AddPhotoAlternateRounded />}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={photos.length >= MAX_PHOTOS || uploadPhotos.isPending || inspect.isPending}
+            >
+              Chọn ảnh từ thiết bị
+            </Button>
+            <Typography variant="caption" color="text.secondary">
+              Tối đa {MAX_PHOTOS} ảnh, mỗi ảnh không quá 5 MB · Đã chọn {photos.length}/{MAX_PHOTOS}
+            </Typography>
+            {uploadPhotos.isPending && <CircularProgress size={18} />}
           </Stack>
 
-          {photoUrls.length === 0 ? (
+          {photos.length === 0 ? (
             <Alert severity="warning" sx={{ mb: 3 }}>
-              Chưa có ảnh bằng chứng nào được tải lên! Vui lòng thêm URL ảnh chụp sản phẩm (bấm "Xác nhận" lúc này hệ thống sẽ chặn và báo lỗi).
+              Chưa có ảnh bằng chứng nào được tải lên! Vui lòng chọn ảnh chụp sản phẩm từ thiết bị (bấm "Xác nhận" lúc này hệ thống sẽ chặn và báo lỗi).
             </Alert>
           ) : (
-            <Stack direction="row" spacing={1.5} sx={{ mb: 3, flexWrap: 'wrap', gap: 1 }}>
-              {photoUrls.map((url, i) => (
-                <Chip
-                  key={i}
-                  label={`Ảnh ${i + 1}: ${url.length > 30 ? url.slice(0, 30) + '...' : url}`}
-                  onDelete={() => handleRemovePhoto(i)}
-                  deleteIcon={<DeleteOutlineRounded />}
-                  color="info"
-                  variant="outlined"
-                />
+            <Stack direction="row" spacing={1.5} sx={{ mb: 3, flexWrap: 'wrap', gap: 1.5 }}>
+              {photos.map((photo, i) => (
+                <Box key={photo.previewUrl} sx={{ position: 'relative', width: 108 }}>
+                  <Box
+                    component="img"
+                    src={photo.previewUrl}
+                    alt={`Ảnh nghiệm thu ${i + 1}`}
+                    sx={{
+                      width: 108,
+                      height: 108,
+                      objectFit: 'cover',
+                      display: 'block',
+                      borderRadius: 1.5,
+                      border: '1px solid rgba(255,255,255,0.15)',
+                    }}
+                  />
+                  <Tooltip title="Bỏ ảnh này">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemovePhoto(i)}
+                      disabled={uploadPhotos.isPending || inspect.isPending}
+                      sx={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        bgcolor: 'rgba(0,0,0,0.65)',
+                        color: '#fff',
+                        '&:hover': { bgcolor: 'rgba(0,0,0,0.85)' },
+                      }}
+                    >
+                      <DeleteOutlineRounded fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: 'block',
+                      mt: 0.5,
+                      color: 'text.secondary',
+                      width: 108,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Ảnh {i + 1}: {photo.file.name}
+                  </Typography>
+                </Box>
               ))}
             </Stack>
           )}
@@ -434,28 +523,28 @@ export default function HubQCPage() {
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 2.5, borderTop: '1px solid rgba(255,255,255,0.08)', pt: 2 }}>
-          <Button onClick={() => setModalMode(null)} color="inherit" sx={{ color: 'text.secondary' }}>
+          <Button onClick={() => setModalMode(null)} color="inherit" disabled={isSubmitting} sx={{ color: 'text.secondary' }}>
             Đóng
           </Button>
 
           <Button
             variant="contained"
             color="error"
-            startIcon={<CancelRounded />}
-            disabled={inspect.isPending}
+            startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : <CancelRounded />}
+            disabled={isSubmitting}
             onClick={() => handleSubmitDecision(false)}
           >
-            {inspect.isPending ? 'Đang xử lý…' : 'Xác nhận TRƯỢT (FAIL)'}
+            {uploadPhotos.isPending ? 'Đang tải ảnh lên…' : isSubmitting ? 'Đang xử lý…' : 'Xác nhận TRƯỢT (FAIL)'}
           </Button>
 
           <Button
             variant="contained"
             color="success"
-            startIcon={<CheckRounded />}
-            disabled={inspect.isPending || hasAnyFail}
+            startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : <CheckRounded />}
+            disabled={isSubmitting || hasAnyFail}
             onClick={() => handleSubmitDecision(true)}
           >
-            {inspect.isPending ? 'Đang xử lý…' : 'Xác nhận ĐẠT (PASS)'}
+            {uploadPhotos.isPending ? 'Đang tải ảnh lên…' : isSubmitting ? 'Đang xử lý…' : 'Xác nhận ĐẠT (PASS)'}
           </Button>
         </DialogActions>
       </Dialog>
