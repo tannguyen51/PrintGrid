@@ -56,9 +56,21 @@ public class CreateUrgentReprintCommandHandler
         command.Fault switch
         {
             FaultAttribution.Lab => original.LabId,
-            FaultAttribution.Hub => null,
-            FaultAttribution.Customer => null,
+            FaultAttribution.Hub or FaultAttribution.Customer => null,
             _ => command.FaultLabId ?? original.LabId
+        };
+
+    /// <summary>
+    /// Who pays for the reprint (BR-RESCHED-003, decided 07/10): the lab pays when it caused
+    /// the fault, the platform pays when the hub did, and a customer-caused reprint is billed
+    /// to the customer. An ops-triggered reprint keeps the documented default (the lab).
+    /// </summary>
+    private static CostBearer ResolveCostBearer(CreateUrgentReprintCommand command) =>
+        command.Fault switch
+        {
+            FaultAttribution.Hub => CostBearer.System,
+            FaultAttribution.Customer => CostBearer.Customer,
+            _ => CostBearer.Lab
         };
 
     public async Task<Result<UrgentReprintResultDto>> Handle(
@@ -102,6 +114,7 @@ public class CreateUrgentReprintCommandHandler
             original,
             reprintIndex,
             ResolveFaultLabId(command, original),
+            ResolveCostBearer(command),
             createdAtUtc: _clock.UtcNow);
 
         // Commit the reprint job before placing it: the job is a fact of its own. This also

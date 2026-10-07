@@ -270,6 +270,10 @@ paths:
       tags: [scheduling]
       x-milestone: T8
       summary: Tạo lệnh in lại KHẨN cho job đã hỏng — URGENT, kế thừa deadline gốc, phí bên lỗi; quá trần 2 ⇒ hàng đợi vận hành (FR-HUB-003)
+      description: |
+        Phí in lại theo bên lỗi (BR-RESCHED-003, chốt 07/10): lỗi lab ⇒ lab chịu và lab đó bị loại
+        khỏi lần gán lại; lỗi hub ⇒ **hệ thống chịu** (`costBearer=System`) và không lab nào bị quy lỗi;
+        lỗi khách ⇒ không sinh job in lại (báo khách in lại có phí).
       parameters: [ { $ref: '#/components/parameters/jobId' } ]
       requestBody:
         required: true

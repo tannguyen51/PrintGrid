@@ -310,6 +310,46 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_hub_caused_reprint_is_charged_to_the_platform_and_spares_the_lab()
+    {
+        var (jobId, _, _) = await SeedJobWithTwoMachines();
+
+        var printedBy = await InScope(async sp =>
+        {
+            var sender = sp.GetRequiredService<ISender>();
+            await sender.Send(new AssignJobCommand(jobId));
+            await sender.Send(new AcceptJobCommand(jobId));
+            await sender.Send(new StartJobCommand(jobId));
+            await sender.Send(new CompleteJobCommand(jobId, 58, "Layer adhesion OK", new[] { "lab-qc/photo-1.jpg" }));
+
+            var db = sp.GetRequiredService<PrintGridDbContext>();
+            return (await db.Set<Job>().FirstAsync(j => j.Id == jobId)).LabId!.Value;
+        });
+
+        var inspected = await InScope(sp =>
+            sp.GetRequiredService<ISender>().Send(new InspectJobCommand(
+                jobId,
+                Passed: false,
+                ChecklistResults: new[] { new ChecklistItemResult("packaging", "fail", "Crushed at the hub") },
+                PhotoUrls: new[] { "qc/defect.jpg" },
+                FaultAttribution: FaultAttribution.Hub,
+                Note: "Crushed in hub handling")));
+        inspected.IsSuccess.Should().BeTrue();
+
+        var reprint = await InScope(async sp =>
+        {
+            var db = sp.GetRequiredService<PrintGridDbContext>();
+            return await db.Set<Job>().SingleAsync(j => j.OriginalJobId == jobId);
+        });
+
+        reprint.CostBearer.Should().Be(CostBearer.System,
+            "a hub-caused failure is borne by the platform, not by the lab or the customer");
+        reprint.FaultLabId.Should().BeNull("the lab did nothing wrong and must not be blamed");
+        reprint.LabId.Should().NotBeNull("the reprint is still placed somewhere in the network");
+        _ = printedBy;
+    }
+
+    [Fact]
     public async Task The_third_reprint_goes_to_the_operations_queue_instead_of_being_created()
     {
         var (jobId, _, _) = await SeedJobWithTwoMachines();

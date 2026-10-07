@@ -194,6 +194,48 @@ public class UrgentReprintTests
     }
 
     [Fact]
+    public async Task A_hub_fault_reprint_is_borne_by_the_platform_and_blames_no_lab()
+    {
+        var printedBy = Guid.NewGuid();
+        var original = FailedJob(printedBy);
+        _jobs.GetByIdAsync(original.Id, Arg.Any<CancellationToken>()).Returns(original);
+
+        Job? created = null;
+        await _jobs.AddAsync(Arg.Do<Job>(j => created = j), Arg.Any<CancellationToken>());
+
+        AssignmentRequest? captured = null;
+        _engine.AssignAsync(Arg.Any<Job>(), Arg.Do<AssignmentRequest>(r => captured = r), Arg.Any<CancellationToken>())
+            .Returns(ci => Assigned(ci.Arg<Job>().Id));
+
+        var result = await Handler().Handle(
+            new CreateUrgentReprintCommand(original.Id, "hub cracked it", Fault: FaultAttribution.Hub), default);
+
+        result.IsSuccess.Should().BeTrue();
+        created!.CostBearer.Should().Be(CostBearer.System,
+            "the platform broke the part, so the platform pays (decided 07/10)");
+        created.FaultLabId.Should().BeNull("the lab that printed it did nothing wrong");
+        captured!.ExcludeLabId.Should().BeNull("an innocent lab must not be kept out of the replan");
+    }
+
+    [Fact]
+    public async Task A_lab_fault_reprint_is_charged_to_the_lab_and_keeps_it_out_of_the_replan()
+    {
+        var printedBy = Guid.NewGuid();
+        var original = FailedJob(printedBy);
+        _jobs.GetByIdAsync(original.Id, Arg.Any<CancellationToken>()).Returns(original);
+
+        AssignmentRequest? captured = null;
+        _engine.AssignAsync(Arg.Any<Job>(), Arg.Do<AssignmentRequest>(r => captured = r), Arg.Any<CancellationToken>())
+            .Returns(ci => Assigned(ci.Arg<Job>().Id));
+
+        await Handler().Handle(
+            new CreateUrgentReprintCommand(original.Id, "layer shift", Fault: FaultAttribution.Lab), default);
+
+        captured!.ExcludeLabId.Should().Be(printedBy,
+            "the lab at fault must not be handed the reprint");
+    }
+
+    [Fact]
     public async Task Only_a_failed_job_can_be_reprinted()
     {
         var pending = Job.Create(
