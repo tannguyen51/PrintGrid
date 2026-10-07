@@ -21,6 +21,7 @@ public class Order : AggregateRoot<Guid>
     public DateTime? ConfirmedAt { get; private set; }
     public string? PaymentTransactionId { get; private set; }
     public bool IsDelayed { get; private set; }
+    public DateTime? DeliveredAt { get; private set; }
 
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
 
@@ -98,6 +99,8 @@ public class Order : AggregateRoot<Guid>
             return Result.Failure(Error.Conflict($"Cannot move order from {Status} to {next}"));
 
         Status = next;
+        if (next == OrderStatus.Delivered)
+            DeliveredAt = DateTime.UtcNow;
         return Result.Success();
     }
 }

@@ -20,6 +20,7 @@ import { JOB_LABELS } from '../jobs/jobTypes'
 import type { Job } from '../jobs/jobTypes'
 import { useJobs, useInspectJob } from '../jobs/useJobs'
 import { useAuth } from '../../app/AuthContext'
+import { PageBackButton } from '../../shared/components/PageBackButton'
 
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—')
 
@@ -56,12 +57,15 @@ export default function HubQCPage() {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1000, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
-          <Box>
-            <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
-              Kiểm tra chất lượng — Hub
-            </Typography>
-            <Typography color="text.secondary">Duyệt job đã in xong (FR-HUB-002)</Typography>
-          </Box>
+          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+            <PageBackButton />
+            <Box>
+              <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
+                Kiểm tra chất lượng — Hub
+              </Typography>
+              <Typography color="text.secondary">Duyệt job đã in xong (FR-HUB-002)</Typography>
+            </Box>
+          </Stack>
           <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
             Đăng xuất
           </Button>

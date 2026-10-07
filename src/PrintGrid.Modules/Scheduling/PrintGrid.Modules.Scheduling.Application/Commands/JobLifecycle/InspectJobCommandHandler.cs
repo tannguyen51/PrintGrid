@@ -44,6 +44,12 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
 
         if (command.Passed)
         {
+            // Lab self-QC evidence must be approved before the hub signs the job off. The domain
+            // also enforces this (Job.MarkInspectionPassed throws); checking here keeps the
+            // answer a 409 instead of a 500. Deliberately not applied to FAIL: an inspector who
+            // can see a defect must still be able to record it.
+            if (job.QcProofStatus != QcProofStatus.Approved)
+                return Result.Failure(Error.Conflict("Lab QC proof must be approved before hub inspection"));
             job.MarkInspectionPassed();
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return Result.Success();

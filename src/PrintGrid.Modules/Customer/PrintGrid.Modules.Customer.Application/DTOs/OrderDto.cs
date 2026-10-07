@@ -8,6 +8,7 @@ public record OrderDto(
     string Currency,
     DateOnly PromisedDeliveryDate,
     DateTime CreatedAt,
+    DateTime? DeliveredAt,
     IReadOnlyCollection<OrderItemDto> Items);
 
 public record OrderItemDto(

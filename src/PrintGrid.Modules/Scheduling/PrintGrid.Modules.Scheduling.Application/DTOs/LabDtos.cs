@@ -40,8 +40,15 @@ public record JobDto(
     DateTime? PlannedEndUtc,
     DateTime? StartedAtUtc,
     DateTime? CompletedAtUtc,
+    int? ActualPrintMinutes,
     string? FailureReason,
     string MaterialCode,
     string ColorCode,
     decimal LayerHeightMm,
-    int AttemptNumber);
+    int AttemptNumber,
+    string QcProofStatus,
+    string? QcSelfReport,
+    IReadOnlyList<string> QcProofPhotoKeys,
+    Guid? QcReviewedBy,
+    DateTime? QcReviewedAtUtc,
+    string? QcRejectionReason);

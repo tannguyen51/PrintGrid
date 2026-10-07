@@ -10,6 +10,7 @@ import {
   ListItemButton,
   ListItemText,
   Stack,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
@@ -86,8 +87,8 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
         borderColor: 'rgba(255,255,255,0.08)',
       }}
     >
-      <Container maxWidth="lg" sx={{ py: 1.5 }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+      <Container maxWidth="xl" sx={{ py: 1.25 }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={3}>
           {/* ── Brand ── */}
           <Button component={RouterLink} to="/" onClick={() => setDrawerOpen(false)} sx={{ p: 0, textTransform: 'none', minWidth: 0 }} disableRipple>
             <BrandGlyph size={34} />
@@ -102,8 +103,9 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
           </Button>
 
           {/* ── Desktop nav ── */}
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
-            {NAV_ITEMS.map((item) => (
+          {!isAuthenticated && (
+            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' }, ml: 'auto' }}>
+              {NAV_ITEMS.map((item) => (
               <Button
                 key={item.label}
                 onClick={() => go(item.href)}
@@ -114,55 +116,56 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                   fontSize: '0.9rem',
                   px: 1.5,
                   py: 0.75,
+                  whiteSpace: 'nowrap',
                   borderRadius: 2,
                   '&:hover': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.05)' },
                 }}
               >
                 {item.label}
               </Button>
-            ))}
-          </Stack>
+              ))}
+            </Stack>
+          )}
 
           {/* ── Auth actions ── */}
-          <Stack direction="row" spacing={1.25} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
+          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' }, ml: isAuthenticated ? 'auto' : 0 }}>
             {isAuthenticated ? (
               <>
                 {isCustomer && (
                   <>
-                    <Button onClick={() => go('/models')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                    <Button onClick={() => go('/models')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75, whiteSpace: 'nowrap' }}>
                       Thư viện model
                     </Button>
-                    <Button onClick={() => go('/orders')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                    <Button onClick={() => go('/orders')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75, whiteSpace: 'nowrap' }}>
                       Đơn hàng
                     </Button>
                   </>
                 )}
                 {isLab && (
-                  <Button onClick={() => go('/lab/queue')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                  <Button onClick={() => go('/lab/queue')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75, whiteSpace: 'nowrap' }}>
                     Hàng đợi sản xuất
                   </Button>
                 )}
                 {isHub && (
-                  <Button onClick={() => go('/hub/qc')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                  <Button onClick={() => go('/hub/qc')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75, whiteSpace: 'nowrap' }}>
                     Kiểm tra chất lượng
                   </Button>
                 )}
                 {isOps && (
-                  <Button onClick={() => go('/scheduling')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
-                    Bảng điều phối
-                  </Button>
+                  <>
+                    <Button onClick={() => go('/scheduling')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.5, py: 0.9, whiteSpace: 'nowrap' }}>
+                      Bảng điều phối
+                    </Button>
+                    <Button variant="contained" onClick={() => go('/staff/qc-proofs')} sx={{ fontWeight: 600, fontSize: '0.9rem', px: 2, py: 0.9, whiteSpace: 'nowrap' }}>
+                      Duyệt QC xưởng
+                    </Button>
+                  </>
                 )}
-                <Button variant="contained" color="primary" onClick={() => go(isCustomer ? '/models' : isOps ? '/scheduling' : '/lab/queue')} sx={{ px: 2.5, py: 0.9, fontSize: '0.9rem' }}>
-                  {isCustomer ? 'Bắt đầu in' : isOps ? 'Điều phối' : 'Vào việc'}
-                </Button>
-                <Button
-                  onClick={handleLogout}
-                  color="inherit"
-                  startIcon={<LogoutRounded fontSize="small" />}
-                  sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75, ml: 0.5 }}
-                >
-                  Đăng xuất
-                </Button>
+                <Tooltip title="Đăng xuất">
+                  <IconButton onClick={handleLogout} color="inherit" aria-label="Đăng xuất" sx={{ color: 'text.secondary', ml: 0.75 }}>
+                    <LogoutRounded fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </>
             ) : (
               <>
@@ -204,7 +207,7 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
           </IconButton>
         </Box>
         <List>
-          {NAV_ITEMS.map((item) => (
+          {!isAuthenticated && NAV_ITEMS.map((item) => (
             <ListItem key={item.label} disablePadding>
               <ListItemButton onClick={() => go(item.href)}>
                 <ListItemText
@@ -239,9 +242,14 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                     </Button>
                   )}
                   {isOps && (
-                    <Button fullWidth variant="contained" color="primary" onClick={() => go('/scheduling')}>
-                      Bảng điều phối
-                    </Button>
+                    <>
+                      <Button fullWidth variant="contained" color="primary" onClick={() => go('/scheduling')}>
+                        Bảng điều phối
+                      </Button>
+                      <Button fullWidth variant="outlined" color="inherit" onClick={() => go('/staff/qc-proofs')}>
+                        Duyệt QC xưởng
+                      </Button>
+                    </>
                   )}
                   <Button fullWidth variant="outlined" color="error" onClick={handleLogout} startIcon={<LogoutRounded />}>
                     Đăng xuất

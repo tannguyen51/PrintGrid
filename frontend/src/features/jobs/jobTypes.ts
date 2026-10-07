@@ -22,6 +22,7 @@ export interface Job {
   plannedEndUtc?: string | null
   startedAtUtc?: string | null
   completedAtUtc?: string | null
+  actualPrintMinutes?: number | null
   failureReason?: string | null
   materialCode: string
   colorCode: string
@@ -29,6 +30,17 @@ export interface Job {
   attemptNumber: number
   assignedAtUtc?: string | null
   acceptanceDeadlineUtc?: string | null
+  qcProofStatus: 'None' | 'Pending' | 'Approved' | 'Rejected'
+  qcSelfReport?: string | null
+  qcProofPhotoKeys: string[]
+  qcReviewedBy?: string | null
+  qcReviewedAtUtc?: string | null
+  qcRejectionReason?: string | null
+}
+
+export interface QcProofQueueItem {
+  job: Job
+  photoUrls: string[]
 }
 
 export const JOB_LABELS: Record<JobStatus, string> = {

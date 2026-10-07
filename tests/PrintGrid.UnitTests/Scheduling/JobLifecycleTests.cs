@@ -26,6 +26,71 @@ public class JobLifecycleTests
         return job;
     }
 
+    private static Job CreateInProgressJob()
+    {
+        var job = CreateAssignedJob();
+        job.Accept().IsSuccess.Should().BeTrue();
+        job.Start(DateTime.UtcNow).IsSuccess.Should().BeTrue();
+        return job;
+    }
+
+    [Fact]
+    public void Complete_requires_self_report_and_proof_photos()
+    {
+        var job = CreateInProgressJob();
+
+        var result = job.Complete(DateTime.UtcNow, 75, "", []);
+
+        result.IsFailure.Should().BeTrue();
+        job.Status.Should().Be(JobStatus.InProgress);
+    }
+
+    [Fact]
+    public void Complete_submits_qc_proof_for_staff_review()
+    {
+        var job = CreateInProgressJob();
+
+        var result = job.Complete(DateTime.UtcNow, 75, "Dimensions and surface checked", ["qc/photo-1.jpg"]);
+
+        result.IsSuccess.Should().BeTrue();
+        job.Status.Should().Be(JobStatus.AwaitingInspection);
+        job.QcProofStatus.Should().Be(QcProofStatus.Pending);
+        job.QcSelfReport.Should().Be("Dimensions and surface checked");
+        job.GetQcProofPhotoKeys().Should().Equal("qc/photo-1.jpg");
+    }
+
+    [Fact]
+    public void Approve_qc_proof_records_audit_and_unlocks_hub_inspection()
+    {
+        var job = CreateInProgressJob();
+        job.Complete(DateTime.UtcNow, 75, "Checked", ["qc/photo.jpg"]);
+        var staffId = Guid.NewGuid();
+        var reviewedAt = DateTime.UtcNow;
+
+        var result = job.ReviewQcProof(true, staffId, null, reviewedAt);
+
+        result.IsSuccess.Should().BeTrue();
+        job.QcProofStatus.Should().Be(QcProofStatus.Approved);
+        job.QcReviewedBy.Should().Be(staffId);
+        job.QcReviewedAtUtc.Should().Be(reviewedAt);
+        job.Status.Should().Be(JobStatus.AwaitingInspection);
+    }
+
+    [Fact]
+    public void Reject_qc_proof_requires_reason_and_returns_job_for_rework()
+    {
+        var job = CreateInProgressJob();
+        job.Complete(DateTime.UtcNow, 75, "Checked", ["qc/photo.jpg"]);
+
+        job.ReviewQcProof(false, Guid.NewGuid(), null, DateTime.UtcNow).IsFailure.Should().BeTrue();
+        var result = job.ReviewQcProof(false, Guid.NewGuid(), "Image does not show dimensions", DateTime.UtcNow);
+
+        result.IsSuccess.Should().BeTrue();
+        job.QcProofStatus.Should().Be(QcProofStatus.Rejected);
+        job.QcRejectionReason.Should().Be("Image does not show dimensions");
+        job.Status.Should().Be(JobStatus.InProgress);
+    }
+
     [Fact]
     public void Decline_transitions_job_back_to_pending_and_clears_assignment()
     {

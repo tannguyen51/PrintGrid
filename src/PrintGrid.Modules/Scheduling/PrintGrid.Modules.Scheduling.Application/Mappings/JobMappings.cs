@@ -17,9 +17,16 @@ public static class JobMappings
         job.PlannedEndUtc,
         job.StartedAtUtc,
         job.CompletedAtUtc,
+        job.ActualPrintMinutes,
         job.FailureReason,
         job.Specification.MaterialCode,
         job.Specification.ColorCode,
         job.Specification.LayerHeightMm,
-        job.AttemptNumber);
+        job.AttemptNumber,
+        job.QcProofStatus.ToString(),
+        job.QcSelfReport,
+        job.GetQcProofPhotoKeys(),
+        job.QcReviewedBy,
+        job.QcReviewedAtUtc,
+        job.QcRejectionReason);
 }

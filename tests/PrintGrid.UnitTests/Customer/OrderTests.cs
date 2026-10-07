@@ -58,6 +58,21 @@ public class OrderTests
     }
 
     [Fact]
+    public void Delivering_an_order_starts_the_guarantee_clock()
+    {
+        var order = OrderFromReadyQuote();
+        order.ConfirmPayment("txn_123");
+        order.TransitionTo(OrderStatus.InProduction);
+        order.TransitionTo(OrderStatus.QualityCheck);
+        order.TransitionTo(OrderStatus.Shipping);
+
+        order.TransitionTo(OrderStatus.Delivered);
+
+        order.DeliveredAt.Should().NotBeNull();
+        order.DeliveredAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
     public void Order_copies_every_quote_item_with_its_configuration()
     {
         var order = OrderFromReadyQuote();

@@ -32,6 +32,7 @@ import type { Job } from '../jobs/jobTypes'
 import { JOB_LABELS } from '../jobs/jobTypes'
 import { useJobs, useAcceptJob, useDeclineJob, useStartJob, useCompleteJob } from '../jobs/useJobs'
 import { useAuth } from '../../app/AuthContext'
+import { PageBackButton } from '../../shared/components/PageBackButton'
 
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—')
 const fmtTime = (d: string | null | undefined) => (d ? new Date(d).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—')
@@ -120,6 +121,8 @@ export default function LabQueuePage() {
 
   const [completeTarget, setCompleteTarget] = useState<Job | null>(null)
   const [actualMinutes, setActualMinutes] = useState(0)
+  const [selfReport, setSelfReport] = useState('')
+  const [proofPhotos, setProofPhotos] = useState<File[]>([])
 
   // Decline dialog state
   const [declineTarget, setDeclineTarget] = useState<Job | null>(null)
@@ -166,8 +169,15 @@ export default function LabQueuePage() {
     if (!completeTarget) return
     try {
       setActionError(null)
-      await complete.mutateAsync({ id: completeTarget.id, actualMinutes: Math.max(actualMinutes, 1) })
+      await complete.mutateAsync({
+        id: completeTarget.id,
+        actualMinutes: Math.max(actualMinutes, 1),
+        selfReport: selfReport.trim(),
+        photos: proofPhotos,
+      })
       setCompleteTarget(null)
+      setSelfReport('')
+      setProofPhotos([])
     } catch (err: any) {
       setActionError(err?.response?.data?.error?.message || 'Không thể ghi nhận hoàn thành.')
     }
@@ -177,12 +187,15 @@ export default function LabQueuePage() {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1100, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
-          <Box>
-            <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
-              Hàng đợi sản xuất — Lab
-            </Typography>
-            <Typography color="text.secondary">Nhận / từ chối job (hạn 2 giờ) → Bắt đầu in → Báo hoàn thành (FR-LAB-004)</Typography>
-          </Box>
+          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+            <PageBackButton />
+            <Box>
+              <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
+                Hàng đợi sản xuất — Lab
+              </Typography>
+              <Typography color="text.secondary">Nhận / từ chối job (hạn 2 giờ) → Bắt đầu in → Báo hoàn thành (FR-LAB-004)</Typography>
+            </Box>
+          </Stack>
           <Stack direction="row" spacing={1.5}>
             <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} onClick={() => navigate('/models')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
               Thư viện model
@@ -222,6 +235,11 @@ export default function LabQueuePage() {
                       Ước tính {j.estimatedPrintMinutes} phút · Lớp {j.layerHeightMm}mm · Hạn nội bộ {fmtDate(j.internalDueDate)}
                       {j.plannedStartUtc ? ` · Bắt đầu ${fmtTime(j.plannedStartUtc)}` : ''}
                     </Typography>
+                    {j.qcProofStatus === 'Rejected' && j.qcRejectionReason && (
+                      <Alert severity="warning" sx={{ mt: 1.5 }}>
+                        QC bị từ chối: {j.qcRejectionReason}
+                      </Alert>
+                    )}
                   </Box>
 
                   <Box>
@@ -257,7 +275,12 @@ export default function LabQueuePage() {
                       </Button>
                     )}
                     {action === 'complete' && (
-                      <Button variant="contained" color="success" startIcon={<CheckRounded />} onClick={() => { setCompleteTarget(j); setActualMinutes(j.estimatedPrintMinutes) }}>
+                      <Button variant="contained" color="success" startIcon={<CheckRounded />} onClick={() => {
+                        setCompleteTarget(j)
+                        setActualMinutes(j.actualPrintMinutes ?? j.estimatedPrintMinutes)
+                        setSelfReport('')
+                        setProofPhotos([])
+                      }}>
                         Báo hoàn thành
                       </Button>
                     )}
@@ -348,10 +371,35 @@ export default function LabQueuePage() {
             fullWidth
             autoFocus
           />
+          <TextField
+            label="Báo cáo tự QC"
+            value={selfReport}
+            onChange={(e) => setSelfReport(e.target.value)}
+            multiline
+            minRows={3}
+            fullWidth
+            sx={{ mt: 2 }}
+            placeholder="Mô tả bề mặt, kích thước, độ hoàn thiện và các kiểm tra đã thực hiện..."
+          />
+          <Button component="label" variant="outlined" sx={{ mt: 2 }} fullWidth>
+            Chọn ảnh bằng chứng QC (1–5 ảnh)
+            <input
+              hidden
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => setProofPhotos(Array.from(e.target.files ?? []).slice(0, 5))}
+            />
+          </Button>
+          {proofPhotos.length > 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Đã chọn {proofPhotos.length} ảnh
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={() => setCompleteTarget(null)} color="inherit" sx={{ color: 'text.secondary' }}>Hủy</Button>
-          <Button onClick={handleComplete} variant="contained" color="primary" disabled={complete.isPending || actualMinutes < 1}>
+          <Button onClick={handleComplete} variant="contained" color="primary" disabled={complete.isPending || actualMinutes < 1 || !selfReport.trim() || proofPhotos.length === 0}>
             {complete.isPending ? 'Đang lưu…' : 'Hoàn thành'}
           </Button>
         </DialogActions>

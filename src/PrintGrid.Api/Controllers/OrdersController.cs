@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Customer.Application.Commands.PlaceOrder;
+using PrintGrid.Modules.Customer.Application.Commands.ReprintRequests;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -66,6 +67,31 @@ public class OrdersController : ControllerBase
 
         return CreatedAtAction(nameof(PlaceOrder), new { id = result.Value.Id }, result.Value);
     }
+
+    [HttpGet("{id:guid}/reprint-requests")]
+    public async Task<IActionResult> GetReprintRequests(Guid id, CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        if (customerId is null) return Forbid();
+        var result = await _sender.Send(new GetReprintRequestsQuery(id, customerId.Value), cancellationToken);
+        return result.IsFailure ? NotFound(new { error = result.Error }) : Ok(result.Value);
+    }
+
+    [HttpPost("{id:guid}/reprint-request")]
+    [RequestSizeLimit(40 * 1024 * 1024)]
+    public async Task<IActionResult> CreateReprintRequest(Guid id, [FromBody] ReprintRequestBody request, CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        if (customerId is null) return Forbid();
+        var result = await _sender.Send(new CreateReprintRequestCommand(
+            id, customerId.Value, request.Reason, request.Description, request.Photos), cancellationToken);
+        if (result.IsFailure)
+        {
+            var status = result.Error.Code == "not_found" ? StatusCodes.Status404NotFound : StatusCodes.Status409Conflict;
+            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
+        }
+        return CreatedAtAction(nameof(GetReprintRequests), new { id }, result.Value);
+    }
 }
 
 public record PlaceOrderRequest(
@@ -76,3 +102,5 @@ public record PlaceOrderRequest(
     string City,
     string PostalCode,
     bool AcceptTerms);
+
+public record ReprintRequestBody(string Reason, string Description, IReadOnlyList<string> Photos);

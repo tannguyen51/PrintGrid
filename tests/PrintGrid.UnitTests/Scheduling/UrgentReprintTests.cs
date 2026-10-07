@@ -48,7 +48,7 @@ public class UrgentReprintTests
         job.AssignTo(labId ?? Guid.NewGuid(), Guid.NewGuid(), start, start.AddHours(1), 0.9m);
         job.Accept(DateTime.UtcNow);
         job.Start(DateTime.UtcNow);
-        job.Complete(DateTime.UtcNow, 55);
+        job.Complete(DateTime.UtcNow, 55, "Layer adhesion OK", new[] { "lab-qc/photo-1.jpg" });
         job.Fail("layer shift");
         return job;
     }

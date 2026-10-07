@@ -175,7 +175,7 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
             await sender.Send(new AssignJobCommand(jobId));
             await sender.Send(new AcceptJobCommand(jobId));
             await sender.Send(new StartJobCommand(jobId));
-            await sender.Send(new CompleteJobCommand(jobId, 58));
+            await sender.Send(new CompleteJobCommand(jobId, 58, "Layer adhesion OK", new[] { "lab-qc/photo-1.jpg" }));
             return 0;
         });
 

@@ -1,29 +1,29 @@
 using MediatR;
+using PrintGrid.Modules.Scheduling.Domain.Repositories;
 using PrintGrid.SharedKernel.Interfaces;
 using PrintGrid.SharedKernel.Results;
-using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 
-public class CompleteJobCommandHandler : IRequestHandler<CompleteJobCommand, Result>
+public sealed class ReviewQcProofCommandHandler : IRequestHandler<ReviewQcProofCommand, Result>
 {
     private readonly IJobRepository _jobs;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _clock;
 
-    public CompleteJobCommandHandler(IJobRepository jobs, IUnitOfWork unitOfWork, IDateTimeProvider clock)
+    public ReviewQcProofCommandHandler(IJobRepository jobs, IUnitOfWork unitOfWork, IDateTimeProvider clock)
     {
         _jobs = jobs;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
 
-    public async Task<Result> Handle(CompleteJobCommand command, CancellationToken cancellationToken)
+    public async Task<Result> Handle(ReviewQcProofCommand command, CancellationToken cancellationToken)
     {
         var job = await _jobs.GetByIdAsync(command.JobId, cancellationToken);
         if (job is null) return Result.Failure(Error.NotFound("Job", command.JobId));
 
-        var result = job.Complete(_clock.UtcNow, command.ActualPrintMinutes, command.SelfReport, command.PhotoKeys);
+        var result = job.ReviewQcProof(command.Approved, command.StaffId, command.Reason, _clock.UtcNow);
         if (result.IsFailure) return result;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
