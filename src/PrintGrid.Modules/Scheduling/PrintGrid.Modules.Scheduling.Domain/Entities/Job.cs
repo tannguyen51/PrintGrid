@@ -27,6 +27,21 @@ public class Job : AggregateRoot<Guid>
     public string? FailureReason { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
+    /// <summary>Normal for originally placed work, Urgent for reprints (BR-RESCHED-003).</summary>
+    public JobPriority Priority { get; private set; } = JobPriority.Normal;
+
+    /// <summary>Root job of a reprint chain; null when this job is the original (BR-RESCHED-003).</summary>
+    public Guid? OriginalJobId { get; private set; }
+
+    /// <summary>0 for an original job, 1..N for successive reprints of it (BR-RESCHED-004 cap).</summary>
+    public int ReprintIndex { get; private set; }
+
+    /// <summary>Who pays for this job (13-AC: a reprint after a fault is charged to the lab).</summary>
+    public CostBearer CostBearer { get; private set; } = CostBearer.Customer;
+
+    /// <summary>Lab held responsible for a reprint, when one can be identified.</summary>
+    public Guid? FaultLabId { get; private set; }
+
     private Job() { }
 
     public static Job Create(
@@ -49,8 +64,64 @@ public class Job : AggregateRoot<Guid>
             InternalDueDate = internalDueDate,
             Status = JobStatus.Pending,
             AttemptNumber = 1,
+            Priority = JobPriority.Normal,
+            ReprintIndex = 0,
+            CostBearer = CostBearer.Customer,
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    /// <summary>
+    /// Creates the reprint job for a failed original (FR-HUB-003 / BR-RESCHED-003): same
+    /// specification, URGENT priority, and the ORIGINAL internal due date inherited so the
+    /// customer's promised delivery date is preserved. Cost is charged to the at-fault
+    /// party (default: the lab, per 13-Acceptance-Criteria.md:330).
+    /// </summary>
+    public static Job CreateUrgentReprint(
+        Job original,
+        int reprintIndex,
+        Guid? faultLabId = null,
+        CostBearer costBearer = CostBearer.Lab,
+        DateTime? createdAtUtc = null)
+    {
+        // Rebuild (never share) the owned value objects: an EF owned instance cannot be
+        // tracked by two owners at once.
+        var volume = original.Specification.RequiredVolume;
+        var specification = JobSpecification.Create(
+            BuildVolume.Create(volume.WidthMm, volume.DepthMm, volume.HeightMm),
+            original.Specification.MaterialCode,
+            original.Specification.ColorCode,
+            original.Specification.LayerHeightMm,
+            original.Specification.ToleranceMm,
+            original.Specification.Technology,
+            original.Specification.MaterialGrams);
+
+        var reprint = new Job
+        {
+            Id = Guid.NewGuid(),
+            OrderItemId = original.OrderItemId,
+            ModelId = original.ModelId,
+            Specification = specification,
+            EstimatedPrintMinutes = original.EstimatedPrintMinutes,
+            InternalDueDate = original.InternalDueDate,
+            Status = JobStatus.Pending,
+            AttemptNumber = 1,
+            Priority = JobPriority.Urgent,
+            OriginalJobId = original.OriginalJobId ?? original.Id,
+            ReprintIndex = reprintIndex,
+            CostBearer = costBearer,
+            FaultLabId = faultLabId ?? original.LabId,
+            CreatedAt = createdAtUtc ?? DateTime.UtcNow
+        };
+
+        reprint.AddDomainEvent(new JobReprintCreatedEvent(
+            reprint.Id,
+            reprint.OriginalJobId!.Value,
+            reprintIndex,
+            reprint.FaultLabId,
+            reprint.InternalDueDate));
+
+        return reprint;
     }
 
     public Result AssignTo(Guid labId, Guid machineId, DateTime plannedStartUtc, DateTime plannedEndUtc, decimal score, DateTime? assignedAtUtc = null)
@@ -103,7 +174,11 @@ public class Job : AggregateRoot<Guid>
         FailureReason = reason;
 
         AddDomainEvent(new JobDeclinedEvent(Id, declinedLabId, reason));
-        AddDomainEvent(new ReschedulingTriggeredEvent(Id, "lab_decline", InternalDueDate));
+        AddDomainEvent(new ReschedulingTriggeredEvent(
+            Id,
+            "lab_decline",
+            InternalDueDate,
+            ExcludedLabId: declinedLabId == Guid.Empty ? null : declinedLabId));
         return Result.Success();
     }
 
@@ -151,11 +226,19 @@ public class Job : AggregateRoot<Guid>
         Status = JobStatus.Failed;
         FailureReason = reason;
 
-        AddDomainEvent(new JobFailedEvent(Id, LabId!.Value, MachineId!.Value, reason, AttemptNumber, OrderItemId));
+        // LabId/MachineId can legitimately be null (failing a job that was never placed);
+        // Guid.Empty keeps the event well-formed instead of throwing.
+        AddDomainEvent(new JobFailedEvent(Id, LabId ?? Guid.Empty, MachineId ?? Guid.Empty, reason, AttemptNumber, OrderItemId));
         AddDomainEvent(new ReschedulingTriggeredEvent(Id, "print_failure", InternalDueDate));
         return Result.Success();
     }
 
+    /// <summary>
+    /// Returns a failed job to the placement queue so the SAME job can be printed again.
+    /// The automatic after-fault path does not use this any more: FR-HUB-003 / BR-RESCHED-003
+    /// create a separate URGENT reprint job that inherits the original deadline. Kept as the
+    /// manual/ops alternative (and the only producer of <see cref="JobStatus.Reassigned"/>).
+    /// </summary>
     public Result PrepareForReassignment()
     {
         if (Status != JobStatus.Failed)

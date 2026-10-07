@@ -15,9 +15,15 @@ public class JobConfiguration : IEntityTypeConfiguration<Job>
         builder.Property(j => j.FailureReason).HasMaxLength(500);
         builder.Property(j => j.EstimatedPrintMinutes).IsRequired();
 
+        // Reprint chain + cost attribution (FR-HUB-003 / BR-RESCHED-003).
+        builder.Property(j => j.Priority).HasConversion<string>().HasMaxLength(16).IsRequired();
+        builder.Property(j => j.CostBearer).HasConversion<string>().HasMaxLength(16).IsRequired();
+        builder.Property(j => j.ReprintIndex).IsRequired();
+
         builder.HasIndex(j => new { j.Status, j.MachineId });
         builder.HasIndex(j => j.InternalDueDate);
         builder.HasIndex(j => j.OrderItemId);
+        builder.HasIndex(j => j.OriginalJobId);
 
         builder.OwnsOne(j => j.Specification, spec =>
         {

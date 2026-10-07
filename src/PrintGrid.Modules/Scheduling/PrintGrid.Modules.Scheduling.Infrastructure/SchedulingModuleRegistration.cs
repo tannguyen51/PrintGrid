@@ -17,10 +17,16 @@ internal static class SchedulingModuleRegistration
         services.AddScoped<ILabRepository, LabRepository>();
         services.AddScoped<IMachineTimelineService, MachineTimelineService>();
         services.AddScoped<IProductionCapacityProbe, ProductionCapacityProbe>();
+        services.AddScoped<IAssignmentDecisionRepository, AssignmentDecisionRepository>();
+        services.AddScoped<IOpsEscalationRepository, OpsEscalationRepository>();
+        services.AddScoped<IDateChangeRequestRepository, DateChangeRequestRepository>();
 
         services.AddSingleton<ISlicingService, PrintSlicingService>();
 
-        services.AddSingleton(ScoringWeights.Default);
+        // The scoring weights are versioned ("kỳ cấu hình", FR-SCHED-009 / BR-CONFIG-003); the
+        // active set is frozen into every decision log entry so past scores stay reproducible.
+        services.AddSingleton(ScoringParameterSet.Active);
+        services.AddSingleton(ScoringParameterSet.Active.Weights);
         services.AddSingleton<CapabilityFilter>();
         services.AddSingleton<AssignmentScorer>();
     }

@@ -28,7 +28,8 @@ export const printGridTheme = createTheme({
     error: { main: '#ff453a' },
     info: { main: '#0a84ff' },
     background: {
-      default: '#050505',
+      // Pure black everywhere — synced with the Figma homepage landing (#000).
+      default: '#000000',
       paper: '#0A0A0A',
     },
     divider: 'rgba(255,255,255,0.12)',
@@ -86,8 +87,8 @@ export const printGridTheme = createTheme({
     },
   },
   custom: {
-    // Uniform pure black — matches background.default (#050505) for a seamless dark login.
-    showcaseBg: '#050505',
+    // Uniform pure black — matches background.default (#000) for a seamless dark login.
+    showcaseBg: '#000000',
     loginCardShadow: '0 24px 80px rgba(0,0,0,0.55)',
     loginInputBg: '#050505',
   },

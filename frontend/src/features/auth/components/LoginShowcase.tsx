@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Environment, Lightformer, OrbitControls, useGLTF, useProgress } from '@react-three/drei'
 import { Stack, Typography, Box, CircularProgress } from '@mui/material'
+import { BrandGlyph } from '../../../shared/components/BrandGlyph'
 import { useTheme } from '@mui/material/styles'
 
 /**
@@ -32,13 +33,13 @@ function Scene() {
       // faces all visible), so it clearly reads as a 3D object on load.
       camera={{ position: [6, 4.2, 8], fov: 40 }}
       dpr={[1, 1.75]}
-      // Pure black background — matches the login area's background.default (#050505).
-      style={{ background: '#050505' }}
+      // Pure black background — matches the login area's background.default (#000).
+      style={{ background: '#000000' }}
       gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.5 }}
     >
-      {/* Fills the scene to #050505 so the 3D view is a seamless black, identical
+      {/* Fills the scene to #000 so the 3D view is a seamless black, identical
           to the login panel background. */}
-      <color attach="background" args={['#050505']} />
+      <color attach="background" args={['#000000']} />
 
       {/* ── Lighting: bright + rim lights to pick out every edge/line ── */}
       <ambientLight intensity={0.6} />
@@ -147,7 +148,7 @@ export function LoginShowcase({ frame = false }: { frame?: boolean }) {
     >
       {/* ── Brand header: top 32px, left 40px ── */}
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ position: 'absolute', top: 32, left: 40, zIndex: 2 }}>
-        <BrandMark />
+        <BrandGlyph size={40} />
         <Box>
           <Typography sx={{ fontSize: '1.15rem', fontWeight: 700, lineHeight: 1, letterSpacing: '0.02em', color: 'common.white' }}>
             PrintGrid
@@ -180,26 +181,3 @@ export function LoginShowcase({ frame = false }: { frame?: boolean }) {
   )
 }
 
-/* ── Brand glyph (grid + dot, original artwork) ── */
-function BrandMark() {
-  return (
-    <Box
-      sx={{
-        width: 40,
-        height: 40,
-        borderRadius: 2.5,
-        display: 'grid',
-        placeItems: 'center',
-        background: 'linear-gradient(140deg, #8B5CF6, #7C3AED)',
-        boxShadow: '0 8px 22px rgba(139,92,246,0.4)',
-      }}
-    >
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 10px)', gap: 2.5 }}>
-        <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: 'rgba(255,255,255,0.4)' }} />
-        <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: 'common.white' }} />
-        <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: 'rgba(5,5,5,0.85)' }} />
-        <Box sx={{ width: 10, height: 10, borderRadius: 1, bgcolor: 'rgba(255,255,255,0.4)' }} />
-      </Box>
-    </Box>
-  )
-}

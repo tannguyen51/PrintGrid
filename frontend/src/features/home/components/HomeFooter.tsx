@@ -1,6 +1,6 @@
 import { Box, Container, Divider, Stack, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
-import { BrandGlyph } from './HomeHeader'
+import { BrandGlyph } from '../../../shared/components/BrandGlyph'
 
 interface HomeFooterProps {
   onLogin: () => void
