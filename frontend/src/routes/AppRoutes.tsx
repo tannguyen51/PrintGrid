@@ -13,6 +13,7 @@ const OrdersPage = lazy(() => import('../features/orders/OrdersPage'))
 const LabQueuePage = lazy(() => import('../features/lab/LabQueuePage'))
 const InventoryPage = lazy(() => import('../features/lab/InventoryPage'))
 const HubQCPage = lazy(() => import('../features/hub/HubQCPage'))
+const HubShipmentsPage = lazy(() => import('../features/hub/HubShipmentsPage'))
 const SchedulingBoardPage = lazy(() => import('../features/scheduling/SchedulingBoardPage'))
 const QcProofReviewPage = lazy(() => import('../features/qcProof/QcProofReviewPage'))
 const QuoteReviewPage = lazy(() => import('../features/quotes/QuoteReviewPage'))
@@ -87,6 +88,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['HubQC', 'HubFulfillment']}>
               <HubQCPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/hub/shipments"
+          element={
+            <ProtectedRoute allowedRoles={['HubQC', 'HubFulfillment']}>
+              <HubShipmentsPage />
             </ProtectedRoute>
           }
         />

@@ -125,6 +125,19 @@ paths:
       summary: Chi tiết + timeline (payload whitelist — cấm mọi trường lab)
       parameters: [ { $ref: '#/components/parameters/orderId' } ]
       responses: { '200': { description: "OrderDetailDto — events + stage, không lộ xưởng" } }
+  /orders/{orderId}/confirm-receipt:
+    post:
+      tags: [orders]
+      x-milestone: T2-DONE
+      summary: 'KHÁCH xác nhận đã nhận hàng → stamp DeliveredAt = mốc bảo hành 30 ngày (quy tắc 2)'
+      description: >
+        Chỉ vai Customer, đơn của mình (không phải của mình ⇒ 404). Yêu cầu đơn đang ở DELIVERED
+        (hub đã bàn giao). Là bước DUY NHẤT đặt mốc bảo hành + ghi người/thời điểm xác nhận.
+      parameters: [ { $ref: '#/components/parameters/orderId' } ]
+      responses:
+        '204': { description: Đã xác nhận; DeliveredAt (mốc bảo hành) được stamp }
+        '404': { description: 'Không tìm thấy đơn / đơn của khách khác' }
+        '409': { description: 'Đơn chưa DELIVERED (conflict)' }
   /orders/{orderId}/mark-paid:
     post:
       tags: [payments]
@@ -256,10 +269,46 @@ paths:
       responses:
         '200': { description: Packed }
         '409': { description: '{outstanding: [items]}' }
+  /hub/orders/shipment-queue:
+    get:
+      tags: [hub]
+      x-milestone: T2-DONE
+      summary: Danh sách đơn hub cần xử lý (QualityCheck / Shipping / Delivered), sắp theo hạn giao
+      responses: { '200': { description: "ShipmentOrderDto[] — id, orderNumber, status, trackingNumber, promisedDeliveryDate, deliveredAt, receiptConfirmed" } }
   /hub/orders/{orderId}/ship:
-    post: { tags: [hub], x-milestone: T2, summary: Ghi vận đơn, status=SHIPPED + notify, responses: { '200': { description: OK } } }
+    post:
+      tags: [hub]
+      x-milestone: T2-DONE
+      summary: 'Ghi vận đơn → status=SHIPPING (bắt buộc vận đơn, BR). KHÔNG mốc bảo hành.'
+      description: >
+        Hub xuất hàng. Vận đơn bắt buộc (non-empty), đơn chỉ được ship từ QualityCheck.
+        Đây KHÔNG phải mốc bảo hành — bảo hành 30 ngày chỉ chạy khi KHÁCH xác nhận đã nhận (xem confirm-receipt).
+      parameters: [ { $ref: '#/components/parameters/orderId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [trackingNumber]
+              properties:
+                trackingNumber: { type: string, maxLength: 128 }
+      responses:
+        '204': { description: Đã ghi vận đơn, đơn chuyển sang Shipping }
+        '400': { description: 'Thiếu/không hợp lệ vận đơn (validation_error)' }
+        '409': { description: 'Đơn chưa ở QualityCheck (conflict)' }
   /hub/orders/{orderId}/deliver:
-    post: { tags: [hub], x-milestone: T2, summary: Xác nhận giao → DeliveredAt = mốc bảo hành 30 ngày, responses: { '200': { description: OK } } }
+    post:
+      tags: [hub]
+      x-milestone: T2-DONE
+      summary: 'Hub xác nhận đã giao vật lý → status=DELIVERED. KHÔNG đặt DeliveredAt (mốc bảo hành).'
+      description: >
+        Chỉ là bàn giao vật lý giữa hub và khách. Mốc bảo hành 30 ngày (DeliveredAt) do CHÍNH KHÁCH
+        stamp khi gọi /orders/{orderId}/confirm-receipt (quy tắc 2 — chốt từ team).
+      parameters: [ { $ref: '#/components/parameters/orderId' } ]
+      responses:
+        '204': { description: Đã ghi nhận bàn giao, đơn chuyển sang Delivered (chưa có mốc bảo hành) }
+        '409': { description: 'Đơn chưa ở Shipping (conflict)' }
 
   # ============ ENGINE & OPS (ghế Engine — T2..T7) ============
   /scheduling/jobs/{jobId}/assign:

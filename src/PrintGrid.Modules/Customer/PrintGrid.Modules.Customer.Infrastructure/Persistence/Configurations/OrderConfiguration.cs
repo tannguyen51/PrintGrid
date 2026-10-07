@@ -19,6 +19,8 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.PaymentTransactionId).HasMaxLength(128);
         builder.Property(o => o.IsDelayed).IsRequired().HasDefaultValue(false);
         builder.Property(o => o.DeliveredAt);
+        builder.Property(o => o.TrackingNumber).HasMaxLength(128);
+        builder.Property(o => o.ReceiptConfirmedBy);
 
         builder.OwnsOne(o => o.TotalPrice, price =>
         {

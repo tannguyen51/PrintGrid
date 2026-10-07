@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Customer.Application.Commands.PlaceOrder;
 using PrintGrid.Modules.Customer.Application.Commands.ReprintRequests;
+using PrintGrid.Modules.Customer.Application.Commands.Shipment;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -34,6 +35,26 @@ public class OrdersController : ControllerBase
 
         var result = await _sender.Send(new GetOrderTimelineQuery(id, customerId.Value), cancellationToken);
         return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
+    }
+
+    [HttpPost("{id:guid}/confirm-receipt")]
+    public async Task<IActionResult> ConfirmReceipt(Guid id, CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        if (customerId is null) return Forbid();
+
+        var result = await _sender.Send(new ConfirmOrderReceiptCommand(id, customerId.Value), cancellationToken);
+        if (result.IsFailure)
+        {
+            var status = result.Error.Code switch
+            {
+                "not_found" => StatusCodes.Status404NotFound,
+                "conflict" => StatusCodes.Status409Conflict,
+                _ => StatusCodes.Status400BadRequest,
+            };
+            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
+        }
+        return NoContent();
     }
 
     [HttpPost]

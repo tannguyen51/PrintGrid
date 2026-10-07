@@ -143,9 +143,14 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                   </Button>
                 )}
                 {isHub && (
-                  <Button onClick={() => go('/hub/qc')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
-                    Kiểm tra chất lượng
-                  </Button>
+                  <>
+                    <Button onClick={() => go('/hub/qc')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                      Kiểm tra chất lượng
+                    </Button>
+                    <Button onClick={() => go('/hub/shipments')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                      Giao hàng
+                    </Button>
+                  </>
                 )}
                 {isOps && (
                   <>
@@ -242,9 +247,14 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                     </Button>
                   )}
                   {isHub && (
-                    <Button fullWidth variant="contained" color="primary" onClick={() => go('/hub/qc')}>
-                      Kiểm tra chất lượng
-                    </Button>
+                    <>
+                      <Button fullWidth variant="contained" color="primary" onClick={() => go('/hub/qc')}>
+                        Kiểm tra chất lượng
+                      </Button>
+                      <Button fullWidth variant="outlined" color="inherit" onClick={() => { setDrawerOpen(false); go('/hub/shipments') }} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+                        Giao hàng
+                      </Button>
+                    </>
                   )}
                   {isOps && (
                     <>

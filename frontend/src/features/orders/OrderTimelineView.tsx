@@ -1,16 +1,28 @@
-import { Box, Chip, CircularProgress, Divider, Stack, Step, StepContent, StepLabel, Stepper, Typography } from '@mui/material'
-import { WarningRounded } from '@mui/icons-material'
-import { useOrderTimeline } from './useOrderTimeline'
+import { useState } from 'react'
+import { Alert, Box, Button, Chip, CircularProgress, Divider, Stack, Step, StepContent, StepLabel, Stepper, Typography } from '@mui/material'
+import { CheckCircleRounded, WarningRounded } from '@mui/icons-material'
+import { useConfirmOrderReceipt, useOrderTimeline } from './useOrderTimeline'
 
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
 export function OrderTimelineView({ orderId }: { orderId: string }) {
   const { data: timeline, isLoading, isError } = useOrderTimeline(orderId)
+  const confirmReceipt = useConfirmOrderReceipt(orderId)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
 
   if (isLoading) return <Box sx={{ display: 'grid', placeItems: 'center', p: 4 }}><CircularProgress /></Box>
   if (isError || !timeline) return <Typography color="error" sx={{ p: 4 }}>Không tải được thông tin đơn hàng</Typography>
 
   const activeStep = timeline.stages.findIndex(s => s.isCurrent)
+
+  async function handleConfirmReceipt() {
+    setConfirmError(null)
+    try {
+      await confirmReceipt.mutateAsync()
+    } catch (err: any) {
+      setConfirmError(err?.response?.data?.error?.message || 'Không thể xác nhận. Vui lòng thử lại.')
+    }
+  }
 
   return (
     <Stack spacing={3}>
@@ -31,6 +43,12 @@ export function OrderTimelineView({ orderId }: { orderId: string }) {
       <Typography variant="body2" color="text.secondary">
         Dự kiến giao: {fmtDate(timeline.promisedDeliveryDate)}
       </Typography>
+
+      {timeline.trackingNumber && (
+        <Typography variant="body2" color="text.secondary">
+          Mã vận đơn: <strong style={{ color: 'text.primary' }}>{timeline.trackingNumber}</strong>
+        </Typography>
+      )}
 
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
 
@@ -56,6 +74,29 @@ export function OrderTimelineView({ orderId }: { orderId: string }) {
           </Step>
         ))}
       </Stepper>
+
+      {timeline.canConfirmReceipt && (
+        <Box sx={{ p: 2, borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'rgba(255,255,255,0.03)' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Hub đã giao hàng. Xác nhận bạn đã nhận đủ để bắt đầu tính thời hạn bảo hành 30 ngày.
+          </Typography>
+          {confirmError && (
+            <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setConfirmError(null)}>
+              {confirmError}
+            </Alert>
+          )}
+          <Button
+            variant="contained"
+            color="primary"
+            fullWidth
+            startIcon={confirmReceipt.isPending ? <CircularProgress size={16} color="inherit" /> : <CheckCircleRounded />}
+            disabled={confirmReceipt.isPending}
+            onClick={handleConfirmReceipt}
+          >
+            {confirmReceipt.isPending ? 'Đang xác nhận…' : 'Xác nhận đã nhận hàng'}
+          </Button>
+        </Box>
+      )}
 
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
 

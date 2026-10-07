@@ -25,6 +25,11 @@ public class GetOrderTimelineQueryHandler : IRequestHandler<GetOrderTimelineQuer
             return Result.Failure<CustomerTimelineDto>(Error.NotFound("Order", request.OrderId));
         }
 
+        // The hub's "Delivered" is only the physical handover; the warranty anchor (DeliveredAt) is
+        // stamped by the CUSTOMER's receipt confirmation. So the last two stages split on that flag.
+        var handedOver = order.Status == OrderStatus.Delivered && order.DeliveredAt is null;
+        var receivedByCustomer = order.Status == OrderStatus.Delivered && order.DeliveredAt is not null;
+
         var stages = new List<OrderStageDto>
         {
             new("Payment Pending", order.CreatedAt, order.Status == OrderStatus.PaymentPending),
@@ -32,7 +37,8 @@ public class GetOrderTimelineQueryHandler : IRequestHandler<GetOrderTimelineQuer
             new("In Production", null, order.Status == OrderStatus.InProduction),
             new("Quality Check", null, order.Status == OrderStatus.QualityCheck),
             new("Shipping", null, order.Status == OrderStatus.Shipping),
-            new("Delivered", null, order.Status == OrderStatus.Delivered)
+            new("Delivered", null, handedOver),
+            new("Received by Customer", order.DeliveredAt, receivedByCustomer)
         };
 
         var currentStageName = stages.FirstOrDefault(s => s.IsCurrent)?.StageName ?? order.Status.ToString();
@@ -51,7 +57,10 @@ public class GetOrderTimelineQueryHandler : IRequestHandler<GetOrderTimelineQuer
             order.PromisedDeliveryDate,
             order.IsDelayed,
             stages,
-            itemDtos
+            itemDtos,
+            order.TrackingNumber,
+            order.DeliveredAt,
+            CanConfirmReceipt: handedOver
         );
 
         return Result.Success(dto);
