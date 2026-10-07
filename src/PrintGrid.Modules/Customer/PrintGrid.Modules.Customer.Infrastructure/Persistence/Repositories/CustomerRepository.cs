@@ -29,4 +29,6 @@ public class CustomerRepository : ICustomerRepository
 
     public async Task AddAsync(Domain.Entities.Customer customer, CancellationToken cancellationToken = default) =>
         await _context.Set<Domain.Entities.Customer>().AddAsync(customer, cancellationToken);
+
+    public void Update(Domain.Entities.Customer customer) => _context.Set<Domain.Entities.Customer>().Update(customer);
 }

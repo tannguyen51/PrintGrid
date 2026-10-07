@@ -6,4 +6,5 @@ public interface ICustomerRepository
     Task<Entities.Customer?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
     Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default);
     Task AddAsync(Entities.Customer customer, CancellationToken cancellationToken = default);
+    void Update(Entities.Customer customer);
 }

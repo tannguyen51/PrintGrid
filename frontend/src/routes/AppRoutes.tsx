@@ -14,6 +14,7 @@ const LabQueuePage = lazy(() => import('../features/lab/LabQueuePage'))
 const HubQCPage = lazy(() => import('../features/hub/HubQCPage'))
 const SchedulingBoardPage = lazy(() => import('../features/scheduling/SchedulingBoardPage'))
 const QcProofReviewPage = lazy(() => import('../features/qcProof/QcProofReviewPage'))
+const AccountPage = lazy(() => import('../features/account/AccountPage'))
 
 function RouteFallback() {
   return (
@@ -41,6 +42,22 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['Customer']}>
               <ModelLibraryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/library"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <ModelLibraryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <AccountPage />
             </ProtectedRoute>
           }
         />
