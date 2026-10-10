@@ -74,13 +74,27 @@ paths:
         '201': { description: Accepted; GeometryStatus=Pending }
         '413': { description: Vượt 50MB (siết server-side — T3) }
         '415': { description: "Sai định dạng — kiểm nội dung thật (T3)" }
-        '429': { description: Vượt quota tài khoản — T3 }
+        '409': { description: Vượt quota tài khoản; trả usage và hướng dẫn dọn thư viện }
+  /models/quota:
+    get:
+      tags: [customer]
+      summary: Mức sử dụng thư viện model của khách hiện tại
+      responses:
+        '200': { description: ModelQuotaDto (used/max models và bytes) }
   /models/{modelId}:
     put: { tags: [customer], summary: Sửa tên/mô tả/tag (existing), parameters: [ { $ref: '#/components/parameters/modelId' } ], responses: { '200': { description: ModelDto } } }
   /me/addresses:
     get:  { tags: [customer], x-milestone: T1, summary: Liệt kê địa chỉ, responses: { '200': { description: "AddressDto[]" } } }
     post: { tags: [customer], x-milestone: T1, summary: Thêm địa chỉ, responses: { '201': { description: AddressDto } } }
   /me/addresses/{addressId}:
+    put:
+      tags: [customer]
+      summary: Cập nhật địa chỉ và chọn mặc định
+      parameters: [ { name: addressId, in: path, required: true, schema: { type: string, format: uuid } } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AddressInput' } } }
+      responses: { '200': { description: AddressDto }, '404': { description: Không tìm thấy } }
     delete:
       tags: [customer]
       x-milestone: T1
@@ -89,6 +103,12 @@ paths:
       responses:
         '204': { description: Đã xóa }
         '409': { description: Còn đơn chưa giao đang dùng địa chỉ này }
+  /me:
+    get: { tags: [customer], summary: Đọc hồ sơ khách hiện tại, responses: { '200': { description: CustomerProfileDto } } }
+    put:
+      tags: [customer]
+      summary: Cập nhật họ tên và số điện thoại
+      responses: { '200': { description: CustomerProfileDto } }
 
   # ============ BÁO GIÁ (ghế Engine + Đơn hàng — T2) ============
   /quotes:
@@ -125,6 +145,19 @@ paths:
       summary: Chi tiết + timeline (payload whitelist — cấm mọi trường lab)
       parameters: [ { $ref: '#/components/parameters/orderId' } ]
       responses: { '200': { description: "OrderDetailDto — events + stage, không lộ xưởng" } }
+  /orders/{orderId}/confirm-receipt:
+    post:
+      tags: [orders]
+      x-milestone: T2-DONE
+      summary: 'KHÁCH xác nhận đã nhận hàng → stamp DeliveredAt = mốc bảo hành 30 ngày (quy tắc 2)'
+      description: >
+        Chỉ vai Customer, đơn của mình (không phải của mình ⇒ 404). Yêu cầu đơn đang ở DELIVERED
+        (hub đã bàn giao). Là bước DUY NHẤT đặt mốc bảo hành + ghi người/thời điểm xác nhận.
+      parameters: [ { $ref: '#/components/parameters/orderId' } ]
+      responses:
+        '204': { description: Đã xác nhận; DeliveredAt (mốc bảo hành) được stamp }
+        '404': { description: 'Không tìm thấy đơn / đơn của khách khác' }
+        '409': { description: 'Đơn chưa DELIVERED (conflict)' }
   /orders/{orderId}/mark-paid:
     post:
       tags: [payments]
@@ -189,10 +222,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [actualMinutes, materialGrams]
+              required: [actualPrintMinutes, actualMaterialGrams]
               properties:
-                actualMinutes: { type: integer, minimum: 1 }
-                materialGrams: { type: number, minimum: 0 }
+                actualPrintMinutes: { type: integer, minimum: 1 }
+                actualMaterialGrams: { type: number, exclusiveMinimum: 0 }
       responses: { '200': { description: Completed; dữ liệu vào job_actuals } }
   /jobs/{jobId}/incidents:
     post:
@@ -211,9 +244,16 @@ paths:
                 photoKeys: { type: array, items: { type: string } }
                 note: { type: string }
       responses: { '202': { description: "Đã nhận; engine đang vá lịch" } }
-  /lab/inventory:
-    get:  { tags: [lab], x-milestone: T3, summary: Tồn kho theo màu, responses: { '200': { description: "InventoryItemDto[]" } } }
-    put:  { tags: [lab], x-milestone: T3, summary: Nhập/cập nhật tồn kho, responses: { '200': { description: OK } } }
+  /labs/{labId}/inventory:
+    parameters: [ { name: labId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get:  { tags: [lab], summary: Tồn kho theo vật liệu và màu, responses: { '200': { description: "MaterialStockDto[]" } } }
+    put:  { tags: [lab], summary: Kiểm kê/cấu hình ngưỡng tồn kho, responses: { '200': { description: "MaterialStockDto" } } }
+  /labs/{labId}/inventory/adjustments:
+    parameters: [ { name: labId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    post: { tags: [lab], summary: Nhập hoặc xuất kho có mã giao dịch và số dư liên tục, responses: { '200': { description: "MaterialStockDto" } } }
+  /labs/{labId}/inventory/transactions:
+    parameters: [ { name: labId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get: { tags: [lab], summary: Lịch sử giao dịch kho, responses: { '200': { description: "StockTransactionDto[]" } } }
   /lab/handover:
     post:
       tags: [lab]
@@ -249,22 +289,99 @@ paths:
       responses:
         '200': { description: Packed }
         '409': { description: '{outstanding: [items]}' }
+  /hub/orders/shipment-queue:
+    get:
+      tags: [hub]
+      x-milestone: T2-DONE
+      summary: Danh sách đơn hub cần xử lý (QualityCheck / Shipping / Delivered), sắp theo hạn giao
+      responses: { '200': { description: "ShipmentOrderDto[] — id, orderNumber, status, trackingNumber, promisedDeliveryDate, deliveredAt, receiptConfirmed" } }
   /hub/orders/{orderId}/ship:
-    post: { tags: [hub], x-milestone: T2, summary: Ghi vận đơn, status=SHIPPED + notify, responses: { '200': { description: OK } } }
+    post:
+      tags: [hub]
+      x-milestone: T2-DONE
+      summary: 'Ghi vận đơn → status=SHIPPING (bắt buộc vận đơn, BR). KHÔNG mốc bảo hành.'
+      description: >
+        Hub xuất hàng. Vận đơn bắt buộc (non-empty), đơn chỉ được ship từ QualityCheck.
+        Đây KHÔNG phải mốc bảo hành — bảo hành 30 ngày chỉ chạy khi KHÁCH xác nhận đã nhận (xem confirm-receipt).
+      parameters: [ { $ref: '#/components/parameters/orderId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [trackingNumber]
+              properties:
+                trackingNumber: { type: string, maxLength: 128 }
+      responses:
+        '204': { description: Đã ghi vận đơn, đơn chuyển sang Shipping }
+        '400': { description: 'Thiếu/không hợp lệ vận đơn (validation_error)' }
+        '409': { description: 'Đơn chưa ở QualityCheck (conflict)' }
   /hub/orders/{orderId}/deliver:
-    post: { tags: [hub], x-milestone: T2, summary: Xác nhận giao → DeliveredAt = mốc bảo hành 30 ngày, responses: { '200': { description: OK } } }
+    post:
+      tags: [hub]
+      x-milestone: T2-DONE
+      summary: 'Hub xác nhận đã giao vật lý → status=DELIVERED. KHÔNG đặt DeliveredAt (mốc bảo hành).'
+      description: >
+        Chỉ là bàn giao vật lý giữa hub và khách. Mốc bảo hành 30 ngày (DeliveredAt) do CHÍNH KHÁCH
+        stamp khi gọi /orders/{orderId}/confirm-receipt (quy tắc 2 — chốt từ team).
+      parameters: [ { $ref: '#/components/parameters/orderId' } ]
+      responses:
+        '204': { description: Đã ghi nhận bàn giao, đơn chuyển sang Delivered (chưa có mốc bảo hành) }
+        '409': { description: 'Đơn chưa ở Shipping (conflict)' }
 
   # ============ ENGINE & OPS (ghế Engine — T2..T7) ============
   /scheduling/jobs/{jobId}/assign:
     post: { tags: [scheduling], summary: Gán thủ công từ bảng ops (existing) — T4 qua cả CapabilityFilter, responses: { '200': { description: AssignmentResultDto } } }
     parameters: [ { $ref: '#/components/parameters/jobId' } ]
+  /scheduling/jobs/{jobId}/reprint:
+    post:
+      tags: [scheduling]
+      x-milestone: T8
+      summary: Tạo lệnh in lại KHẨN cho job đã hỏng — URGENT, kế thừa deadline gốc, phí bên lỗi; quá trần 2 ⇒ hàng đợi vận hành (FR-HUB-003)
+      description: |
+        Phí in lại theo bên lỗi (BR-RESCHED-003, chốt 07/10): lỗi lab ⇒ lab chịu và lab đó bị loại
+        khỏi lần gán lại; lỗi hub ⇒ **hệ thống chịu** (`costBearer=System`) và không lab nào bị quy lỗi;
+        lỗi khách ⇒ không sinh job in lại (báo khách in lại có phí).
+      parameters: [ { $ref: '#/components/parameters/jobId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, maxLength: 500 }
+                faultLabId: { type: string, format: uuid, nullable: true, description: 'lab bị quy lỗi (bị loại khỏi lần gán lại); mặc định lấy lab đã in job gốc' }
+      responses:
+        '200':
+          description: UrgentReprintResultDto — escalatedToOps=true khi job đã chạm trần in lại
+          content: { application/json: { schema: { $ref: '#/components/schemas/UrgentReprintResultDto' } } }
+        '409':
+          description: Job không ở trạng thái Failed (chỉ job đã hỏng mới được in lại)
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   /ops/decisions/{jobId}:
     get:
       tags: [ops]
       x-milestone: T3
       summary: Vết quyết định gán — candidate + điểm từng tiêu chí + kỳ cấu hình
       parameters: [ { $ref: '#/components/parameters/jobId' } ]
-      responses: { '200': { description: DecisionLogDto } }
+      responses:
+        '200':
+          description: DecisionLogDto
+          content: { application/json: { schema: { $ref: '#/components/schemas/DecisionLogDto' } } }
+  /ops/escalations:
+    get:
+      tags: [ops]
+      x-milestone: T8
+      summary: Hàng đợi vận hành — in lại quá trần 2 + job không còn ngày nào khả thi (BR-RESCHED-004, BR-SCHED-011)
+      responses:
+        '200':
+          description: OpsEscalationDto[]
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/OpsEscalationDto' } }
   /ops/at-risk:
     get: { tags: [ops], x-milestone: T3, summary: Việc sắp trễ hẹn (slack < ngưỡng cfg), responses: { '200': { description: "AtRiskDto[]" } } }
   /reprint-requests:
@@ -287,6 +404,20 @@ components:
         email: { type: string, format: email }
         password: { type: string, minLength: 8 }
         fullName: { type: string }
+    AddressInput:
+      type: object
+      required: [label, recipientName, phoneNumber, street, city, isDefault]
+      properties:
+        label: { type: string, maxLength: 50 }
+        recipientName: { type: string, maxLength: 200 }
+        phoneNumber: { type: string, maxLength: 32 }
+        street: { type: string, maxLength: 300 }
+        ward: { type: string, maxLength: 100 }
+        district: { type: string, maxLength: 100 }
+        city: { type: string, maxLength: 100 }
+        postalCode: { type: string, maxLength: 20 }
+        country: { type: string, minLength: 2, maxLength: 2, default: VN }
+        isDefault: { type: boolean }
     CreateQuoteRequest:
       type: object
       required: [items, requiredBy]
@@ -408,3 +539,55 @@ components:
     Error:
       type: object
       properties: { code: { type: string }, message: { type: string }, details: { type: object, nullable: true } }
+    DecisionLogDto:
+      type: object
+      description: 'FR-SCHED-009 / BR-ASSIGN-004 — append-only; không có API sửa/xoá'
+      required: [jobId, decisions]
+      properties:
+        jobId: { type: string, format: uuid }
+        decisions:
+          type: array
+          items: { $ref: '#/components/schemas/DecisionEntryDto' }
+    DecisionEntryDto:
+      type: object
+      required: [id, createdAtUtc, trigger, actorType, outcome, scoringConfigVersion, timeBudgetMs, elapsedMs, budgetExceeded]
+      properties:
+        id: { type: string, format: uuid }
+        createdAtUtc: { type: string, format: date-time }
+        attemptNumber: { type: integer, description: 'lần thử của job tại thời điểm quyết định' }
+        trigger: { type: string, enum: [initial_assign, lab_decline, print_failure, urgent_reprint, ops_override, date_change_probe] }
+        actorType: { type: string, enum: [system, ops] }
+        actorId: { type: string, nullable: true }
+        outcome: { type: string, enum: [assigned, no_capable_machine, no_feasible_slot, placement_race, rejected_by_aggregate, probe] }
+        reason: { type: string, nullable: true }
+        chosenLabId: { type: string, format: uuid, nullable: true }
+        chosenMachineId: { type: string, format: uuid, nullable: true }
+        chosenScore: { type: number, nullable: true }
+        scoringConfigVersion: { type: string, description: 'kỳ cấu hình — trọng số đóng băng tại thời điểm gán' }
+        timeBudgetMs: { type: integer, description: 'BR-SCHED-005: trần 30 000 ms' }
+        elapsedMs: { type: integer }
+        budgetExceeded: { type: boolean, description: 'true khi ngân sách thời gian cắt ngắn vòng tìm kiếm (NFR-PERF-002)' }
+        candidates: { type: array, description: 'tập candidate đã xét + lý do loại từng máy', items: { type: object } }
+        ranking: { type: array, description: 'điểm từng tiêu chí của mọi placement đã xếp hạng', items: { type: object } }
+        scoringConfig: { type: object, description: 'bản chụp trọng số hiệu lực' }
+    OpsEscalationDto:
+      type: object
+      required: [id, jobId, orderItemId, kind, reason, status, createdAtUtc]
+      properties:
+        id: { type: string, format: uuid }
+        jobId: { type: string, format: uuid }
+        orderItemId: { type: string, format: uuid }
+        kind: { type: string, enum: [ReprintLimitExceeded, NoFeasibleSlot] }
+        reason: { type: string }
+        status: { type: string, enum: [Open, Resolved] }
+        createdAtUtc: { type: string, format: date-time }
+    UrgentReprintResultDto:
+      type: object
+      required: [originalJobId, escalatedToOps]
+      properties:
+        originalJobId: { type: string, format: uuid }
+        reprintJobId: { type: string, format: uuid, nullable: true, description: 'null khi đã chạm trần và đẩy sang ops' }
+        escalatedToOps: { type: boolean }
+        plannedStartUtc: { type: string, format: date-time, nullable: true }
+        plannedEndUtc: { type: string, format: date-time, nullable: true }
+        score: { type: number, nullable: true }

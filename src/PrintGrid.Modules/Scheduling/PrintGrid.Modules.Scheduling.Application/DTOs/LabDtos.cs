@@ -27,6 +27,26 @@ public record LabDto(
     DateTime CreatedAt,
     IReadOnlyCollection<MachineDto> Machines);
 
+public record MaterialStockDto(
+    Guid Id,
+    string MaterialCode,
+    string ColorCode,
+    decimal AvailableGrams,
+    decimal ReservedGrams,
+    decimal AssignableGrams,
+    decimal ReorderPointGrams,
+    bool IsLowStock,
+    DateTime UpdatedAtUtc);
+
+public record StockTransactionDto(
+    string TransactionCode,
+    Guid MaterialStockId,
+    decimal DeltaGrams,
+    decimal RunningTotalGrams,
+    string Reason,
+    Guid? JobId,
+    DateTime CreatedAtUtc);
+
 public record JobDto(
     Guid Id,
     Guid OrderItemId,
@@ -34,14 +54,38 @@ public record JobDto(
     string Status,
     DateOnly InternalDueDate,
     int EstimatedPrintMinutes,
+    decimal EstimatedMaterialGrams,
+    int? ActualPrintMinutes,
+    decimal? ActualMaterialGrams,
     Guid? LabId,
     Guid? MachineId,
     DateTime? PlannedStartUtc,
     DateTime? PlannedEndUtc,
     DateTime? StartedAtUtc,
     DateTime? CompletedAtUtc,
+    DateTime? AssignedAtUtc,
+    DateTime? AcceptanceDeadlineUtc,
     string? FailureReason,
     string MaterialCode,
     string ColorCode,
     decimal LayerHeightMm,
-    int AttemptNumber);
+    int AttemptNumber,
+    int Quantity,
+    Guid? ParentJobId,
+    string QcProofStatus,
+    string? QcSelfReport,
+    IReadOnlyList<string> QcProofPhotoKeys,
+    Guid? QcReviewedBy,
+    DateTime? QcReviewedAtUtc,
+    string? QcRejectionReason,
+    // Order/model context (08/10): specs ops and lab need to place and print the job.
+    // Filled from JobSpecification; the three trailing fields are enriched by the query
+    // handler (order number + file name + hash) — no customer PII crosses this line.
+    decimal BoundingWidthMm,
+    decimal BoundingDepthMm,
+    decimal BoundingHeightMm,
+    decimal ToleranceMm,
+    string Technology,
+    string? OrderNumber = null,
+    string? ModelFileName = null,
+    string? Sha256 = null);

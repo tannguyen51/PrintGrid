@@ -1,42 +1,24 @@
 using MediatR;
-using Microsoft.Extensions.Logging;
 using PrintGrid.Modules.Scheduling.Application.Abstractions;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
-using PrintGrid.Modules.Scheduling.Domain.Services;
-using PrintGrid.SharedKernel.Interfaces;
 using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Scheduling.Application.Commands.AssignJob;
 
+/// <summary>
+/// Manual assignment from the ops board (FR-SCHED-006 / UC-011). The work itself lives in
+/// <see cref="IAssignmentEngine"/> so that automatic rescheduling (FR-SCHED-007) and urgent
+/// reprints (FR-HUB-003) run exactly the same logic — and leave the same decision log entry.
+/// </summary>
 public class AssignJobCommandHandler : IRequestHandler<AssignJobCommand, Result<AssignmentResultDto>>
 {
     private readonly IJobRepository _jobs;
-    private readonly ILabRepository _labs;
-    private readonly CapabilityFilter _capabilityFilter;
-    private readonly AssignmentScorer _scorer;
-    private readonly IMachineTimelineService _timeline;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IDateTimeProvider _clock;
-    private readonly ILogger<AssignJobCommandHandler> _logger;
+    private readonly IAssignmentEngine _engine;
 
-    public AssignJobCommandHandler(
-        IJobRepository jobs,
-        ILabRepository labs,
-        CapabilityFilter capabilityFilter,
-        AssignmentScorer scorer,
-        IMachineTimelineService timeline,
-        IUnitOfWork unitOfWork,
-        IDateTimeProvider clock,
-        ILogger<AssignJobCommandHandler> logger)
+    public AssignJobCommandHandler(IJobRepository jobs, IAssignmentEngine engine)
     {
         _jobs = jobs;
-        _labs = labs;
-        _capabilityFilter = capabilityFilter;
-        _scorer = scorer;
-        _timeline = timeline;
-        _unitOfWork = unitOfWork;
-        _clock = clock;
-        _logger = logger;
+        _engine = engine;
     }
 
     public async Task<Result<AssignmentResultDto>> Handle(
@@ -47,87 +29,13 @@ public class AssignJobCommandHandler : IRequestHandler<AssignJobCommand, Result<
         if (job is null)
             return Result.Failure<AssignmentResultDto>(Error.NotFound("Job", command.JobId));
 
-        var labs = await _labs.GetActiveWithMachinesAsync(cancellationToken);
-        var filterResult = _capabilityFilter.Filter(job.Specification, labs);
+        var outcome = await _engine.AssignAsync(
+            job,
+            new AssignmentRequest(AssignmentTriggers.InitialAssign, ActorType: "ops"),
+            cancellationToken);
 
-        if (filterResult.Candidates.Count == 0)
-        {
-            _logger.LogWarning(
-                "Job {JobId} has no capable machine; {RejectionCount} machines rejected",
-                job.Id, filterResult.Rejections.Count);
-            return Result.Failure<AssignmentResultDto>(
-                Error.Conflict("No lab in the network can satisfy this job specification"));
-        }
-
-        var proposals = new List<PlacementProposal>();
-        var windowEnd = job.InternalDueDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
-
-        foreach (var candidate in filterResult.Candidates)
-        {
-            var start = await _timeline.FindEarliestFreeSlotAsync(
-                candidate.Machine, job.EstimatedPrintMinutes, _clock.UtcNow, cancellationToken);
-            var duration = job.EstimatedPrintMinutes / candidate.Machine.SpeedFactor;
-            var end = start.AddMinutes((double)duration);
-
-            if (end > windowEnd) continue;
-
-            var utilization = await _timeline.GetUtilizationAsync(
-                candidate.Machine, _clock.UtcNow, windowEnd, cancellationToken);
-            var cost = job.Specification.MaterialGrams * 0.5m + (decimal)duration * 0.1m;
-
-            proposals.Add(new PlacementProposal(candidate, start, end, cost, utilization));
-        }
-
-        if (proposals.Count == 0)
-            return Result.Failure<AssignmentResultDto>(
-                Error.Conflict("No capable machine has capacity before the internal due date"));
-
-        var maxCost = proposals.Max(p => p.EstimatedCost);
-        var ranked = _scorer.Rank(job, proposals, maxCost);
-
-        // Try candidates best-score-first; the DB EXCLUDE constraint on scheduling.jobs
-        // (machine_id, planned window) is the final arbiter against concurrent placers
-        // (NFR-REL-004 "impossible by construction"). On conflict the tracked changes are
-        // discarded, the job is re-read fresh, and the next candidate is attempted.
-        foreach (var best in ranked)
-        {
-            var assignment = job.AssignTo(
-                best.Placement.Candidate.Lab.Id,
-                best.Placement.Candidate.Machine.Id,
-                best.Placement.PlannedStartUtc,
-                best.Placement.PlannedEndUtc,
-                best.Score);
-
-            if (assignment.IsFailure)
-                return Result.Failure<AssignmentResultDto>(assignment.Error);
-
-            if (await _unitOfWork.TrySaveChangesSafeAsync(cancellationToken))
-            {
-                _logger.LogInformation(
-                    "Job {JobId} assigned to lab {LabId} machine {MachineId} with score {Score}",
-                    job.Id, job.LabId, job.MachineId, best.Score);
-
-                return Result.Success(new AssignmentResultDto(
-                    job.Id,
-                    best.Placement.Candidate.Lab.Id,
-                    best.Placement.Candidate.Machine.Id,
-                    best.Placement.PlannedStartUtc,
-                    best.Placement.PlannedEndUtc,
-                    best.Score,
-                    best.Breakdown));
-            }
-
-            _logger.LogWarning(
-                "Placement race on job {JobId} for machine {MachineId} — trying next candidate",
-                job.Id, best.Placement.Candidate.Machine.Id);
-
-            var reloaded = await _jobs.GetByIdAsync(command.JobId, cancellationToken);
-            if (reloaded is null)
-                return Result.Failure<AssignmentResultDto>(Error.NotFound("Job", command.JobId));
-            job = reloaded;
-        }
-
-        return Result.Failure<AssignmentResultDto>(
-            Error.Conflict("Every candidate placement collided with a concurrent booking — retry shortly"));
+        return outcome.Assigned
+            ? Result.Success(outcome.Result!)
+            : Result.Failure<AssignmentResultDto>(Error.Conflict(outcome.Reason ?? "Assignment failed"));
     }
 }

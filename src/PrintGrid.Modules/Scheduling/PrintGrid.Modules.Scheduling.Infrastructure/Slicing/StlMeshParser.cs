@@ -10,14 +10,17 @@ namespace PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
 /// </summary>
 internal static class StlMeshParser
 {
-    private const int BinaryHeaderSize = 80;
-    private const int TriangleRecordSize = 50; // normal(12) + 3 verts(36) + attr(2)
+    private const int _binaryHeaderSize = 80;
+    private const int _triangleRecordSize = 50; // normal(12) + 3 verts(36) + attr(2)
 
     public static MeshStats Parse(Stream stream)
     {
         // Peek: a binary STL starts with 80 header bytes then the triangle count as uint32.
         // An ASCII STL starts with "solid" followed by whitespace then usually "facet" or a name.
-        using var buffered = new BufferedStream(stream, 64 * 1024);
+        // Deliberately NOT disposed: the caller owns this stream (ModelFileInspector resets
+        // Position after the call). Disposing the wrapper closed the caller's stream and
+        // made every STL upload fail on a closed stream.
+        var buffered = new BufferedStream(stream, 64 * 1024);
         Span<byte> lead = stackalloc byte[5];
         ReadExact(buffered, lead);
         buffered.Position = 0;
@@ -38,7 +41,7 @@ internal static class StlMeshParser
 
     private static MeshStats ParseBinary(Stream stream)
     {
-        Span<byte> header = stackalloc byte[BinaryHeaderSize];
+        Span<byte> header = stackalloc byte[_binaryHeaderSize];
         ReadExact(stream, header);
 
         Span<byte> countBytes = stackalloc byte[4];
@@ -47,7 +50,7 @@ internal static class StlMeshParser
         if (triangleCount is 0 or > 10_000_000)
             throw new InvalidDataException($"Suspicious triangle count {triangleCount}");
 
-        Span<byte> record = stackalloc byte[TriangleRecordSize];
+        Span<byte> record = stackalloc byte[_triangleRecordSize];
         var min = new double[] { double.MaxValue, double.MaxValue, double.MaxValue };
         var max = new double[] { double.MinValue, double.MinValue, double.MinValue };
         double signedVolume = 0, absVolume = 0;

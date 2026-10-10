@@ -15,17 +15,23 @@ public class LabRepository : ILabRepository
     public Task<Lab?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         _context.Set<Lab>()
             .Include(l => l.Machines)
+            .Include(l => l.MaterialStocks)
+            .Include(l => l.StockTransactions)
+            .Include(l => l.MaterialReservations)
             .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<Lab>> GetActiveWithMachinesAsync(CancellationToken cancellationToken = default) =>
         await _context.Set<Lab>()
             .Include(l => l.Machines)
+            .Include(l => l.MaterialStocks)
+            .Include(l => l.MaterialReservations)
             .Where(l => l.IsActive)
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Lab>> GetAllAsync(CancellationToken cancellationToken = default) =>
         await _context.Set<Lab>()
             .Include(l => l.Machines)
+            .Include(l => l.MaterialStocks)
             .OrderBy(l => l.Name)
             .ToListAsync(cancellationToken);
 

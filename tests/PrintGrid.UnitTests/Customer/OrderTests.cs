@@ -58,6 +58,118 @@ public class OrderTests
     }
 
     [Fact]
+    public void Hub_delivery_does_NOT_start_the_guarantee_clock()
+    {
+        var order = OrderInQualityCheck();
+
+        var moved = order.TransitionTo(OrderStatus.Shipping);
+        moved.IsSuccess.Should().BeTrue();
+        var delivered = order.TransitionTo(OrderStatus.Delivered);
+
+        delivered.IsSuccess.Should().BeTrue();
+        order.Status.Should().Be(OrderStatus.Delivered);
+        // Rule 2: the physical handover must NOT stamp the 30-day warranty anchor.
+        order.DeliveredAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void Ship_requires_a_tracking_number()
+    {
+        var order = OrderInQualityCheck();
+
+        var blank = order.Ship("   ");
+        blank.IsFailure.Should().BeTrue();
+        blank.Error.Code.Should().Be("validation_error");
+        order.Status.Should().Be(OrderStatus.QualityCheck, "a rejected ship must not move the order");
+
+        var none = order.Ship(null);
+        none.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Ship_moves_a_quality_checked_order_to_shipping_and_stores_the_tracking()
+    {
+        var order = OrderInQualityCheck();
+
+        var result = order.Ship(" VNPost-12345 ");
+
+        result.IsSuccess.Should().BeTrue();
+        order.Status.Should().Be(OrderStatus.Shipping);
+        order.TrackingNumber.Should().Be("VNPost-12345");
+        order.DeliveredAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void Ship_is_rejected_before_the_order_is_quality_checked()
+    {
+        var order = OrderFromReadyQuote();
+        order.ConfirmPayment("txn_123");
+
+        var result = order.Ship("VNPost-12345");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("conflict");
+        order.Status.Should().Be(OrderStatus.Confirmed);
+    }
+
+    [Fact]
+    public void Deliver_requires_the_order_to_be_shipped_first()
+    {
+        var order = OrderInQualityCheck();
+
+        var tooEarly = order.MarkDelivered();
+        tooEarly.IsFailure.Should().BeTrue();
+        tooEarly.Error.Code.Should().Be("conflict");
+
+        order.Ship("VNPost-12345");
+        var delivered = order.MarkDelivered();
+
+        delivered.IsSuccess.Should().BeTrue();
+        order.Status.Should().Be(OrderStatus.Delivered);
+        order.DeliveredAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void Customer_confirmation_requires_the_order_to_be_delivered()
+    {
+        var order = OrderInQualityCheck();
+        order.Ship("VNPost-12345");
+
+        var result = order.ConfirmReceipt(Guid.NewGuid());
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("conflict");
+        order.Status.Should().Be(OrderStatus.Shipping);
+        order.DeliveredAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void Customer_confirmation_stamps_the_guarantee_anchor_and_who_confirmed()
+    {
+        var order = OrderInQualityCheck();
+        order.Ship("VNPost-12345");
+        order.MarkDelivered();
+
+        var customerId = Guid.NewGuid();
+        var result = order.ConfirmReceipt(customerId);
+
+        result.IsSuccess.Should().BeTrue();
+        order.Status.Should().Be(OrderStatus.Delivered);
+        order.DeliveredAt.Should().NotBeNull();
+        order.DeliveredAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
+        order.ReceiptConfirmedBy.Should().Be(customerId);
+    }
+
+    private static Order OrderInQualityCheck()
+    {
+        var order = OrderFromReadyQuote();
+        order.ConfirmPayment("txn_123");
+        order.TransitionTo(OrderStatus.InProduction);
+        order.TransitionTo(OrderStatus.QualityCheck);
+        return order;
+    }
+
+    [Fact]
     public void Order_copies_every_quote_item_with_its_configuration()
     {
         var order = OrderFromReadyQuote();

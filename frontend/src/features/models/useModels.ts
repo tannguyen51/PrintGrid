@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../shared/api/apiClient'
-import type { ModelInput, ThreeDModel } from './modelTypes'
+import type { ModelInput, ModelQuota, ThreeDModel } from './modelTypes'
 
 const MODELS_KEY = ['models'] as const
+const QUOTA_KEY = ['models', 'quota'] as const
 const searchParam = (s: string) => (s.trim() ? `?search=${encodeURIComponent(s.trim())}` : '')
 
 export function useModels(search: string) {
@@ -10,6 +11,10 @@ export function useModels(search: string) {
     queryKey: [...MODELS_KEY, search],
     queryFn: () => apiClient.get<ThreeDModel[]>(`/models${searchParam(search)}`).then((r) => r.data),
   })
+}
+
+export function useModelQuota() {
+  return useQuery({ queryKey: QUOTA_KEY, queryFn: () => apiClient.get<ModelQuota>('/models/quota').then((r) => r.data) })
 }
 
 function useInvalidateModels() {
@@ -42,7 +47,7 @@ export function useDeleteModel() {
   })
 }
 
-/** Uploads a real 3D model file (STL/OBJ/3MF) — multipart to POST /models/upload. */
+/** Uploads a real 3D model file (STL/OBJ/3MF/GLB) — multipart to POST /models/upload. */
 export function useUploadModel() {
   const invalidate = useInvalidateModels()
   return useMutation({

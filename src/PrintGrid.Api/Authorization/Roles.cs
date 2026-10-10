@@ -8,6 +8,7 @@ public static class Roles
     public const string HubQc = "HubQC";
     public const string HubFulfillment = "HubFulfillment";
     public const string OpsManager = "OpsManager";
+    public const string OrderStaff = "OrderStaff";
     public const string Admin = "Admin";
 }
 
@@ -18,5 +19,6 @@ public static class Policies
     public const string RequireHub = "RequireHub";
     public const string RequireOps = "RequireOps";
     public const string RequireAdmin = "RequireAdmin";
+    public const string RequireQuoteReview = "RequireQuoteReview";
     public const string RequireProduction = "RequireProduction"; // lab + hub + ops (not customer)
 }

@@ -26,6 +26,7 @@ public class GetOrdersQueryHandler : IRequestHandler<GetOrdersQuery, Result<IRea
         order.TotalPrice.Currency,
         order.PromisedDeliveryDate,
         order.CreatedAt,
+            order.DeliveredAt,
         order.Items.Select(i => new OrderItemDto(
             i.Id,
             i.ModelId,

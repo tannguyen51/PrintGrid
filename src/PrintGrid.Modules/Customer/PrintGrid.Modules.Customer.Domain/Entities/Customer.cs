@@ -41,6 +41,15 @@ public class Customer : AggregateRoot<Guid>
 
     public void RecordLogin() => LastLoginAt = DateTime.UtcNow;
 
+    public void UpdateProfile(string fullName, string? phoneNumber)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+            throw new ArgumentException("Full name is required", nameof(fullName));
+
+        FullName = fullName.Trim();
+        PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim();
+    }
+
     public void Deactivate() => IsActive = false;
     public void Activate() => IsActive = true;
     public void AssignRole(string role)

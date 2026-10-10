@@ -8,11 +8,23 @@ const RegisterPage = lazy(() => import('../features/auth/RegisterPage'))
 const VerifyEmailPage = lazy(() => import('../features/auth/VerifyEmailPage'))
 const HomePage = lazy(() => import('../features/home/HomePage'))
 const ModelLibraryPage = lazy(() => import('../features/models/ModelLibraryPage'))
+const StartOrderPage = lazy(() => import('../features/orders/StartOrderPage'))
 const OrderConfigPage = lazy(() => import('../features/quotes/OrderConfigPage'))
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'))
 const LabQueuePage = lazy(() => import('../features/lab/LabQueuePage'))
+const InventoryPage = lazy(() => import('../features/lab/InventoryPage'))
 const HubQCPage = lazy(() => import('../features/hub/HubQCPage'))
+const HubShipmentsPage = lazy(() => import('../features/hub/HubShipmentsPage'))
 const SchedulingBoardPage = lazy(() => import('../features/scheduling/SchedulingBoardPage'))
+const QcProofReviewPage = lazy(() => import('../features/qcProof/QcProofReviewPage'))
+const QuoteReviewPage = lazy(() => import('../features/quotes/QuoteReviewPage'))
+const EscalationQueuePage = lazy(() => import('../features/ops/EscalationQueuePage'))
+const DecisionTracePage = lazy(() => import('../features/ops/DecisionTracePage'))
+const OpsLabsPage = lazy(() => import('../features/ops/OpsLabsPage'))
+const AdminUsersPage = lazy(() => import('../features/admin/AdminUsersPage'))
+const ForbiddenPage = lazy(() => import('../features/errors/ForbiddenPage'))
+const NotFoundPage = lazy(() => import('../features/errors/NotFoundPage'))
+const AccountPage = lazy(() => import('../features/account/AccountPage'))
 
 function RouteFallback() {
   return (
@@ -44,6 +56,30 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/library"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <ModelLibraryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <AccountPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/order/new"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <StartOrderPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/models/:modelId/order"
           element={
             <ProtectedRoute allowedRoles={['Customer']}>
@@ -68,10 +104,42 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/lab/:labId/inventory"
+          element={
+            <ProtectedRoute allowedRoles={['LabManager']}>
+              <InventoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/hub/qc"
           element={
             <ProtectedRoute allowedRoles={['HubQC', 'HubFulfillment']}>
               <HubQCPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/hub/shipments"
+          element={
+            <ProtectedRoute allowedRoles={['HubQC', 'HubFulfillment']}>
+              <HubShipmentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/qc-proofs"
+          element={
+            <ProtectedRoute allowedRoles={['OrderStaff', 'OpsManager', 'Admin']}>
+              <QcProofReviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/quote-reviews"
+          element={
+            <ProtectedRoute allowedRoles={['OrderStaff', 'OpsManager', 'Admin']}>
+              <QuoteReviewPage />
             </ProtectedRoute>
           }
         />
@@ -83,6 +151,41 @@ export function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/ops/escalations"
+          element={
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+              <EscalationQueuePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ops/decisions"
+          element={
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+              <DecisionTracePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ops/labs"
+          element={
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+              <OpsLabsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute allowedRoles={['Admin']}>
+              <AdminUsersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/forbidden" element={<ForbiddenPage />} />
+        {/* Catch-all must stay last — unknown URLs used to render a blank page. */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   )

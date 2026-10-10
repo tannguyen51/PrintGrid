@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "figma": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "figma-developer-mcp",
+        "--stdio",
+        "--no-telemetry"
+      ],
+      "env": {
+        "FIGMA_API_KEY": "${FIGMA_API_KEY}",
+        "IMAGE_DIR": "${FIGMA_IMAGE_DIR:-.figma-images}"
+      }
+    }
+  }
+}

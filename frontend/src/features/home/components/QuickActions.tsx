@@ -45,8 +45,8 @@ export function QuickActions() {
           {hasOrdersEndpoint && (
             <Grid size={{ xs: 12, md: 4 }}>
               <Card variant="outlined" sx={{ height: '100%', bgcolor: 'background.paper' }}>
-                <CardActionArea 
-                  onClick={() => navigate(orders?.length > 0 ? `/orders` : '/order/new')} 
+                <CardActionArea
+                  onClick={() => navigate(orders?.length > 0 ? `/orders` : '/order/new')}
                   sx={{ height: '100%', p: 2 }}
                 >
                   <Typography variant="subtitle1" fontWeight={600} mb={1}>Đơn gần đây</Typography>
@@ -69,8 +69,8 @@ export function QuickActions() {
           {hasModelsEndpoint && (
             <Grid size={{ xs: 12, md: 4 }}>
               <Card variant="outlined" sx={{ height: '100%', bgcolor: 'background.paper' }}>
-                <CardActionArea 
-                  onClick={() => navigate(models?.length > 0 ? `/order/new?modelId=${models[0].id}` : '/models')} 
+                <CardActionArea
+                  onClick={() => navigate(models?.length > 0 ? `/models/${models[0].id}/order` : '/order/new')}
                   sx={{ height: '100%', p: 2 }}
                 >
                   <Typography variant="subtitle1" fontWeight={600} mb={1}>Đặt lại từ thư viện</Typography>
@@ -87,8 +87,12 @@ export function QuickActions() {
           {hasQuotesEndpoint && quotes?.length > 0 && (
             <Grid size={{ xs: 12, md: 4 }}>
               <Card variant="outlined" sx={{ height: '100%', bgcolor: 'background.paper' }}>
-                <CardActionArea 
-                  onClick={() => navigate('/order/new')} 
+                <CardActionArea
+                  onClick={() => {
+                    // Resume the real config route for the most recent live quote's model.
+                    const quoteModelId = quotes[0]?.items?.[0]?.modelId
+                    navigate(quoteModelId ? `/models/${quoteModelId}/order` : '/models')
+                  }}
                   sx={{ height: '100%', p: 2 }}
                 >
                   <Typography variant="subtitle1" fontWeight={600} mb={1}>Tiếp tục báo giá</Typography>

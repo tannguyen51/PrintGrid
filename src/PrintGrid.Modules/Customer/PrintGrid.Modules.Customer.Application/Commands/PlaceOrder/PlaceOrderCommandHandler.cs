@@ -46,11 +46,23 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
         var orderNumber = $"PG-{_clock.Today:yyyyMMdd}-{sequence:D5}";
 
         var order = Order.CreateFromQuote(quote, address, orderNumber);
+
+        // PAYMENT LANE BYPASSED (decided 07/10): the payment step is deferred, so a placed order
+        // is confirmed straight away and the fulfilment chain starts — otherwise no order ever
+        // reaches a lab. The sentinel is stored in PaymentTransactionId so the bypass stays
+        // visible and reconciliation can tell these orders apart once the real gateway lands.
+        var confirmed = order.ConfirmPayment(PaymentBypassTransactionId);
+        if (confirmed.IsFailure)
+            return Result.Failure<OrderDto>(confirmed.Error);
+
         await _orders.AddAsync(order, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(Map(order));
     }
+
+    /// <summary>Marks an order confirmed without a payment (temporary until the payment lane ships).</summary>
+    public const string PaymentBypassTransactionId = "BYPASS-PAYMENT-DEFERRED";
 
     private static OrderDto Map(Order order) => new(
         order.Id,
@@ -60,6 +72,7 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
         order.TotalPrice.Currency,
         order.PromisedDeliveryDate,
         order.CreatedAt,
+        order.DeliveredAt,
         order.Items.Select(i => new OrderItemDto(
             i.Id,
             i.ModelId,

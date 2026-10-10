@@ -38,9 +38,13 @@ public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCo
         RegisterCustomerCommand command,
         CancellationToken cancellationToken)
     {
+        // Distinct code so the UI can highlight the offending field instead of
+        // showing one generic "conflict" banner. (Phone numbers are intentionally
+        // NOT deduplicated — one person may legitimately register several accounts
+        // from the same number; email is the unique identity here.)
         if (await _customers.EmailExistsAsync(command.Email, cancellationToken))
             return Result.Failure<AuthSessionDto>(
-                Error.Conflict($"Email '{command.Email}' is already registered"));
+                new Error("email_exists", $"Email '{command.Email}' is already registered"));
 
         var passwordHash = _passwordHasher.Hash(command.Password);
 

@@ -9,8 +9,10 @@ internal static class CustomerModuleRegistration
     internal static void AddRepositories(IServiceCollection services)
     {
         services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<ICustomerAddressRepository, CustomerAddressRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IQuoteRepository, QuoteRepository>();
         services.AddScoped<IModelRepository, ModelRepository>();
+        services.AddScoped<IReprintRequestRepository, ReprintRequestRepository>();
     }
 }

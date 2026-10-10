@@ -58,10 +58,11 @@ public static class ApiServiceExtensions
             .AddPolicy(Policies.RequireLab, p => p.RequireRole(Roles.LabManager, Roles.LabOperator))
             .AddPolicy(Policies.RequireHub, p => p.RequireRole(Roles.HubQc, Roles.HubFulfillment))
             .AddPolicy(Policies.RequireOps, p => p.RequireRole(Roles.OpsManager, Roles.Admin))
+            .AddPolicy(Policies.RequireQuoteReview, p => p.RequireRole(Roles.OrderStaff, Roles.OpsManager, Roles.Admin))
             .AddPolicy(Policies.RequireAdmin, p => p.RequireRole(Roles.Admin))
             .AddPolicy(Policies.RequireProduction, p => p.RequireRole(
                 Roles.LabManager, Roles.LabOperator, Roles.HubQc, Roles.HubFulfillment,
-                Roles.OpsManager, Roles.Admin));
+                Roles.OrderStaff, Roles.OpsManager, Roles.Admin));
 
         return services;
     }

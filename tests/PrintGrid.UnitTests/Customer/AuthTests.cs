@@ -59,7 +59,7 @@ public class RegisterLoginTests
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("conflict");
+        result.Error.Code.Should().Be("email_exists");
         await _customers.DidNotReceive().AddAsync(Arg.Any<CustomerEntity>(), Arg.Any<CancellationToken>());
     }
 

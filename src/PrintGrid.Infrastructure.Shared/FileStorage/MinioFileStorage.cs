@@ -7,6 +7,7 @@ namespace PrintGrid.Infrastructure.Shared.FileStorage;
 public class MinioFileStorage : IFileStorage
 {
     private readonly IMinioClient _client;
+    private readonly IMinioClient _presignClient;
 
     public MinioFileStorage(IOptions<MinioOptions> options)
     {
@@ -14,6 +15,13 @@ public class MinioFileStorage : IFileStorage
         _client = new MinioClient()
             .WithEndpoint(config.Endpoint)
             .WithCredentials(config.AccessKey, config.SecretKey)
+            .WithSSL(config.UseSsl)
+            .Build();
+
+        _presignClient = new MinioClient()
+            .WithEndpoint(config.PublicEndpoint ?? config.Endpoint)
+            .WithCredentials(config.AccessKey, config.SecretKey)
+            .WithRegion("us-east-1")
             .WithSSL(config.UseSsl)
             .Build();
     }
@@ -62,7 +70,7 @@ public class MinioFileStorage : IFileStorage
             .WithObject(objectName)
             .WithExpiry((int)expiry.TotalSeconds);
 
-        return _client.PresignedGetObjectAsync(args);
+        return _presignClient.PresignedGetObjectAsync(args);
     }
 
     public Task DeleteAsync(string bucket, string objectName, CancellationToken cancellationToken = default)

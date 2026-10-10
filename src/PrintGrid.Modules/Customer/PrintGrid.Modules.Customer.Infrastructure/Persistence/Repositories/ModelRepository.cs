@@ -43,6 +43,16 @@ public class ModelRepository : IModelRepository
         _context.Set<Domain.Entities.Model>()
             .FirstOrDefaultAsync(m => m.Id == modelId, cancellationToken);
 
+    public async Task<(int ModelCount, long UsedBytes)> GetStorageUsageAsync(
+        Guid customerId,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Set<Domain.Entities.Model>().Where(m => m.CustomerId == customerId);
+        return (
+            await query.CountAsync(cancellationToken),
+            await query.SumAsync(m => (long?)m.SizeBytes, cancellationToken) ?? 0L);
+    }
+
     public async Task AddAsync(Domain.Entities.Model model, CancellationToken cancellationToken = default) =>
         await _context.Set<Domain.Entities.Model>().AddAsync(model, cancellationToken);
 

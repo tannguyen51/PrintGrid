@@ -23,6 +23,7 @@ import {
   AccessTimeRounded,
   CheckRounded,
   CloseRounded,
+  DownloadRounded,
   FactoryRounded,
   PlayArrowRounded,
   LibraryBooksRounded,
@@ -30,8 +31,9 @@ import {
 } from '@mui/icons-material'
 import type { Job } from '../jobs/jobTypes'
 import { JOB_LABELS } from '../jobs/jobTypes'
-import { useJobs, useAcceptJob, useDeclineJob, useStartJob, useCompleteJob } from '../jobs/useJobs'
+import { useJobs, useAcceptJob, useDeclineJob, useStartJob, useCompleteJob, downloadJobFile } from '../jobs/useJobs'
 import { useAuth } from '../../app/AuthContext'
+import { PageBackButton } from '../../shared/components/PageBackButton'
 
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—')
 const fmtTime = (d: string | null | undefined) => (d ? new Date(d).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—')
@@ -43,6 +45,46 @@ const PREDEFINED_REASONS = [
   'Không khả thi kỹ thuật / file lỗi',
   'Khác',
 ]
+
+/**
+ * Download the job's model file (FR-LAB-004: the lab prints the customer's file).
+ * Blob fetch so the bearer token travels with the request — a plain link cannot.
+ */
+function DownloadFileButton({ jobId, fileName }: { jobId: string; fileName?: string | null }) {
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  async function download() {
+    setBusy(true)
+    setFailed(false)
+    try {
+      await downloadJobFile(jobId, fileName)
+    } catch {
+      setFailed(true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        size="small"
+        startIcon={busy ? <CircularProgress size={14} color="inherit" /> : <DownloadRounded fontSize="small" />}
+        disabled={busy}
+        onClick={download}
+        sx={{ mt: 1, color: 'text.secondary', textTransform: 'none', '&:hover': { color: 'text.primary' } }}
+      >
+        Tải file in
+      </Button>
+      {failed && (
+        <Typography variant="caption" color="error" sx={{ ml: 1 }}>
+          Không tải được file — thử lại.
+        </Typography>
+      )}
+    </>
+  )
+}
 
 /**
  * Countdown timer component for job acceptance window (BR-ASSIGN-005, default 2 hours).
@@ -120,6 +162,23 @@ export default function LabQueuePage() {
 
   const [completeTarget, setCompleteTarget] = useState<Job | null>(null)
   const [actualMinutes, setActualMinutes] = useState(0)
+  const [selfReport, setSelfReport] = useState('')
+  const [proofPhotos, setProofPhotos] = useState<File[]>([])
+  const [actualMaterialGrams, setActualMaterialGrams] = useState(0)
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+
+  useEffect(() => {
+    const online = () => setIsOnline(true)
+    const offline = () => setIsOnline(false)
+    window.addEventListener('online', online)
+    window.addEventListener('offline', offline)
+    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline) }
+  }, [])
+
+  useEffect(() => {
+    if (!completeTarget) return
+    localStorage.setItem(`printgrid:completion:${completeTarget.id}`, JSON.stringify({ actualMinutes, actualMaterialGrams, savedAt: Date.now() }))
+  }, [completeTarget, actualMinutes, actualMaterialGrams])
 
   // Decline dialog state
   const [declineTarget, setDeclineTarget] = useState<Job | null>(null)
@@ -166,8 +225,17 @@ export default function LabQueuePage() {
     if (!completeTarget) return
     try {
       setActionError(null)
-      await complete.mutateAsync({ id: completeTarget.id, actualMinutes: Math.max(actualMinutes, 1) })
+      await complete.mutateAsync({
+        id: completeTarget.id,
+        actualMinutes: Math.max(actualMinutes, 1),
+        selfReport: selfReport.trim(),
+        photos: proofPhotos,
+        actualMaterialGrams: actualMaterialGrams > 0 ? actualMaterialGrams : undefined,
+      })
+      localStorage.removeItem(`printgrid:completion:${completeTarget.id}`)
       setCompleteTarget(null)
+      setSelfReport('')
+      setProofPhotos([])
     } catch (err: any) {
       setActionError(err?.response?.data?.error?.message || 'Không thể ghi nhận hoàn thành.')
     }
@@ -177,22 +245,26 @@ export default function LabQueuePage() {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1100, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
-          <Box>
-            <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
-              Hàng đợi sản xuất — Lab
-            </Typography>
-            <Typography color="text.secondary">Nhận / từ chối job (hạn 2 giờ) → Bắt đầu in → Báo hoàn thành (FR-LAB-004)</Typography>
-          </Box>
+          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+            <PageBackButton />
+            <Box>
+              <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
+                Hàng đợi sản xuất — Lab
+              </Typography>
+              <Typography color="text.secondary">Nhận / từ chối job (hạn 2 giờ) → Bắt đầu in → Báo hoàn thành (FR-LAB-004)</Typography>
+            </Box>
+          </Stack>
           <Stack direction="row" spacing={1.5}>
-            <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} onClick={() => navigate('/models')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
-              Thư viện model
+            <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} disabled={!jobs[0]?.j.labId} onClick={() => navigate(`/lab/${jobs[0]?.j.labId}/inventory`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+              Kho vật liệu
             </Button>
-            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
+            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
               Đăng xuất
             </Button>
           </Stack>
         </Stack>
 
+        {!isOnline ? <Alert severity="warning">Đang mất mạng. Dữ liệu form được giữ trên thiết bị; hãy gửi khi kết nối lại.</Alert> : null}
         {actionError ? <Alert severity="error" onClose={() => setActionError(null)}>{actionError}</Alert> : null}
         {error ? <Alert severity="error">Không tải được hàng đợi.</Alert> : null}
         {loading && jobs.length === 0 ? <CircularProgress sx={{ alignSelf: 'center' }} /> : null}
@@ -222,6 +294,24 @@ export default function LabQueuePage() {
                       Ước tính {j.estimatedPrintMinutes} phút · Lớp {j.layerHeightMm}mm · Hạn nội bộ {fmtDate(j.internalDueDate)}
                       {j.plannedStartUtc ? ` · Bắt đầu ${fmtTime(j.plannedStartUtc)}` : ''}
                     </Typography>
+                    {(j.orderNumber || j.modelFileName) && (
+                      <Typography variant="body2" color="text.secondary">
+                        {j.orderNumber ? `Đơn ${j.orderNumber}` : ''}
+                        {j.modelFileName ? `${j.orderNumber ? ' · ' : ''}${j.modelFileName}` : ''}
+                        {` · ${j.boundingWidthMm}×${j.boundingDepthMm}×${j.boundingHeightMm} mm · dung sai ≤ ${j.toleranceMm}mm · ${j.technology}`}
+                      </Typography>
+                    )}
+                    {j.sha256 && (
+                      <Typography variant="caption" color="text.disabled" sx={{ display: 'block' }}>
+                        SHA-256: {j.sha256.slice(0, 24)}…
+                      </Typography>
+                    )}
+                    <DownloadFileButton jobId={j.id} fileName={j.modelFileName} />
+                    {j.qcProofStatus === 'Rejected' && j.qcRejectionReason && (
+                      <Alert severity="warning" sx={{ mt: 1.5 }}>
+                        QC bị từ chối: {j.qcRejectionReason}
+                      </Alert>
+                    )}
                   </Box>
 
                   <Box>
@@ -257,7 +347,15 @@ export default function LabQueuePage() {
                       </Button>
                     )}
                     {action === 'complete' && (
-                      <Button variant="contained" color="success" startIcon={<CheckRounded />} onClick={() => { setCompleteTarget(j); setActualMinutes(j.estimatedPrintMinutes) }}>
+                      <Button variant="contained" color="success" startIcon={<CheckRounded />} onClick={() => {
+                        const saved = localStorage.getItem(`printgrid:completion:${j.id}`)
+                        const draft = saved ? JSON.parse(saved) : null
+                        setCompleteTarget(j)
+                        setActualMinutes(draft?.actualMinutes ?? j.estimatedPrintMinutes)
+                        setActualMaterialGrams(draft?.actualMaterialGrams ?? j.estimatedMaterialGrams ?? 0)
+                        setSelfReport('')
+                        setProofPhotos([])
+                      }}>
                         Báo hoàn thành
                       </Button>
                     )}
@@ -348,10 +446,45 @@ export default function LabQueuePage() {
             fullWidth
             autoFocus
           />
+          <TextField
+            label="Báo cáo tự QC"
+            value={selfReport}
+            onChange={(e) => setSelfReport(e.target.value)}
+            multiline
+            minRows={3}
+            fullWidth
+            sx={{ mt: 2 }}
+            placeholder="Mô tả bề mặt, kích thước, độ hoàn thiện và các kiểm tra đã thực hiện..."
+          />
+          <Button component="label" variant="outlined" sx={{ mt: 2 }} fullWidth>
+            Chọn ảnh bằng chứng QC (1–5 ảnh)
+            <input
+              hidden
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => setProofPhotos(Array.from(e.target.files ?? []).slice(0, 5))}
+            />
+          </Button>
+          {proofPhotos.length > 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Đã chọn {proofPhotos.length} ảnh
+            </Typography>
+          )}
+          <TextField
+            label="Vật liệu thực tế (gram)"
+            type="number"
+            inputProps={{ min: 0.01, step: 0.01 }}
+            value={actualMaterialGrams}
+            onChange={(e) => setActualMaterialGrams(Number(e.target.value))}
+            fullWidth
+            sx={{ mt: 2 }}
+            helperText={completeTarget ? `Ước tính: ${completeTarget.estimatedMaterialGrams} g` : undefined}
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={() => setCompleteTarget(null)} color="inherit" sx={{ color: 'text.secondary' }}>Hủy</Button>
-          <Button onClick={handleComplete} variant="contained" color="primary" disabled={complete.isPending || actualMinutes < 1}>
+          <Button onClick={handleComplete} variant="contained" color="primary" disabled={!isOnline || complete.isPending || actualMinutes < 1 || !selfReport.trim() || proofPhotos.length === 0 || actualMaterialGrams <= 0}>
             {complete.isPending ? 'Đang lưu…' : 'Hoàn thành'}
           </Button>
         </DialogActions>

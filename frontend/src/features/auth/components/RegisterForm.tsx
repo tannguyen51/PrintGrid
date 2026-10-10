@@ -18,6 +18,7 @@ import {
 import { Visibility, VisibilityOff, ArrowForward, PersonRounded, PhoneRounded } from '@mui/icons-material'
 import { FaGoogle } from 'react-icons/fa6'
 import { useAuth } from '../../../app/AuthContext'
+import { getApiErrorInfo, getApiErrorMessage, normalizeFieldKey } from '../../../shared/api/apiError'
 
 const registerSchema = z
   .object({
@@ -27,7 +28,7 @@ const registerSchema = z
       .string()
       .optional()
       .refine((v) => !v || /^[0-9+\-\s()]{7,15}$/.test(v), 'Số điện thoại không hợp lệ'),
-    password: z.string().min(6, 'Mật khẩu ít nhất 6 ký tự'),
+    password: z.string().min(8, 'Mật khẩu ít nhất 8 ký tự'),
     confirmPassword: z.string().min(1, 'Xác nhận mật khẩu là bắt buộc'),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -61,6 +62,7 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<RegisterFormValues>({ resolver: zodResolver(registerSchema) })
 
@@ -77,8 +79,27 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
         phoneNumber: values.phoneNumber?.trim() || undefined,
       })
       setIsRegistered(true)
-    } catch {
-      setServerError('Không thể tạo tài khoản. Vui lòng thử lại.')
+    } catch (error) {
+      // In nguyên nhân thật ra console, map lỗi trùng lặp vào đúng trường tương ứng,
+      // và hiển thị thông điệp diễn giải từ API thay vì một câu cứng.
+      const info = getApiErrorInfo(error)
+      console.error('[register] thất bại:', info)
+
+      const fieldMessages: Partial<Record<keyof RegisterFormValues, string>> = {
+        email: info.code === 'email_exists' ? 'Email này đã được đăng ký, hãy dùng email khác.' : undefined,
+        // Giữ chỗ để lỗi validation của backend (vd. độ dài) gắn vào đúng trường.
+        phoneNumber: undefined,
+      }
+      if (info.fieldErrors) {
+        for (const [rawKey, messages] of Object.entries(info.fieldErrors)) {
+          const key = normalizeFieldKey(rawKey) as keyof RegisterFormValues
+          if (key in fieldMessages) fieldMessages[key] = fieldMessages[key] ?? messages[0]
+        }
+      }
+      for (const [key, message] of Object.entries(fieldMessages)) {
+        if (message) setError(key as keyof RegisterFormValues, { message })
+      }
+      setServerError(getApiErrorMessage(error, 'Không thể tạo tài khoản. Vui lòng thử lại.'))
     } finally {
       setSubmitting(false)
     }
@@ -87,7 +108,7 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
   if (isRegistered) {
     return (
       <Box sx={{ flex: { xs: '1 1 auto', md: fullBleed ? '1 1 100%' : '1 1 48%' }, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', p: { xs: 4, md: 6 } }}>
-        <Box sx={{ width: '100%', maxWidth: 420, bgcolor: 'background.paper', border: '1px solid', borderColor: 'rgba(255,255,255,0.12)', borderRadius: 4, p: 5, textAlign: 'center' }}>
+        <Box sx={{ width: '100%', maxWidth: 440, bgcolor: fullBleed ? 'transparent' : 'background.paper', border: fullBleed ? 'none' : '1px solid', borderColor: 'rgba(255,255,255,0.12)', borderRadius: fullBleed ? 0 : 4, p: 5, textAlign: 'center' }}>
           <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>Đăng ký thành công</Typography>
           <Alert severity="success" sx={{ mb: 4, textAlign: 'left' }}>
             Vui lòng kiểm tra email của bạn để xác thực tài khoản trước khi tiếp tục.
@@ -121,12 +142,14 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
         noValidate
         sx={{
           width: '100%',
-          maxWidth: 420,
-          bgcolor: 'background.paper', // #0A0A0A
-          border: '1px solid',
+          maxWidth: 440,
+          // Inside the AuthDialog (fullBleed) the dialog paper IS the frame — drawing a
+          // second card here made the register view look like it sat in the login frame.
+          bgcolor: fullBleed ? 'transparent' : 'background.paper', // #0A0A0A
+          border: fullBleed ? 'none' : '1px solid',
           borderColor: 'rgba(255,255,255,0.12)',
-          borderRadius: 4,
-          boxShadow: (t) => t.custom.loginCardShadow,
+          borderRadius: fullBleed ? 0 : 4,
+          boxShadow: (t) => (fullBleed ? 'none' : t.custom.loginCardShadow),
           px: { xs: 4, sm: 5 },
           py: { xs: 5, sm: 6 },
         }}

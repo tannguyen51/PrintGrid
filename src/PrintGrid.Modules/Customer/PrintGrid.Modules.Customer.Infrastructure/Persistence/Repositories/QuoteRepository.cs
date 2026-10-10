@@ -25,6 +25,13 @@ public class QuoteRepository : IQuoteRepository
             .OrderByDescending(q => q.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Quote>> GetDraftsAsync(CancellationToken cancellationToken = default) =>
+        await _context.Set<Quote>()
+            .Include(q => q.Items)
+            .Where(q => q.Status == Domain.Enums.QuoteStatus.Draft)
+            .OrderBy(q => q.CreatedAt)
+            .ToListAsync(cancellationToken);
+
     public async Task AddAsync(Quote quote, CancellationToken cancellationToken = default) =>
         await _context.Set<Quote>().AddAsync(quote, cancellationToken);
 }

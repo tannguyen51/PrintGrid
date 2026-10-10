@@ -4,7 +4,7 @@ using PrintGrid.Modules.Scheduling.Domain.Enums;
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
 
 /// <summary>
-/// Built-in slicing pipeline: parses STL/OBJ for true geometry and estimates print time
+/// Built-in slicing pipeline: parses STL/OBJ/3MF/GLB for true geometry and estimates print time
 /// with a heuristic toolpath model (fixed extrusion width, travel/layer overhead, warmup).
 /// Until binary model upload (MinIO) is wired, <see cref="EstimateFromMetadata"/> derives a
 /// deterministic placeholder from the file size — it is a documented mock, not a slicer.
@@ -46,7 +46,8 @@ public class PrintSlicingService : ISlicingService
             {
                 "STL" or ".STL" => StlMeshParser.Parse(fileStream),
                 "OBJ" or ".OBJ" => ObjMeshParser.Parse(fileStream),
-                "3MF" or ".3MF" => throw new NotSupportedException("3MF geometry parsing is not implemented yet"),
+                "3MF" or ".3MF" => ThreeMfMeshParser.Parse(fileStream),
+                "GLB" or ".GLB" => GlbMeshParser.Parse(fileStream),
                 _ => throw new NotSupportedException($"Unsupported model format '{fileFormat}'")
             };
 

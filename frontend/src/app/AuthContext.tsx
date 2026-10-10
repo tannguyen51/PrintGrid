@@ -9,6 +9,7 @@ export type Role =
   | 'HubQC'
   | 'HubFulfillment'
   | 'OpsManager'
+  | 'OrderStaff'
   | 'Admin'
 
 export interface AuthUser {
@@ -30,7 +31,7 @@ interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
   /** remember=true lưu token vào localStorage (giữ qua nhiều phiên mở trình duyệt). */
-  login: (email: string, password: string, remember?: boolean) => Promise<void>
+  login: (email: string, password: string, remember?: boolean) => Promise<AuthUser>
   register: (input: RegisterInput) => Promise<void>
   logout: () => void
 }
@@ -43,19 +44,40 @@ interface LoginResponse {
   user: AuthUser
 }
 
+const KNOWN_ROLES: Role[] = [
+  'Customer', 'LabManager', 'LabOperator', 'HubQC', 'HubFulfillment',
+  'OpsManager', 'OrderStaff', 'Admin',
+]
+
+/**
+ * Backend RequireRole so sánh role KHÔNG phân biệt hoa thường, còn `roles.includes()`
+ * phía UI thì có — một tài khoản role 'customer' trong DB sẽ qua API nhưng bị
+ * ProtectedRoute đá sang /forbidden (403). Quy về dạng chuẩn ở một chỗ duy nhất.
+ * Role lạ vẫn giữ nguyên để các trang chẩn đoán hiển thị được đúng giá trị.
+ */
+function normalizeRoles(roles: string[]): Role[] {
+  return roles
+    .map((r) => r.trim())
+    .filter(Boolean)
+    .map((r) => (KNOWN_ROLES.find((k) => k.toLowerCase() === r.toLowerCase()) ?? (r as Role)))
+}
+
 /** Đọc user từ access token (JWT payload) khi khôi phục phiên sau khi reload trang. */
 function userFromAccessToken(token: string): AuthUser | null {
   try {
     const payload = JSON.parse(atob(token.split('.')[1] ?? ''))
     const id = payload.sub ?? payload.nameidentifier
-    const rolesRaw = payload.role ?? payload.roles ?? payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']
-    const roles: Role[] = typeof rolesRaw === 'string' ? rolesRaw.split(',') : rolesRaw ?? []
+    const rolesRaw =
+      payload.role ??
+      payload.roles ??
+      payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']
+    const roles: string[] = typeof rolesRaw === 'string' ? rolesRaw.split(',') : Array.isArray(rolesRaw) ? rolesRaw : []
     if (!id || !payload.email) return null
     return {
       id,
       email: payload.email,
       fullName: payload.unique_name ?? payload.name ?? '',
-      roles,
+      roles: normalizeRoles(roles),
       isEmailVerified: payload.email_verified === 'true' || payload.email_verified === true
     }
   } catch {
@@ -64,23 +86,25 @@ function userFromAccessToken(token: string): AuthUser | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Khôi phục phiên đã ghi nhớ ngay từ state khởi tạo (sau khi reload trang).
+  // Khôi phục phiên ngay từ state khởi tạo khi có access token.
   const [user, setUser] = useState<AuthUser | null>(() => {
     const token = getAccessToken()
     return token ? userFromAccessToken(token) : null
   })
 
-  const login = useCallback(async (email: string, password: string, remember = false) => {
+  const login = useCallback(async (email: string, password: string, remember = false): Promise<AuthUser> => {
     const { data } = await apiClient.post<LoginResponse>('/auth/login', { email, password })
+    const user: AuthUser = { ...data.user, roles: normalizeRoles(data.user.roles ?? []) }
     setTokens(data.accessToken, data.refreshToken, remember)
-    setUser(data.user)
+    setUser(user)
+    return user
   }, [])
 
   const register = useCallback(async (input: RegisterInput) => {
     const { data } = await apiClient.post<LoginResponse | null>('/auth/register', input)
     if (data) {
       setTokens(data.accessToken, data.refreshToken, false)
-      setUser(data.user)
+      setUser({ ...data.user, roles: normalizeRoles(data.user.roles ?? []) })
     }
   }, [])
 

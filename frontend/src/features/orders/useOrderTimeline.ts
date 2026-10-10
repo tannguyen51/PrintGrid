@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as signalR from '@microsoft/signalr'
 import { apiClient } from '../../shared/api/apiClient'
 import { getAccessToken } from '../../shared/api/tokenStore'
@@ -25,6 +25,9 @@ export interface CustomerTimelineDto {
   isDelayed: boolean
   stages: OrderStage[]
   items: CustomerOrderItem[]
+  trackingNumber: string | null
+  deliveredAt: string | null
+  canConfirmReceipt: boolean
 }
 
 export function useOrderTimeline(orderId: string | null) {
@@ -74,4 +77,16 @@ export function useOrderTimeline(orderId: string | null) {
   }, [orderId, queryClient])
 
   return query
+}
+
+/** Customer confirms they received the goods — stamps the 30-day warranty anchor on the backend. */
+export function useConfirmOrderReceipt(orderId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiClient.post(`/orders/${orderId}/confirm-receipt`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['order-timeline', orderId] })
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    },
+  })
 }

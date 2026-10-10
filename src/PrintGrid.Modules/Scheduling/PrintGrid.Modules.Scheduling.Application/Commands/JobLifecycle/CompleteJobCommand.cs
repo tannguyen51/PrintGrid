@@ -1,8 +1,11 @@
 using MediatR;
-using PrintGrid.SharedKernel.Interfaces;
 using PrintGrid.SharedKernel.Results;
-using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 
-public record CompleteJobCommand(Guid JobId, int ActualPrintMinutes) : IRequest<Result>;
+public record CompleteJobCommand(
+    Guid JobId,
+    int ActualPrintMinutes,
+    string SelfReport,
+    IReadOnlyCollection<string> PhotoKeys,
+    decimal? ActualMaterialGrams = null) : IRequest<Result>;

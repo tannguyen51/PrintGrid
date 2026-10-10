@@ -20,6 +20,7 @@ import {
 import { Visibility, VisibilityOff, ArrowForward } from '@mui/icons-material'
 import { FaGoogle } from 'react-icons/fa6'
 import { useAuth } from '../../../app/AuthContext'
+import { getApiErrorInfo, getApiErrorMessage } from '../../../shared/api/apiError'
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email là bắt buộc').email('Email không hợp lệ'),
@@ -58,11 +59,26 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
     setSubmitting(true)
     setServerError(null)
     try {
-      await login(values.email, values.password, remember)
+      const user = await login(values.email, values.password, remember)
       if (onSuccess) onSuccess()
-      else navigate('/', { replace: true })
-    } catch {
-      setServerError('Email hoặc mật khẩu không đúng')
+      
+      const roles = user?.roles ?? []
+      if (roles.includes('HubQC') || roles.includes('HubFulfillment')) {
+        navigate('/hub/qc', { replace: true })
+      } else if (roles.includes('LabManager') || roles.includes('LabOperator')) {
+        navigate('/lab/queue', { replace: true })
+      } else if (roles.includes('OpsManager') || roles.includes('Admin')) {
+        navigate('/scheduling', { replace: true })
+      } else if (roles.includes('OrderStaff')) {
+        navigate('/quote-reviews', { replace: true })
+      } else {
+        navigate('/models', { replace: true })
+      }
+    } catch (error) {
+      // In nguyên nhân thật ra console để debug, còn UI hiển thị câu diễn giải
+      // từ API (sai mật khẩu, 403, 500, server chưa chạy…) thay vì một câu cứng.
+      console.error('[login] thất bại:', getApiErrorInfo(error))
+      setServerError(getApiErrorMessage(error, 'Email hoặc mật khẩu không đúng'))
     } finally {
       setSubmitting(false)
     }

@@ -14,10 +14,25 @@ public class JobConfiguration : IEntityTypeConfiguration<Job>
         builder.Property(j => j.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(j => j.FailureReason).HasMaxLength(500);
         builder.Property(j => j.EstimatedPrintMinutes).IsRequired();
+        builder.Property(j => j.QcProofStatus).HasConversion<string>().HasMaxLength(16).IsRequired();
+        builder.Property(j => j.QcSelfReport).HasMaxLength(2000);
+        builder.Property(j => j.QcProofPhotoKeys).HasMaxLength(4000);
+        builder.Property(j => j.QcRejectionReason).HasMaxLength(1000);
+
+        // Reprint chain + cost attribution (FR-HUB-003 / BR-RESCHED-003).
+        builder.Property(j => j.Priority).HasConversion<string>().HasMaxLength(16).IsRequired();
+        builder.Property(j => j.CostBearer).HasConversion<string>().HasMaxLength(16).IsRequired();
+        builder.Property(j => j.ReprintIndex).IsRequired();
+
+        // Split batches (BR-SCHED-010) and the material the lab actually used.
+        builder.Property(j => j.ActualMaterialGrams).HasPrecision(10, 2);
+        builder.Property(j => j.Quantity).HasDefaultValue(1).IsRequired();
+        builder.HasIndex(j => j.ParentJobId);
 
         builder.HasIndex(j => new { j.Status, j.MachineId });
         builder.HasIndex(j => j.InternalDueDate);
         builder.HasIndex(j => j.OrderItemId);
+        builder.HasIndex(j => j.OriginalJobId);
 
         builder.OwnsOne(j => j.Specification, spec =>
         {

@@ -16,6 +16,12 @@ public static class QuoteMappings
         quote.FailureReason,
         quote.PricingVersion,
         quote.PlacementBasis,
+        quote.ApprovedAt,
+        quote.ReviewedBy,
+        quote.AutoApproved,
+        quote.EngineTotalAmount,
+        quote.EnginePromisedDeliveryDate,
+        quote.AdjustmentReason,
         quote.Items.Select(i => new QuoteItemDto(
             i.Id,
             i.ModelId,

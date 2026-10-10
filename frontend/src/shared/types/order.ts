@@ -26,6 +26,7 @@ export interface Order {
   currency: string
   promisedDeliveryDate: string
   createdAt: string
+  deliveredAt: string | null
   items: OrderItem[]
 }
 

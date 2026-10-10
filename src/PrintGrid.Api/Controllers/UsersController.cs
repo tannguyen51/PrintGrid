@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Modules.Customer.Application.Commands.Users.AssignRole;
 using PrintGrid.Modules.Customer.Application.Commands.Users.CreateUser;
 using PrintGrid.Modules.Customer.Application.Commands.Users.DeactivateUser;
+using PrintGrid.Modules.Customer.Application.Queries.Users;
 using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Api.Controllers;
@@ -19,6 +20,13 @@ public class UsersController : ControllerBase
     public UsersController(IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetUsers(CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new GetUsersQuery(), cancellationToken);
+        return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
     }
 
     [HttpPost]

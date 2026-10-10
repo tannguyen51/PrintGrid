@@ -33,5 +33,12 @@ export interface ModelInput {
   tags: string[]
 }
 
+export interface ModelQuota {
+  usedModels: number
+  maxModels: number
+  usedBytes: number
+  maxBytes: number
+}
+
 /** Model fields as returned for list/detail rows (may be absent for legacy rows). */
 export type ModelRow = Partial<ThreeDModel> & { id: string }

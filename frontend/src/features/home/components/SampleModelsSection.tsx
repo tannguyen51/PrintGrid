@@ -19,7 +19,7 @@ export function SampleModelsSection() {
                 <CardMedia component="img" height="140" image={model.imageUrl} alt={model.name} />
                 <CardContent sx={{ textAlign: 'center' }}>
                   <Typography variant="subtitle1" fontWeight={600} mb={2}>{model.name}</Typography>
-                  <Button variant="contained" size="small" onClick={() => navigate(`/order/new?modelId=${model.id}`)}>
+                  <Button variant="contained" size="small" onClick={() => navigate('/models')}>
                     Đặt in thử
                   </Button>
                 </CardContent>

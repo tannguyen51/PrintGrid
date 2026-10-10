@@ -2,7 +2,7 @@ import { Box, Container, Grid, Typography, Stack, Avatar } from '@mui/material';
 import { CloudUpload, Settings, LocalShipping, Timeline } from '@mui/icons-material';
 
 const STEPS = [
-  { icon: <CloudUpload />, title: '1. Tải file 3D', desc: 'Hỗ trợ STL, OBJ, 3MF lên đến 50MB' },
+  { icon: <CloudUpload />, title: '1. Tải file 3D', desc: 'Hỗ trợ STL, OBJ, 3MF, GLB lên đến 50MB' },
   { icon: <Settings />, title: '2. Chọn thông số', desc: 'Chọn vật liệu, màu sắc và độ chính xác' },
   { icon: <LocalShipping />, title: '3. Nhận báo giá', desc: 'Biết trước giá và ngày giao cam kết' },
   { icon: <Timeline />, title: '4. Theo dõi realtime', desc: 'Theo dõi tiến độ từ lúc in đến khi giao hàng' },

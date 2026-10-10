@@ -16,6 +16,9 @@ export interface Job {
   status: JobStatus
   internalDueDate: string
   estimatedPrintMinutes: number
+  estimatedMaterialGrams: number
+  actualPrintMinutes?: number | null
+  actualMaterialGrams?: number | null
   labId?: string | null
   machineId?: string | null
   plannedStartUtc?: string | null
@@ -29,6 +32,28 @@ export interface Job {
   attemptNumber: number
   assignedAtUtc?: string | null
   acceptanceDeadlineUtc?: string | null
+  qcProofStatus: 'None' | 'Pending' | 'Approved' | 'Rejected'
+  qcSelfReport?: string | null
+  qcProofPhotoKeys: string[]
+  qcReviewedBy?: string | null
+  qcReviewedAtUtc?: string | null
+  qcRejectionReason?: string | null
+  quantity: number
+  parentJobId?: string | null
+  // Order/model context (08/10): what ops and lab see on their boards instead of bare GUIDs.
+  boundingWidthMm: number
+  boundingDepthMm: number
+  boundingHeightMm: number
+  toleranceMm: number
+  technology: string
+  orderNumber?: string | null
+  modelFileName?: string | null
+  sha256?: string | null
+}
+
+export interface QcProofQueueItem {
+  job: Job
+  photoUrls: string[]
 }
 
 export const JOB_LABELS: Record<JobStatus, string> = {
