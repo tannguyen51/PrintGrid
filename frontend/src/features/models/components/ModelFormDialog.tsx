@@ -42,7 +42,7 @@ function defaultsFor(editing: ThreeDModel | null): ModelFormValues {
 
 /**
  * Create / edit dialog for a 3D model.
- * - Create mode: pick a real STL/OBJ/3MF file to upload (name auto-fills from the file).
+ * - Create mode: pick a real STL/OBJ/3MF/GLB file to upload (name auto-fills from the file).
  * - Edit mode: edit metadata only.
  */
 export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, error }: ModelFormDialogProps) {
@@ -72,9 +72,9 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
     setFileError(null)
     if (next) {
       const extension = next.name.split('.').pop()?.toLowerCase()
-      if (!extension || !['stl', 'obj', '3mf'].includes(extension)) {
+      if (!extension || !['stl', 'obj', '3mf', 'glb'].includes(extension)) {
         setFile(null)
-        setFileError('Chỉ chấp nhận file STL, OBJ hoặc 3MF.')
+        setFileError('Chỉ chấp nhận file STL, OBJ, 3MF hoặc GLB.')
         return
       }
       if (next.size > 50 * 1024 * 1024) {
@@ -86,7 +86,7 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
     setFile(next)
     if (next && isCreate) {
       // Auto-fill name + fileName + format from the chosen file.
-      const base = next.name.replace(/\.(stl|obj|3mf)$/i, '')
+      const base = next.name.replace(/\.(stl|obj|3mf|glb)$/i, '')
       setValue('name', base, { shouldValidate: true })
       setValue('fileName', next.name, { shouldValidate: true })
       setValue(
@@ -119,7 +119,7 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
                 <input
                   id="model-file-input"
                   type="file"
-                  accept=".stl,.obj,.3mf"
+                  accept=".stl,.obj,.3mf,.glb"
                   hidden
                   onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
                 />
@@ -132,7 +132,7 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
                   startIcon={<UploadFileRounded />}
                   sx={{ py: 1.5, color: file ? 'text.primary' : 'text.secondary', borderColor: file ? 'rgba(255,120,80,0.5)' : 'rgba(255,255,255,0.2)', borderStyle: 'dashed' }}
                 >
-                  {file ? `Đã chọn: ${file.name} (${(file.size / 1024).toFixed(1)} KB)` : 'Chọn file STL / OBJ / 3MF để tải lên'}
+                  {file ? `Đã chọn: ${file.name} (${(file.size / 1024).toFixed(1)} KB)` : 'Chọn file STL / OBJ / 3MF / GLB để tải lên'}
                 </Button>
                 {fileError && <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.75 }}>{fileError}</Typography>}
               </Box>
@@ -174,7 +174,7 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
                     />
                     <TextField
                       label="Định dạng"
-                      placeholder="STL / OBJ / 3MF"
+                      placeholder="STL / OBJ / 3MF / GLB"
                       sx={{ width: { xs: '100%', sm: 140 } }}
                       {...register('fileFormat')}
                       error={Boolean(errors.fileFormat)}

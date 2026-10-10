@@ -54,7 +54,7 @@ export default function SchedulingBoardPage() {
               <Typography color="text.secondary">Gán job cho lab/máy phù hợp nhất (FR-SCHED-004)</Typography>
             </Box>
           </Stack>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
+          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
             Đăng xuất
           </Button>
         </Stack>
@@ -82,6 +82,13 @@ export default function SchedulingBoardPage() {
                     <Typography variant="body2" color="text.secondary">
                       Số lượng {j.quantity} · Ước tính {j.estimatedPrintMinutes} phút · Lớp {j.layerHeightMm}mm · Hạn nội bộ {fmtDate(j.internalDueDate)}
                     </Typography>
+                    {(j.orderNumber || j.modelFileName) && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                        {j.orderNumber ? `Đơn ${j.orderNumber}` : ''}
+                        {j.modelFileName ? `${j.orderNumber ? ' · ' : ''}${j.modelFileName}` : ''}
+                        {` · ${j.boundingWidthMm}×${j.boundingDepthMm}×${j.boundingHeightMm} mm · dung sai ≤ ${j.toleranceMm}mm · ${j.technology}`}
+                      </Typography>
+                    )}
                   </Box>
                   <Stack direction="row" spacing={1}>
                   {j.quantity > 1 && <Button variant="outlined" color="warning" disabled={repair.isPending} onClick={() => repair.mutate(j.id)}>Xử lý nguy cơ trễ</Button>}

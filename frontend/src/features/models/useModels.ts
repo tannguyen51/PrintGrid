@@ -47,7 +47,7 @@ export function useDeleteModel() {
   })
 }
 
-/** Uploads a real 3D model file (STL/OBJ/3MF) — multipart to POST /models/upload. */
+/** Uploads a real 3D model file (STL/OBJ/3MF/GLB) — multipart to POST /models/upload. */
 export function useUploadModel() {
   const invalidate = useInvalidateModels()
   return useMutation({

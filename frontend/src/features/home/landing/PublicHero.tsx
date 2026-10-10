@@ -4,7 +4,13 @@ import { GeometricNetwork } from './GeometricNetwork'
 import './landing.css'
 
 interface PublicHeroProps {
-  onRegister: () => void
+  onRegister?: () => void
+  /**
+   * Overrides the hero CTA. Logged-in customers see the same landing as visitors
+   * (08/10) but their action is to order, not to sign up; `null` removes the button
+   * for a role that has nowhere useful to send the visitor.
+   */
+  cta?: { label: string; onClick: () => void } | null
 }
 
 /**
@@ -15,7 +21,8 @@ interface PublicHeroProps {
  * The artwork slot holds the Geometric Network 3D scene (Lab/Printer/Job nodes,
  * xoay → tách → kết nối → converge) in place of the Figma raster cube crop.
  */
-export function PublicHero({ onRegister }: PublicHeroProps) {
+export function PublicHero({ onRegister, cta }: PublicHeroProps) {
+  const action = cta === undefined ? { label: 'Get started', onClick: () => onRegister?.() } : cta
   return (
     <Box
       component="section"
@@ -64,7 +71,7 @@ export function PublicHero({ onRegister }: PublicHeroProps) {
           </Box>
           {/* Hero actions — Figma #36:41 */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: '36px' }}>
-            <PillButton onClick={onRegister}>Get started</PillButton>
+            {action && <PillButton onClick={action.onClick}>{action.label}</PillButton>}
           </Box>
         </Box>
       </Box>

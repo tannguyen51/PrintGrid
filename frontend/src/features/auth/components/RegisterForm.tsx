@@ -18,6 +18,7 @@ import {
 import { Visibility, VisibilityOff, ArrowForward, PersonRounded, PhoneRounded } from '@mui/icons-material'
 import { FaGoogle } from 'react-icons/fa6'
 import { useAuth } from '../../../app/AuthContext'
+import { getApiErrorInfo, getApiErrorMessage, normalizeFieldKey } from '../../../shared/api/apiError'
 
 const registerSchema = z
   .object({
@@ -61,6 +62,7 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<RegisterFormValues>({ resolver: zodResolver(registerSchema) })
 
@@ -77,8 +79,27 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
         phoneNumber: values.phoneNumber?.trim() || undefined,
       })
       setIsRegistered(true)
-    } catch {
-      setServerError('Không thể tạo tài khoản. Vui lòng thử lại.')
+    } catch (error) {
+      // In nguyên nhân thật ra console, map lỗi trùng lặp vào đúng trường tương ứng,
+      // và hiển thị thông điệp diễn giải từ API thay vì một câu cứng.
+      const info = getApiErrorInfo(error)
+      console.error('[register] thất bại:', info)
+
+      const fieldMessages: Partial<Record<keyof RegisterFormValues, string>> = {
+        email: info.code === 'email_exists' ? 'Email này đã được đăng ký, hãy dùng email khác.' : undefined,
+        // Giữ chỗ để lỗi validation của backend (vd. độ dài) gắn vào đúng trường.
+        phoneNumber: undefined,
+      }
+      if (info.fieldErrors) {
+        for (const [rawKey, messages] of Object.entries(info.fieldErrors)) {
+          const key = normalizeFieldKey(rawKey) as keyof RegisterFormValues
+          if (key in fieldMessages) fieldMessages[key] = fieldMessages[key] ?? messages[0]
+        }
+      }
+      for (const [key, message] of Object.entries(fieldMessages)) {
+        if (message) setError(key as keyof RegisterFormValues, { message })
+      }
+      setServerError(getApiErrorMessage(error, 'Không thể tạo tài khoản. Vui lòng thử lại.'))
     } finally {
       setSubmitting(false)
     }

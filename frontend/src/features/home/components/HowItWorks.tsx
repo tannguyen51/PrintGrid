@@ -4,7 +4,7 @@ const steps = [
   {
     step: '01',
     title: 'Tải model',
-    desc: 'Đăng tải file STL/OBJ/3MF. Hệ thống xác thực lưới, tính kích thước và kiểm tra tính khả thi với toàn mạng lưới trong thời gian thực.',
+    desc: 'Đăng tải file STL/OBJ/3MF/GLB. Hệ thống xác thực lưới, tính kích thước và kiểm tra tính khả thi với toàn mạng lưới trong thời gian thực.',
   },
   {
     step: '02',

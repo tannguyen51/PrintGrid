@@ -44,7 +44,7 @@ export default function QcProofReviewPage() {
               <Typography color="text.secondary">Kiểm tra ảnh và báo cáo trước khi cho phép bàn giao về hub</Typography>
             </Box>
           </Stack>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>Đăng xuất</Button>
+          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>Đăng xuất</Button>
         </Stack>
 
         {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}

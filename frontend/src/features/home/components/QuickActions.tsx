@@ -46,7 +46,7 @@ export function QuickActions() {
             <Grid size={{ xs: 12, md: 4 }}>
               <Card variant="outlined" sx={{ height: '100%', bgcolor: 'background.paper' }}>
                 <CardActionArea
-                  onClick={() => navigate(orders?.length > 0 ? `/orders` : '/models')}
+                  onClick={() => navigate(orders?.length > 0 ? `/orders` : '/order/new')}
                   sx={{ height: '100%', p: 2 }}
                 >
                   <Typography variant="subtitle1" fontWeight={600} mb={1}>Đơn gần đây</Typography>
@@ -70,7 +70,7 @@ export function QuickActions() {
             <Grid size={{ xs: 12, md: 4 }}>
               <Card variant="outlined" sx={{ height: '100%', bgcolor: 'background.paper' }}>
                 <CardActionArea
-                  onClick={() => navigate(models?.length > 0 ? `/models/${models[0].id}/order` : '/models')}
+                  onClick={() => navigate(models?.length > 0 ? `/models/${models[0].id}/order` : '/order/new')}
                   sx={{ height: '100%', p: 2 }}
                 >
                   <Typography variant="subtitle1" fontWeight={600} mb={1}>Đặt lại từ thư viện</Typography>

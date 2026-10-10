@@ -8,6 +8,7 @@ const RegisterPage = lazy(() => import('../features/auth/RegisterPage'))
 const VerifyEmailPage = lazy(() => import('../features/auth/VerifyEmailPage'))
 const HomePage = lazy(() => import('../features/home/HomePage'))
 const ModelLibraryPage = lazy(() => import('../features/models/ModelLibraryPage'))
+const StartOrderPage = lazy(() => import('../features/orders/StartOrderPage'))
 const OrderConfigPage = lazy(() => import('../features/quotes/OrderConfigPage'))
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'))
 const LabQueuePage = lazy(() => import('../features/lab/LabQueuePage'))
@@ -19,6 +20,8 @@ const QcProofReviewPage = lazy(() => import('../features/qcProof/QcProofReviewPa
 const QuoteReviewPage = lazy(() => import('../features/quotes/QuoteReviewPage'))
 const EscalationQueuePage = lazy(() => import('../features/ops/EscalationQueuePage'))
 const DecisionTracePage = lazy(() => import('../features/ops/DecisionTracePage'))
+const OpsLabsPage = lazy(() => import('../features/ops/OpsLabsPage'))
+const AdminUsersPage = lazy(() => import('../features/admin/AdminUsersPage'))
 const ForbiddenPage = lazy(() => import('../features/errors/ForbiddenPage'))
 const NotFoundPage = lazy(() => import('../features/errors/NotFoundPage'))
 const AccountPage = lazy(() => import('../features/account/AccountPage'))
@@ -65,6 +68,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['Customer']}>
               <AccountPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/order/new"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <StartOrderPage />
             </ProtectedRoute>
           }
         />
@@ -119,7 +130,7 @@ export function AppRoutes() {
         <Route
           path="/staff/qc-proofs"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OrderStaff', 'OpsManager', 'Admin']}>
               <QcProofReviewPage />
             </ProtectedRoute>
           }
@@ -153,6 +164,22 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <DecisionTracePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ops/labs"
+          element={
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+              <OpsLabsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute allowedRoles={['Admin']}>
+              <AdminUsersPage />
             </ProtectedRoute>
           }
         />

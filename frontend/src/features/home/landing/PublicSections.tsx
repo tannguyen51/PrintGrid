@@ -277,7 +277,7 @@ export function PublicSections() {
         id="sec-01"
         label="01 / YOUR MODEL"
         heading="It starts with a single file."
-        body="Upload an STL. PrintGrid turns your model into structured information that can be matched against a distributed printer network."
+        body="Upload an STL, OBJ, 3MF or GLB. PrintGrid turns your model into structured information that can be matched against a distributed printer network."
       >
         <ModelScanCard />
       </LandingSection>

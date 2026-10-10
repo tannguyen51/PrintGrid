@@ -23,6 +23,7 @@ import {
   AccessTimeRounded,
   CheckRounded,
   CloseRounded,
+  DownloadRounded,
   FactoryRounded,
   PlayArrowRounded,
   LibraryBooksRounded,
@@ -30,7 +31,7 @@ import {
 } from '@mui/icons-material'
 import type { Job } from '../jobs/jobTypes'
 import { JOB_LABELS } from '../jobs/jobTypes'
-import { useJobs, useAcceptJob, useDeclineJob, useStartJob, useCompleteJob } from '../jobs/useJobs'
+import { useJobs, useAcceptJob, useDeclineJob, useStartJob, useCompleteJob, downloadJobFile } from '../jobs/useJobs'
 import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 
@@ -44,6 +45,46 @@ const PREDEFINED_REASONS = [
   'Không khả thi kỹ thuật / file lỗi',
   'Khác',
 ]
+
+/**
+ * Download the job's model file (FR-LAB-004: the lab prints the customer's file).
+ * Blob fetch so the bearer token travels with the request — a plain link cannot.
+ */
+function DownloadFileButton({ jobId, fileName }: { jobId: string; fileName?: string | null }) {
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  async function download() {
+    setBusy(true)
+    setFailed(false)
+    try {
+      await downloadJobFile(jobId, fileName)
+    } catch {
+      setFailed(true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        size="small"
+        startIcon={busy ? <CircularProgress size={14} color="inherit" /> : <DownloadRounded fontSize="small" />}
+        disabled={busy}
+        onClick={download}
+        sx={{ mt: 1, color: 'text.secondary', textTransform: 'none', '&:hover': { color: 'text.primary' } }}
+      >
+        Tải file in
+      </Button>
+      {failed && (
+        <Typography variant="caption" color="error" sx={{ ml: 1 }}>
+          Không tải được file — thử lại.
+        </Typography>
+      )}
+    </>
+  )
+}
 
 /**
  * Countdown timer component for job acceptance window (BR-ASSIGN-005, default 2 hours).
@@ -217,7 +258,7 @@ export default function LabQueuePage() {
             <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} disabled={!jobs[0]?.j.labId} onClick={() => navigate(`/lab/${jobs[0]?.j.labId}/inventory`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
               Kho vật liệu
             </Button>
-            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
+            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
               Đăng xuất
             </Button>
           </Stack>
@@ -253,6 +294,19 @@ export default function LabQueuePage() {
                       Ước tính {j.estimatedPrintMinutes} phút · Lớp {j.layerHeightMm}mm · Hạn nội bộ {fmtDate(j.internalDueDate)}
                       {j.plannedStartUtc ? ` · Bắt đầu ${fmtTime(j.plannedStartUtc)}` : ''}
                     </Typography>
+                    {(j.orderNumber || j.modelFileName) && (
+                      <Typography variant="body2" color="text.secondary">
+                        {j.orderNumber ? `Đơn ${j.orderNumber}` : ''}
+                        {j.modelFileName ? `${j.orderNumber ? ' · ' : ''}${j.modelFileName}` : ''}
+                        {` · ${j.boundingWidthMm}×${j.boundingDepthMm}×${j.boundingHeightMm} mm · dung sai ≤ ${j.toleranceMm}mm · ${j.technology}`}
+                      </Typography>
+                    )}
+                    {j.sha256 && (
+                      <Typography variant="caption" color="text.disabled" sx={{ display: 'block' }}>
+                        SHA-256: {j.sha256.slice(0, 24)}…
+                      </Typography>
+                    )}
+                    <DownloadFileButton jobId={j.id} fileName={j.modelFileName} />
                     {j.qcProofStatus === 'Rejected' && j.qcRejectionReason && (
                       <Alert severity="warning" sx={{ mt: 1.5 }}>
                         QC bị từ chối: {j.qcRejectionReason}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import axios from 'axios'
+import { getApiErrorMessage } from '../../shared/api/apiError'
 import {
   Alert,
   Box,
@@ -161,10 +161,7 @@ export default function ModelLibraryPage() {
       setFormOpen(false)
       setEditing(null)
     } catch (error) {
-      const message = axios.isAxiosError(error)
-        ? (error.response?.data as { error?: { message?: string } } | undefined)?.error?.message
-        : undefined
-      setFormError(message ?? 'Không thể lưu model. Vui lòng thử lại.')
+      setFormError(getApiErrorMessage(error, 'Không thể lưu model. Vui lòng thử lại.'))
     }
   }
 

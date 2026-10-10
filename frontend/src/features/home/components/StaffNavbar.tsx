@@ -17,30 +17,63 @@ import {
   MenuItem,
 } from '@mui/material'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../../app/AuthContext'
-import { MenuRounded, CloseRounded, NotificationsOutlined, PersonOutlineRounded } from '@mui/icons-material'
+import { useAuth, type Role } from '../../../app/AuthContext'
+import { MenuRounded, CloseRounded, LogoutRounded, PersonOutlineRounded } from '@mui/icons-material'
 import { BrandGlyph } from '../../../shared/components/BrandGlyph'
 import { landing } from '../../../shared/theme/landing'
 
 /**
- * Navbar for a logged-in customer (07/10, trimmed 08/10).
- *   Logo (→ homepage) · Đặt in · Thư viện model · Đơn hàng · 🔔 · avatar ▾
- *
- * No "Trang chủ" item — the logo is the way home. No login/register buttons
- * either: visitors get PublicNavbar, so this component is logged-in only.
- * The bell is inert until the notifications REST contract lands (plan §A4).
+ * Navbar for staff roles on the shared homepage (08/10). Same landing token system as
+ * CustomerNavbar so every role sees one consistent site; only the links change.
+ * Two primary links per role on the bar, the rest in the avatar menu — a console link
+ * list long enough to wrap is worse than one extra click.
  */
 
-interface NavItem {
+interface NavLink {
   label: string
   href: string
 }
 
-const CUSTOMER_NAV: NavItem[] = [
-  { label: 'Đặt in', href: '/order/new' },
-  { label: 'Thư viện model', href: '/models' },
-  { label: 'Đơn hàng', href: '/orders' },
-]
+const PRIMARY: Partial<Record<Role, NavLink[]>> = {
+  LabManager: [{ label: 'Hàng đợi sản xuất', href: '/lab/queue' }],
+  LabOperator: [{ label: 'Hàng đợi sản xuất', href: '/lab/queue' }],
+  HubQC: [
+    { label: 'Kiểm tra chất lượng', href: '/hub/qc' },
+    { label: 'Lô giao hàng', href: '/hub/shipments' },
+  ],
+  HubFulfillment: [
+    { label: 'Lô giao hàng', href: '/hub/shipments' },
+    { label: 'Kiểm tra chất lượng', href: '/hub/qc' },
+  ],
+  OpsManager: [
+    { label: 'Bảng điều phối', href: '/scheduling' },
+    { label: 'Xưởng & máy', href: '/ops/labs' },
+  ],
+  Admin: [
+    { label: 'Bảng điều phối', href: '/scheduling' },
+    { label: 'Xưởng & máy', href: '/ops/labs' },
+  ],
+  OrderStaff: [
+    { label: 'Duyệt báo giá', href: '/quote-reviews' },
+    { label: 'Nghiệm thu QC', href: '/staff/qc-proofs' },
+  ],
+}
+
+const MORE: Partial<Record<Role, NavLink[]>> = {
+  OpsManager: [
+    { label: 'Duyệt báo giá', href: '/quote-reviews' },
+    { label: 'Nghiệm thu QC', href: '/staff/qc-proofs' },
+    { label: 'Cảnh báo', href: '/ops/escalations' },
+    { label: 'Nhật ký quyết định', href: '/ops/decisions' },
+  ],
+  Admin: [
+    { label: 'Duyệt báo giá', href: '/quote-reviews' },
+    { label: 'Nghiệm thu QC', href: '/staff/qc-proofs' },
+    { label: 'Cảnh báo', href: '/ops/escalations' },
+    { label: 'Nhật ký quyết định', href: '/ops/decisions' },
+    { label: 'Người dùng & phân quyền', href: '/admin/users' },
+  ],
+}
 
 const linkSx = {
   color: landing.textMuted,
@@ -52,11 +85,33 @@ const linkSx = {
   '&:hover': { color: landing.text, bgcolor: 'rgba(255,255,255,0.05)' },
 } as const
 
-export function CustomerNavbar() {
+/**
+ * The role's main console — used by the homepage hero so a logged-in staff member gets
+ * an action instead of a signup button. Null when the role has no console link yet.
+ */
+export function staffPrimaryLink(roles: Role[]): NavLink | null {
+  for (const role of roles) {
+    const links = PRIMARY[role]
+    if (links && links.length > 0) return links[0]
+  }
+  return null
+}
+
+export function StaffNavbar() {
   const { logout, user } = useAuth()
   const navigate = useNavigate()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+
+  const roles = user?.roles ?? []
+  const primary = roles.flatMap((role) => PRIMARY[role] ?? []).filter(
+    (link, index, all) => all.findIndex((other) => other.href === link.href) === index,
+  )
+  const more = roles.flatMap((role) => MORE[role] ?? []).filter(
+    (link, index, all) =>
+      all.findIndex((other) => other.href === link.href) === index &&
+      !primary.some((p) => p.href === link.href),
+  )
 
   const handleLogout = () => {
     setAnchorEl(null)
@@ -84,7 +139,6 @@ export function CustomerNavbar() {
     >
       <Container maxWidth="lg" sx={{ py: 1.5 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
-          {/* Brand — the logo is the only route back to the homepage */}
           <Button
             component={RouterLink}
             to="/"
@@ -98,30 +152,24 @@ export function CustomerNavbar() {
               <Typography sx={{ fontSize: '1.05rem', fontWeight: 700, color: landing.text, lineHeight: 1.15 }}>
                 PrintGrid
               </Typography>
+              <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.14em', textTransform: 'uppercase', lineHeight: 1 }}>
+                {roles[0] ?? 'Staff'}
+              </Typography>
             </Box>
           </Button>
 
-          {/* Desktop nav */}
           <Stack direction="row" spacing={0.5} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
-            {CUSTOMER_NAV.map((item) => (
-              <Button key={item.href} onClick={() => go(item.href)} sx={{ ...linkSx, textTransform: 'none' }}>
-                {item.label}
+            {primary.map((link) => (
+              <Button key={link.href} onClick={() => go(link.href)} sx={{ ...linkSx, textTransform: 'none' }}>
+                {link.label}
               </Button>
             ))}
           </Stack>
 
-          {/* Account actions */}
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
-            <IconButton
-              sx={{ color: landing.textMuted, '&:hover': { color: landing.text } }}
-              aria-label="Thông báo (sắp có)"
-              onClick={() => go('/account')}
-            >
-              <NotificationsOutlined />
-            </IconButton>
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0.5 }} aria-label="Menu tài khoản">
               <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 15 }}>
-                {user?.email?.charAt(0).toUpperCase() || 'U'}
+                {user?.email?.charAt(0).toUpperCase() || 'S'}
               </Avatar>
             </IconButton>
             <Menu
@@ -131,7 +179,7 @@ export function CustomerNavbar() {
               PaperProps={{
                 sx: {
                   mt: 1,
-                  minWidth: 200,
+                  minWidth: 220,
                   bgcolor: landing.card,
                   border: `1px solid ${landing.hairline}`,
                   borderRadius: `${landing.radius}px`,
@@ -140,25 +188,30 @@ export function CustomerNavbar() {
               transformOrigin={{ horizontal: 'right', vertical: 'top' }}
               anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
             >
-              <MenuItem onClick={() => { setAnchorEl(null); go('/account') }}>
+              <MenuItem disabled sx={{ opacity: '1 !important' }}>
                 <PersonOutlineRounded fontSize="small" sx={{ mr: 1.25, color: landing.textMuted }} />
-                Hồ sơ &amp; địa chỉ
+                <Typography sx={{ fontSize: '0.85rem', color: landing.textMuted }}>{user?.email}</Typography>
               </MenuItem>
               <Divider sx={{ borderColor: landing.hairlineSoft }} />
+              {more.map((link) => (
+                <MenuItem key={link.href} onClick={() => { setAnchorEl(null); go(link.href) }}>
+                  {link.label}
+                </MenuItem>
+              ))}
+              {more.length > 0 && <Divider sx={{ borderColor: landing.hairlineSoft }} />}
               <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+                <LogoutRounded fontSize="small" sx={{ mr: 1.25 }} />
                 Đăng xuất
               </MenuItem>
             </Menu>
           </Stack>
 
-          {/* Mobile hamburger */}
           <IconButton onClick={() => setDrawerOpen(true)} sx={{ display: { md: 'none' }, color: landing.text }} aria-label="Mở menu">
             <MenuRounded />
           </IconButton>
         </Stack>
       </Container>
 
-      {/* Mobile drawer */}
       <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{ sx: { width: 280, bgcolor: landing.card } }}>
         <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end' }}>
           <IconButton onClick={() => setDrawerOpen(false)} sx={{ color: landing.text }} aria-label="Đóng menu">
@@ -166,18 +219,13 @@ export function CustomerNavbar() {
           </IconButton>
         </Box>
         <List>
-          {CUSTOMER_NAV.map((item) => (
-            <ListItem key={item.href} disablePadding>
-              <ListItemButton onClick={() => go(item.href)}>
-                <ListItemText primary={item.label} sx={{ color: landing.text, '& .MuiListItemText-primary': { fontWeight: 500 } }} />
+          {[...primary, ...more].map((link) => (
+            <ListItem key={link.href} disablePadding>
+              <ListItemButton onClick={() => go(link.href)}>
+                <ListItemText primary={link.label} sx={{ color: landing.text, '& .MuiListItemText-primary': { fontWeight: 500 } }} />
               </ListItemButton>
             </ListItem>
           ))}
-          <ListItem disablePadding>
-            <ListItemButton onClick={() => go('/account')}>
-              <ListItemText primary="Hồ sơ & địa chỉ" sx={{ color: landing.text, '& .MuiListItemText-primary': { fontWeight: 500 } }} />
-            </ListItemButton>
-          </ListItem>
           <ListItem disablePadding sx={{ mt: 2 }}>
             <Box sx={{ px: 2, width: '100%' }}>
               <Button fullWidth variant="outlined" color="error" onClick={handleLogout}>

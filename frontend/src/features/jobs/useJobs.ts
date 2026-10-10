@@ -11,6 +11,23 @@ export function useJobs(status: JobStatus) {
   })
 }
 
+/**
+ * Streams the job's model file with the auth header and hands it to the browser as a
+ * download — a plain <a href> could not carry the bearer token (GET /jobs/{id}/file).
+ */
+export async function downloadJobFile(jobId: string, fileName?: string | null) {
+  const response = await apiClient.get(`/jobs/${jobId}/file`, { responseType: 'blob' })
+  const url = URL.createObjectURL(response.data as Blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = fileName || 'model-file'
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  // Give the browser a moment to start the download before revoking.
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
 function useInvalidate() {
   const queryClient = useQueryClient()
   return () => queryClient.invalidateQueries({ queryKey: JOBS_KEY })

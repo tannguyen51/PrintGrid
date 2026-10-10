@@ -355,7 +355,7 @@ export default function DecisionTracePage() {
             <Button variant="text" color="inherit" onClick={() => navigate('/ops/escalations')}>
               Hàng đợi cảnh báo
             </Button>
-            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
+            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
               Đăng xuất
             </Button>
           </Stack>

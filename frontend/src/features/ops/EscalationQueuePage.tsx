@@ -57,7 +57,7 @@ export default function EscalationQueuePage() {
               <Typography color="text.secondary">Việc xếp lịch cần người xử lý: in lại vượt trần và job không còn khung giờ (BR-SCHED-011)</Typography>
             </Box>
           </Stack>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
+          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
             Đăng xuất
           </Button>
         </Stack>

@@ -158,7 +158,7 @@ export default function OrderConfigPage() {
           <Button onClick={() => navigate(-1)} startIcon={<ArrowBackRounded />} color="inherit" sx={{ color: 'text.primary' }}>
             Quay lại
           </Button>
-          <Button onClick={() => { logout(); navigate('/login', { replace: true }) }} color="error" variant="outlined" size="small">
+          <Button onClick={() => { logout(); navigate('/', { replace: true }) }} color="error" variant="outlined" size="small">
             Đăng xuất
           </Button>
         </Stack>

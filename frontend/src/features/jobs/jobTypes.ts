@@ -40,6 +40,15 @@ export interface Job {
   qcRejectionReason?: string | null
   quantity: number
   parentJobId?: string | null
+  // Order/model context (08/10): what ops and lab see on their boards instead of bare GUIDs.
+  boundingWidthMm: number
+  boundingDepthMm: number
+  boundingHeightMm: number
+  toleranceMm: number
+  technology: string
+  orderNumber?: string | null
+  modelFileName?: string | null
+  sha256?: string | null
 }
 
 export interface QcProofQueueItem {

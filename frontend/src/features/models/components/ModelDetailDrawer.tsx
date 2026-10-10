@@ -1,6 +1,8 @@
-import { Box, Button, Chip, Divider, Drawer, Stack, Typography } from '@mui/material'
-import { CloseRounded, DeleteOutlineRounded, DescriptionRounded, EditRounded, LocalShippingOutlined } from '@mui/icons-material'
+import { Box, Button, Chip, CircularProgress, Divider, Drawer, Stack, Typography } from '@mui/material'
+import { CloseRounded, DeleteOutlineRounded, DescriptionRounded, DownloadRounded, EditRounded, LocalShippingOutlined } from '@mui/icons-material'
 import type { ThreeDModel } from '../modelTypes'
+import { useModelFileUrl } from '../useModelFile'
+import { ModelViewer } from '../../../shared/components/ModelViewer'
 
 interface ModelDetailDrawerProps {
   model: ThreeDModel | null
@@ -9,6 +11,9 @@ interface ModelDetailDrawerProps {
   onDelete: (model: ThreeDModel) => void
   onOrder: (model: ThreeDModel) => void
 }
+
+/** Formats the in-browser viewer can render. 3MF is a ZIP package — no browser loader. */
+const PREVIEWABLE_FORMATS = ['GLB', 'GLTF', 'STL', 'OBJ']
 
 function formatSize(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
@@ -21,6 +26,10 @@ function formatDate(iso: string): string {
 }
 
 export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder }: ModelDetailDrawerProps) {
+  const format = (model?.fileFormat ?? '').toUpperCase()
+  const previewable = PREVIEWABLE_FORMATS.includes(format)
+  const { url, failed } = useModelFileUrl(model?.id ?? null, Boolean(model) && previewable)
+
   return (
     <Drawer
       anchor="right"
@@ -46,14 +55,50 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder }:
 
           <Box sx={{ p: 3, flex: 1, overflowY: 'auto' }}>
             <Stack spacing={3}>
+              {/* ── 3D preview of the actual uploaded file ── */}
+              <Box>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1 }}>
+                  Xem trước 3D
+                </Typography>
+                {!previewable ? (
+                  <Typography color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                    Chưa xem trước được định dạng {model.fileFormat}. Kích thước và thể tích vẫn được đo chính xác ở mục bên dưới.
+                  </Typography>
+                ) : failed ? (
+                  <Typography color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                    Không tải được file để xem trước.
+                  </Typography>
+                ) : url ? (
+                  <Box sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)' }}>
+                    <ModelViewer url={url} format={format} fit height={240} background="#050505" />
+                  </Box>
+                ) : (
+                  <Box sx={{ height: 240, display: 'grid', placeItems: 'center', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)' }}>
+                    <CircularProgress size={32} />
+                  </Box>
+                )}
+              </Box>
+
               <Box>
                 <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   File
                 </Typography>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.75 }}>
                   <DescriptionRounded fontSize="small" color="action" />
-                  <Typography color="text.primary">{model.fileName}</Typography>
+                  <Typography color="text.primary" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{model.fileName}</Typography>
                 </Stack>
+                {url && (
+                  <Button
+                    component="a"
+                    href={url}
+                    download={model.fileName}
+                    size="small"
+                    startIcon={<DownloadRounded fontSize="small" />}
+                    sx={{ mt: 1, color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
+                  >
+                    Tải file về
+                  </Button>
+                )}
               </Box>
 
               <Box>
@@ -146,7 +191,7 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder }:
               fullWidth
               startIcon={<LocalShippingOutlined />}
               onClick={() => onOrder(model)}
-              disabled={model.geometryStatus !== 'Ready' || model.isPrintable !== true}
+              disabled={model.geometryStatus !== 'Ready' || model.isPrintable === false}
             >
               Đặt in
             </Button>

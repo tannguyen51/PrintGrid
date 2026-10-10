@@ -16,7 +16,15 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (allowedRoles && !allowedRoles.some((role) => user?.roles.includes(role))) {
-    return <Navigate to="/forbidden" replace />
+    // Mang theo ngữ cảnh để /forbidden in ra NGUYÊN NHÂN: trang nào, role nào có,
+    // role nào cần — thay vì chỉ báo "không có quyền" chung chung.
+    return (
+      <Navigate
+        to="/forbidden"
+        replace
+        state={{ from: location.pathname, requiredRoles: allowedRoles, userRoles: user?.roles ?? [] }}
+      />
+    )
   }
 
   return children

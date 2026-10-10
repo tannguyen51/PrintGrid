@@ -20,6 +20,7 @@ import {
 import { Visibility, VisibilityOff, ArrowForward } from '@mui/icons-material'
 import { FaGoogle } from 'react-icons/fa6'
 import { useAuth } from '../../../app/AuthContext'
+import { getApiErrorInfo, getApiErrorMessage } from '../../../shared/api/apiError'
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email là bắt buộc').email('Email không hợp lệ'),
@@ -73,8 +74,11 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
       } else {
         navigate('/models', { replace: true })
       }
-    } catch {
-      setServerError('Email hoặc mật khẩu không đúng')
+    } catch (error) {
+      // In nguyên nhân thật ra console để debug, còn UI hiển thị câu diễn giải
+      // từ API (sai mật khẩu, 403, 500, server chưa chạy…) thay vì một câu cứng.
+      console.error('[login] thất bại:', getApiErrorInfo(error))
+      setServerError(getApiErrorMessage(error, 'Email hoặc mật khẩu không đúng'))
     } finally {
       setSubmitting(false)
     }

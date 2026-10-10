@@ -96,7 +96,7 @@ export default function HubShipmentsPage() {
               <Typography color="text.secondary">Ghi vận đơn và xác nhận giao hàng cho đơn đã qua QC (FR-HUB)</Typography>
             </Box>
           </Stack>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
+          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
             Đăng xuất
           </Button>
         </Stack>
