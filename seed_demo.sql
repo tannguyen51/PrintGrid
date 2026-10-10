@@ -1,8 +1,28 @@
-INSERT INTO customer.customers ("Id", "Email", "PasswordHash", "FullName", "PhoneNumber", "CreatedAt", "LastLoginAt")
-VALUES 
-  ('a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d', 'qc@printgrid.dev', '$2a$12$8kSA3bIVghipwSsqsQdiWOo0W3C2Y61sC/lUwdl31s.B5yd793yIC', 'Nhân viên QC Hub', '0901234567', NOW(), NOW()),
-  ('b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e', 'lab@printgrid.dev', '$2a$12$8kSA3bIVghipwSsqsQdiWOo0W3C2Y61sC/lUwdl31s.B5yd793yIC', 'Quản lý xưởng in', '0907654321', NOW(), NOW())
-ON CONFLICT ("Email") DO NOTHING;
+-- ============================================================================
+-- TÀI KHOẢN DEMO — chạy lại nhiều lần vẫn đúng (upsert theo Email).
+-- Mật khẩu chung: Demo@123  (hash dưới đây đã verify bằng BCrypt.Net.Verify)
+--
+-- ⚠️ Vì sao phải có "Roles" và "IsEmailVerified" trong câu lệnh này:
+--   - Cột "Roles" có default ARRAY[]::text[]. INSERT thô mà bỏ cột này sẽ tạo
+--     tài khoản KHÔNG role → đăng nhập vẫn 200 nhưng mọi API policy trả 403 và
+--     FE ProtectedRoute đá sang /forbidden ("403 không có quyền truy cập").
+--   - OrderConfigPage chặn nút đặt hàng khi isEmailVerified = false → tài khoản
+--     demo phải được đánh dấu xác thực, nếu không luồng đặt đơn không demo được.
+-- ============================================================================
+INSERT INTO customer.customers
+  ("Id", "Email", "PasswordHash", "FullName", "PhoneNumber", "Roles", "IsActive", "IsEmailVerified", "CreatedAt", "LastLoginAt")
+VALUES
+  (gen_random_uuid(), 'demo@printgrid.dev', '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Khách hàng Demo',   '0900000000', ARRAY['Customer'],   true, true, NOW(), NOW()),
+  (gen_random_uuid(), 'lab@printgrid.dev',  '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Quản lý xưởng in',  '0911000001', ARRAY['LabManager'], true, true, NOW(), NOW()),
+  (gen_random_uuid(), 'qc@printgrid.dev',   '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Nhân viên QC Hub',  '0911000002', ARRAY['HubQC'],      true, true, NOW(), NOW()),
+  (gen_random_uuid(), 'ops@printgrid.dev',  '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Ops Manager Demo',  '0911000003', ARRAY['OpsManager'], true, true, NOW(), NOW())
+ON CONFLICT ("Email") DO UPDATE SET
+  "PasswordHash"    = EXCLUDED."PasswordHash",
+  "Roles"           = EXCLUDED."Roles",
+  "FullName"        = EXCLUDED."FullName",
+  "PhoneNumber"     = EXCLUDED."PhoneNumber",
+  "IsActive"        = true,
+  "IsEmailVerified" = true;
 
 -- Tạo sẵn 1 Job mẫu đang ở trạng thái AwaitingInspection để test ngay màn hình QC Hub
 INSERT INTO scheduling.jobs (

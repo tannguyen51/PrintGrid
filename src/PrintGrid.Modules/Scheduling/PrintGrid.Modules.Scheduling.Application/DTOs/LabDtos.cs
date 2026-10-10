@@ -77,4 +77,15 @@ public record JobDto(
     IReadOnlyList<string> QcProofPhotoKeys,
     Guid? QcReviewedBy,
     DateTime? QcReviewedAtUtc,
-    string? QcRejectionReason);
+    string? QcRejectionReason,
+    // Order/model context (08/10): specs ops and lab need to place and print the job.
+    // Filled from JobSpecification; the three trailing fields are enriched by the query
+    // handler (order number + file name + hash) — no customer PII crosses this line.
+    decimal BoundingWidthMm,
+    decimal BoundingDepthMm,
+    decimal BoundingHeightMm,
+    decimal ToleranceMm,
+    string Technology,
+    string? OrderNumber = null,
+    string? ModelFileName = null,
+    string? Sha256 = null);

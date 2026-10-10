@@ -30,6 +30,20 @@ public class ExceptionHandlingMiddleware
                 "One or more validation errors occurred",
                 ex.Errors.ToDictionary(e => e.PropertyName, e => new[] { e.ErrorMessage }));
         }
+        catch (BadHttpRequestException ex)
+        {
+            // Kestrel refuses an oversized body before the endpoint's own size check runs.
+            // Report it as a file-size problem so the client can say something useful
+            // instead of surfacing a generic binding failure.
+            var tooLarge = ex.StatusCode == StatusCodes.Status413PayloadTooLarge;
+            await WriteProblemAsync(
+                context,
+                (HttpStatusCode)ex.StatusCode,
+                tooLarge ? "file_too_large" : "bad_request",
+                tooLarge
+                    ? "Kích thước file vượt giới hạn cho phép."
+                    : "Yêu cầu không hợp lệ.");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception on {Method} {Path}", context.Request.Method, context.Request.Path);

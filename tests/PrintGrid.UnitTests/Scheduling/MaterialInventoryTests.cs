@@ -49,4 +49,25 @@ public class MaterialInventoryTests
         lab.StockTransactions.Last().JobId.Should().Be(jobId);
         lab.StockTransactions.Last().DeltaGrams.Should().Be(-48m);
     }
+
+    /// <summary>
+    /// Opt-in ledger symmetry: ReserveMaterial silently skips a lab with no stock row for the
+    /// material, so completing that job with a real gram figure must also skip — it used to
+    /// throw "Job has no material reservation" and block lab completion end-to-end.
+    /// </summary>
+    [Fact]
+    public void Completion_on_lab_without_stock_entry_is_a_no_op_not_an_error()
+    {
+        var lab = Lab.Onboard("Lab", "HCM", 1);
+        var jobId = Guid.NewGuid();
+
+        lab.ReserveMaterial(jobId, "PLA", "WHITE", 40m);
+        lab.MaterialReservations.Should().BeEmpty();
+
+        Action settle = () => lab.SettleMaterial(jobId, 38m);
+
+        settle.Should().NotThrow();
+        lab.MaterialReservations.Should().BeEmpty();
+        lab.StockTransactions.Should().BeEmpty();
+    }
 }

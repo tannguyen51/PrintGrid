@@ -6,7 +6,7 @@ public static class ModelFileInspector
 {
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".stl", ".obj", ".3mf"
+        ".stl", ".obj", ".3mf", ".glb"
     };
 
     public static bool IsAllowedExtension(string extension) => AllowedExtensions.Contains(extension);

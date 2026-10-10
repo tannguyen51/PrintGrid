@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
 
@@ -13,7 +14,9 @@ internal static class ObjMeshParser
         var vertices = new List<(double X, double Y, double Z)>();
         var faces = new List<(int, int, int)>();
 
-        using var reader = new StreamReader(stream);
+        // leaveOpen: the caller owns this stream — ModelFileInspector resets Position right
+        // after the call, and disposing here made every OBJ upload fail on a closed stream.
+        using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true);
         string? line;
         while ((line = reader.ReadLine()) is not null)
         {

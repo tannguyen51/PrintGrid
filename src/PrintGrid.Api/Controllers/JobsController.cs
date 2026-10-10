@@ -7,6 +7,7 @@ using PrintGrid.Modules.Scheduling.Application.Queries;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.SharedKernel.Results;
 using PrintGrid.Infrastructure.Shared.FileStorage;
+using PrintGrid.Modules.Customer.Domain.Repositories;
 using Microsoft.Extensions.Options;
 
 namespace PrintGrid.Api.Controllers;
@@ -19,12 +20,21 @@ public class JobsController : ControllerBase
     private readonly ISender _sender;
     private readonly IFileStorage _files;
     private readonly MinioOptions _minio;
+    private readonly IOrderRepository _orders;
+    private readonly IModelRepository _models;
 
-    public JobsController(ISender sender, IFileStorage files, IOptions<MinioOptions> minio)
+    public JobsController(
+        ISender sender,
+        IFileStorage files,
+        IOptions<MinioOptions> minio,
+        IOrderRepository orders,
+        IModelRepository models)
     {
         _sender = sender;
         _files = files;
         _minio = minio.Value;
+        _orders = orders;
+        _models = models;
     }
 
     [HttpGet]
@@ -47,6 +57,48 @@ public class JobsController : ControllerBase
     {
         var result = await _sender.Send(new AcceptJobCommand(jobId), cancellationToken);
         return ToResult(result);
+    }
+
+    /// <summary>
+    /// Streams the model file behind a job so the lab can actually print it (FR-LAB-004):
+    /// the model storage is Customer-scoped, so production roles resolve the file through
+    /// their job instead. Internal roles only — RequireProduction excludes Customer.
+    /// </summary>
+    [HttpGet("{jobId:guid}/file")]
+    [Authorize(Policy = Policies.RequireProduction)]
+    public async Task<IActionResult> GetJobFile(Guid jobId, CancellationToken cancellationToken)
+    {
+        var job = await _sender.Send(new GetJobQuery(jobId), cancellationToken);
+        if (job.IsFailure)
+            return NotFound(new { error = new { code = "not_found", message = job.Error.Message } });
+
+        var order = await _orders.GetByItemIdAsync(job.Value.OrderItemId, cancellationToken);
+        var item = order?.Items.FirstOrDefault(i => i.Id == job.Value.OrderItemId);
+        var model = item is null ? null : await _models.GetByIdAsync(item.ModelId, cancellationToken);
+
+        var storageKey = model?.StorageKey;
+        if (string.IsNullOrWhiteSpace(storageKey))
+            return NotFound(new { error = new { code = "file_not_stored", message = "Job này không trỏ tới file lưu trữ nào." } });
+
+        // StorageKey is "{bucket}/{objectName}" — same contract as the model upload/download.
+        var separator = storageKey.IndexOf('/');
+        if (separator <= 0 || separator == storageKey.Length - 1)
+            return NotFound(new { error = new { code = "file_not_stored", message = "Đường dẫn file lưu trữ không hợp lệ." } });
+
+        var extension = Path.GetExtension(storageKey).ToLowerInvariant();
+        var contentType = extension switch
+        {
+            ".stl" => "model/stl",
+            ".obj" => "model/obj",
+            ".3mf" => "model/3mf",
+            ".glb" => "model/gltf-binary",
+            _ => "application/octet-stream"
+        };
+
+        var stream = await _files.DownloadAsync(
+            storageKey[..separator], storageKey[(separator + 1)..], cancellationToken);
+
+        return File(stream, contentType, enableRangeProcessing: true);
     }
 
     [HttpPost("{jobId:guid}/decline")]
@@ -137,8 +189,11 @@ public class JobsController : ControllerBase
         return Ok(new { photoKeys });
     }
 
+    // UC-030 / FR-ANAL-007: the proof-reviewer actor is Order Staff. RequireQuoteReview is the
+    // trio OrderStaff + OpsManager + Admin — the same gate the quote workbench uses — so this
+    // replaces the old RequireOps (which wrongly excluded Order Staff from their own duty).
     [HttpGet("qc-proofs")]
-    [Authorize(Policy = Policies.RequireOps)]
+    [Authorize(Policy = Policies.RequireQuoteReview)]
     public async Task<IActionResult> GetQcProofs(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetJobsQuery(JobStatus.AwaitingInspection), cancellationToken);
@@ -157,7 +212,7 @@ public class JobsController : ControllerBase
     }
 
     [HttpPost("{jobId:guid}/qc-proof/review")]
-    [Authorize(Policy = Policies.RequireOps)]
+    [Authorize(Policy = Policies.RequireQuoteReview)]
     public async Task<IActionResult> ReviewQcProof(Guid jobId, [FromBody] ReviewQcProofRequest request, CancellationToken cancellationToken)
     {
         var staffId = User.GetCustomerId();

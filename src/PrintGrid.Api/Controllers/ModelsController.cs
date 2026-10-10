@@ -70,6 +70,36 @@ public class ModelsController : ControllerBase
             : Ok(result.Value);
     }
 
+    /// <summary>
+    /// Streams the stored model file so the browser can preview it in the 3D viewer.
+    /// Ownership comes from GetModelQuery — a model you do not own is a 404, never a 403
+    /// (which would confirm the model exists).
+    /// </summary>
+    [HttpGet("{modelId:guid}/file")]
+    public async Task<IActionResult> DownloadModelFile(Guid modelId, CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        if (customerId is null) return Forbid();
+
+        var result = await _sender.Send(new GetModelQuery(customerId.Value, modelId), cancellationToken);
+        if (result.IsFailure)
+            return NotFound(new { error = new { code = result.Error.Code, message = result.Error.Message } });
+
+        var storageKey = result.Value.StorageKey;
+        if (string.IsNullOrWhiteSpace(storageKey))
+            return NotFound(new { error = new { code = "file_not_stored", message = "Model này chưa có file lưu trữ." } });
+
+        // StorageKey is "{bucket}/{objectName}" (see Upload) — same split as AnalyzeModelJob.
+        var separator = storageKey.IndexOf('/');
+        if (separator <= 0 || separator == storageKey.Length - 1)
+            return NotFound(new { error = new { code = "file_not_stored", message = "Đường dẫn file lưu trữ không hợp lệ." } });
+
+        var stream = await _files.DownloadAsync(
+            storageKey[..separator], storageKey[(separator + 1)..], cancellationToken);
+
+        return File(stream, ContentTypeFor(Path.GetExtension(storageKey)), enableRangeProcessing: true);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateModelRequest request, CancellationToken cancellationToken)
     {
@@ -154,7 +184,10 @@ public class ModelsController : ControllerBase
     }
 
     [HttpPost("upload")]
-    [RequestSizeLimit(52 * 1024 * 1024)] // 50 MiB file + multipart envelope.
+    // Must stay ABOVE nginx's client_max_body_size (60m) and above the real per-file limit:
+    // if Kestrel rejects the body while reading the multipart form, model binding fails first
+    // and the caller gets a raw 400 instead of this endpoint's `file_too_large` message.
+    [RequestSizeLimit(60 * 1024 * 1024)]
     public async Task<IActionResult> Upload(
         [FromForm] UploadModelRequest request,
         CancellationToken cancellationToken)
@@ -174,7 +207,7 @@ public class ModelsController : ControllerBase
         if (!ModelFileInspector.IsAllowedExtension(ext))
             return StatusCode(StatusCodes.Status415UnsupportedMediaType, new
             {
-                error = new { code = "unsupported_format", message = "Định dạng không được hỗ trợ. Chỉ chấp nhận STL, OBJ hoặc 3MF." }
+                error = new { code = "unsupported_format", message = "Định dạng không được hỗ trợ. Chỉ chấp nhận STL, OBJ, 3MF hoặc GLB." }
             });
 
         var uploadLock = UploadLocks.GetOrAdd(customerId.Value, _ => new SemaphoreSlim(1, 1));
@@ -266,6 +299,7 @@ public class ModelsController : ControllerBase
         ".stl" => "model/stl",
         ".obj" => "model/obj",
         ".3mf" => "model/3mf",
+        ".glb" => "model/gltf-binary",
         _ => "application/octet-stream"
     };
 }

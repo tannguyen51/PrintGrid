@@ -119,8 +119,12 @@ public class Lab : AggregateRoot<Guid>
 
     public void SettleMaterial(Guid jobId, decimal actualGrams)
     {
-        var reservation = _materialReservations.SingleOrDefault(r => r.JobId == jobId)
-            ?? throw new InvalidOperationException("Job has no material reservation");
+        // The stock ledger is opt-in: ReserveMaterial created nothing when the lab keeps no
+        // record for this material/colour (see HasStock), so there is nothing to settle here.
+        // Settle must make the same promise as Reserve — completing a job on a lab that does
+        // not track inventory is normal, not an error (it used to throw and block completion).
+        var reservation = _materialReservations.SingleOrDefault(r => r.JobId == jobId);
+        if (reservation is null) return;
         var stock = _materialStocks.Single(s => s.Id == reservation.MaterialStockId);
         stock.Settle(reservation.ReservedGrams, actualGrams);
         _stockTransactions.Add(StockTransaction.Create(Id, stock.Id, -actualGrams, stock.AvailableGrams, "Job completion", jobId));

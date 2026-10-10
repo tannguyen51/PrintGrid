@@ -35,5 +35,10 @@ public static class JobMappings
         job.GetQcProofPhotoKeys(),
         job.QcReviewedBy,
         job.QcReviewedAtUtc,
-        job.QcRejectionReason);
+        job.QcRejectionReason,
+        job.Specification.RequiredVolume.WidthMm,
+        job.Specification.RequiredVolume.DepthMm,
+        job.Specification.RequiredVolume.HeightMm,
+        job.Specification.ToleranceMm,
+        job.Specification.Technology.ToString());
 }

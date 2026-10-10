@@ -17,7 +17,10 @@ internal static class StlMeshParser
     {
         // Peek: a binary STL starts with 80 header bytes then the triangle count as uint32.
         // An ASCII STL starts with "solid" followed by whitespace then usually "facet" or a name.
-        using var buffered = new BufferedStream(stream, 64 * 1024);
+        // Deliberately NOT disposed: the caller owns this stream (ModelFileInspector resets
+        // Position after the call). Disposing the wrapper closed the caller's stream and
+        // made every STL upload fail on a closed stream.
+        var buffered = new BufferedStream(stream, 64 * 1024);
         Span<byte> lead = stackalloc byte[5];
         ReadExact(buffered, lead);
         buffered.Position = 0;

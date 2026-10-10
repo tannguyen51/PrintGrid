@@ -51,7 +51,10 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
         if (model.GeometryStatus != Domain.Enums.GeometryStatus.Ready)
             return Result.Failure<QuoteDto>(Error.Validation("Model chưa được phân tích hình học xong"));
 
-        if (model.IsPrintable != true)
+        // Only an explicit "false" blocks quoting. NULL means the model was analysed before the
+// printability flags existed (or the file predates them) — treating unknown as unprintable
+// rejected every such model outright. The trial placement below is the real feasibility gate.
+        if (model.IsPrintable == false)
             return Result.Failure<QuoteDto>(Error.Validation(
                 model.GeometryMessage ?? "Model không thể in trên bất kỳ máy nào trong mạng lưới"));
 
