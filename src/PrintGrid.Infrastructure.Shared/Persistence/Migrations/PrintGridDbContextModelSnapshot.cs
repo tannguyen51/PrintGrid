@@ -800,6 +800,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<int>("ReprintIndex")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("ShipmentBatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("StartedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -817,6 +820,8 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.HasIndex("OriginalJobId");
 
                     b.HasIndex("ParentJobId");
+
+                    b.HasIndex("ShipmentBatchId");
 
                     b.HasIndex("Status", "MachineId");
 
@@ -856,8 +861,22 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasPrecision(5, 4)
                         .HasColumnType("numeric(5,4)");
 
+                    b.Property<string>("TransferDaysOfWeek")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasDefaultValue("Monday,Wednesday,Friday");
+
                     b.Property<int>("TransitDaysToHub")
                         .HasColumnType("integer");
+
+                    b.Property<string>("TransportZone")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("LOCAL");
 
                     b.HasKey("Id");
 
@@ -1033,6 +1052,81 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.HasIndex("Status", "CreatedAtUtc");
 
                     b.ToTable("ops_escalations", "scheduling");
+                });
+
+            modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.ShipmentBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<int>("JobCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("LabId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ReceivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("ScheduledTransferDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("SealedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SealedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<decimal>("TotalWeightGrams")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<decimal>("TransportAllowance")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("TransportZone")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("WaybillNumber")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("WeightClass")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<decimal>("WeightMultiplier")
+                        .HasPrecision(8, 3)
+                        .HasColumnType("numeric(8,3)");
+
+                    b.Property<decimal>("ZoneRate")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WaybillNumber")
+                        .IsUnique();
+
+                    b.HasIndex("LabId", "ScheduledTransferDate");
+
+                    b.ToTable("shipment_batches", "scheduling");
                 });
 
             modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.StockTransaction", b =>
@@ -1375,6 +1469,11 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
             modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.Job", b =>
                 {
+                    b.HasOne("PrintGrid.Modules.Scheduling.Domain.Entities.ShipmentBatch", null)
+                        .WithMany()
+                        .HasForeignKey("ShipmentBatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.OwnsOne("PrintGrid.Modules.Scheduling.Domain.ValueObjects.JobSpecification", "Specification", b1 =>
                         {
                             b1.Property<Guid>("JobId")

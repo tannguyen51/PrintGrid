@@ -34,6 +34,7 @@ public class Job : AggregateRoot<Guid>
     public Guid? QcReviewedBy { get; private set; }
     public DateTime? QcReviewedAtUtc { get; private set; }
     public string? QcRejectionReason { get; private set; }
+    public Guid? ShipmentBatchId { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     /// <summary>Normal for originally placed work, Urgent for reprints (BR-RESCHED-003).</summary>
@@ -304,6 +305,27 @@ public class Job : AggregateRoot<Guid>
         if (!approved)
             Status = JobStatus.InProgress;
 
+        return Result.Success();
+    }
+
+    public Result SealForHubShipment(Guid shipmentBatchId)
+    {
+        if (Status != JobStatus.AwaitingInspection || QcProofStatus != QcProofStatus.Approved)
+            return Result.Failure(Error.Conflict("Only proof-approved completed jobs can be sealed for hub transfer"));
+        if (ShipmentBatchId.HasValue)
+            return Result.Failure(Error.Conflict("Job already belongs to a shipment batch"));
+
+        ShipmentBatchId = shipmentBatchId;
+        Status = JobStatus.InTransit;
+        return Result.Success();
+    }
+
+    public Result ReceiveAtHub()
+    {
+        if (Status != JobStatus.InTransit || !ShipmentBatchId.HasValue)
+            return Result.Failure(Error.Conflict("Only a job in transit can be received at the hub"));
+
+        Status = JobStatus.AwaitingInspection;
         return Result.Success();
     }
 

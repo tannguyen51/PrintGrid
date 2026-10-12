@@ -27,6 +27,7 @@ import {
   FactoryRounded,
   PlayArrowRounded,
   LibraryBooksRounded,
+  LocalShippingRounded,
   LogoutRounded,
 } from '@mui/icons-material'
 import type { Job } from '../jobs/jobTypes'
@@ -154,6 +155,8 @@ export default function LabQueuePage() {
   const assigned = useJobs('Assigned')
   const accepted = useJobs('Accepted')
   const inProgress = useJobs('InProgress')
+  // Keeps the shipment-planner entry available after the last active job was completed.
+  const awaitingShipment = useJobs('AwaitingInspection')
 
   const accept = useAcceptJob()
   const decline = useDeclineJob()
@@ -194,6 +197,7 @@ export default function LabQueuePage() {
 
   const loading = assigned.isLoading || accepted.isLoading || inProgress.isLoading
   const error = assigned.isError || accepted.isError || inProgress.isError
+  const labId = jobs[0]?.j.labId ?? awaitingShipment.data?.find(job => job.labId)?.labId
 
   async function handleAction(action: 'accept' | 'start', id: string) {
     try {
@@ -255,6 +259,9 @@ export default function LabQueuePage() {
             </Box>
           </Stack>
           <Stack direction="row" spacing={1.5}>
+            <Button variant="outlined" color="inherit" startIcon={<LocalShippingRounded />} disabled={!labId} onClick={() => navigate(`/lab/${labId}/shipments`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+              Lô chuyển hub
+            </Button>
             <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} disabled={!jobs[0]?.j.labId} onClick={() => navigate(`/lab/${jobs[0]?.j.labId}/inventory`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
               Kho vật liệu
             </Button>

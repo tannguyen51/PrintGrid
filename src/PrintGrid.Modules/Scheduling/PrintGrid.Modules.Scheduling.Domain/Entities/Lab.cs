@@ -15,6 +15,8 @@ public class Lab : AggregateRoot<Guid>
     public decimal OnTimeDeliveryRate { get; private set; } = 1.0m;
     public decimal FirstPassYield { get; private set; } = 1.0m;
     public int TransitDaysToHub { get; private set; }
+    public string TransportZone { get; private set; } = "LOCAL";
+    public string TransferDaysOfWeek { get; private set; } = "Monday,Wednesday,Friday";
     public bool IsInGoodStanding { get; private set; } = true;
     public DateTime CreatedAt { get; private set; }
 
@@ -25,7 +27,12 @@ public class Lab : AggregateRoot<Guid>
 
     private Lab() { }
 
-    public static Lab Onboard(string name, string city, int transitDaysToHub)
+    public static Lab Onboard(
+        string name,
+        string city,
+        int transitDaysToHub,
+        string transportZone = "LOCAL",
+        string transferDaysOfWeek = "Monday,Wednesday,Friday")
     {
         if (transitDaysToHub < 0)
             throw new ArgumentOutOfRangeException(nameof(transitDaysToHub), "Transit days cannot be negative");
@@ -36,6 +43,8 @@ public class Lab : AggregateRoot<Guid>
             Name = name.Trim(),
             City = city.Trim(),
             TransitDaysToHub = transitDaysToHub,
+            TransportZone = NormalizeZone(transportZone),
+            TransferDaysOfWeek = NormalizeTransferDays(transferDaysOfWeek),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -50,6 +59,19 @@ public class Lab : AggregateRoot<Guid>
     public void SuspendFromAssignments() => IsInGoodStanding = false;
 
     public void RestoreGoodStanding() => IsInGoodStanding = true;
+
+    public DateOnly NextTransferDate(DateOnly from)
+    {
+        var allowed = TransferDaysOfWeek.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(value => Enum.Parse<DayOfWeek>(value, true))
+            .ToHashSet();
+        for (var offset = 0; offset < 7; offset++)
+        {
+            var candidate = from.AddDays(offset);
+            if (allowed.Contains(candidate.DayOfWeek)) return candidate;
+        }
+        throw new InvalidOperationException("Lab transfer calendar has no valid day");
+    }
 
     public void SetMaterialStock(string materialCode, string colorCode, decimal availableGrams, decimal reorderPointGrams = 0m)
     {
@@ -165,4 +187,19 @@ public class Lab : AggregateRoot<Guid>
         string.IsNullOrWhiteSpace(value)
             ? throw new ArgumentException("Material and color are required")
             : value.Trim().ToUpperInvariant();
+
+    private static string NormalizeZone(string value) =>
+        string.IsNullOrWhiteSpace(value) ? "LOCAL" : value.Trim().ToUpperInvariant();
+
+    private static string NormalizeTransferDays(string value)
+    {
+        var days = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(day => Enum.TryParse<DayOfWeek>(day, true, out var parsed)
+                ? parsed
+                : throw new ArgumentException($"Invalid transfer day: {day}"))
+            .Distinct()
+            .ToArray();
+        if (days.Length == 0) throw new ArgumentException("At least one transfer day is required");
+        return string.Join(',', days);
+    }
 }

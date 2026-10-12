@@ -34,6 +34,22 @@ public class JobRepository : IJobRepository
             .OrderBy(j => j.InternalDueDate)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Job>> GetProofApprovedForShipmentAsync(
+        Guid labId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .Where(j => j.LabId == labId &&
+                        j.Status == JobStatus.AwaitingInspection &&
+                        j.QcProofStatus == QcProofStatus.Approved &&
+                        j.ShipmentBatchId == null)
+            .OrderBy(j => j.InternalDueDate)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Job>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>().Where(j => ids.Contains(j.Id)).ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Job>> GetActiveByMachineAsync(
         Guid machineId,
         CancellationToken cancellationToken = default) =>

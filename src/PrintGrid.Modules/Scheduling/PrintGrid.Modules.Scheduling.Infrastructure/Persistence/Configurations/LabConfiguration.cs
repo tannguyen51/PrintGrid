@@ -15,6 +15,8 @@ public class LabConfiguration : IEntityTypeConfiguration<Lab>
         builder.Property(l => l.City).HasMaxLength(100).IsRequired();
         builder.Property(l => l.OnTimeDeliveryRate).HasPrecision(5, 4).IsRequired();
         builder.Property(l => l.FirstPassYield).HasPrecision(5, 4).IsRequired();
+        builder.Property(l => l.TransportZone).HasMaxLength(32).HasDefaultValue("LOCAL").IsRequired();
+        builder.Property(l => l.TransferDaysOfWeek).HasMaxLength(128).HasDefaultValue("Monday,Wednesday,Friday").IsRequired();
 
         builder.HasIndex(l => l.IsActive);
 
