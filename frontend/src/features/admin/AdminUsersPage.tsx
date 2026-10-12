@@ -11,6 +11,7 @@ import {
   DialogTitle,
   FormControl,
   Grid,
+  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -20,10 +21,10 @@ import {
   Typography,
 } from '@mui/material'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
-import { BlockRounded, LogoutRounded, ManageAccountsRounded, PersonAddRounded } from '@mui/icons-material'
-import { useNavigate } from 'react-router-dom'
+import { BlockRounded, ManageAccountsRounded, PersonAddRounded } from '@mui/icons-material'
 import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
+import { StaffNavbar } from '../home/components/StaffNavbar'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import {
   ROLES,
@@ -48,8 +49,7 @@ const fmtDate = (value?: string | null) =>
   value ? new Date(value).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
 
 export default function AdminUsersPage() {
-  const navigate = useNavigate()
-  const { logout, user: currentUser } = useAuth()
+  const { user: currentUser } = useAuth()
 
   const { data, isLoading, isError } = useAdminUsers()
   const rows = useMemo(() => data ?? [], [data])
@@ -64,6 +64,8 @@ export default function AdminUsersPage() {
   const [notice, setNotice] = useState<string | null>(null)
 
   const currentEmail = currentUser?.email
+  const activeCount = rows.filter((user) => user.isActive).length
+  const unverifiedCount = rows.filter((user) => !user.isEmailVerified).length
 
   async function submit() {
     setFormError(null)
@@ -84,13 +86,13 @@ export default function AdminUsersPage() {
   }
 
   const columns: GridColDef<AdminUser>[] = [
-    { field: 'email', headerName: 'Email', flex: 1.4, minWidth: 200 },
-    { field: 'fullName', headerName: 'Họ tên', flex: 1, minWidth: 140 },
+    { field: 'email', headerName: 'Email', flex: 1.4, minWidth: 190 },
+    { field: 'fullName', headerName: 'Họ tên', flex: 1, minWidth: 135 },
     {
       field: 'roles',
       headerName: 'Role',
-      flex: 1.2,
-      minWidth: 170,
+      flex: 1,
+      minWidth: 145,
       sortable: false,
       renderCell: (params) => (
         <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ py: 0.5 }}>
@@ -112,7 +114,7 @@ export default function AdminUsersPage() {
     {
       field: 'status',
       headerName: 'Trạng thái',
-      width: 170,
+      width: 185,
       sortable: false,
       renderCell: (params) => (
         <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ py: 0.5 }}>
@@ -121,19 +123,19 @@ export default function AdminUsersPage() {
         </Stack>
       ),
     },
-    { field: 'createdAt', headerName: 'Tạo lúc', width: 150, valueFormatter: (v: string) => fmtDate(v) },
-    { field: 'lastLoginAt', headerName: 'Đăng nhập cuối', width: 150, valueFormatter: (v: string | null) => fmtDate(v) },
+    { field: 'createdAt', headerName: 'Tạo lúc', width: 145, valueFormatter: (v: string) => fmtDate(v) },
+    { field: 'lastLoginAt', headerName: 'Đăng nhập cuối', width: 155, valueFormatter: (v: string | null) => fmtDate(v) },
     {
       field: 'actions',
       headerName: '',
-      width: 210,
+      width: 200,
       sortable: false,
       filterable: false,
       renderCell: (params) => {
         const isSelf = params.row.email === currentEmail
         return (
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
-            <FormControl size="small" sx={{ minWidth: 130 }}>
+          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ height: '100%', width: '100%' }}>
+            <FormControl size="small" sx={{ minWidth: 0, flex: 1 }}>
               <Select
                 displayEmpty
                 value={params.row.roles[0] ?? ''}
@@ -154,15 +156,15 @@ export default function AdminUsersPage() {
             </FormControl>
             <Tooltip title={isSelf ? 'Không thể tự ngưng tài khoản đang đăng nhập' : 'Ngưng hoạt động'}>
               <span>
-                <Button
+                <IconButton
                   size="small"
                   color="error"
-                  startIcon={<BlockRounded fontSize="small" />}
+                  aria-label={`Ngưng tài khoản ${params.row.email}`}
                   disabled={isSelf || !params.row.isActive || deactivate.isPending}
                   onClick={() => deactivate.mutate(params.row.id, { onSuccess: () => setNotice(`Đã ngưng ${params.row.email}.`) })}
                 >
-                  Ngưng
-                </Button>
+                  <BlockRounded fontSize="small" />
+                </IconButton>
               </span>
             </Tooltip>
           </Stack>
@@ -173,7 +175,8 @@ export default function AdminUsersPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1200, mx: 'auto' }} spacing={2.5}>
+      <StaffNavbar />
+      <Stack sx={{ px: { xs: 2.5, md: 4 }, py: { xs: 3, md: 4.5 }, maxWidth: 1440, mx: 'auto' }} spacing={3}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
             <PageBackButton />
@@ -182,18 +185,21 @@ export default function AdminUsersPage() {
                 Người dùng &amp; phân quyền
               </Typography>
               <Typography color="text.secondary">
-                Tạo tài khoản và gán role cho từng vai trong mạng lưới (FR-ADMIN-001)
+                Tạo tài khoản, phân vai và kiểm soát quyền truy cập trong mạng lưới
               </Typography>
             </Box>
           </Stack>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Button variant="contained" color="primary" startIcon={<PersonAddRounded />} onClick={() => { setFormError(null); setFormOpen(true) }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ pl: { sm: 6 } }}>
+            <Button size="large" variant="contained" color="primary" startIcon={<PersonAddRounded />} onClick={() => { setFormError(null); setFormOpen(true) }}>
               Tạo tài khoản
             </Button>
-            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
-              Đăng xuất
-            </Button>
           </Stack>
+        </Stack>
+
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+          <Chip label={`${rows.length} tài khoản`} sx={{ bgcolor: 'rgba(255,255,255,0.06)', color: 'text.primary' }} />
+          <Chip label={`${activeCount} đang hoạt động`} color="success" variant="outlined" />
+          {unverifiedCount > 0 && <Chip label={`${unverifiedCount} chưa xác thực`} color="warning" variant="outlined" />}
         </Stack>
 
         {isError ? <Alert severity="error">Không tải được danh sách người dùng.</Alert> : null}
@@ -201,12 +207,14 @@ export default function AdminUsersPage() {
         {assignRole.isError ? <Alert severity="error">{getApiErrorMessage(assignRole.error, 'Không đổi được role.')}</Alert> : null}
         {deactivate.isError ? <Alert severity="error">{getApiErrorMessage(deactivate.error, 'Không ngưng được tài khoản.')}</Alert> : null}
 
-        <Box sx={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
+        <Box sx={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper', boxShadow: '0 18px 50px rgba(0,0,0,0.28)' }}>
           <DataGrid
             rows={rows}
             columns={columns}
             loading={isLoading}
             autoHeight
+            rowHeight={64}
+            columnHeaderHeight={52}
             disableRowSelectionOnClick
             initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
             pageSizeOptions={[25, 50, 100]}
@@ -225,21 +233,26 @@ export default function AdminUsersPage() {
             }}
             sx={{
               '&.MuiDataGrid-root': { border: 'none' },
-              '& .MuiDataGrid-columnHeaders': { bgcolor: 'rgba(255,255,255,0.03)' },
+              '& .MuiDataGrid-columnHeaders': { bgcolor: 'rgba(255,255,255,0.04)', borderBottomColor: 'rgba(255,255,255,0.12)' },
+              '& .MuiDataGrid-columnHeaderTitle': { fontWeight: 700 },
               '& .MuiDataGrid-row': { alignItems: 'center' },
+              '& .MuiDataGrid-row:hover': { bgcolor: 'rgba(139,92,246,0.05)' },
+              '& .MuiDataGrid-cell': { borderBottomColor: 'rgba(255,255,255,0.07)' },
+              '& .MuiDataGrid-footerContainer': { minHeight: 58, bgcolor: 'rgba(255,255,255,0.02)' },
             }}
           />
         </Box>
 
-        <Typography variant="caption" color="text.disabled">
-          Role quyết định toàn bộ quyền truy cập: ví dụ tài khoản cần vào màn duyệt báo giá phải là
-          Nhân viên duyệt đơn, Điều phối mạng lưới hoặc Quản trị hệ thống.
-        </Typography>
+        <Box sx={{ px: 2, py: 1.5, borderRadius: 2, bgcolor: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.14)' }}>
+          <Typography variant="body2" color="text.secondary">
+            Vai trò quyết định các khu vực và thao tác mà tài khoản được phép truy cập. Bạn không thể tự đổi vai trò hoặc ngưng tài khoản đang đăng nhập.
+          </Typography>
+        </Box>
       </Stack>
 
       <Dialog open={formOpen} onClose={() => setFormOpen(false)} fullWidth maxWidth="sm"
-        PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' } }}>
-        <DialogTitle sx={{ fontWeight: 700 }}>Tạo tài khoản mới</DialogTitle>
+        PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 3 } }}>
+        <DialogTitle sx={{ px: 3, pt: 3, fontWeight: 800 }}>Tạo tài khoản mới</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {formError && <Alert severity="error">{formError}</Alert>}

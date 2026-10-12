@@ -22,6 +22,7 @@ const EscalationQueuePage = lazy(() => import('../features/ops/EscalationQueuePa
 const DecisionTracePage = lazy(() => import('../features/ops/DecisionTracePage'))
 const OpsLabsPage = lazy(() => import('../features/ops/OpsLabsPage'))
 const AdminUsersPage = lazy(() => import('../features/admin/AdminUsersPage'))
+const AdminAuditLogPage = lazy(() => import('../features/admin/AdminAuditLogPage'))
 const ForbiddenPage = lazy(() => import('../features/errors/ForbiddenPage'))
 const NotFoundPage = lazy(() => import('../features/errors/NotFoundPage'))
 const AccountPage = lazy(() => import('../features/account/AccountPage'))
@@ -180,6 +181,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['Admin']}>
               <AdminUsersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/audit-logs"
+          element={
+            <ProtectedRoute allowedRoles={['Admin']}>
+              <AdminAuditLogPage />
             </ProtectedRoute>
           }
         />
