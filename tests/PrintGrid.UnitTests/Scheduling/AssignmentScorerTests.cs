@@ -61,6 +61,27 @@ public class AssignmentScorerTests
         ScoringWeights.Default.Total.Should().Be(1.0m);
     }
 
+    [Fact]
+    public void Changing_the_weight_period_changes_the_next_ranking()
+    {
+        var job = JobWithDueDateInDays(7);
+        var reliableButBusy = Placement(reliability: 1m, endOffsetHours: 48, utilization: 1m, cost: 50m);
+        var unreliableButFree = Placement(reliability: 0m, endOffsetHours: 48, utilization: 0m, cost: 50m);
+        var reliabilityPeriod = new AssignmentScorer(new ScoringWeights
+        {
+            DueDateSlack = 0m, LabReliability = 1m, LoadBalance = 0m, Cost = 0m, Transit = 0m
+        });
+        var loadPeriod = new AssignmentScorer(new ScoringWeights
+        {
+            DueDateSlack = 0m, LabReliability = 0m, LoadBalance = 1m, Cost = 0m, Transit = 0m
+        });
+
+        reliabilityPeriod.Rank(job, [reliableButBusy, unreliableButFree], 50m)[0].Placement
+            .Should().BeSameAs(reliableButBusy);
+        loadPeriod.Rank(job, [reliableButBusy, unreliableButFree], 50m)[0].Placement
+            .Should().BeSameAs(unreliableButFree);
+    }
+
     private static Job JobWithDueDateInDays(int days) =>
         Job.Create(
             Guid.NewGuid(),

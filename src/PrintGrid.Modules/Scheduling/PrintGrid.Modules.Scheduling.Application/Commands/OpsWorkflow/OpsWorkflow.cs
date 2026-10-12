@@ -92,7 +92,7 @@ public sealed class ReassignJobByOpsCommandHandler(
     IAssignmentEngine engine,
     IDateChangeRequestRepository dateChanges,
     IAssignmentDecisionRepository decisions,
-    ScoringParameterSet scoringConfig,
+    IScoringConfigurationProvider scoringConfigurations,
     IDateTimeProvider clock,
     IUnitOfWork unitOfWork)
     : IRequestHandler<ReassignJobByOpsCommand, Result<OpsReassignResultDto>>
@@ -116,6 +116,7 @@ public sealed class ReassignJobByOpsCommandHandler(
                 job.InternalDueDate.AddDays(PlacementShortfallService.HubAndTransitBufferDays),
                 preview.Value.ProposedCustomerDate!.Value, command.Reason.Trim(), Guid.NewGuid().ToString("N"), clock.UtcNow);
             await dateChanges.AddAsync(request, ct);
+            var scoringConfig = await scoringConfigurations.GetActiveAsync(ct);
             await decisions.AddAsync(AssignmentDecision.Record(
                 job,
                 AssignmentTriggers.OpsOverride,

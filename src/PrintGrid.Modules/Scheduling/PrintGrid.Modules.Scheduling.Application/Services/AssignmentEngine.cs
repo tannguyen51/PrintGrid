@@ -33,11 +33,10 @@ public class AssignmentEngine : IAssignmentEngine
     private readonly IJobRepository _jobs;
     private readonly ILabRepository _labs;
     private readonly CapabilityFilter _capabilityFilter;
-    private readonly AssignmentScorer _scorer;
+    private readonly IScoringConfigurationProvider _scoringConfigurations;
     private readonly IMachineTimelineService _timeline;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAssignmentDecisionRepository _decisions;
-    private readonly ScoringParameterSet _scoringConfig;
     private readonly IDateTimeProvider _clock;
     private readonly ILogger<AssignmentEngine> _logger;
 
@@ -45,22 +44,20 @@ public class AssignmentEngine : IAssignmentEngine
         IJobRepository jobs,
         ILabRepository labs,
         CapabilityFilter capabilityFilter,
-        AssignmentScorer scorer,
+        IScoringConfigurationProvider scoringConfigurations,
         IMachineTimelineService timeline,
         IUnitOfWork unitOfWork,
         IAssignmentDecisionRepository decisions,
-        ScoringParameterSet scoringConfig,
         IDateTimeProvider clock,
         ILogger<AssignmentEngine> logger)
     {
         _jobs = jobs;
         _labs = labs;
         _capabilityFilter = capabilityFilter;
-        _scorer = scorer;
+        _scoringConfigurations = scoringConfigurations;
         _timeline = timeline;
         _unitOfWork = unitOfWork;
         _decisions = decisions;
-        _scoringConfig = scoringConfig;
         _clock = clock;
         _logger = logger;
     }
@@ -72,6 +69,8 @@ public class AssignmentEngine : IAssignmentEngine
     {
         var budget = request.TimeBudget ?? TimeSpan.FromSeconds(DefaultTimeBudgetSeconds);
         var stopwatch = Stopwatch.StartNew();
+        var scoringConfig = await _scoringConfigurations.GetActiveAsync(cancellationToken);
+        var scorer = new AssignmentScorer(scoringConfig.Weights);
 
         var labs = await _labs.GetActiveWithMachinesAsync(cancellationToken);
         var filter = ApplyExclusion(
@@ -86,7 +85,7 @@ public class AssignmentEngine : IAssignmentEngine
             return await RecordFailureAsync(
                 job, request, filter, [], AssignmentOutcomes.NoCapableMachine,
                 "No lab in the network can satisfy this job specification",
-                stopwatch, budget, budgetExceeded: false, earliestEnd: null, cancellationToken);
+                stopwatch, budget, budgetExceeded: false, earliestEnd: null, scoringConfig, cancellationToken);
         }
 
         var windowEnd = job.InternalDueDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
@@ -117,7 +116,7 @@ public class AssignmentEngine : IAssignmentEngine
 
         IReadOnlyList<ScoredPlacement> ranked = proposals.Count == 0
             ? []
-            : _scorer.Rank(job, proposals, proposals.Max(p => p.EstimatedCost));
+            : scorer.Rank(job, proposals, proposals.Max(p => p.EstimatedCost));
 
         if (request.ProbeOnly)
         {
@@ -133,7 +132,7 @@ public class AssignmentEngine : IAssignmentEngine
             return await RecordFailureAsync(
                 job, request, filter, [], AssignmentOutcomes.NoFeasibleSlot,
                 "No capable machine has capacity before the internal due date",
-                stopwatch, budget, budgetExceeded: false, earliestEnd, cancellationToken);
+                stopwatch, budget, budgetExceeded: false, earliestEnd, scoringConfig, cancellationToken);
         }
 
         var budgetExceeded = false;
@@ -164,13 +163,13 @@ public class AssignmentEngine : IAssignmentEngine
             {
                 return await RecordFailureAsync(
                     job, request, filter, ranked, AssignmentOutcomes.RejectedByAggregate,
-                    assignment.Error.Message, stopwatch, budget, budgetExceeded, earliestEnd, cancellationToken);
+                    assignment.Error.Message, stopwatch, budget, budgetExceeded, earliestEnd, scoringConfig, cancellationToken);
             }
 
             // FR-SCHED-009 E1: the decision entry rides in the SAME transaction as the
             // placement it explains — if the log cannot be written, neither is the assignment.
             await _decisions.AddAsync(
-                BuildDecision(job, request, AssignmentOutcomes.Assigned, filter, ranked, stopwatch, budget, budgetExceeded, best),
+                BuildDecision(job, request, AssignmentOutcomes.Assigned, filter, ranked, stopwatch, budget, budgetExceeded, best, scoringConfig),
                 cancellationToken);
 
             if (await _unitOfWork.TrySaveChangesSafeAsync(cancellationToken))
@@ -204,7 +203,7 @@ public class AssignmentEngine : IAssignmentEngine
             {
                 return await RecordFailureAsync(
                     job, request, filter, ranked, AssignmentOutcomes.PlacementRace,
-                    "Job disappeared during assignment", stopwatch, budget, budgetExceeded, earliestEnd, cancellationToken);
+                    "Job disappeared during assignment", stopwatch, budget, budgetExceeded, earliestEnd, scoringConfig, cancellationToken);
             }
 
             job = reloaded;
@@ -217,7 +216,7 @@ public class AssignmentEngine : IAssignmentEngine
         return await RecordFailureAsync(
             job, request, filter, ranked, AssignmentOutcomes.PlacementRace,
             "Every candidate placement collided with a concurrent booking — retry shortly",
-            stopwatch, budget, budgetExceeded, earliestEnd, cancellationToken);
+            stopwatch, budget, budgetExceeded, earliestEnd, scoringConfig, cancellationToken);
     }
 
     /// <summary>
@@ -260,10 +259,11 @@ public class AssignmentEngine : IAssignmentEngine
         TimeSpan budget,
         bool budgetExceeded,
         DateTime? earliestEnd,
+        ScoringParameterSet scoringConfig,
         CancellationToken cancellationToken)
     {
         await _decisions.AddAsync(
-            BuildDecision(job, request, outcome, filter, ranked, stopwatch, budget, budgetExceeded, chosen: null, reason: reason),
+            BuildDecision(job, request, outcome, filter, ranked, stopwatch, budget, budgetExceeded, chosen: null, scoringConfig, reason),
             cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -282,6 +282,7 @@ public class AssignmentEngine : IAssignmentEngine
         TimeSpan budget,
         bool budgetExceeded,
         ScoredPlacement? chosen,
+        ScoringParameterSet scoringConfig,
         string? reason = null)
     {
         return AssignmentDecision.Record(
@@ -290,8 +291,8 @@ public class AssignmentEngine : IAssignmentEngine
             outcome: outcome,
             candidatesJson: DecisionSnapshotJson.Candidates(filter, request.ExcludeLabId),
             rankingJson: DecisionSnapshotJson.Ranking(ranked),
-            scoringConfigVersion: _scoringConfig.Version,
-            scoringConfigJson: DecisionSnapshotJson.ScoringConfig(_scoringConfig),
+            scoringConfigVersion: scoringConfig.Version,
+            scoringConfigJson: DecisionSnapshotJson.ScoringConfig(scoringConfig),
             timeBudgetMs: (int)budget.TotalMilliseconds,
             elapsedMs: Elapsed(stopwatch),
             budgetExceeded: budgetExceeded,
