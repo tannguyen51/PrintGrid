@@ -20,11 +20,13 @@ public class DateChangeRequest : AggregateRoot<Guid>
     /// <summary>Earliest date the network can actually deliver, proposed to the customer.</summary>
     public DateOnly ProposedDeliveryDate { get; private set; }
 
+    public DateChangeReason ReasonCode { get; private set; }
     public string Reason { get; private set; } = string.Empty;
     public string Token { get; private set; } = string.Empty;
     public DateChangeRequestStatus Status { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
     public DateTime? DecidedAtUtc { get; private set; }
+    public Guid? DecidedByCustomerId { get; private set; }
 
     private DateChangeRequest() { }
 
@@ -33,10 +35,20 @@ public class DateChangeRequest : AggregateRoot<Guid>
         Guid orderItemId,
         DateOnly originalDeliveryDate,
         DateOnly proposedDeliveryDate,
+        DateChangeReason reasonCode,
         string reason,
         string token,
         DateTime? createdAtUtc = null)
     {
+        if (!Enum.IsDefined(reasonCode))
+            throw new ArgumentOutOfRangeException(nameof(reasonCode), "Only the three B16 reasons are allowed");
+        if (proposedDeliveryDate <= originalDeliveryDate)
+            throw new ArgumentOutOfRangeException(nameof(proposedDeliveryDate), "The proposed date must be later than the committed date");
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("A date-change explanation is required", nameof(reason));
+        if (string.IsNullOrWhiteSpace(token))
+            throw new ArgumentException("A customer decision token is required", nameof(token));
+
         return new DateChangeRequest
         {
             Id = Guid.NewGuid(),
@@ -44,6 +56,7 @@ public class DateChangeRequest : AggregateRoot<Guid>
             OrderItemId = orderItemId,
             OriginalDeliveryDate = originalDeliveryDate,
             ProposedDeliveryDate = proposedDeliveryDate,
+            ReasonCode = reasonCode,
             Reason = reason,
             Token = token,
             Status = DateChangeRequestStatus.Proposed,
@@ -51,15 +64,21 @@ public class DateChangeRequest : AggregateRoot<Guid>
         };
     }
 
-    public void Approve(DateTime decidedAtUtc)
+    public void Approve(Guid customerId, DateTime decidedAtUtc)
     {
+        if (Status != DateChangeRequestStatus.Proposed)
+            throw new InvalidOperationException("Only a proposed date change can be approved");
         Status = DateChangeRequestStatus.Approved;
+        DecidedByCustomerId = customerId;
         DecidedAtUtc = decidedAtUtc;
     }
 
-    public void Reject(DateTime decidedAtUtc)
+    public void Reject(Guid customerId, DateTime decidedAtUtc)
     {
+        if (Status != DateChangeRequestStatus.Proposed)
+            throw new InvalidOperationException("Only a proposed date change can be rejected");
         Status = DateChangeRequestStatus.Rejected;
+        DecidedByCustomerId = customerId;
         DecidedAtUtc = decidedAtUtc;
     }
 }

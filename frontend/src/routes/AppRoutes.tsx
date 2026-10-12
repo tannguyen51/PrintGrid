@@ -11,6 +11,7 @@ const ModelLibraryPage = lazy(() => import('../features/models/ModelLibraryPage'
 const StartOrderPage = lazy(() => import('../features/orders/StartOrderPage'))
 const OrderConfigPage = lazy(() => import('../features/quotes/OrderConfigPage'))
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'))
+const DateChangeDecisionPage = lazy(() => import('../features/orders/DateChangeDecisionPage'))
 const LabQueuePage = lazy(() => import('../features/lab/LabQueuePage'))
 const InventoryPage = lazy(() => import('../features/lab/InventoryPage'))
 const ShipmentBatchPlannerPage = lazy(() => import('../features/lab/ShipmentBatchPlannerPage'))
@@ -93,6 +94,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['Customer']}>
               <OrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/date-change/:token"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <DateChangeDecisionPage />
             </ProtectedRoute>
           }
         />

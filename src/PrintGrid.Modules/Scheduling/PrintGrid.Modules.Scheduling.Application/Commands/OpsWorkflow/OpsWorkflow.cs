@@ -20,7 +20,7 @@ public sealed record OpsReassignResultDto(string Outcome, Guid JobId, Guid? LabI
 
 public sealed record GetOpsMonitorQuery : IRequest<Result<OpsMonitorDto>>;
 public sealed record PreviewOpsReassignQuery(Guid JobId) : IRequest<Result<OpsReassignPreviewDto>>;
-public sealed record ReassignJobByOpsCommand(Guid JobId, Guid ActorId, string Reason, bool ConfirmCustomerDateImpact) : IRequest<Result<OpsReassignResultDto>>;
+public sealed record ReassignJobByOpsCommand(Guid JobId, Guid ActorId, string Reason, bool ConfirmCustomerDateImpact, DateChangeReason? DateChangeReason = null) : IRequest<Result<OpsReassignResultDto>>;
 
 internal static class OpsRisk
 {
@@ -110,11 +110,16 @@ public sealed class ReassignJobByOpsCommandHandler(
         {
             if (!command.ConfirmCustomerDateImpact)
                 return Result.Failure<OpsReassignResultDto>(Error.Conflict("Xác nhận bước 2 là bắt buộc vì ngày cam kết khách bị ảnh hưởng"));
+            if (command.DateChangeReason is null || !Enum.IsDefined(command.DateChangeReason.Value))
+                return Result.Failure<OpsReassignResultDto>(Error.Validation("Phải chọn một trong ba điều kiện đổi ngày của B16"));
+            if (command.DateChangeReason == PrintGrid.Modules.Scheduling.Domain.Enums.DateChangeReason.ReprintDeadlineUnrecoverable && job.AttemptNumber < 2)
+                return Result.Failure<OpsReassignResultDto>(Error.Conflict("B16 yêu cầu ít nhất hai lần in lại trước khi đổi ngày vì không thể cứu hạn"));
             if (await dateChanges.HasPendingAsync(job.Id, ct))
                 return Result.Failure<OpsReassignResultDto>(Error.Conflict("Job đã có đề nghị đổi ngày đang chờ khách"));
             var request = DateChangeRequest.Propose(job.Id, job.OrderItemId,
                 job.InternalDueDate.AddDays(PlacementShortfallService.HubAndTransitBufferDays),
-                preview.Value.ProposedCustomerDate!.Value, command.Reason.Trim(), Guid.NewGuid().ToString("N"), clock.UtcNow);
+                preview.Value.ProposedCustomerDate!.Value, command.DateChangeReason.Value,
+                command.Reason.Trim(), Guid.NewGuid().ToString("N"), clock.UtcNow);
             await dateChanges.AddAsync(request, ct);
             var scoringConfig = await scoringConfigurations.GetActiveAsync(ct);
             await decisions.AddAsync(AssignmentDecision.Record(

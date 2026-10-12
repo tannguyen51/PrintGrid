@@ -512,6 +512,58 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.ToTable("quote_items", "customer");
                 });
 
+            modelBuilder.Entity("PrintGrid.Modules.Customer.Domain.Entities.RefundRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<Guid>("DateChangeRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrderItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PaymentTransactionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DateChangeRequestId")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "CreatedAtUtc");
+
+                    b.ToTable("refund_requests", "customer");
+                });
+
             modelBuilder.Entity("PrintGrid.Modules.Customer.Domain.Entities.ReprintRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -660,6 +712,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<DateTime?>("DecidedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("DecidedByCustomerId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("JobId")
                         .HasColumnType("uuid");
 
@@ -676,6 +731,11 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)");
 
                     b.Property<string>("Status")
                         .IsRequired()

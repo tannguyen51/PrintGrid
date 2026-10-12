@@ -57,7 +57,10 @@ public class OpsController : ControllerBase
     {
         var actorId = User.GetCustomerId();
         if (actorId is null) return Forbid();
-        return ToResult(await _sender.Send(new ReassignJobByOpsCommand(jobId, actorId.Value, request.Reason, request.ConfirmCustomerDateImpact), cancellationToken));
+        PrintGrid.Modules.Scheduling.Domain.Enums.DateChangeReason? reasonCode = null;
+        if (Enum.TryParse<PrintGrid.Modules.Scheduling.Domain.Enums.DateChangeReason>(request.DateChangeReason, true, out var parsed))
+            reasonCode = parsed;
+        return ToResult(await _sender.Send(new ReassignJobByOpsCommand(jobId, actorId.Value, request.Reason, request.ConfirmCustomerDateImpact, reasonCode), cancellationToken));
     }
 
     private IActionResult ToResult<T>(PrintGrid.SharedKernel.Results.Result<T> result)
@@ -73,4 +76,4 @@ public class OpsController : ControllerBase
     }
 }
 
-public sealed record OpsReassignRequest(string Reason, bool ConfirmCustomerDateImpact = false);
+public sealed record OpsReassignRequest(string Reason, bool ConfirmCustomerDateImpact = false, string? DateChangeReason = null);

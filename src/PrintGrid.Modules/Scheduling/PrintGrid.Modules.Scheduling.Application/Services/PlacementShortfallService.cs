@@ -65,11 +65,22 @@ public class PlacementShortfallService : IPlacementShortfallService
         if (proposedDelivery <= originalDelivery)
             proposedDelivery = originalDelivery.AddDays(1);
 
+        if (job.AttemptNumber < 2)
+        {
+            await _escalations.AddAsync(
+                OpsEscalation.Raise(job.Id, job.OrderItemId, OpsEscalationKind.NoFeasibleSlot,
+                    $"Date change blocked by B16: {reason}", _clock.UtcNow), cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            _logger.LogWarning("Job {JobId} cannot hold its date, but B16 blocks a proposal before two reprints", job.Id);
+            return;
+        }
+
         var request = DateChangeRequest.Propose(
             job.Id,
             job.OrderItemId,
             originalDelivery,
             proposedDelivery,
+            DateChangeReason.ReprintDeadlineUnrecoverable,
             reason,
             // Token the customer-facing approval link carries (POST /date-change-requests/{token}/approve).
             token: Guid.NewGuid().ToString("N"),

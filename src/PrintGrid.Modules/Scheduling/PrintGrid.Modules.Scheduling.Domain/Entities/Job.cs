@@ -185,6 +185,16 @@ public class Job : AggregateRoot<Guid>
         return Result.Success();
     }
 
+    public Result ApplyApprovedInternalDueDate(DateOnly newInternalDueDate)
+    {
+        if (newInternalDueDate <= InternalDueDate)
+            return Result.Failure(Error.Validation("The approved internal due date must be later than the current due date"));
+        if (Status is JobStatus.Completed or JobStatus.Cancelled)
+            return Result.Failure(Error.Conflict("A closed job cannot change its due date"));
+        InternalDueDate = newInternalDueDate;
+        return Result.Success();
+    }
+
     public Result Accept() => Accept(DateTime.UtcNow);
 
     public Result Accept(DateTime nowUtc)
