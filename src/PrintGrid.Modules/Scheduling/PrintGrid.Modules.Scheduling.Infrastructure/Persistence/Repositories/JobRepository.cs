@@ -50,6 +50,15 @@ public class JobRepository : IJobRepository
         CancellationToken cancellationToken = default) =>
         await _context.Set<Job>().Where(j => ids.Contains(j.Id)).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Job>> GetOperationalAsync(CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .AsNoTracking()
+            .Where(j => j.Status == JobStatus.Pending || j.Status == JobStatus.Reassigned ||
+                        j.Status == JobStatus.Assigned || j.Status == JobStatus.Accepted ||
+                        j.Status == JobStatus.InProgress)
+            .OrderBy(j => j.InternalDueDate)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Job>> GetActiveByMachineAsync(
         Guid machineId,
         CancellationToken cancellationToken = default) =>

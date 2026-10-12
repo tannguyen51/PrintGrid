@@ -295,7 +295,7 @@ public class AssignmentEngine : IAssignmentEngine
             timeBudgetMs: (int)budget.TotalMilliseconds,
             elapsedMs: Elapsed(stopwatch),
             budgetExceeded: budgetExceeded,
-            reason: reason,
+            reason: reason ?? request.Reason,
             actorType: request.ActorType,
             actorId: request.ActorId,
             chosenLabId: chosen?.Placement.Candidate.Lab.Id,

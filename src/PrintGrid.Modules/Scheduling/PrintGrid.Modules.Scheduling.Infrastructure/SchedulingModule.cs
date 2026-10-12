@@ -29,5 +29,7 @@ public class SchedulingModule : IModule
             rates,
             decimal.TryParse(configuration["ShipmentBatch:WeightMultipliers:UpTo5Kg"], NumberStyles.Number, CultureInfo.InvariantCulture, out var medium) ? medium : 1.6m,
             decimal.TryParse(configuration["ShipmentBatch:WeightMultipliers:Over5Kg"], NumberStyles.Number, CultureInfo.InvariantCulture, out var large) ? large : 2.4m));
+        services.AddSingleton(new Application.Commands.OpsWorkflow.OpsMonitorPolicy(
+            decimal.TryParse(configuration["OpsMonitor:AtRiskSlackHours"], NumberStyles.Number, CultureInfo.InvariantCulture, out var slack) ? slack : 4m));
     }
 }

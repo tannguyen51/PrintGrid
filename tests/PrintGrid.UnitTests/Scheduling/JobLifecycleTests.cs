@@ -166,6 +166,22 @@ public class JobLifecycleTests
     }
 
     [Fact]
+    public void Ops_reassignment_requires_reason_and_only_allows_unstarted_work()
+    {
+        var assigned = CreateAssignedJob();
+
+        assigned.PrepareForOpsReassignment("short").IsFailure.Should().BeTrue();
+        assigned.PrepareForOpsReassignment("Cân bằng tải do máy hiện tại quá sát hạn").IsSuccess.Should().BeTrue();
+        assigned.Status.Should().Be(JobStatus.Reassigned);
+        assigned.LabId.Should().BeNull();
+        assigned.MachineId.Should().BeNull();
+
+        var printing = CreateInProgressJob();
+        printing.PrepareForOpsReassignment("Không được di chuyển job đang in").IsFailure.Should().BeTrue();
+        printing.Status.Should().Be(JobStatus.InProgress);
+    }
+
+    [Fact]
     public void Validator_fails_when_no_photo_evidence_provided_AC01()
     {
         var validator = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommandValidator();

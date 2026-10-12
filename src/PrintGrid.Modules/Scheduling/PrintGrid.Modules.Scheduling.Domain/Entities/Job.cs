@@ -365,6 +365,24 @@ public class Job : AggregateRoot<Guid>
         return Result.Success();
     }
 
+    public Result PrepareForOpsReassignment(string reason)
+    {
+        if (Status is not (JobStatus.Assigned or JobStatus.Accepted))
+            return Result.Failure(Error.Conflict("Only an unstarted assigned job can be reassigned by operations"));
+        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 10)
+            return Result.Failure(Error.Validation("Intervention reason must contain at least 10 characters"));
+
+        AttemptNumber++;
+        Status = JobStatus.Reassigned;
+        LabId = null;
+        MachineId = null;
+        PlannedStartUtc = null;
+        PlannedEndUtc = null;
+        AssignedAtUtc = null;
+        FailureReason = reason.Trim();
+        return Result.Success();
+    }
+
     /// <summary>
     /// Hub QC pass (FR-HUB-002): the inspection evidence is recorded and the job closes.
     /// The lab's own QC evidence must already be approved; that is returned as a failure
