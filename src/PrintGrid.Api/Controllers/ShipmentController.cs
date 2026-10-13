@@ -35,6 +35,17 @@ public class ShipmentController : ControllerBase
         return ToResult(result);
     }
 
+    [HttpPost("ship-consolidated")]
+    public async Task<IActionResult> ShipConsolidated([FromBody] ShipConsolidatedRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new ShipConsolidatedOrdersCommand(request.OrderIds, request.TrackingNumber),
+            cancellationToken);
+
+        if (result.IsSuccess) return Ok(result.Value);
+        return ToError(result.Error);
+    }
+
     [HttpPost("{orderId:guid}/deliver")]
     public async Task<IActionResult> Deliver(Guid orderId, CancellationToken cancellationToken)
     {
@@ -42,17 +53,42 @@ public class ShipmentController : ControllerBase
         return ToResult(result);
     }
 
+    [HttpPost("deliver-consolidated")]
+    public async Task<IActionResult> DeliverConsolidated([FromBody] DeliverConsolidatedRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new DeliverConsolidatedOrdersCommand(request.OrderIds), cancellationToken);
+        return ToResult(result);
+    }
+
+    [HttpPost("{orderId:guid}/refund")]
+    public async Task<IActionResult> RefundOrder(Guid orderId, [FromBody] RefundOrderRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new RefundOrderWithinScopeCommand(orderId, request.Amount, request.Reason), cancellationToken);
+        return ToResult(result);
+    }
+
     private IActionResult ToResult(Result result)
     {
         if (result.IsSuccess) return NoContent();
-        var status = result.Error.Code switch
+        return ToError(result.Error);
+    }
+
+    private IActionResult ToError(Error error)
+    {
+        var status = error.Code switch
         {
             "not_found" => StatusCodes.Status404NotFound,
             "conflict" => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
-        return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
+        return StatusCode(status, new { error = new { code = error.Code, message = error.Message } });
     }
 }
 
 public record ShipRequest(string TrackingNumber);
+
+public record ShipConsolidatedRequest(IReadOnlyList<Guid> OrderIds, string TrackingNumber);
+
+public record DeliverConsolidatedRequest(IReadOnlyList<Guid> OrderIds);
+
+public record RefundOrderRequest(decimal Amount, string? Reason = null);

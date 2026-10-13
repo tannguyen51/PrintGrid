@@ -54,7 +54,7 @@ export default function EscalationQueuePage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Hàng đợi cảnh báo — Ops
               </Typography>
-              <Typography color="text.secondary">Việc xếp lịch cần người xử lý: in lại vượt trần và job không còn khung giờ (BR-SCHED-011)</Typography>
+              <Typography color="text.secondary">Danh sách đơn in cần can thiệp xử lý: in lại vượt giới hạn hoặc không còn khung giờ khả dụng</Typography>
             </Box>
           </Stack>
           <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>

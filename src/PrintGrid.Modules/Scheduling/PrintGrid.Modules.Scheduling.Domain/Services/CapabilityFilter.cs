@@ -19,7 +19,7 @@ public class CapabilityFilter
         var candidates = new List<CapabilityCandidate>();
         var rejections = new List<CapabilityRejection>();
 
-        foreach (var lab in labs.Where(l => l.IsActive))
+        foreach (var lab in labs.Where(l => l.IsActive && l.Status == LabStatus.Active && l.IsDeclarationComplete))
         {
             if (!lab.IsInGoodStanding)
             {
@@ -47,7 +47,7 @@ public class CapabilityFilter
     private static string? Reject(Lab lab, Machine machine, JobSpecification spec)
     {
         if (machine.Status == MachineStatus.Offline) return "machine_offline";
-        if (machine.Status == MachineStatus.Maintenance) return "machine_in_maintenance";
+        if (machine.Status == MachineStatus.Maintenance || machine.IsInMaintenanceAt(DateTime.UtcNow)) return "machine_in_maintenance";
         if (machine.Technology != spec.Technology) return "technology_mismatch";
         if (!machine.BuildVolume.CanFit(spec.RequiredVolume)) return "build_volume_too_small";
         if (machine.MinLayerHeightMm > spec.LayerHeightMm) return "layer_height_unachievable";

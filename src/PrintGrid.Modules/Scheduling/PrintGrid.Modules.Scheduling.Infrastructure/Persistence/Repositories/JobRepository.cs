@@ -8,7 +8,7 @@ namespace PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Repositories;
 
 public class JobRepository : IJobRepository
 {
-    private static readonly JobStatus[] ActiveStatuses =
+    private static readonly JobStatus[] _activeStatuses =
     {
         JobStatus.Assigned, JobStatus.Accepted, JobStatus.InProgress
     };
@@ -38,8 +38,23 @@ public class JobRepository : IJobRepository
         Guid machineId,
         CancellationToken cancellationToken = default) =>
         await _context.Set<Job>()
-            .Where(j => j.MachineId == machineId && ActiveStatuses.Contains(j.Status))
+            .Where(j => j.MachineId == machineId && _activeStatuses.Contains(j.Status))
             .OrderBy(j => j.PlannedStartUtc)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Job>> GetByLabIdAsync(
+        Guid labId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .Where(j => j.LabId == labId)
+            .OrderBy(j => j.PlannedStartUtc ?? j.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Job>> GetAllAssignedToLabsAsync(
+        DateTime sinceUtc,
+        CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .Where(j => j.LabId != null && j.CreatedAt >= sinceUtc)
             .ToListAsync(cancellationToken);
 
     public async Task AddAsync(Job job, CancellationToken cancellationToken = default) =>

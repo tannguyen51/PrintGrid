@@ -14,7 +14,10 @@ public record MachineDto(
     decimal AchievableToleranceMm,
     decimal SpeedFactor,
     MachineStatus Status,
-    IReadOnlyCollection<string> SupportedMaterials);
+    IReadOnlyCollection<string> SupportedMaterials,
+    DateTime? MaintenanceFromUtc = null,
+    DateTime? MaintenanceUntilUtc = null,
+    string? MaintenanceReason = null);
 
 public record LabDto(
     Guid Id,
@@ -25,7 +28,66 @@ public record LabDto(
     decimal FirstPassYield,
     int TransitDaysToHub,
     DateTime CreatedAt,
-    IReadOnlyCollection<MachineDto> Machines);
+    IReadOnlyCollection<MachineDto> Machines,
+    string Status = "Active",
+    string OperatingHours = "T2-T7 08:00-18:00",
+    Guid? OwnerUserId = null,
+    string? ContactPhone = null,
+    string? Address = null,
+    string? RejectionReason = null,
+    bool IsDeclarationComplete = true);
+
+public record MachineTimelineSlotDto(
+    Guid JobId,
+    string? OrderNumber,
+    string? ModelFileName,
+    string MaterialCode,
+    string ColorCode,
+    string Status,
+    int AttemptNumber,
+    DateOnly InternalDueDate,
+    int EstimatedPrintMinutes,
+    DateTime PlannedStartUtc,
+    DateTime PlannedEndUtc);
+
+public record MachineTimelineDto(
+    Guid MachineId,
+    string MachineName,
+    string Model,
+    PrintTechnology Technology,
+    MachineStatus Status,
+    DateTime? MaintenanceFromUtc,
+    DateTime? MaintenanceUntilUtc,
+    string? MaintenanceReason,
+    int TotalQueueMinutes,
+    IReadOnlyList<MachineTimelineSlotDto> Slots);
+
+public record LabTimelineDto(
+    Guid LabId,
+    string LabName,
+    string OperatingHours,
+    int TransitDaysToHub,
+    DateTime GeneratedAtUtc,
+    IReadOnlyList<MachineTimelineDto> Machines);
+
+public record LabPerformanceMetricsDto(
+    decimal OnTimeDeliveryRate,
+    decimal FirstPassYield,
+    decimal AcceptanceRate,
+    decimal UtilizationRate);
+
+public record LabPerformanceDto(
+    Guid LabId,
+    string LabName,
+    int CompletedJobsCount,
+    int TotalAssignedJobsCount,
+    bool IsProvisional,
+    decimal StandingScore,
+    string StandingLabel,
+    LabPerformanceMetricsDto LabMetrics,
+    LabPerformanceMetricsDto NetworkAnonymousAverage,
+    decimal NetworkAverageStandingScore,
+    int ActiveLabsInBenchmark);
 
 public record MaterialStockDto(
     Guid Id,

@@ -34,9 +34,20 @@ public class Order : AggregateRoot<Guid>
     /// <summary>The customer who confirmed receipt — pairs with <see cref="DeliveredAt"/> (who/when).</summary>
     public Guid? ReceiptConfirmedBy { get; private set; }
 
+    /// <summary>Timestamp when the order entered QualityCheck / became ready at Hub for 24h consolidation window (FR-HUB-006 / BR-LOG-001).</summary>
+    public DateTime? ReadyForPackingAtUtc { get; private set; }
+
+    /// <summary>Shared package identifier when multiple orders of the same customer+address are consolidated into 1 shipment (FR-HUB-006).</summary>
+    public Guid? ConsolidatedShipmentId { get; private set; }
+
+    /// <summary>Total amount refunded on this specific order — strictly bounded by this order's TotalPrice (BR-LOG-002 / AC02).</summary>
+    public decimal RefundedAmount { get; private set; }
+
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
 
     public void MarkAsDelayed() => IsDelayed = true;
+
+    public void SetReadyForPackingAt(DateTime readyAtUtc) => ReadyForPackingAtUtc = readyAtUtc;
 
     private Order() { }
 
@@ -110,14 +121,36 @@ public class Order : AggregateRoot<Guid>
             return Result.Failure(Error.Conflict($"Cannot move order from {Status} to {next}"));
 
         Status = next;
+        if (next == OrderStatus.QualityCheck)
+        {
+            ReadyForPackingAtUtc ??= DateTime.UtcNow;
+        }
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Checks whether this order can be consolidated into one single package + waybill with <paramref name="other"/>
+    /// (FR-HUB-006 / BR-LOG-001: same customer + same delivery address + both in QualityCheck + ready within 24 hours).
+    /// </summary>
+    public bool CanConsolidateWith(Order other, TimeSpan? maxReadyWindow = null)
+    {
+        if (Id == other.Id) return false;
+        if (Status != OrderStatus.QualityCheck || other.Status != OrderStatus.QualityCheck) return false;
+        if (CustomerId != other.CustomerId) return false;
+        if (!Equals(DeliveryAddress, other.DeliveryAddress)) return false;
+
+        var window = maxReadyWindow ?? TimeSpan.FromHours(24);
+        var thisReady = ReadyForPackingAtUtc ?? ConfirmedAt ?? CreatedAt;
+        var otherReady = other.ReadyForPackingAtUtc ?? other.ConfirmedAt ?? other.CreatedAt;
+
+        return Math.Abs((thisReady - otherReady).TotalHours) <= window.TotalHours;
     }
 
     /// <summary>
     /// Hub goods-out. Requires a tracking number (BR: bắt buộc có vận đơn) and can only run on a
     /// quality-checked order; moves it to <see cref="OrderStatus.Shipping"/> and stores the carrier code.
     /// </summary>
-    public Result Ship(string? trackingNumber)
+    public Result Ship(string? trackingNumber, Guid? consolidatedShipmentId = null)
     {
         if (string.IsNullOrWhiteSpace(trackingNumber))
             return Result.Failure(Error.Validation("Tracking number is required to ship the order."));
@@ -127,6 +160,27 @@ public class Order : AggregateRoot<Guid>
             return moved;
 
         TrackingNumber = trackingNumber.Trim();
+        ConsolidatedShipmentId = consolidatedShipmentId;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Refunds an amount strictly within the scope of this original order (BR-LOG-002 / AC02).
+    /// Even if the order was shipped in a consolidated package with other orders, the refundable
+    /// ceiling is strictly this order's <see cref="TotalPrice"/>.
+    /// </summary>
+    public Result RefundWithinOriginalOrderScope(decimal amount)
+    {
+        if (amount <= 0m)
+            return Result.Failure(Error.Validation("Số tiền hoàn phải lớn hơn 0."));
+
+        if (RefundedAmount + amount > TotalPrice.Amount)
+        {
+            return Result.Failure(Error.Conflict(
+                $"Số tiền hoàn ({RefundedAmount + amount:N0} {TotalPrice.Currency}) vượt quá giá trị của đơn gốc {OrderNumber} ({TotalPrice.Amount:N0} {TotalPrice.Currency})."));
+        }
+
+        RefundedAmount += amount;
         return Result.Success();
     }
 

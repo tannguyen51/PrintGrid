@@ -51,7 +51,7 @@ export default function SchedulingBoardPage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Bảng điều phối — Ops
               </Typography>
-              <Typography color="text.secondary">Gán job cho lab/máy phù hợp nhất (FR-SCHED-004)</Typography>
+              <Typography color="text.secondary">Điều phối và phân bổ đơn in cho xưởng và máy in phù hợp nhất</Typography>
             </Box>
           </Stack>
           <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>

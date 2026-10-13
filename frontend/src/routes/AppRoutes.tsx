@@ -12,6 +12,9 @@ const StartOrderPage = lazy(() => import('../features/orders/StartOrderPage'))
 const OrderConfigPage = lazy(() => import('../features/quotes/OrderConfigPage'))
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'))
 const LabQueuePage = lazy(() => import('../features/lab/LabQueuePage'))
+const LabRegisterPage = lazy(() => import('../features/lab/LabRegisterPage'))
+const LabMachinesPage = lazy(() => import('../features/lab/LabMachinesPage'))
+const LabTimelineScorePage = lazy(() => import('../features/lab/LabTimelineScorePage'))
 const InventoryPage = lazy(() => import('../features/lab/InventoryPage'))
 const HubQCPage = lazy(() => import('../features/hub/HubQCPage'))
 const HubShipmentsPage = lazy(() => import('../features/hub/HubShipmentsPage'))
@@ -104,6 +107,38 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/lab/register"
+          element={
+            <ProtectedRoute allowedRoles={['LabManager', 'LabOperator']}>
+              <LabRegisterPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/lab/machines"
+          element={
+            <ProtectedRoute allowedRoles={['LabManager', 'LabOperator']}>
+              <LabMachinesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/lab/timeline"
+          element={
+            <ProtectedRoute allowedRoles={['LabManager', 'LabOperator']}>
+              <LabTimelineScorePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/lab/score"
+          element={
+            <ProtectedRoute allowedRoles={['LabManager', 'LabOperator']}>
+              <LabTimelineScorePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/lab/:labId/inventory"
           element={
             <ProtectedRoute allowedRoles={['LabManager']}>
@@ -121,6 +156,14 @@ export function AppRoutes() {
         />
         <Route
           path="/hub/shipments"
+          element={
+            <ProtectedRoute allowedRoles={['HubQC', 'HubFulfillment']}>
+              <HubShipmentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/hub/complete-orders"
           element={
             <ProtectedRoute allowedRoles={['HubQC', 'HubFulfillment']}>
               <HubShipmentsPage />
@@ -169,6 +212,14 @@ export function AppRoutes() {
         />
         <Route
           path="/ops/labs"
+          element={
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+              <OpsLabsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/labs"
           element={
             <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <OpsLabsPage />

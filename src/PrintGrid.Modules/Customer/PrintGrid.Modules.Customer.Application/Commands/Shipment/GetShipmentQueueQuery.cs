@@ -11,7 +11,16 @@ public record ShipmentOrderDto(
     string? TrackingNumber,
     DateOnly PromisedDeliveryDate,
     DateTime? DeliveredAt,
-    bool ReceiptConfirmed);
+    bool ReceiptConfirmed,
+    Guid CustomerId = default,
+    string DeliveryAddressSummary = "",
+    DateTime? ReadyForPackingAtUtc = null,
+    Guid? ConsolidatedShipmentId = null,
+    string? SuggestedConsolidationGroupKey = null,
+    IReadOnlyList<string>? SuggestedCompanionOrderNumbers = null,
+    decimal TotalAmount = 0m,
+    decimal RefundedAmount = 0m,
+    int ItemCount = 0);
 
 /// <summary>
 /// Hub shipment queue: orders that are ready to ship (QualityCheck) or already in transit / handed over

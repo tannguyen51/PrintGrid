@@ -43,12 +43,14 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
 
         var labs = await _context.Set<Lab>()
             .Include(l => l.Machines)
-            .Where(l => l.IsActive)
+            .Where(l => l.IsActive && l.Status == LabStatus.Active)
             .ToListAsync(cancellationToken);
 
         var candidates = labs
+            .Where(l => l.IsDeclarationComplete && l.IsInGoodStanding)
             .SelectMany(l => l.Machines.Select(m => (Lab: l, Machine: m)))
-            .Where(x => x.Machine.Status is MachineStatus.Idle or MachineStatus.Printing)
+            .Where(x => (x.Machine.Status is MachineStatus.Idle or MachineStatus.Printing)
+                        && !x.Machine.IsInMaintenanceAt(notBeforeUtc))
             .ToList();
 
         if (candidates.Count == 0) return null;
@@ -78,8 +80,13 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
             if (!specs.All(machine.Supports)) continue;
 
             var windows = bookedByMachine.TryGetValue(machine.Id, out var w)
-                ? w
+                ? new List<(DateTime Start, DateTime End)>(w)
                 : new List<(DateTime Start, DateTime End)>();
+            if (machine.MaintenanceFromUtc.HasValue && machine.MaintenanceUntilUtc.HasValue && machine.MaintenanceUntilUtc.Value > notBeforeUtc)
+            {
+                windows.Add((machine.MaintenanceFromUtc.Value, machine.MaintenanceUntilUtc.Value));
+                windows.Sort((a, b) => a.Start.CompareTo(b.Start));
+            }
             var cursor = notBeforeUtc;
 
             foreach (var (line, spec) in lines.Zip(specs))
