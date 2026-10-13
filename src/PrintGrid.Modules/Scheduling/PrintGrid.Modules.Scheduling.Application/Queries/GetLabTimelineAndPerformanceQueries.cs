@@ -16,7 +16,7 @@ public class GetLabTimelineAndPerformanceQueryHandler :
     IRequestHandler<GetLabTimelineQuery, Result<LabTimelineDto>>,
     IRequestHandler<GetLabPerformanceQuery, Result<LabPerformanceDto>>
 {
-    private static readonly JobStatus[] ActiveTimelineStatuses =
+    private static readonly JobStatus[] _activeTimelineStatuses =
     {
         JobStatus.Assigned,
         JobStatus.Accepted,
@@ -52,7 +52,7 @@ public class GetLabTimelineAndPerformanceQueryHandler :
         // As soon as a job is completed (transitions to AwaitingInspection / Completed), its slot disappears from future timeline.
         var activeJobs = labJobs
             .Where(j => j.MachineId.HasValue
-                        && ActiveTimelineStatuses.Contains(j.Status)
+                        && _activeTimelineStatuses.Contains(j.Status)
                         && j.PlannedStartUtc.HasValue
                         && j.PlannedEndUtc.HasValue)
             .OrderBy(j => j.PlannedStartUtc)

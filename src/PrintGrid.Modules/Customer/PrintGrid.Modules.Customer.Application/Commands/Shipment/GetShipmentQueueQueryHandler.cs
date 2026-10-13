@@ -8,7 +8,7 @@ namespace PrintGrid.Modules.Customer.Application.Commands.Shipment;
 public class GetShipmentQueueQueryHandler : IRequestHandler<GetShipmentQueueQuery, Result<IReadOnlyList<ShipmentOrderDto>>>
 {
     // The hub only acts on the tail of the chain: quality-checked (ready to ship), shipped, delivered.
-    private static readonly OrderStatus[] QueueStatuses =
+    private static readonly OrderStatus[] _queueStatuses =
     [
         OrderStatus.QualityCheck,
         OrderStatus.Shipping,
@@ -23,7 +23,7 @@ public class GetShipmentQueueQueryHandler : IRequestHandler<GetShipmentQueueQuer
         GetShipmentQueueQuery request,
         CancellationToken cancellationToken)
     {
-        var orders = await _orders.GetByStatusAsync(QueueStatuses, cancellationToken);
+        var orders = await _orders.GetByStatusAsync(_queueStatuses, cancellationToken);
 
         // AC01 (FR-HUB-006 / BR-LOG-001): Group QualityCheck orders by same CustomerId + same DeliveryAddress
         // where ready timestamps are within <= 24 hours.

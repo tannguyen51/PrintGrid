@@ -4,14 +4,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
+namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations;
+
+/// <inheritdoc />
+public partial class InitialCreate : Migration
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
             migrationBuilder.EnsureSchema(
                 name: "customer");
 
@@ -341,4 +341,3 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                 schema: "customer");
         }
     }
-}

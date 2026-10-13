@@ -81,7 +81,7 @@ public class Week4HubConsolidationTests
 
         var consolidateHandler = new ConsolidateShipmentCommandHandler(_orders, _unitOfWork, _publisher);
         var shipResult = await consolidateHandler.Handle(
-            new ShipConsolidatedOrdersCommand(new[] { order1.Id, order2.Id }, "GHN-CONSOL-999"),
+            new ShipConsolidatedOrdersCommand([order1.Id, order2.Id], "GHN-CONSOL-999"),
             CancellationToken.None);
 
         shipResult.IsSuccess.Should().BeTrue();
@@ -109,7 +109,7 @@ public class Week4HubConsolidationTests
 
         var handler = new ConsolidateShipmentCommandHandler(_orders, _unitOfWork, _publisher);
         var tooFarApart = await handler.Handle(
-            new ShipConsolidatedOrdersCommand(new[] { orderEarly.Id, orderLate.Id }, "VNPOST-001"),
+            new ShipConsolidatedOrdersCommand([orderEarly.Id, orderLate.Id], "VNPOST-001"),
             CancellationToken.None);
 
         tooFarApart.IsFailure.Should().BeTrue("orders ready > 24h apart cannot be consolidated (BR-LOG-001)");
@@ -130,7 +130,7 @@ public class Week4HubConsolidationTests
         _orders.GetByIdAsync(order2.Id, Arg.Any<CancellationToken>()).Returns(order2);
 
         var handler = new ConsolidateShipmentCommandHandler(_orders, _unitOfWork, _publisher);
-        await handler.Handle(new ShipConsolidatedOrdersCommand(new[] { order1.Id, order2.Id }, "GHN-BUNDLE-01"), CancellationToken.None);
+        await handler.Handle(new ShipConsolidatedOrdersCommand([order1.Id, order2.Id], "GHN-BUNDLE-01"), CancellationToken.None);
 
         // Attempting to refund 250,000 VND on order1 (whose original TotalPrice is 200,000 VND, even though the bundle total is 700,000 VND) must FAIL (AC02 / BR-LOG-002)
         var exceedScope = await handler.Handle(new RefundOrderWithinScopeCommand(order1.Id, 250_000m, "Hoàn vượt đơn gốc"), CancellationToken.None);

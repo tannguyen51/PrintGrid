@@ -18,7 +18,7 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
     /// <summary>Hub days for QC + consolidation between arrival and ship-out (cfg in FR-ADMIN-002 later).</summary>
     public const int HubProcessingDays = 1;
 
-    private static readonly JobStatus[] BlockingStatuses =
+    private static readonly JobStatus[] _blockingStatuses =
     {
         JobStatus.Assigned, JobStatus.Accepted, JobStatus.InProgress
     };
@@ -59,7 +59,7 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
         var bookedRows = await _context.Set<Job>()
             .Where(j => j.MachineId != null
                         && machineIds.Contains(j.MachineId.Value)
-                        && BlockingStatuses.Contains(j.Status)
+                        && _blockingStatuses.Contains(j.Status)
                         && j.PlannedEndUtc != null
                         && j.PlannedEndUtc > notBeforeUtc)
             .Select(j => new { j.MachineId, j.PlannedStartUtc, j.PlannedEndUtc })

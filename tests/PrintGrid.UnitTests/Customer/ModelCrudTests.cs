@@ -10,7 +10,7 @@ public class ModelCrudTests
 {
     private readonly IModelRepository _models = Substitute.For<IModelRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
-    private static readonly Guid CustomerId = Guid.NewGuid();
+    private static readonly Guid _customerId = Guid.NewGuid();
 
     [Fact]
     public async Task Create_returns_a_dto_and_persists()
@@ -18,7 +18,7 @@ public class ModelCrudTests
         var handler = new CreateModelCommandHandler(_models, _unitOfWork);
 
         var result = await handler.Handle(
-            new CreateModelCommand(CustomerId, "Bình hoa", "Một chiếc bình", "vase.stl", "STL", 2048, new[] { "trang-tri", "pla" }),
+            new CreateModelCommand(_customerId, "Bình hoa", "Một chiếc bình", "vase.stl", "STL", 2048, new[] { "trang-tri", "pla" }),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -32,7 +32,7 @@ public class ModelCrudTests
     [Fact]
     public void Create_normalizes_format_to_uppercase_and_deduplicates_tags()
     {
-        var model = ModelsEntity.Create(CustomerId, "x", null, "a.obj", "obj", 1, new[] { "Pla", "Pla", "", "PETG" });
+        var model = ModelsEntity.Create(_customerId, "x", null, "a.obj", "obj", 1, new[] { "Pla", "Pla", "", "PETG" });
 
         model.FileFormat.Should().Be("OBJ");
         model.Tags.Should().BeEquivalentTo(new[] { "Pla", "PETG" });
@@ -41,12 +41,12 @@ public class ModelCrudTests
     [Fact]
     public async Task Update_edits_only_a_model_owned_by_the_customer()
     {
-        var existing = ModelsEntity.Create(CustomerId, "Old", null, "a.stl", "stl", 1, null);
-        _models.GetByIdForCustomerAsync(CustomerId, existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        var existing = ModelsEntity.Create(_customerId, "Old", null, "a.stl", "stl", 1, null);
+        _models.GetByIdForCustomerAsync(_customerId, existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
         var handler = new UpdateModelCommandHandler(_models, _unitOfWork);
 
         var result = await handler.Handle(
-            new UpdateModelCommand(CustomerId, existing.Id, "New name", "desc", "a.stl", "stl", 2, null),
+            new UpdateModelCommand(_customerId, existing.Id, "New name", "desc", "a.stl", "stl", 2, null),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -57,11 +57,11 @@ public class ModelCrudTests
     [Fact]
     public async Task Update_returns_not_found_when_the_model_belongs_to_someone_else()
     {
-        _models.GetByIdForCustomerAsync(CustomerId, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((ModelsEntity?)null);
+        _models.GetByIdForCustomerAsync(_customerId, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((ModelsEntity?)null);
         var handler = new UpdateModelCommandHandler(_models, _unitOfWork);
 
         var result = await handler.Handle(
-            new UpdateModelCommand(CustomerId, Guid.NewGuid(), "x", null, "a.stl", "stl", 1, null),
+            new UpdateModelCommand(_customerId, Guid.NewGuid(), "x", null, "a.stl", "stl", 1, null),
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
@@ -72,11 +72,11 @@ public class ModelCrudTests
     [Fact]
     public async Task Delete_removes_a_owned_model()
     {
-        var existing = ModelsEntity.Create(CustomerId, "x", null, "a.stl", "stl", 1, null);
-        _models.GetByIdForCustomerAsync(CustomerId, existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        var existing = ModelsEntity.Create(_customerId, "x", null, "a.stl", "stl", 1, null);
+        _models.GetByIdForCustomerAsync(_customerId, existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
         var handler = new DeleteModelCommandHandler(_models, _unitOfWork);
 
-        var result = await handler.Handle(new DeleteModelCommand(CustomerId, existing.Id), CancellationToken.None);
+        var result = await handler.Handle(new DeleteModelCommand(_customerId, existing.Id), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         _models.Received(1).Remove(existing);
@@ -86,10 +86,10 @@ public class ModelCrudTests
     [Fact]
     public async Task Delete_returns_not_found_for_foreign_model()
     {
-        _models.GetByIdForCustomerAsync(CustomerId, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((ModelsEntity?)null);
+        _models.GetByIdForCustomerAsync(_customerId, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((ModelsEntity?)null);
         var handler = new DeleteModelCommandHandler(_models, _unitOfWork);
 
-        var result = await handler.Handle(new DeleteModelCommand(CustomerId, Guid.NewGuid()), CancellationToken.None);
+        var result = await handler.Handle(new DeleteModelCommand(_customerId, Guid.NewGuid()), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("not_found");
@@ -98,13 +98,13 @@ public class ModelCrudTests
     [Fact]
     public async Task GetModels_applies_search_and_maps_tags()
     {
-        var m1 = ModelsEntity.Create(CustomerId, "Bình hoa", "decor", "vase.stl", "stl", 1, new[] { "pla" });
-        var m2 = ModelsEntity.Create(CustomerId, "Tượng", null, "fig.obj", "obj", 2, null);
-        _models.GetForCustomerAsync(CustomerId, "bình", Arg.Any<CancellationToken>())
+        var m1 = ModelsEntity.Create(_customerId, "Bình hoa", "decor", "vase.stl", "stl", 1, new[] { "pla" });
+        var m2 = ModelsEntity.Create(_customerId, "Tượng", null, "fig.obj", "obj", 2, null);
+        _models.GetForCustomerAsync(_customerId, "bình", Arg.Any<CancellationToken>())
             .Returns(new[] { m1, m2 });
         var handler = new GetModelsQueryHandler(_models);
 
-        var result = await handler.Handle(new GetModelsQuery(CustomerId, "bình"), CancellationToken.None);
+        var result = await handler.Handle(new GetModelsQuery(_customerId, "bình"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(2);
