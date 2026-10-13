@@ -30,7 +30,7 @@ public class RefreshSessionCommandHandler : IRequestHandler<RefreshSessionComman
             return Result.Failure<AuthSessionDto>(Error.Unauthorized("Invalid or expired refresh token"));
 
         var customer = await _customers.GetByIdAsync(customerId.Value, cancellationToken);
-        if (customer is null)
+        if (customer is null || !customer.IsActive)
             return Result.Failure<AuthSessionDto>(Error.Unauthorized("Account no longer exists"));
 
         var user = new AuthUserDto(customer.Id, customer.Email, customer.FullName, customer.Roles, customer.IsEmailVerified);

@@ -131,7 +131,7 @@ export function AppRoutes() {
         <Route
           path="/staff/qc-proofs"
           element={
-            <ProtectedRoute allowedRoles={['OrderStaff', 'OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <QcProofReviewPage />
             </ProtectedRoute>
           }
@@ -139,7 +139,7 @@ export function AppRoutes() {
         <Route
           path="/quote-reviews"
           element={
-            <ProtectedRoute allowedRoles={['OrderStaff', 'OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <QuoteReviewPage />
             </ProtectedRoute>
           }

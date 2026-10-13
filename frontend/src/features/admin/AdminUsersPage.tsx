@@ -21,7 +21,7 @@ import {
   Typography,
 } from '@mui/material'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
-import { BlockRounded, ManageAccountsRounded, PersonAddRounded } from '@mui/icons-material'
+import { BlockRounded, CheckCircleRounded, ManageAccountsRounded, PersonAddRounded } from '@mui/icons-material'
 import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { StaffNavbar } from '../home/components/StaffNavbar'
@@ -33,6 +33,7 @@ import {
   useAssignRole,
   useCreateUser,
   useDeactivateUser,
+  useActivateUser,
   type AdminUser,
   type Role,
 } from './useAdminUsers'
@@ -57,6 +58,7 @@ export default function AdminUsersPage() {
   const createUser = useCreateUser()
   const assignRole = useAssignRole()
   const deactivate = useDeactivateUser()
+  const activate = useActivateUser()
 
   const [formOpen, setFormOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
@@ -128,7 +130,7 @@ export default function AdminUsersPage() {
     {
       field: 'actions',
       headerName: '',
-      width: 200,
+      width: 230,
       sortable: false,
       filterable: false,
       renderCell: (params) => {
@@ -164,6 +166,19 @@ export default function AdminUsersPage() {
                   onClick={() => deactivate.mutate(params.row.id, { onSuccess: () => setNotice(`Đã ngưng ${params.row.email}.`) })}
                 >
                   <BlockRounded fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title={isSelf ? 'Tài khoản hiện tại không cần kích hoạt lại' : 'Kích hoạt tài khoản'}>
+              <span>
+                <IconButton
+                  size="small"
+                  color="success"
+                  aria-label={`Kích hoạt tài khoản ${params.row.email}`}
+                  disabled={isSelf || params.row.isActive || activate.isPending}
+                  onClick={() => activate.mutate(params.row.id, { onSuccess: () => setNotice(`Đã kích hoạt ${params.row.email}.`) })}
+                >
+                  <CheckCircleRounded fontSize="small" />
                 </IconButton>
               </span>
             </Tooltip>
@@ -206,6 +221,7 @@ export default function AdminUsersPage() {
         {notice ? <Alert severity="success" onClose={() => setNotice(null)}>{notice}</Alert> : null}
         {assignRole.isError ? <Alert severity="error">{getApiErrorMessage(assignRole.error, 'Không đổi được role.')}</Alert> : null}
         {deactivate.isError ? <Alert severity="error">{getApiErrorMessage(deactivate.error, 'Không ngưng được tài khoản.')}</Alert> : null}
+        {activate.isError ? <Alert severity="error">{getApiErrorMessage(activate.error, 'Không kích hoạt được tài khoản.')}</Alert> : null}
 
         <Box sx={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper', boxShadow: '0 18px 50px rgba(0,0,0,0.28)' }}>
           <DataGrid

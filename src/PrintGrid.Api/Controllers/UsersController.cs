@@ -6,14 +6,17 @@ using PrintGrid.Modules.Customer.Application.Commands.Users.AssignRole;
 using PrintGrid.Modules.Customer.Application.Commands.Users.CreateUser;
 using PrintGrid.Modules.Customer.Application.Commands.Users.DeactivateUser;
 using PrintGrid.Modules.Customer.Application.Queries.Users;
+using PrintGrid.Modules.Customer.Application.Commands.Users.ActivateUser;
+using PrintGrid.Modules.Customer.Application.Users;
 using PrintGrid.SharedKernel.Results;
 using PrintGrid.Modules.Admin.Application.AuditLogs;
+using PrintGrid.Api.Authorization;
 
 namespace PrintGrid.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
-[Authorize(Roles = "Admin")]
+[Authorize(Policy = Policies.RequireAdmin)]
 public class UsersController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -31,6 +34,9 @@ public class UsersController : ControllerBase
         var result = await _mediator.Send(new GetUsersQuery(), cancellationToken);
         return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
     }
+
+    [HttpGet("roles")]
+    public IActionResult GetRoles() => Ok(UserRoleCatalog.All);
 
     [HttpPost]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request, CancellationToken cancellationToken)
@@ -68,6 +74,17 @@ public class UsersController : ControllerBase
         if (result.IsFailure) return BadRequest(result.Error);
         await WriteAudit("user.deactivated", id.ToString(), new { before?.IsActive },
             new { IsActive = false }, cancellationToken);
+        return Ok();
+    }
+
+    [HttpPut("{id}/activate")]
+    public async Task<IActionResult> ActivateUser(Guid id, CancellationToken cancellationToken)
+    {
+        var actingUserId = Guid.Parse(User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var command = new ActivateUserCommand(id, actingUserId);
+        var result = await _mediator.Send(command, cancellationToken);
+        if (result.IsFailure) return BadRequest(result.Error);
+        await WriteAudit("user.activated", id.ToString(), new { IsActive = false }, new { IsActive = true }, cancellationToken);
         return Ok();
     }
 
