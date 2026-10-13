@@ -68,6 +68,8 @@ const MORE: Partial<Record<Role, NavLink[]>> = {
     { label: 'Cảnh báo', href: '/ops/escalations' },
     { label: 'Nhật ký quyết định', href: '/ops/decisions' },
     { label: 'Người dùng & phân quyền', href: '/admin/users' },
+    { label: 'Cấu hình thương mại', href: '/admin/commercial-configurations' },
+    { label: 'Danh mục dùng chung', href: '/admin/catalogs' },
     { label: 'Nhật ký hệ thống', href: '/admin/audit-logs' },
   ],
 }

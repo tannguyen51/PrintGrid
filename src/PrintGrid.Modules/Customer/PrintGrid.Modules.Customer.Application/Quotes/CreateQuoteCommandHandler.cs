@@ -19,7 +19,7 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _clock;
     private readonly IProductionCapacityProbe _capacity;
-    private readonly IConfiguration? _configuration;
+    private readonly ICommercialPolicyProvider _commercialPolicy;
 
     public CreateQuoteCommandHandler(
         IModelRepository models,
@@ -27,19 +27,20 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
         IUnitOfWork unitOfWork,
         IDateTimeProvider clock,
         IProductionCapacityProbe capacity,
-        IConfiguration? configuration = null)
+        ICommercialPolicyProvider? commercialPolicy = null)
     {
         _models = models;
         _quotes = quotes;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _capacity = capacity;
-        _configuration = configuration;
+        _commercialPolicy = commercialPolicy ?? new DefaultCommercialPolicyProvider();
     }
 
     public async Task<Result<QuoteDto>> Handle(CreateQuoteCommand command, CancellationToken cancellationToken)
     {
-        var set = PricingParameterSet.Active;
+        var policy = await _commercialPolicy.GetActiveAsync(cancellationToken);
+        var set = policy.Pricing;
         if (!QuotePricing.IsSupported(set, command.MaterialCode))
             return Result.Failure<QuoteDto>(
                 Error.Validation($"Không hỗ trợ vật liệu '{command.MaterialCode}'"));
@@ -122,10 +123,10 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
 
         // BR-QUOTE-008: inexpensive, ordinary drafts may bypass the staff queue. The
         // threshold is hot configuration; zero disables the auto-lane.
-        var autoLaneThreshold = ReadDecimal("QuoteReview:AutoLaneThreshold", 300_000m);
+        var autoLaneThreshold = policy.AutoLaneThreshold;
         if (autoLaneThreshold > 0 && quote.TotalPrice.Amount < autoLaneThreshold)
         {
-            var validityHours = (double)ReadDecimal("QuoteReview:ValidityHours", (decimal)QuoteValidity.TotalHours);
+            var validityHours = policy.QuoteValidityHours;
             var approved = quote.Approve(
                 null, quote.TotalPrice.Amount, quote.PromisedDeliveryDate, null,
                 _clock.UtcNow, TimeSpan.FromHours(validityHours), true, 0m);
@@ -138,7 +139,4 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
 
         return Result.Success(QuoteMappings.ToDto(quote));
     }
-
-    private decimal ReadDecimal(string key, decimal fallback) =>
-        decimal.TryParse(_configuration?[key], out var value) ? value : fallback;
 }

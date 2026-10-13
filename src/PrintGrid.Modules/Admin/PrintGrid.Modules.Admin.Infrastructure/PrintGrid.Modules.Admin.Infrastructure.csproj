@@ -4,6 +4,7 @@
     <ProjectReference Include="..\PrintGrid.Modules.Admin.Domain\PrintGrid.Modules.Admin.Domain.csproj" />
     <ProjectReference Include="..\PrintGrid.Modules.Admin.Application\PrintGrid.Modules.Admin.Application.csproj" />
     <ProjectReference Include="..\..\..\PrintGrid.Infrastructure.Shared\PrintGrid.Infrastructure.Shared.csproj" />
+    <ProjectReference Include="..\..\Customer\PrintGrid.Modules.Customer.Application\PrintGrid.Modules.Customer.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -23,6 +23,8 @@ const DecisionTracePage = lazy(() => import('../features/ops/DecisionTracePage')
 const OpsLabsPage = lazy(() => import('../features/ops/OpsLabsPage'))
 const AdminUsersPage = lazy(() => import('../features/admin/AdminUsersPage'))
 const AdminAuditLogPage = lazy(() => import('../features/admin/AdminAuditLogPage'))
+const AdminCommercialConfigurationPage = lazy(() => import('../features/admin/AdminCommercialConfigurationPage'))
+const AdminSharedCatalogPage = lazy(() => import('../features/admin/AdminSharedCatalogPage'))
 const ForbiddenPage = lazy(() => import('../features/errors/ForbiddenPage'))
 const NotFoundPage = lazy(() => import('../features/errors/NotFoundPage'))
 const AccountPage = lazy(() => import('../features/account/AccountPage'))
@@ -191,6 +193,14 @@ export function AppRoutes() {
               <AdminAuditLogPage />
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="/admin/commercial-configurations"
+          element={<ProtectedRoute allowedRoles={['Admin']}><AdminCommercialConfigurationPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/admin/catalogs"
+          element={<ProtectedRoute allowedRoles={['Admin']}><AdminSharedCatalogPage /></ProtectedRoute>}
         />
         <Route path="/forbidden" element={<ForbiddenPage />} />
         {/* Catch-all must stay last — unknown URLs used to render a blank page. */}
