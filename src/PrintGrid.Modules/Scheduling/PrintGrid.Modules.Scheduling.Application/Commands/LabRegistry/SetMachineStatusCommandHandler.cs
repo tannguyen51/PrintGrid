@@ -21,6 +21,8 @@ public class SetMachineStatusCommandHandler : IRequestHandler<SetMachineStatusCo
         var lab = await _labs.GetByIdAsync(command.LabId, cancellationToken);
         if (lab is null)
             return Result.Failure(Error.NotFound("Lab", command.LabId));
+        if (command.ActorUserId.HasValue && lab.OwnerUserId != command.ActorUserId)
+            return Result.Failure(Error.Forbidden("You can only manage machines in your own lab"));
 
         var machine = lab.Machines.FirstOrDefault(m => m.Id == command.MachineId);
         if (machine is null)

@@ -184,6 +184,91 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.ToTable("commercial_configuration_versions", "admin");
                 });
 
+            modelBuilder.Entity("PrintGrid.Modules.Admin.Domain.Entities.DefectTaxonomyItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DefaultFaultAttribution")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("IsDeprecated")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsDeprecated", "Name");
+
+                    b.ToTable("defect_taxonomy_items", "admin");
+                });
+
+            modelBuilder.Entity("PrintGrid.Modules.Admin.Domain.Entities.InspectionChecklistVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ItemsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("QualityGradeCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QualityGradeCode", "IsActive")
+                        .IsUnique()
+                        .HasFilter("\"IsActive\" = TRUE");
+
+                    b.HasIndex("QualityGradeCode", "VersionNumber")
+                        .IsUnique();
+
+                    b.ToTable("inspection_checklist_versions", "admin");
+                });
+
             modelBuilder.Entity("PrintGrid.Modules.Admin.Domain.Entities.SharedCatalogItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -925,6 +1010,28 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<Guid?>("FaultLabId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("InspectedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("InspectionChecklistResultsJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid?>("InspectionChecklistVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("InspectionDefectCode")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("inspection_defect_code");
+
+                    b.Property<string>("InspectionFaultAttribution")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("InspectionNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateOnly>("InternalDueDate")
                         .HasColumnType("date");
 
@@ -998,6 +1105,10 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("InspectionChecklistVersionId");
+
+                    b.HasIndex("InspectionDefectCode");
+
                     b.HasIndex("InternalDueDate");
 
                     b.HasIndex("OrderItemId");
@@ -1022,6 +1133,11 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("ClosingTime")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1035,6 +1151,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<bool>("IsInGoodStanding")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("MaxConcurrentJobs")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1044,12 +1163,27 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasPrecision(5, 4)
                         .HasColumnType("numeric(5,4)");
 
+                    b.Property<string>("OpeningTime")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)");
+
+                    b.Property<Guid?>("OwnerUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("TransitDaysToHub")
                         .HasColumnType("integer");
+
+                    b.Property<string>("WorkingDays")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("IsActive");
+
+                    b.HasIndex("OwnerUserId");
 
                     b.ToTable("labs", "scheduling");
                 });
@@ -1563,6 +1697,17 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
             modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.Job", b =>
                 {
+                    b.HasOne("PrintGrid.Modules.Admin.Domain.Entities.InspectionChecklistVersion", null)
+                        .WithMany()
+                        .HasForeignKey("InspectionChecklistVersionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PrintGrid.Modules.Admin.Domain.Entities.DefectTaxonomyItem", null)
+                        .WithMany()
+                        .HasForeignKey("InspectionDefectCode")
+                        .HasPrincipalKey("Code")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.OwnsOne("PrintGrid.Modules.Scheduling.Domain.ValueObjects.JobSpecification", "Specification", b1 =>
                         {
                             b1.Property<Guid>("JobId")

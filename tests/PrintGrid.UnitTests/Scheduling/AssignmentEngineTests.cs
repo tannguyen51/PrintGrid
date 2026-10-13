@@ -29,6 +29,8 @@ public class AssignmentEngineTests
     public AssignmentEngineTests()
     {
         _clock.UtcNow.Returns(_now);
+        _jobs.GetActiveCountsByLabAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
         _unitOfWork.TrySaveChangesSafeAsync(Arg.Any<CancellationToken>()).Returns(true);
         // Every machine is free from "now" and half loaded unless a test says otherwise.
         _timeline.FindEarliestFreeSlotAsync(
@@ -37,6 +39,25 @@ public class AssignmentEngineTests
         _timeline.GetUtilizationAsync(
                 Arg.Any<Machine>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(0.5m);
+    }
+
+    [Fact]
+    public async Task Assign_skips_a_lab_that_has_reached_its_ops_capacity_limit()
+    {
+        var capped = Lab.Onboard("Capped lab", "HCM", 1);
+        capped.AddMachine(MachineBuilder.Default(capped.Id));
+        capped.SetCapacityLimit(1);
+        var available = Lab.Onboard("Available lab", "HCM", 1);
+        available.AddMachine(MachineBuilder.Default(available.Id));
+        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns(new[] { capped, available });
+        _jobs.GetActiveCountsByLabAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int> { [capped.Id] = 1 });
+
+        var outcome = await Engine().AssignAsync(
+            PendingJob(), new AssignmentRequest(AssignmentTriggers.InitialAssign));
+
+        outcome.Assigned.Should().BeTrue();
+        outcome.Result!.LabId.Should().Be(available.Id);
     }
 
     private AssignmentEngine Engine() => new(

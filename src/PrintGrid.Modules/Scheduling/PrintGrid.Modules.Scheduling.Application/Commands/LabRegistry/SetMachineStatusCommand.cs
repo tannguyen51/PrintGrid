@@ -7,4 +7,5 @@ namespace PrintGrid.Modules.Scheduling.Application.Commands.LabRegistry;
 public record SetMachineStatusCommand(
     Guid LabId,
     Guid MachineId,
-    MachineStatus Status) : IRequest<Result>;
+    MachineStatus Status,
+    Guid? ActorUserId = null) : IRequest<Result>;

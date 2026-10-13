@@ -12,6 +12,7 @@ internal static class AdminModuleRegistration
     {
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAdminConfigurationRepository, AdminConfigurationRepository>();
+        services.AddScoped<IQcKnowledgeRepository, QcKnowledgeRepository>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
         services.AddScoped<ICommercialPolicyProvider, CommercialPolicyProvider>();
     }

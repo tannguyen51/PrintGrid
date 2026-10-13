@@ -11,11 +11,16 @@ public class Lab : AggregateRoot<Guid>
 
     public string Name { get; private set; } = string.Empty;
     public string City { get; private set; } = string.Empty;
+    public Guid? OwnerUserId { get; private set; }
     public bool IsActive { get; private set; }
     public decimal OnTimeDeliveryRate { get; private set; } = 1.0m;
     public decimal FirstPassYield { get; private set; } = 1.0m;
     public int TransitDaysToHub { get; private set; }
+    public string WorkingDays { get; private set; } = "Monday,Tuesday,Wednesday,Thursday,Friday";
+    public string OpeningTime { get; private set; } = "08:00";
+    public string ClosingTime { get; private set; } = "17:00";
     public bool IsInGoodStanding { get; private set; } = true;
+    public int? MaxConcurrentJobs { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     public IReadOnlyCollection<Machine> Machines => _machines.AsReadOnly();
@@ -25,23 +30,44 @@ public class Lab : AggregateRoot<Guid>
 
     private Lab() { }
 
-    public static Lab Onboard(string name, string city, int transitDaysToHub)
+    public static Lab Onboard(
+        string name,
+        string city,
+        int transitDaysToHub,
+        Guid? ownerUserId = null,
+        string workingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
+        string openingTime = "08:00",
+        string closingTime = "17:00")
     {
-        if (transitDaysToHub < 0)
-            throw new ArgumentOutOfRangeException(nameof(transitDaysToHub), "Transit days cannot be negative");
+        if (transitDaysToHub < 0 || (ownerUserId.HasValue && transitDaysToHub == 0))
+            throw new ArgumentOutOfRangeException(nameof(transitDaysToHub), "Transit days must be positive");
+        if (string.IsNullOrWhiteSpace(workingDays))
+            throw new ArgumentException("At least one working day is required", nameof(workingDays));
+        if (!TimeOnly.TryParse(openingTime, out var opening) || !TimeOnly.TryParse(closingTime, out var closing) || closing <= opening)
+            throw new ArgumentException("Working hours are invalid");
 
         return new Lab
         {
             Id = Guid.NewGuid(),
             Name = name.Trim(),
             City = city.Trim(),
+            OwnerUserId = ownerUserId,
             TransitDaysToHub = transitDaysToHub,
-            IsActive = true,
+            WorkingDays = workingDays.Trim(),
+            OpeningTime = opening.ToString("HH:mm"),
+            ClosingTime = closing.ToString("HH:mm"),
+            IsActive = ownerUserId is null,
             CreatedAt = DateTime.UtcNow
         };
     }
 
     public void AddMachine(Machine machine) => _machines.Add(machine);
+
+    public bool RemoveMachine(Guid machineId)
+    {
+        var machine = _machines.SingleOrDefault(x => x.Id == machineId);
+        return machine is not null && _machines.Remove(machine);
+    }
 
     public void Deactivate() => IsActive = false;
 
@@ -50,6 +76,14 @@ public class Lab : AggregateRoot<Guid>
     public void SuspendFromAssignments() => IsInGoodStanding = false;
 
     public void RestoreGoodStanding() => IsInGoodStanding = true;
+
+    public void SetCapacityLimit(int? maxConcurrentJobs)
+    {
+        if (maxConcurrentJobs is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxConcurrentJobs), "Capacity limit must be positive");
+
+        MaxConcurrentJobs = maxConcurrentJobs;
+    }
 
     public void SetMaterialStock(string materialCode, string colorCode, decimal availableGrams, decimal reorderPointGrams = 0m)
     {

@@ -25,8 +25,8 @@ public class RegisterMachineCommandHandler : IRequestHandler<RegisterMachineComm
         var lab = await _labs.GetByIdAsync(command.LabId, cancellationToken);
         if (lab is null)
             return Result.Failure<MachineDto>(Error.NotFound("Lab", command.LabId));
-        if (!lab.IsActive)
-            return Result.Failure<MachineDto>(Error.Conflict($"Lab '{lab.Name}' is deactivated and cannot accept machines"));
+        if (command.ActorUserId.HasValue && lab.OwnerUserId != command.ActorUserId)
+            return Result.Failure<MachineDto>(Error.Forbidden("You can only manage machines in your own lab"));
 
         var buildVolume = BuildVolume.Create(
             command.BuildWidthMm, command.BuildDepthMm, command.BuildHeightMm);

@@ -93,7 +93,7 @@ export default function HubShipmentsPage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Giao hàng — Hub
               </Typography>
-              <Typography color="text.secondary">Ghi vận đơn và xác nhận giao hàng cho đơn đã qua QC (FR-HUB)</Typography>
+              <Typography color="text.secondary">Ghi vận đơn và xác nhận giao hàng cho đơn đã qua kiểm tra chất lượng</Typography>
             </Box>
           </Stack>
           <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>

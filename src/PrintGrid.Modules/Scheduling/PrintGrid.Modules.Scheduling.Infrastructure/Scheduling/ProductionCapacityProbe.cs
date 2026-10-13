@@ -43,8 +43,29 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
 
         var labs = await _context.Set<Lab>()
             .Include(l => l.Machines)
-            .Where(l => l.IsActive)
+            .Where(l => l.IsActive && l.IsInGoodStanding)
             .ToListAsync(cancellationToken);
+
+        var cappedLabIds = labs
+            .Where(l => l.MaxConcurrentJobs.HasValue)
+            .Select(l => l.Id)
+            .ToList();
+        if (cappedLabIds.Count > 0)
+        {
+            var activeCounts = await _context.Set<Job>()
+                .Where(j => j.LabId != null
+                            && cappedLabIds.Contains(j.LabId.Value)
+                            && BlockingStatuses.Contains(j.Status))
+                .GroupBy(j => j.LabId!.Value)
+                .Select(g => new { LabId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.LabId, x => x.Count, cancellationToken);
+
+            labs = labs
+                .Where(l => !l.MaxConcurrentJobs.HasValue
+                    || !activeCounts.TryGetValue(l.Id, out var activeCount)
+                    || activeCount < l.MaxConcurrentJobs.Value)
+                .ToList();
+        }
 
         var candidates = labs
             .SelectMany(l => l.Machines.Select(m => (Lab: l, Machine: m)))

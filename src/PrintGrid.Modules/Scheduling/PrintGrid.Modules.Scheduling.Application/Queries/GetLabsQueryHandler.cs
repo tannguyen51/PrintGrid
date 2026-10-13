@@ -16,9 +16,11 @@ public class GetLabsQueryHandler : IRequestHandler<GetLabsQuery, Result<IReadOnl
         GetLabsQuery query,
         CancellationToken cancellationToken)
     {
-        var entities = query.IncludeInactive
-            ? await _labs.GetAllAsync(cancellationToken)
-            : await _labs.GetActiveWithMachinesAsync(cancellationToken);
+        var entities = query.OwnerUserId.HasValue
+            ? await _labs.GetByOwnerAsync(query.OwnerUserId.Value, cancellationToken)
+            : query.IncludeInactive
+                ? await _labs.GetAllAsync(cancellationToken)
+                : await _labs.GetActiveWithMachinesAsync(cancellationToken);
 
         return Result.Success<IReadOnlyList<LabDto>>(entities.Select(LabMappings.ToDto).ToList());
     }

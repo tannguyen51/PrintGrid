@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton, MenuItem, Paper, Stack, Switch, Tab, Tabs, TextField, Tooltip, Typography } from '@mui/material'
 import { AddRounded, DeleteOutlineRounded, EditRounded } from '@mui/icons-material'
 import { PageBackButton } from '../../shared/components/PageBackButton'
+import { StaffNavbar } from '../home/components/StaffNavbar'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { type CatalogItem, useCatalogItems, useDeleteCatalogItem, useSaveCatalogItem } from './useAdminConfiguration'
 
@@ -60,7 +61,9 @@ export default function AdminSharedCatalogPage() {
   }
   const remove = async (item: CatalogItem) => { if (!confirm(`Xóa “${item.name}”? Mục đã được sử dụng sẽ bị chặn.`)) return; setError(''); try { await deleteMutation.mutateAsync({ type: item.catalogType, code: item.code }) } catch (e) { setError(getApiErrorMessage(e, 'Không thể xóa. Hãy ngừng sử dụng mục này thay vì xóa.')) } }
 
-  return <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, py: 4 }}>
+  return <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <StaffNavbar />
+    <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, py: 4 }}>
     <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}><Stack direction="row" spacing={1.5} alignItems="center"><PageBackButton /><Box><Typography variant="h4" fontWeight={800}>Danh mục dùng chung</Typography><Typography color="text.secondary">Dữ liệu chuẩn dùng xuyên suốt báo giá, sản xuất và kiểm tra chất lượng.</Typography></Box></Stack><Button variant="contained" startIcon={<AddRounded />} onClick={showCreate}>Thêm mục</Button></Stack>
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
     <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}><Tabs value={type} onChange={(_, value) => setType(value)} variant="scrollable" scrollButtons="auto" sx={{ borderBottom: 1, borderColor: 'divider', px: 1 }}>{types.map(([value, label]) => <Tab key={value} value={value} label={label} />)}</Tabs>
@@ -87,5 +90,6 @@ export default function AdminSharedCatalogPage() {
       <FormControlLabel control={<Switch checked={form.isPremium} onChange={e => setForm(f => ({ ...f, isPremium: e.target.checked }))} />} label="Mục cao cấp" />
       <FormControlLabel control={<Switch checked={form.isDeprecated} onChange={e => setForm(f => ({ ...f, isDeprecated: e.target.checked }))} />} label="Ngừng sử dụng cho dữ liệu mới" />
     </Stack></DialogContent><DialogActions><Button onClick={() => setOpen(false)}>Hủy</Button><Button variant="contained" disabled={!form.code.trim() || !form.name.trim() || saveMutation.isPending} onClick={save}>{editing ? 'Tạo revision mới' : 'Thêm mục'}</Button></DialogActions></Dialog>
+    </Box>
   </Box>
 }

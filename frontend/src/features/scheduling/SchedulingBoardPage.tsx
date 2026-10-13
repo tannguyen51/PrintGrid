@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import {
   Alert,
@@ -9,12 +8,11 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
-import { FactoryRounded, LogoutRounded, RocketLaunchRounded } from '@mui/icons-material'
+import { FactoryRounded, RocketLaunchRounded } from '@mui/icons-material'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../shared/api/apiClient'
 import { JOB_LABELS } from '../jobs/jobTypes'
 import { useJobs } from '../jobs/useJobs'
-import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—')
@@ -24,8 +22,6 @@ const fmtDate = (d: string | null | undefined) => (d ? new Date(d + 'T00:00:00')
  * to place each job on the best capable lab/machine (FR-SCHED-004/006).
  */
 export default function SchedulingBoardPage() {
-  const navigate = useNavigate()
-  const { logout } = useAuth()
   const queryClient = useQueryClient()
   const pending = useJobs('Pending')
   const [notice, setNotice] = useState<string | null>(null)
@@ -51,12 +47,9 @@ export default function SchedulingBoardPage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Bảng điều phối — Ops
               </Typography>
-              <Typography color="text.secondary">Gán job cho lab/máy phù hợp nhất (FR-SCHED-004)</Typography>
+              <Typography color="text.secondary">Gán job cho xưởng và máy phù hợp nhất</Typography>
             </Box>
           </Stack>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
-            Đăng xuất
-          </Button>
         </Stack>
 
         {pending.isError ? <Alert severity="error">Không tải được danh sách job chờ.</Alert> : null}

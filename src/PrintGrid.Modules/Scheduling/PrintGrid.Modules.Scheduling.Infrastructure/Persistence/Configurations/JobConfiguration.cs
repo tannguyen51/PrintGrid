@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
+using PrintGrid.Modules.Admin.Domain.Entities;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Configurations;
 
@@ -18,6 +19,19 @@ public class JobConfiguration : IEntityTypeConfiguration<Job>
         builder.Property(j => j.QcSelfReport).HasMaxLength(2000);
         builder.Property(j => j.QcProofPhotoKeys).HasMaxLength(4000);
         builder.Property(j => j.QcRejectionReason).HasMaxLength(1000);
+        builder.Property(j => j.InspectionChecklistResultsJson).HasColumnType("jsonb");
+        builder.Property(j => j.InspectionDefectCode).HasColumnName("inspection_defect_code").HasMaxLength(32);
+        builder.Property(j => j.InspectionFaultAttribution).HasMaxLength(16);
+        builder.Property(j => j.InspectionNote).HasMaxLength(500);
+        builder.HasIndex(j => j.InspectionChecklistVersionId);
+        builder.HasIndex(j => j.InspectionDefectCode);
+        builder.HasOne<InspectionChecklistVersion>().WithMany()
+            .HasForeignKey(j => j.InspectionChecklistVersionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<DefectTaxonomyItem>().WithMany()
+            .HasForeignKey(j => j.InspectionDefectCode)
+            .HasPrincipalKey(x => x.Code)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Reprint chain + cost attribution (FR-HUB-003 / BR-RESCHED-003).
         builder.Property(j => j.Priority).HasConversion<string>().HasMaxLength(16).IsRequired();

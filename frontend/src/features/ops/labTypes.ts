@@ -30,10 +30,17 @@ export interface Lab {
   id: string
   name: string
   city: string
+  ownerUserId: string | null
   isActive: boolean
+  isInGoodStanding: boolean
+  maxConcurrentJobs: number | null
   onTimeDeliveryRate: number
   firstPassYield: number
   transitDaysToHub: number
+  workingDays: string
+  openingTime: string
+  closingTime: string
+  materialStockCount: number
   createdAt: string
   machines: Machine[]
 }
@@ -42,6 +49,9 @@ export interface RegisterLabInput {
   name: string
   city: string
   transitDaysToHub: number
+  workingDays: string
+  openingTime: string
+  closingTime: string
 }
 
 export interface RegisterMachineInput {
@@ -55,4 +65,8 @@ export interface RegisterMachineInput {
   minLayerHeightMm: number
   achievableToleranceMm: number
   supportedMaterials: string[]
+}
+
+export interface UpdateMachineInput extends RegisterMachineInput {
+  machineId: string
 }

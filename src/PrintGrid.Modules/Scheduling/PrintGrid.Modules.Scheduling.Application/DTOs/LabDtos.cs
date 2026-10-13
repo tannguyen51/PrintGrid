@@ -20,10 +20,17 @@ public record LabDto(
     Guid Id,
     string Name,
     string City,
+    Guid? OwnerUserId,
     bool IsActive,
+    bool IsInGoodStanding,
+    int? MaxConcurrentJobs,
     decimal OnTimeDeliveryRate,
     decimal FirstPassYield,
     int TransitDaysToHub,
+    string WorkingDays,
+    string OpeningTime,
+    string ClosingTime,
+    int MaterialStockCount,
     DateTime CreatedAt,
     IReadOnlyCollection<MachineDto> Machines);
 

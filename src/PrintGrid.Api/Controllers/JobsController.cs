@@ -232,7 +232,9 @@ public class JobsController : ControllerBase
             request.ChecklistResults ?? Array.Empty<ChecklistItemResult>(),
             request.PhotoUrls ?? Array.Empty<string>(),
             request.FaultAttribution,
-            request.Note), cancellationToken);
+            request.Note,
+            request.ChecklistVersionId,
+            request.DefectCode), cancellationToken);
         return ToResult(result);
     }
 
@@ -269,5 +271,7 @@ public record InspectRequest(
     IReadOnlyList<ChecklistItemResult>? ChecklistResults = null,
     IReadOnlyList<string>? PhotoUrls = null,
     FaultAttribution? FaultAttribution = null,
-    string? Note = null);
+    string? Note = null,
+    Guid? ChecklistVersionId = null,
+    string? DefectCode = null);
 public record DeclineJobRequest(string Reason);

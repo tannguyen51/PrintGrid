@@ -251,7 +251,7 @@ export default function LabQueuePage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Hàng đợi sản xuất — Lab
               </Typography>
-              <Typography color="text.secondary">Nhận / từ chối job (hạn 2 giờ) → Bắt đầu in → Báo hoàn thành (FR-LAB-004)</Typography>
+              <Typography color="text.secondary">Nhận / từ chối job (hạn 2 giờ) → Bắt đầu in → Báo hoàn thành</Typography>
             </Box>
           </Stack>
           <Stack direction="row" spacing={1.5}>
@@ -378,7 +378,7 @@ export default function LabQueuePage() {
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>Từ chối nhận job</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: 'text.secondary', mb: 2 }}>
-            Vui lòng chọn lý do từ chối. Job sẽ được đưa về hàng đợi để hệ thống tự động gán lại (BR-ASSIGN-006).
+            Vui lòng chọn lý do từ chối. Job sẽ được đưa về hàng đợi để hệ thống tự động gán lại.
           </DialogContentText>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <FormControl fullWidth size="small">
@@ -435,7 +435,7 @@ export default function LabQueuePage() {
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>Hoàn thành job</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: 'text.secondary', mb: 2 }}>
-            Ghi thời gian in thực tế (phút) để hệ thống hiệu chuẩn ước lượng (FR-SCHED-008).
+            Ghi thời gian in thực tế (phút) để hệ thống hiệu chuẩn ước lượng.
           </DialogContentText>
           <TextField
             label="Thời gian thực tế (phút)"

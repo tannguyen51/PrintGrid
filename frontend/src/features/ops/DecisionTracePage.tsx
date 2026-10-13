@@ -17,8 +17,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { FactCheckRounded, LogoutRounded, SearchRounded } from '@mui/icons-material'
-import { useAuth } from '../../app/AuthContext'
+import { FactCheckRounded, SearchRounded } from '@mui/icons-material'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import {
   useDecisionLog,
@@ -317,7 +316,6 @@ function DecisionCard({ decision: d }: { decision: DecisionEntry }) {
  */
 export default function DecisionTracePage() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeJobId = searchParams.get('jobId')
   const [draft, setDraft] = useState(activeJobId ?? '')
@@ -348,15 +346,12 @@ export default function DecisionTracePage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Vết quyết định — Ops
               </Typography>
-              <Typography color="text.secondary">Lý do engine xếp lịch chọn lab/máy cho từng job (FR-SCHED-009) — chỉ đọc</Typography>
+              <Typography color="text.secondary">Lý do hệ thống xếp lịch chọn xưởng và máy cho từng job — chỉ đọc</Typography>
             </Box>
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
             <Button variant="text" color="inherit" onClick={() => navigate('/ops/escalations')}>
               Hàng đợi cảnh báo
-            </Button>
-            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
-              Đăng xuất
             </Button>
           </Stack>
         </Stack>

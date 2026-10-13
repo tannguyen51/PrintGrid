@@ -35,7 +35,10 @@ interface NavLink {
 }
 
 const PRIMARY: Partial<Record<Role, NavLink[]>> = {
-  LabManager: [{ label: 'Hàng đợi sản xuất', href: '/lab/queue' }],
+  LabManager: [
+    { label: 'Hàng đợi sản xuất', href: '/lab/queue' },
+    { label: 'Xưởng & máy', href: '/lab/settings' },
+  ],
   LabOperator: [{ label: 'Hàng đợi sản xuất', href: '/lab/queue' }],
   HubQC: [
     { label: 'Kiểm tra chất lượng', href: '/hub/qc' },
@@ -48,31 +51,22 @@ const PRIMARY: Partial<Record<Role, NavLink[]>> = {
   OpsManager: [
     { label: 'Bảng điều phối', href: '/scheduling' },
     { label: 'Xưởng & máy', href: '/ops/labs' },
-  ],
-  Admin: [
-    { label: 'Bảng điều phối', href: '/scheduling' },
-    { label: 'Xưởng & máy', href: '/ops/labs' },
-  ],
-}
-
-const MORE: Partial<Record<Role, NavLink[]>> = {
-  OpsManager: [
     { label: 'Duyệt báo giá', href: '/quote-reviews' },
     { label: 'Nghiệm thu QC', href: '/staff/qc-proofs' },
     { label: 'Cảnh báo', href: '/ops/escalations' },
     { label: 'Nhật ký quyết định', href: '/ops/decisions' },
   ],
   Admin: [
-    { label: 'Duyệt báo giá', href: '/quote-reviews' },
-    { label: 'Nghiệm thu QC', href: '/staff/qc-proofs' },
-    { label: 'Cảnh báo', href: '/ops/escalations' },
-    { label: 'Nhật ký quyết định', href: '/ops/decisions' },
     { label: 'Người dùng & phân quyền', href: '/admin/users' },
+    { label: 'Duyệt xưởng', href: '/admin/labs' },
     { label: 'Cấu hình thương mại', href: '/admin/commercial-configurations' },
     { label: 'Danh mục dùng chung', href: '/admin/catalogs' },
+    { label: 'Bộ kiểm & danh mục lỗi', href: '/admin/qc-knowledge' },
     { label: 'Nhật ký hệ thống', href: '/admin/audit-logs' },
   ],
 }
+
+const MORE: Partial<Record<Role, NavLink[]>> = {}
 
 const linkSx = {
   color: landing.textMuted,

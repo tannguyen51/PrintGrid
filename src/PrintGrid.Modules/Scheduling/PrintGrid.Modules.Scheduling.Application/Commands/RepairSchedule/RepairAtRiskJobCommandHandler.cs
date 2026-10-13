@@ -17,7 +17,14 @@ public class RepairAtRiskJobCommandHandler(IJobRepository jobs, ILabRepository l
         if (job is null) return Result.Failure<ScheduleRepairResult>(Error.NotFound("Job", command.JobId));
         if (job.Quantity < 2) return Result.Failure<ScheduleRepairResult>(Error.Validation("Chỉ item có số lượng từ 2 mới có thể chia lô"));
 
-        var candidates = filter.Filter(job.Specification, await labs.GetActiveWithMachinesAsync(ct)).Candidates;
+        var activeCounts = await jobs.GetActiveCountsByLabAsync(ct)
+            ?? new Dictionary<Guid, int>();
+        var availableLabs = (await labs.GetActiveWithMachinesAsync(ct))
+            .Where(lab => !lab.MaxConcurrentJobs.HasValue
+                || !activeCounts.TryGetValue(lab.Id, out var activeCount)
+                || activeCount < lab.MaxConcurrentJobs.Value)
+            .ToList();
+        var candidates = filter.Filter(job.Specification, availableLabs).Candidates;
         var dueUtc = job.InternalDueDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
         var slots = new List<(CapabilityCandidate Candidate, DateTime Start, int Capacity, decimal UnitMinutes)>();
         foreach (var candidate in candidates)

@@ -106,17 +106,19 @@ export function useUploadInspectionPhotos() {
 export interface InspectJobPayload {
   id: string
   passed: boolean
-  checklistResults: { itemName: string; status: 'Pass' | 'Fail' | 'NotApplicable'; note?: string }[]
+  checklistResults: { itemName: string; itemCode: string; status: 'Pass' | 'Fail' | 'NotApplicable'; note?: string }[]
   photoUrls: string[]
   faultAttribution?: 'Lab' | 'Hub' | 'Customer'
   note?: string
+  checklistVersionId: string
+  defectCode?: string
 }
 
 export function useInspectJob() {
   const invalidate = useInvalidate()
   return useMutation({
-    mutationFn: ({ id, passed, checklistResults, photoUrls, faultAttribution, note }: InspectJobPayload) =>
-      apiClient.post(`/jobs/${id}/inspect`, { passed, checklistResults, photoUrls, faultAttribution, note }),
+    mutationFn: ({ id, passed, checklistResults, photoUrls, faultAttribution, note, checklistVersionId, defectCode }: InspectJobPayload) =>
+      apiClient.post(`/jobs/${id}/inspect`, { passed, checklistResults, photoUrls, faultAttribution, note, checklistVersionId, defectCode }),
     onSuccess: invalidate,
   })
 }

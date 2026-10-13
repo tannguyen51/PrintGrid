@@ -15,8 +15,14 @@ public class LabConfiguration : IEntityTypeConfiguration<Lab>
         builder.Property(l => l.City).HasMaxLength(100).IsRequired();
         builder.Property(l => l.OnTimeDeliveryRate).HasPrecision(5, 4).IsRequired();
         builder.Property(l => l.FirstPassYield).HasPrecision(5, 4).IsRequired();
+        builder.Property(l => l.OwnerUserId);
+        builder.Property(l => l.MaxConcurrentJobs);
+        builder.Property(l => l.WorkingDays).HasMaxLength(100).IsRequired();
+        builder.Property(l => l.OpeningTime).HasMaxLength(5).IsRequired();
+        builder.Property(l => l.ClosingTime).HasMaxLength(5).IsRequired();
 
         builder.HasIndex(l => l.IsActive);
+        builder.HasIndex(l => l.OwnerUserId);
 
         builder.HasMany(l => l.Machines)
             .WithOne()

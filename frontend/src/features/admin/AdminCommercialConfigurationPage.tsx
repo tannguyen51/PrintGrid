@@ -3,6 +3,7 @@ import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, Dial
 import { AddRounded, CheckCircleRounded } from '@mui/icons-material'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
+import { StaffNavbar } from '../home/components/StaffNavbar'
 import { type CommercialParameters, useActivateCommercialConfiguration, useCatalogItems, useCommercialConfigurations, useCreateCommercialConfiguration } from './useAdminConfiguration'
 
 const defaults: CommercialParameters = {
@@ -37,7 +38,9 @@ export default function AdminCommercialConfigurationPage() {
   const save = async () => { try { await create.mutateAsync({ name, changeSummary: summary, parameters: params }); setOpen(false) } catch (e) { setError(getApiErrorMessage(e, 'Không thể tạo phiên bản.')) } }
   const doActivate = async (id: string) => { setError(''); try { await activate.mutateAsync(id) } catch (e) { setError(getApiErrorMessage(e, 'Không thể kích hoạt phiên bản.')) } }
 
-  return <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, py: 4 }}>
+  return <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <StaffNavbar />
+    <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, py: 4 }}>
     <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
       <Stack direction="row" spacing={1.5} alignItems="center"><PageBackButton /><Box><Typography variant="h4" fontWeight={800}>Cấu hình thương mại</Typography><Typography color="text.secondary">Mỗi lần thay đổi tạo một phiên bản mới; chỉ phiên bản đang hoạt động áp dụng cho báo giá mới.</Typography></Box></Stack>
       <Button variant="contained" startIcon={<AddRounded />} onClick={startCreate}>Tạo phiên bản</Button>
@@ -57,5 +60,6 @@ export default function AdminCommercialConfigurationPage() {
       <Typography fontWeight={750}>Đơn giá vật liệu / gram</Typography><Grid container spacing={2}>{materials.map(code => <Grid key={code} size={{ xs: 6, md: 4 }}><TextField fullWidth type="number" label={code} value={params.materialRates[code]} onChange={e => setParams(p => ({ ...p, materialRates: { ...p.materialRates, [code]: Number(e.target.value) } }))} /></Grid>)}</Grid>
       <Typography fontWeight={750}>Giới hạn vận hành</Typography><Grid container spacing={2}><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Kích thước lô tối đa" value={params.maxBatchSize} onChange={e => number('maxBatchSize', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Ngân sách lập lịch (giây)" value={params.schedulingTimeBudgetSeconds} onChange={e => number('schedulingTimeBudgetSeconds', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Ngưỡng rủi ro SLA (giờ)" value={params.slaRiskThresholdHours} onChange={e => number('slaRiskThresholdHours', e.target.value)} /></Grid></Grid>
     </Stack></DialogContent><DialogActions><Button onClick={() => setOpen(false)}>Hủy</Button><Button variant="contained" disabled={!name.trim() || !summary.trim() || create.isPending} onClick={save}>Lưu bản nháp</Button></DialogActions></Dialog>
+    </Box>
   </Box>
 }
