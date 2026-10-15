@@ -182,7 +182,7 @@ export default function AdminUsersPage() {
                 Người dùng &amp; phân quyền
               </Typography>
               <Typography color="text.secondary">
-                Tạo tài khoản và gán role cho từng vai trong mạng lưới (FR-ADMIN-001)
+                Tạo tài khoản và phân quyền vai trò cho người dùng trong hệ thống
               </Typography>
             </Box>
           </Stack>

@@ -20,17 +20,17 @@ namespace PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
 /// </summary>
 internal static class GlbMeshParser
 {
-    private const int HeaderSize = 12;
-    private const int ChunkHeaderSize = 8;
-    private const uint GlbMagic = 0x46546C67;      // "glTF" little-endian
-    private const uint JsonChunkType = 0x4E4F534A; // "JSON"
-    private const uint BinChunkType = 0x004E4942;  // "BIN\0"
+    private const int _headerSize = 12;
+    private const int _chunkHeaderSize = 8;
+    private const uint _glbMagic = 0x46546C67;      // "glTF" little-endian
+    private const uint _jsonChunkType = 0x4E4F534A; // "JSON"
+    private const uint _binChunkType = 0x004E4942;  // "BIN\0"
 
-    private const int ComponentTypeFloat = 5126;
-    private const int ComponentTypeUnsignedByte = 5121;
-    private const int ComponentTypeUnsignedShort = 5123;
-    private const int ComponentTypeUnsignedInt = 5125;
-    private const int ModeTriangles = 4;
+    private const int _componentTypeFloat = 5126;
+    private const int _componentTypeUnsignedByte = 5121;
+    private const int _componentTypeUnsignedShort = 5123;
+    private const int _componentTypeUnsignedInt = 5125;
+    private const int _modeTriangles = 4;
 
     public static MeshStats Parse(Stream stream)
     {
@@ -59,8 +59,8 @@ internal static class GlbMeshParser
 
             foreach (var primitive in primitives.EnumerateArray())
             {
-                var mode = primitive.TryGetProperty("mode", out var modeElement) ? modeElement.GetInt32() : ModeTriangles;
-                if (mode != ModeTriangles) continue;
+                var mode = primitive.TryGetProperty("mode", out var modeElement) ? modeElement.GetInt32() : _modeTriangles;
+                if (mode != _modeTriangles) continue;
 
                 if (!primitive.TryGetProperty("attributes", out var attributes) ||
                     !attributes.TryGetProperty("POSITION", out var positionElement))
@@ -167,10 +167,10 @@ internal static class GlbMeshParser
 
     private static (byte[] Json, byte[] Binary) ReadContainer(Stream stream)
     {
-        Span<byte> header = stackalloc byte[HeaderSize];
+        Span<byte> header = stackalloc byte[_headerSize];
         ReadExact(stream, header);
 
-        if (BinaryPrimitives.ReadUInt32LittleEndian(header) != GlbMagic)
+        if (BinaryPrimitives.ReadUInt32LittleEndian(header) != _glbMagic)
             throw new InvalidDataException("Not a binary glTF container (glTF magic missing)");
 
         var version = BinaryPrimitives.ReadUInt32LittleEndian(header[4..]);
@@ -178,32 +178,32 @@ internal static class GlbMeshParser
             throw new InvalidDataException($"Unsupported glTF version {version}");
 
         var declaredLength = BinaryPrimitives.ReadUInt32LittleEndian(header[8..]);
-        if (declaredLength < HeaderSize)
+        if (declaredLength < _headerSize)
             throw new InvalidDataException("glTF header declares an impossible length");
 
         byte[]? json = null;
         byte[]? binary = null;
-        long consumed = HeaderSize;
-        Span<byte> chunkHeader = stackalloc byte[ChunkHeaderSize];
+        long consumed = _headerSize;
+        Span<byte> chunkHeader = stackalloc byte[_chunkHeaderSize];
 
-        while (consumed + ChunkHeaderSize <= declaredLength)
+        while (consumed + _chunkHeaderSize <= declaredLength)
         {
             ReadExact(stream, chunkHeader);
             var chunkLength = BinaryPrimitives.ReadUInt32LittleEndian(chunkHeader);
             var chunkType = BinaryPrimitives.ReadUInt32LittleEndian(chunkHeader[4..]);
-            if (chunkLength == 0 || consumed + ChunkHeaderSize + chunkLength > declaredLength)
+            if (chunkLength == 0 || consumed + _chunkHeaderSize + chunkLength > declaredLength)
                 throw new InvalidDataException("glTF chunk length runs past the declared file size");
 
             var data = new byte[chunkLength];
             ReadExact(stream, data);
-            consumed += ChunkHeaderSize + chunkLength;
+            consumed += _chunkHeaderSize + chunkLength;
 
             switch (chunkType)
             {
-                case JsonChunkType:
+                case _jsonChunkType:
                     json ??= data;
                     break;
-                case BinChunkType:
+                case _binChunkType:
                     binary ??= data;
                     break;
             }
@@ -236,7 +236,7 @@ internal static class GlbMeshParser
             throw new InvalidDataException($"glTF POSITION accessor must be VEC3 (found {type ?? "none"})");
 
         var componentType = accessor.GetProperty("componentType").GetInt32();
-        if (componentType != ComponentTypeFloat)
+        if (componentType != _componentTypeFloat)
             throw new InvalidDataException("glTF POSITION accessor must use float components");
 
         var (start, stride, count) = Locate(accessor, bufferViews, binary, 12);
@@ -261,9 +261,9 @@ internal static class GlbMeshParser
         var componentType = accessor.GetProperty("componentType").GetInt32();
         var elementSize = componentType switch
         {
-            ComponentTypeUnsignedByte => 1,
-            ComponentTypeUnsignedShort => 2,
-            ComponentTypeUnsignedInt => 4,
+            _componentTypeUnsignedByte => 1,
+            _componentTypeUnsignedShort => 2,
+            _componentTypeUnsignedInt => 4,
             _ => throw new InvalidDataException($"glTF index accessor uses unsupported component type {componentType}")
         };
 
@@ -275,8 +275,8 @@ internal static class GlbMeshParser
             var offset = start + i * stride;
             indices.Add(componentType switch
             {
-                ComponentTypeUnsignedByte => binary[offset],
-                ComponentTypeUnsignedShort => BinaryPrimitives.ReadUInt16LittleEndian(binary.AsSpan(offset, 2)),
+                _componentTypeUnsignedByte => binary[offset],
+                _componentTypeUnsignedShort => BinaryPrimitives.ReadUInt16LittleEndian(binary.AsSpan(offset, 2)),
                 _ => BinaryPrimitives.ReadUInt32LittleEndian(binary.AsSpan(offset, 4))
             });
         }

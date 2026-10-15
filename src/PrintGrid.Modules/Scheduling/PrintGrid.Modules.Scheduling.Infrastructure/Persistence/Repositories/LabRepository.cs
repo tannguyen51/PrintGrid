@@ -20,12 +20,20 @@ public class LabRepository : ILabRepository
             .Include(l => l.MaterialReservations)
             .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
 
+    public Task<Lab?> GetByOwnerUserIdAsync(Guid ownerUserId, CancellationToken cancellationToken = default) =>
+        _context.Set<Lab>()
+            .Include(l => l.Machines)
+            .Include(l => l.MaterialStocks)
+            .Include(l => l.StockTransactions)
+            .Include(l => l.MaterialReservations)
+            .FirstOrDefaultAsync(l => l.OwnerUserId == ownerUserId, cancellationToken);
+
     public async Task<IReadOnlyList<Lab>> GetActiveWithMachinesAsync(CancellationToken cancellationToken = default) =>
         await _context.Set<Lab>()
             .Include(l => l.Machines)
             .Include(l => l.MaterialStocks)
             .Include(l => l.MaterialReservations)
-            .Where(l => l.IsActive)
+            .Where(l => l.IsActive && l.Status == LabStatus.Active)
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Lab>> GetAllAsync(CancellationToken cancellationToken = default) =>
@@ -40,6 +48,10 @@ public class LabRepository : ILabRepository
 
     public async Task AddAsync(Lab lab, CancellationToken cancellationToken = default) =>
         await _context.Set<Lab>().AddAsync(lab, cancellationToken);
+
+    public void AddMachine(Machine machine) => _context.Set<Machine>().Add(machine);
+
+    public void RemoveMachine(Machine machine) => _context.Set<Machine>().Remove(machine);
 
     public async Task<NetworkStatsSnapshot> GetNetworkStatsAsync(CancellationToken cancellationToken = default)
     {

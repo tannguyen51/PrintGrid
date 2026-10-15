@@ -10,7 +10,7 @@ namespace PrintGrid.Modules.Scheduling.Application.Services;
 /// </summary>
 public static class DecisionSnapshotJson
 {
-    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web);
 
     public static string Candidates(CapabilityFilterResult filter, Guid? excludedLabId = null) =>
         JsonSerializer.Serialize(new
@@ -31,7 +31,7 @@ public static class DecisionSnapshotJson
                 machineId = r.MachineId,
                 reason = r.Reason
             })
-        }, Options);
+        }, _options);
 
     public static string Ranking(IReadOnlyList<ScoredPlacement> ranked) =>
         JsonSerializer.Serialize(ranked.Select(s => new
@@ -44,7 +44,7 @@ public static class DecisionSnapshotJson
             machineUtilization = s.Placement.MachineUtilization,
             score = s.Score,
             breakdown = s.Breakdown
-        }), Options);
+        }), _options);
 
     /// <summary>Freezes the effective weights ("kỳ cấu hình") alongside the decision (BR-CONFIG-003).</summary>
     public static string ScoringConfig(ScoringParameterSet set) =>
@@ -59,5 +59,5 @@ public static class DecisionSnapshotJson
                 cost = set.Weights.Cost,
                 transit = set.Weights.Transit
             }
-        }, Options);
+        }, _options);
 }

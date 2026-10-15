@@ -18,6 +18,7 @@ public class MachineConfiguration : IEntityTypeConfiguration<Machine>
         builder.Property(m => m.MinLayerHeightMm).HasPrecision(4, 3).IsRequired();
         builder.Property(m => m.AchievableToleranceMm).HasPrecision(5, 3).IsRequired();
         builder.Property(m => m.SpeedFactor).HasPrecision(5, 3).IsRequired();
+        builder.Property(m => m.MaintenanceReason).HasMaxLength(300);
 
         builder.HasIndex(m => new { m.LabId, m.Status });
 

@@ -348,7 +348,7 @@ export default function DecisionTracePage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Vết quyết định — Ops
               </Typography>
-              <Typography color="text.secondary">Lý do engine xếp lịch chọn lab/máy cho từng job (FR-SCHED-009) — chỉ đọc</Typography>
+              <Typography color="text.secondary">Nhật ký giải trình lý do hệ thống chọn xưởng và máy in cho từng đơn hàng — chỉ đọc</Typography>
             </Box>
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">

@@ -1,4 +1,6 @@
+using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.SharedKernel.Common;
+using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Scheduling.Domain.Entities;
 
@@ -12,11 +14,26 @@ public class Lab : AggregateRoot<Guid>
     public string Name { get; private set; } = string.Empty;
     public string City { get; private set; } = string.Empty;
     public bool IsActive { get; private set; }
+    public LabStatus Status { get; private set; } = LabStatus.Active;
+    public string OperatingHours { get; private set; } = "T2-T7 08:00-18:00";
+    public Guid? OwnerUserId { get; private set; }
+    public string? ContactPhone { get; private set; }
+    public string? Address { get; private set; }
+    public string? RejectionReason { get; private set; }
+    public DateTime? ApprovedAtUtc { get; private set; }
+    public Guid? ApprovedByUserId { get; private set; }
     public decimal OnTimeDeliveryRate { get; private set; } = 1.0m;
     public decimal FirstPassYield { get; private set; } = 1.0m;
     public int TransitDaysToHub { get; private set; }
     public bool IsInGoodStanding { get; private set; } = true;
     public DateTime CreatedAt { get; private set; }
+
+    public bool IsDeclarationComplete =>
+        !string.IsNullOrWhiteSpace(Name)
+        && !string.IsNullOrWhiteSpace(City)
+        && !string.IsNullOrWhiteSpace(OperatingHours)
+        && TransitDaysToHub >= 0
+        && _machines.Count > 0;
 
     public IReadOnlyCollection<Machine> Machines => _machines.AsReadOnly();
     public IReadOnlyCollection<MaterialStock> MaterialStocks => _materialStocks.AsReadOnly();
@@ -25,7 +42,7 @@ public class Lab : AggregateRoot<Guid>
 
     private Lab() { }
 
-    public static Lab Onboard(string name, string city, int transitDaysToHub)
+    public static Lab Onboard(string name, string city, int transitDaysToHub, string? operatingHours = null, Guid? ownerUserId = null)
     {
         if (transitDaysToHub < 0)
             throw new ArgumentOutOfRangeException(nameof(transitDaysToHub), "Transit days cannot be negative");
@@ -36,16 +53,125 @@ public class Lab : AggregateRoot<Guid>
             Name = name.Trim(),
             City = city.Trim(),
             TransitDaysToHub = transitDaysToHub,
+            OperatingHours = string.IsNullOrWhiteSpace(operatingHours) ? "T2-T7 08:00-18:00" : operatingHours.Trim(),
+            OwnerUserId = ownerUserId,
+            Status = LabStatus.Active,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
     }
 
+    /// <summary>
+    /// Lab self-registration (FR-LAB-001, BR-OPS-005/006): starts in <see cref="LabStatus.Pending"/>
+    /// with <see cref="IsActive"/> = false so the lab receives no jobs until approved by Admin.
+    /// </summary>
+    public static Lab SelfRegister(
+        string name,
+        string city,
+        int transitDaysToHub,
+        string operatingHours,
+        Guid? ownerUserId = null,
+        string? contactPhone = null,
+        string? address = null)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Lab name is required", nameof(name));
+        if (string.IsNullOrWhiteSpace(city))
+            throw new ArgumentException("City is required", nameof(city));
+        if (string.IsNullOrWhiteSpace(operatingHours))
+            throw new ArgumentException("Operating hours are required", nameof(operatingHours));
+        if (transitDaysToHub < 0)
+            throw new ArgumentOutOfRangeException(nameof(transitDaysToHub), "Transit days cannot be negative");
+
+        return new Lab
+        {
+            Id = Guid.NewGuid(),
+            Name = name.Trim(),
+            City = city.Trim(),
+            TransitDaysToHub = transitDaysToHub,
+            OperatingHours = operatingHours.Trim(),
+            OwnerUserId = ownerUserId,
+            ContactPhone = string.IsNullOrWhiteSpace(contactPhone) ? null : contactPhone.Trim(),
+            Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim(),
+            Status = LabStatus.Pending,
+            IsActive = false,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    public void UpdateProfile(
+        string name,
+        string city,
+        int transitDaysToHub,
+        string operatingHours,
+        string? contactPhone = null,
+        string? address = null)
+    {
+        if (transitDaysToHub < 0)
+            throw new ArgumentOutOfRangeException(nameof(transitDaysToHub), "Transit days cannot be negative");
+
+        Name = name.Trim();
+        City = city.Trim();
+        TransitDaysToHub = transitDaysToHub;
+        OperatingHours = operatingHours.Trim();
+        ContactPhone = string.IsNullOrWhiteSpace(contactPhone) ? null : contactPhone.Trim();
+        Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
+
+        if (Status == LabStatus.Rejected)
+        {
+            Status = LabStatus.Pending;
+            RejectionReason = null;
+        }
+    }
+
+    public void ClaimOwnership(Guid ownerUserId)
+    {
+        if (OwnerUserId is null)
+            OwnerUserId = ownerUserId;
+    }
+
+    public Result Approve(Guid? approvedByUserId = null)
+    {
+        if (string.IsNullOrWhiteSpace(Name) || string.IsNullOrWhiteSpace(City) || string.IsNullOrWhiteSpace(OperatingHours) || TransitDaysToHub < 0)
+            return Result.Failure(Error.Validation("Hồ sơ xưởng chưa đầy đủ (thiếu tên, thành phố, lịch làm việc hoặc thời gian chuyển về Hub)."));
+
+        if (_machines.Count == 0)
+            return Result.Failure(Error.Conflict("Không thể duyệt xưởng khi chưa khai báo ít nhất 1 máy in."));
+
+        Status = LabStatus.Active;
+        IsActive = true;
+        RejectionReason = null;
+        ApprovedAtUtc = DateTime.UtcNow;
+        ApprovedByUserId = approvedByUserId;
+        return Result.Success();
+    }
+
+    public Result Reject(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            return Result.Failure(Error.Validation("Lý do từ chối không được để trống."));
+
+        Status = LabStatus.Rejected;
+        IsActive = false;
+        RejectionReason = reason.Trim();
+        return Result.Success();
+    }
+
     public void AddMachine(Machine machine) => _machines.Add(machine);
 
-    public void Deactivate() => IsActive = false;
+    public bool RemoveMachine(Machine machine) => _machines.Remove(machine);
 
-    public void Activate() => IsActive = true;
+    public void Deactivate()
+    {
+        IsActive = false;
+        Status = LabStatus.Inactive;
+    }
+
+    public void Activate()
+    {
+        IsActive = true;
+        Status = LabStatus.Active;
+    }
 
     public void SuspendFromAssignments() => IsInGoodStanding = false;
 

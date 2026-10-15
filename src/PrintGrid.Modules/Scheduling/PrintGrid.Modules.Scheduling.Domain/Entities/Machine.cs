@@ -17,6 +17,9 @@ public class Machine : Entity<Guid>
     public decimal AchievableToleranceMm { get; private set; }
     public MachineStatus Status { get; private set; }
     public decimal SpeedFactor { get; private set; } = 1.0m;
+    public DateTime? MaintenanceFromUtc { get; private set; }
+    public DateTime? MaintenanceUntilUtc { get; private set; }
+    public string? MaintenanceReason { get; private set; }
 
     public IReadOnlyCollection<string> SupportedMaterials => _supportedMaterials.AsReadOnly();
 
@@ -46,9 +49,65 @@ public class Machine : Entity<Guid>
         };
 
         machine._supportedMaterials.AddRange(
-            supportedMaterials.Select(m => m.Trim().ToUpperInvariant()).Distinct());
+            supportedMaterials.Select(m => m.Trim().ToUpperInvariant()).Where(m => m.Length > 0).Distinct());
 
         return machine;
+    }
+
+    public void UpdateSpecifications(
+        string name,
+        string model,
+        PrintTechnology technology,
+        BuildVolume buildVolume,
+        decimal minLayerHeightMm,
+        decimal achievableToleranceMm,
+        IEnumerable<string> supportedMaterials)
+    {
+        Name = name.Trim();
+        Model = model.Trim();
+        Technology = technology;
+        BuildVolume = buildVolume;
+        MinLayerHeightMm = minLayerHeightMm;
+        AchievableToleranceMm = achievableToleranceMm;
+
+        _supportedMaterials.Clear();
+        _supportedMaterials.AddRange(
+            supportedMaterials.Select(m => m.Trim().ToUpperInvariant()).Where(m => m.Length > 0).Distinct());
+    }
+
+    public void ScheduleMaintenance(DateTime? fromUtc, DateTime? untilUtc, string? reason, bool setMaintenanceNow = false)
+    {
+        if (fromUtc.HasValue && untilUtc.HasValue && untilUtc.Value <= fromUtc.Value)
+            throw new ArgumentException("Maintenance end time must be after start time");
+
+        MaintenanceFromUtc = fromUtc;
+        MaintenanceUntilUtc = untilUtc;
+        MaintenanceReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+
+        var now = DateTime.UtcNow;
+        if (setMaintenanceNow || (fromUtc.HasValue && untilUtc.HasValue && now >= fromUtc.Value && now < untilUtc.Value))
+        {
+            Status = MachineStatus.Maintenance;
+        }
+    }
+
+    public void ClearMaintenance()
+    {
+        MaintenanceFromUtc = null;
+        MaintenanceUntilUtc = null;
+        MaintenanceReason = null;
+        if (Status == MachineStatus.Maintenance)
+            Status = MachineStatus.Idle;
+    }
+
+    public bool IsInMaintenanceAt(DateTime utcTime)
+    {
+        if (Status == MachineStatus.Maintenance) return true;
+        if (MaintenanceFromUtc.HasValue && MaintenanceUntilUtc.HasValue)
+            return utcTime >= MaintenanceFromUtc.Value && utcTime < MaintenanceUntilUtc.Value;
+        if (!MaintenanceFromUtc.HasValue && MaintenanceUntilUtc.HasValue)
+            return utcTime < MaintenanceUntilUtc.Value;
+        return false;
     }
 
     public bool Supports(JobSpecification spec) =>
@@ -58,7 +117,16 @@ public class Machine : Entity<Guid>
         && AchievableToleranceMm <= spec.ToleranceMm
         && _supportedMaterials.Contains(spec.MaterialCode);
 
-    public void SetStatus(MachineStatus status) => Status = status;
+    public void SetStatus(MachineStatus status)
+    {
+        Status = status;
+        if (status == MachineStatus.Idle)
+        {
+            MaintenanceFromUtc = null;
+            MaintenanceUntilUtc = null;
+            MaintenanceReason = null;
+        }
+    }
 
     public void AdjustSpeedFactor(decimal factor)
     {

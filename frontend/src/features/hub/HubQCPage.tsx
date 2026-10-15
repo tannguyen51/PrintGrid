@@ -239,7 +239,7 @@ export default function HubQCPage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Kiểm tra chất lượng — Hub
               </Typography>
-              <Typography color="text.secondary">Kiểm định và đánh giá chất lượng sản phẩm in hoàn thiện (FR-HUB-002)</Typography>
+              <Typography color="text.secondary">Kiểm định và đánh giá chất lượng sản phẩm in hoàn thiện</Typography>
             </Box>
           </Stack>
           <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>

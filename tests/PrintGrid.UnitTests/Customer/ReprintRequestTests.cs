@@ -6,15 +6,15 @@ namespace PrintGrid.UnitTests.Customer;
 
 public class ReprintRequestTests
 {
-    private const string TinyPng = "data:image/png;base64,iVBORw0KGgo=";
+    private const string _tinyPng = "data:image/png;base64,iVBORw0KGgo=";
 
     [Fact]
     public void New_request_starts_under_review_and_preserves_evidence()
     {
-        var request = ReprintRequest.Create(Guid.NewGuid(), Guid.NewGuid(), "surface_defect", "Rỗ mặt in", [TinyPng]);
+        var request = ReprintRequest.Create(Guid.NewGuid(), Guid.NewGuid(), "surface_defect", "Rỗ mặt in", [_tinyPng]);
 
         request.Status.Should().Be(ReprintRequestStatus.UnderReview);
-        request.Photos.Should().ContainSingle(TinyPng);
+        request.Photos.Should().ContainSingle(_tinyPng);
         request.Description.Should().Be("Rỗ mặt in");
     }
 
@@ -23,7 +23,7 @@ public class ReprintRequestTests
     {
         var validator = new CreateReprintRequestCommandValidator();
         var invalid = new CreateReprintRequestCommand(Guid.NewGuid(), Guid.NewGuid(), "unknown", "", []);
-        var valid = invalid with { Reason = "surface_defect", Description = "Rỗ mặt in", Photos = [TinyPng] };
+        var valid = invalid with { Reason = "surface_defect", Description = "Rỗ mặt in", Photos = [_tinyPng] };
 
         validator.Validate(invalid).IsValid.Should().BeFalse();
         validator.Validate(valid).IsValid.Should().BeTrue();

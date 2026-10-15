@@ -35,23 +35,30 @@ interface NavLink {
 }
 
 const PRIMARY: Partial<Record<Role, NavLink[]>> = {
-  LabManager: [{ label: 'Hàng đợi sản xuất', href: '/lab/queue' }],
-  LabOperator: [{ label: 'Hàng đợi sản xuất', href: '/lab/queue' }],
+  LabManager: [
+    { label: 'Hàng đợi sản xuất', href: '/lab/queue' },
+    { label: 'Máy in xưởng', href: '/lab/machines' },
+    { label: 'Lịch máy & Điểm', href: '/lab/timeline' },
+  ],
+  LabOperator: [
+    { label: 'Hàng đợi sản xuất', href: '/lab/queue' },
+    { label: 'Lịch máy & Điểm', href: '/lab/timeline' },
+  ],
   HubQC: [
     { label: 'Kiểm tra chất lượng', href: '/hub/qc' },
-    { label: 'Lô giao hàng', href: '/hub/shipments' },
+    { label: 'Hoàn tất & Gộp kiện', href: '/hub/shipments' },
   ],
   HubFulfillment: [
-    { label: 'Lô giao hàng', href: '/hub/shipments' },
+    { label: 'Hoàn tất & Gộp kiện', href: '/hub/shipments' },
     { label: 'Kiểm tra chất lượng', href: '/hub/qc' },
   ],
   OpsManager: [
     { label: 'Bảng điều phối', href: '/scheduling' },
-    { label: 'Xưởng & máy', href: '/ops/labs' },
+    { label: 'Duyệt xưởng & máy', href: '/ops/labs' },
   ],
   Admin: [
     { label: 'Bảng điều phối', href: '/scheduling' },
-    { label: 'Xưởng & máy', href: '/ops/labs' },
+    { label: 'Duyệt xưởng & máy', href: '/admin/labs' },
   ],
   OrderStaff: [
     { label: 'Duyệt báo giá', href: '/quote-reviews' },
@@ -60,6 +67,13 @@ const PRIMARY: Partial<Record<Role, NavLink[]>> = {
 }
 
 const MORE: Partial<Record<Role, NavLink[]>> = {
+  LabManager: [
+    { label: 'Đăng ký / Hồ sơ xưởng', href: '/lab/register' },
+  ],
+  LabOperator: [
+    { label: 'Máy in xưởng', href: '/lab/machines' },
+    { label: 'Đăng ký / Hồ sơ xưởng', href: '/lab/register' },
+  ],
   OpsManager: [
     { label: 'Duyệt báo giá', href: '/quote-reviews' },
     { label: 'Nghiệm thu QC', href: '/staff/qc-proofs' },

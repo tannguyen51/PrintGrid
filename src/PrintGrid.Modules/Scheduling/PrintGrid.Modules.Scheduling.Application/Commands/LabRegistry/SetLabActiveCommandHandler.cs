@@ -22,8 +22,16 @@ public class SetLabActiveCommandHandler : IRequestHandler<SetLabActiveCommand, R
         if (lab is null)
             return Result.Failure(Error.NotFound("Lab", command.LabId));
 
-        if (command.IsActive) lab.Activate();
-        else lab.Deactivate();
+        if (command.IsActive)
+        {
+            var approveResult = lab.Approve();
+            if (approveResult.IsFailure)
+                return approveResult;
+        }
+        else
+        {
+            lab.Deactivate();
+        }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();

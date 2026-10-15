@@ -22,6 +22,12 @@ public class SetMachineStatusCommandHandler : IRequestHandler<SetMachineStatusCo
         if (lab is null)
             return Result.Failure(Error.NotFound("Lab", command.LabId));
 
+        if (!command.IsAdminOrOps && command.RequestingUserId.HasValue)
+        {
+            if (lab.OwnerUserId.HasValue && lab.OwnerUserId.Value != command.RequestingUserId.Value)
+                return Result.Failure(Error.Forbidden("Bạn chỉ có quyền đổi trạng thái máy thuộc xưởng của mình."));
+        }
+
         var machine = lab.Machines.FirstOrDefault(m => m.Id == command.MachineId);
         if (machine is null)
             return Result.Failure(Error.NotFound("Machine", command.MachineId));

@@ -253,10 +253,19 @@ export default function LabQueuePage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Hàng đợi sản xuất — Lab
               </Typography>
-              <Typography color="text.secondary">Nhận / từ chối job (hạn 2 giờ) → Bắt đầu in → Báo hoàn thành (FR-LAB-004)</Typography>
+              <Typography color="text.secondary">Nhận hoặc từ chối đơn in (hạn xử lý 2 giờ) → Bắt đầu in → Báo hoàn thành</Typography>
             </Box>
           </Stack>
-          <Stack direction="row" spacing={1.5}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button variant="outlined" color="inherit" onClick={() => navigate('/lab/register')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+              Hồ sơ xưởng
+            </Button>
+            <Button variant="outlined" color="inherit" onClick={() => navigate('/lab/machines')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+              Máy in
+            </Button>
+            <Button variant="outlined" color="inherit" onClick={() => navigate('/lab/timeline')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+              Lịch máy & Điểm
+            </Button>
             <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} disabled={!jobs[0]?.j.labId} onClick={() => navigate(`/lab/${jobs[0]?.j.labId}/inventory`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
               Kho vật liệu
             </Button>
@@ -380,7 +389,7 @@ export default function LabQueuePage() {
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>Từ chối nhận job</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: 'text.secondary', mb: 2 }}>
-            Vui lòng chọn lý do từ chối. Job sẽ được đưa về hàng đợi để hệ thống tự động gán lại (BR-ASSIGN-006).
+            Vui lòng chọn lý do từ chối. Đơn in sẽ được đưa về hàng đợi để điều phối sang xưởng khác.
           </DialogContentText>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <FormControl fullWidth size="small">
@@ -437,7 +446,7 @@ export default function LabQueuePage() {
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>Hoàn thành job</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: 'text.secondary', mb: 2 }}>
-            Ghi thời gian in thực tế (phút) để hệ thống hiệu chuẩn ước lượng (FR-SCHED-008).
+            Ghi nhận thời gian in thực tế (phút) để hệ thống tối ưu độ chính xác ước tính.
           </DialogContentText>
           <TextField
             label="Thời gian thực tế (phút)"
