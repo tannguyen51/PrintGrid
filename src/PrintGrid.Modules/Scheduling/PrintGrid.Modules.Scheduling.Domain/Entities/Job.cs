@@ -34,6 +34,12 @@ public class Job : AggregateRoot<Guid>
     public Guid? QcReviewedBy { get; private set; }
     public DateTime? QcReviewedAtUtc { get; private set; }
     public string? QcRejectionReason { get; private set; }
+    public Guid? InspectionChecklistVersionId { get; private set; }
+    public string? InspectionChecklistResultsJson { get; private set; }
+    public string? InspectionDefectCode { get; private set; }
+    public string? InspectionFaultAttribution { get; private set; }
+    public string? InspectionNote { get; private set; }
+    public DateTime? InspectedAtUtc { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     /// <summary>Normal for originally placed work, Urgent for reprints (BR-RESCHED-003).</summary>
@@ -357,6 +363,25 @@ public class Job : AggregateRoot<Guid>
 
         Status = JobStatus.Completed;
         AddDomainEvent(new JobInspectionPassedEvent(Id, photoUrls));
+        return Result.Success();
+    }
+
+    public Result RecordInspection(
+        Guid checklistVersionId, string checklistResultsJson,
+        string? defectCode, string? faultAttribution, string? note,
+        DateTime? inspectedAtUtc = null)
+    {
+        if (Status != JobStatus.AwaitingInspection)
+            return Result.Failure(Error.Conflict($"Job in state {Status} cannot be inspected"));
+        if (checklistVersionId == Guid.Empty || string.IsNullOrWhiteSpace(checklistResultsJson))
+            return Result.Failure(Error.Validation("Checklist version and results are required"));
+
+        InspectionChecklistVersionId = checklistVersionId;
+        InspectionChecklistResultsJson = checklistResultsJson;
+        InspectionDefectCode = string.IsNullOrWhiteSpace(defectCode) ? null : defectCode.Trim().ToUpperInvariant();
+        InspectionFaultAttribution = string.IsNullOrWhiteSpace(faultAttribution) ? null : faultAttribution.Trim();
+        InspectionNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        InspectedAtUtc = inspectedAtUtc ?? DateTime.UtcNow;
         return Result.Success();
     }
 

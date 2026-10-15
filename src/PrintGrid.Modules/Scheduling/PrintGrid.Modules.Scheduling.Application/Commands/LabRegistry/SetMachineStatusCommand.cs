@@ -9,4 +9,5 @@ public record SetMachineStatusCommand(
     Guid MachineId,
     MachineStatus Status,
     Guid? RequestingUserId = null,
-    bool IsAdminOrOps = true) : IRequest<Result>;
+    bool IsAdminOrOps = true,
+    Guid? ActorUserId = null) : IRequest<Result>;

@@ -9,7 +9,6 @@ export type Role =
   | 'HubQC'
   | 'HubFulfillment'
   | 'OpsManager'
-  | 'OrderStaff'
   | 'Admin'
 
 export interface AuthUser {
@@ -46,7 +45,7 @@ interface LoginResponse {
 
 const KNOWN_ROLES: Role[] = [
   'Customer', 'LabManager', 'LabOperator', 'HubQC', 'HubFulfillment',
-  'OpsManager', 'OrderStaff', 'Admin',
+  'OpsManager', 'Admin',
 ]
 
 /**

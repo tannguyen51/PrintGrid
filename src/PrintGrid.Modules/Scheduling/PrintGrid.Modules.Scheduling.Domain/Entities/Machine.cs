@@ -128,6 +128,31 @@ public class Machine : Entity<Guid>
         }
     }
 
+    public void UpdateSpecifications(
+        string name,
+        string model,
+        PrintTechnology technology,
+        BuildVolume buildVolume,
+        decimal minLayerHeightMm,
+        decimal achievableToleranceMm,
+        IEnumerable<string> supportedMaterials)
+    {
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(model))
+            throw new ArgumentException("Machine name and model are required");
+
+        Name = name.Trim();
+        Model = model.Trim();
+        Technology = technology;
+        BuildVolume = buildVolume;
+        MinLayerHeightMm = minLayerHeightMm;
+        AchievableToleranceMm = achievableToleranceMm;
+        _supportedMaterials.Clear();
+        _supportedMaterials.AddRange(supportedMaterials
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim().ToUpperInvariant())
+            .Distinct());
+    }
+
     public void AdjustSpeedFactor(decimal factor)
     {
         if (factor is < 0.5m or > 2.0m)

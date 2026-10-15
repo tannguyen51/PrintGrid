@@ -74,6 +74,13 @@ public class AssignmentEngine : IAssignmentEngine
         var stopwatch = Stopwatch.StartNew();
 
         var labs = await _labs.GetActiveWithMachinesAsync(cancellationToken);
+        var activeCounts = await _jobs.GetActiveCountsByLabAsync(cancellationToken)
+            ?? new Dictionary<Guid, int>();
+        labs = labs
+            .Where(lab => !lab.MaxConcurrentJobs.HasValue
+                || !activeCounts.TryGetValue(lab.Id, out var activeCount)
+                || activeCount < lab.MaxConcurrentJobs.Value)
+            .ToList();
         var filter = ApplyExclusion(
             _capabilityFilter.Filter(job.Specification, labs), request.ExcludeLabId, job.Id);
 

@@ -35,7 +35,7 @@ public class LoginCustomerCommandHandler : IRequestHandler<LoginCustomerCommand,
 
         // Same message for "no such account" and "wrong password" to avoid
         // leaking which emails exist.
-        if (customer is null || !_passwordHasher.Verify(command.Password, customer.PasswordHash))
+        if (customer is null || !customer.IsActive || !_passwordHasher.Verify(command.Password, customer.PasswordHash))
             return Result.Failure<AuthSessionDto>(Error.Unauthorized("Invalid email or password"));
 
         customer.RecordLogin();

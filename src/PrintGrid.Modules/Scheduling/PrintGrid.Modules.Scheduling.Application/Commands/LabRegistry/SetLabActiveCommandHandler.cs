@@ -22,16 +22,15 @@ public class SetLabActiveCommandHandler : IRequestHandler<SetLabActiveCommand, R
         if (lab is null)
             return Result.Failure(Error.NotFound("Lab", command.LabId));
 
-        if (command.IsActive)
-        {
-            var approveResult = lab.Approve();
-            if (approveResult.IsFailure)
-                return approveResult;
-        }
-        else
-        {
-            lab.Deactivate();
-        }
+        if (command.IsActive && lab.Machines.Count == 0)
+            return Result.Failure(Error.Conflict("A lab must declare at least one machine before approval"));
+        if (command.IsActive && lab.MaterialStocks.Count == 0)
+            return Result.Failure(Error.Conflict("A lab must declare at least one material stock before approval"));
+        if (command.IsActive && (lab.TransitDaysToHub <= 0 || string.IsNullOrWhiteSpace(lab.WorkingDays)))
+            return Result.Failure(Error.Conflict("Working calendar and transfer time are required before approval"));
+
+        if (command.IsActive) lab.Activate();
+        else lab.Deactivate();
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();

@@ -17,4 +17,5 @@ public record RegisterMachineCommand(
     decimal AchievableToleranceMm,
     IReadOnlyList<string> SupportedMaterials,
     Guid? RequestingUserId = null,
-    bool IsAdminOrOps = true) : IRequest<Result<MachineDto>>;
+    bool IsAdminOrOps = true,
+    Guid? ActorUserId = null) : IRequest<Result<MachineDto>>;

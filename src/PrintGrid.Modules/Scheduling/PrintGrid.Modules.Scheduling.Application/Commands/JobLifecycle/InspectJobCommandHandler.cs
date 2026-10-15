@@ -1,5 +1,7 @@
+using System.Text.Json;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using PrintGrid.Modules.Admin.Domain.Repositories;
 using PrintGrid.Modules.Scheduling.Application.Commands.UrgentReprint;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
@@ -25,17 +27,20 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
     private readonly IUnitOfWork _unitOfWork;
     private readonly ISender _sender;
     private readonly ILogger<InspectJobCommandHandler> _logger;
+    private readonly IQcKnowledgeRepository _qcKnowledge;
 
     public InspectJobCommandHandler(
         IJobRepository jobs,
         IUnitOfWork unitOfWork,
         ISender sender,
-        ILogger<InspectJobCommandHandler> logger)
+        ILogger<InspectJobCommandHandler> logger,
+        IQcKnowledgeRepository qcKnowledge)
     {
         _jobs = jobs;
         _unitOfWork = unitOfWork;
         _sender = sender;
         _logger = logger;
+        _qcKnowledge = qcKnowledge;
     }
 
     public async Task<Result> Handle(InspectJobCommand command, CancellationToken cancellationToken)
@@ -53,6 +58,45 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
             return Result.Failure(Error.Validation("Photographic evidence is required for inspection"));
         if (command.ChecklistResults is null || command.ChecklistResults.Count == 0)
             return Result.Failure(Error.Validation("Inspection checklist items are mandatory"));
+
+        if (command.ChecklistVersionId is null)
+            return Result.Failure(Error.Validation("Inspection checklist version is required"));
+        var checklist = await _qcKnowledge.GetChecklistAsync(command.ChecklistVersionId.Value, cancellationToken);
+        if (checklist is null)
+            return Result.Failure(Error.Validation("Inspection checklist version does not exist"));
+
+        using var checklistDocument = JsonDocument.Parse(checklist.ItemsJson);
+        var expectedItems = checklistDocument.RootElement.EnumerateArray()
+            .Select(x => new
+            {
+                Code = x.GetProperty("code").GetString()!,
+                Mandatory = x.GetProperty("isMandatory").GetBoolean()
+            }).ToList();
+        var submittedCodes = command.ChecklistResults
+            .Select(x => x.ItemCode?.Trim().ToUpperInvariant())
+            .Where(x => !string.IsNullOrWhiteSpace(x)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (expectedItems.Where(x => x.Mandatory).Any(x => !submittedCodes.Contains(x.Code)) ||
+            command.ChecklistResults.Any(x => string.IsNullOrWhiteSpace(x.ItemCode) || expectedItems.All(e => !e.Code.Equals(x.ItemCode, StringComparison.OrdinalIgnoreCase))))
+            return Result.Failure(Error.Validation("Inspection results must match every mandatory item in the selected checklist version"));
+
+        string? defectCode = null;
+        if (!command.Passed)
+        {
+            defectCode = command.DefectCode?.Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(defectCode))
+                return Result.Failure(Error.Validation("Defect code is required when inspection fails"));
+            var defect = await _qcKnowledge.GetDefectAsync(defectCode, cancellationToken);
+            if (defect is null || defect.IsDeprecated)
+                return Result.Failure(Error.Validation("Defect code does not exist or is deprecated"));
+        }
+
+        var recorded = job.RecordInspection(
+            checklist.Id,
+            JsonSerializer.Serialize(command.ChecklistResults),
+            defectCode,
+            command.FaultAttribution?.ToString(),
+            command.Note);
+        if (recorded.IsFailure) return recorded;
 
         if (command.Passed)
         {

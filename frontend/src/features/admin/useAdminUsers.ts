@@ -1,14 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../shared/api/apiClient'
 
-/** The eight roles the backend recognises (Roles.cs). Keep in sync. */
+/** The seven roles the backend recognises (Roles.cs). Keep in sync. */
 export const ROLES = [
   'Customer',
   'LabManager',
   'LabOperator',
   'HubQC',
   'HubFulfillment',
-  'OrderStaff',
   'OpsManager',
   'Admin',
 ] as const
@@ -21,7 +20,6 @@ export const ROLE_LABELS: Record<Role, string> = {
   LabOperator: 'Vận hành máy',
   HubQC: 'Kiểm định hub',
   HubFulfillment: 'Đóng gói & giao hàng',
-  OrderStaff: 'Nhân viên duyệt đơn',
   OpsManager: 'Điều phối mạng lưới',
   Admin: 'Quản trị hệ thống',
 }
@@ -81,6 +79,14 @@ export function useDeactivateUser() {
   const invalidate = useInvalidateUsers()
   return useMutation({
     mutationFn: (id: string) => apiClient.put(`/users/${id}/deactivate`),
+    onSuccess: invalidate,
+  })
+}
+
+export function useActivateUser() {
+  const invalidate = useInvalidateUsers()
+  return useMutation({
+    mutationFn: (id: string) => apiClient.put(`/users/${id}/activate`),
     onSuccess: invalidate,
   })
 }

@@ -1,18 +1,14 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, Divider, ImageList, ImageListItem, Stack, TextField, Typography,
 } from '@mui/material'
-import { CheckCircleRounded, CloseRounded, FactCheckRounded, LogoutRounded } from '@mui/icons-material'
-import { useAuth } from '../../app/AuthContext'
+import { CheckCircleRounded, CloseRounded, FactCheckRounded } from '@mui/icons-material'
 import type { QcProofQueueItem } from '../jobs/jobTypes'
 import { useQcProofQueue, useReviewQcProof } from '../jobs/useJobs'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 
 export default function QcProofReviewPage() {
-  const navigate = useNavigate()
-  const { logout } = useAuth()
   const queue = useQcProofQueue()
   const review = useReviewQcProof()
   const [selected, setSelected] = useState<QcProofQueueItem | null>(null)
@@ -44,7 +40,6 @@ export default function QcProofReviewPage() {
               <Typography color="text.secondary">Kiểm tra ảnh và báo cáo trước khi cho phép bàn giao về hub</Typography>
             </Box>
           </Stack>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>Đăng xuất</Button>
         </Stack>
 
         {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}

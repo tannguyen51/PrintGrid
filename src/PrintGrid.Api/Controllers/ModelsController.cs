@@ -10,6 +10,7 @@ using PrintGrid.Api.Models;
 using PrintGrid.Infrastructure.Shared.FileStorage;
 using PrintGrid.Modules.Customer.Application.Models;
 using PrintGrid.Modules.Scheduling.Application.Abstractions;
+using PrintGrid.Modules.Admin.Application.AuditLogs;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -23,6 +24,7 @@ public class ModelsController : ControllerBase
     private readonly MinioOptions _minio;
     private readonly ModelUploadOptions _uploadOptions;
     private readonly ISlicingService _slicingService;
+    private readonly IAuditLogWriter _audit;
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> UploadLocks = new();
 
     public ModelsController(
@@ -30,13 +32,15 @@ public class ModelsController : ControllerBase
         IFileStorage files,
         IOptions<MinioOptions> minio,
         IOptions<ModelUploadOptions> uploadOptions,
-        ISlicingService slicingService)
+        ISlicingService slicingService,
+        IAuditLogWriter audit)
     {
         _sender = sender;
         _files = files;
         _minio = minio.Value;
         _uploadOptions = uploadOptions.Value;
         _slicingService = slicingService;
+        _audit = audit;
     }
 
     [HttpGet("quota")]
@@ -96,6 +100,19 @@ public class ModelsController : ControllerBase
 
         var stream = await _files.DownloadAsync(
             storageKey[..separator], storageKey[(separator + 1)..], cancellationToken);
+
+        await _audit.WriteAsync(new AuditLogWriteRequest(
+            customerId,
+            User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? customerId.Value.ToString(),
+            "Customer",
+            AuditActionClasses.ModelAccess,
+            "model.file_downloaded",
+            "Model",
+            modelId.ToString(),
+            NewValues: new { result.Value.FileName, result.Value.StorageKey },
+            IpAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+            TraceId: HttpContext.TraceIdentifier,
+            RequirementCodes: ["FR-ADMIN-004", "UC-025", "BR-ACCESS-002", "BR-CONFIG-004"]), cancellationToken);
 
         return File(stream, ContentTypeFor(Path.GetExtension(storageKey)), enableRangeProcessing: true);
     }

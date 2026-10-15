@@ -59,21 +59,9 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
     setSubmitting(true)
     setServerError(null)
     try {
-      const user = await login(values.email, values.password, remember)
+      await login(values.email, values.password, remember)
       if (onSuccess) onSuccess()
-      
-      const roles = user?.roles ?? []
-      if (roles.includes('HubQC') || roles.includes('HubFulfillment')) {
-        navigate('/hub/qc', { replace: true })
-      } else if (roles.includes('LabManager') || roles.includes('LabOperator')) {
-        navigate('/lab/queue', { replace: true })
-      } else if (roles.includes('OpsManager') || roles.includes('Admin')) {
-        navigate('/scheduling', { replace: true })
-      } else if (roles.includes('OrderStaff')) {
-        navigate('/quote-reviews', { replace: true })
-      } else {
-        navigate('/models', { replace: true })
-      }
+      navigate('/', { replace: true })
     } catch (error) {
       // In nguyên nhân thật ra console để debug, còn UI hiển thị câu diễn giải
       // từ API (sai mật khẩu, 403, 500, server chưa chạy…) thay vì một câu cứng.

@@ -8,6 +8,7 @@ public interface ILabRepository
     Task<Lab?> GetByOwnerUserIdAsync(Guid ownerUserId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Lab>> GetActiveWithMachinesAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Lab>> GetAllAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Lab>> GetByOwnerAsync(Guid ownerUserId, CancellationToken cancellationToken = default);
     Task<bool> AnyAsync(CancellationToken cancellationToken = default);
     Task AddAsync(Lab lab, CancellationToken cancellationToken = default);
     void AddMachine(Machine machine);

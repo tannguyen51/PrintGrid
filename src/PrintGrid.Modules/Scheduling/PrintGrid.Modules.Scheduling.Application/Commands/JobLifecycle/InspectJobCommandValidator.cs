@@ -13,6 +13,7 @@ public class InspectJobCommandValidator : AbstractValidator<InspectJobCommand>
     public InspectJobCommandValidator()
     {
         RuleFor(c => c.JobId).NotEmpty();
+        RuleFor(c => c.ChecklistVersionId).NotEmpty().WithMessage("Phiên bản bộ kiểm là bắt buộc.");
         RuleFor(c => c.Note).MaximumLength(500);
 
         // AC01 (FR-HUB-002, BR-QC-003): Photographic evidence required
@@ -37,6 +38,11 @@ public class InspectJobCommandValidator : AbstractValidator<InspectJobCommand>
             RuleFor(c => c.FaultAttribution)
                 .NotNull()
                 .WithMessage("Fault attribution (Lab, Hub, or Customer) is required when inspection fails.");
+            RuleFor(c => c.DefectCode)
+                .NotEmpty()
+                .MaximumLength(32)
+                .Matches("^[A-Za-z0-9_-]+$")
+                .WithMessage("Mã lỗi hợp lệ là bắt buộc khi kiểm định không đạt.");
         });
     }
 }

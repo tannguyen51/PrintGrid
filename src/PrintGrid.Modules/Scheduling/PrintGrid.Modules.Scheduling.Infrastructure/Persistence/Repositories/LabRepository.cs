@@ -43,6 +43,14 @@ public class LabRepository : ILabRepository
             .OrderBy(l => l.Name)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Lab>> GetByOwnerAsync(Guid ownerUserId, CancellationToken cancellationToken = default) =>
+        await _context.Set<Lab>()
+            .Include(l => l.Machines)
+            .Include(l => l.MaterialStocks)
+            .Where(l => l.OwnerUserId == ownerUserId)
+            .OrderBy(l => l.Name)
+            .ToListAsync(cancellationToken);
+
     public Task<bool> AnyAsync(CancellationToken cancellationToken = default) =>
         _context.Set<Lab>().AnyAsync(cancellationToken);
 
