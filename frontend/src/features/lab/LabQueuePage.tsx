@@ -232,6 +232,8 @@ export default function LabQueuePage() {
         photos: proofPhotos,
         actualMaterialGrams: actualMaterialGrams > 0 ? actualMaterialGrams : undefined,
       })
+      // The mutation's onSuccess invalidates every jobs query, so the Lab queue
+      // and the Hub QC queue (polling, 5s) both pick the new status up promptly.
       localStorage.removeItem(`printgrid:completion:${completeTarget.id}`)
       setCompleteTarget(null)
       setSelfReport('')

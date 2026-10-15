@@ -8,6 +8,10 @@ export function useJobs(status: JobStatus) {
   return useQuery({
     queryKey: [...JOBS_KEY, status],
     queryFn: () => apiClient.get<Job[]>(`/jobs?status=${status}`).then((r) => r.data),
+    // Poll every 5s for queue statuses (HubQC, Lab queue) so a freshly-completed job
+    // appears quickly on the next status page without a manual refresh.
+    refetchInterval: status === 'Assigned' || status === 'Accepted' || status === 'InProgress' || status === 'AwaitingInspection' ? 5000 : undefined,
+    refetchOnWindowFocus: status === 'Assigned' || status === 'Accepted' || status === 'InProgress' || status === 'AwaitingInspection',
   })
 }
 
