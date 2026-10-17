@@ -44,6 +44,7 @@ const OUTCOME_META: Record<string, { label: string; color: 'success' | 'error' |
   placement_race: { label: 'Xung đột khi đặt lịch', color: 'warning' },
   rejected_by_aggregate: { label: 'Bị job từ chối', color: 'default' },
   probe: { label: 'Chỉ thăm dò', color: 'info' },
+  pending_customer_approval: { label: 'Chờ khách duyệt ngày', color: 'warning' },
 }
 
 const ACTOR_LABELS: Record<string, string> = {

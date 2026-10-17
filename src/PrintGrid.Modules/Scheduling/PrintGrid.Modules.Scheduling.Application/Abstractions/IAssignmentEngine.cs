@@ -42,7 +42,8 @@ public sealed record AssignmentRequest(
     TimeSpan? TimeBudget = null,
     bool IgnoreDueDate = false,
     bool ProbeOnly = false,
-    Guid? ExcludeLabId = null);
+    Guid? ExcludeLabId = null,
+    string? Reason = null);
 
 /// <summary>
 /// Result of one engine run: the placement (when committed), the full ranking that led to

@@ -22,6 +22,7 @@ public class AssignmentEngineTests
     private readonly IMachineTimelineService _timeline = Substitute.For<IMachineTimelineService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IAssignmentDecisionRepository _decisions = Substitute.For<IAssignmentDecisionRepository>();
+    private readonly IScoringConfigurationProvider _scoringConfigurations = Substitute.For<IScoringConfigurationProvider>();
     private readonly IDateTimeProvider _clock = Substitute.For<IDateTimeProvider>();
 
     private readonly DateTime _now = new(2026, 10, 6, 8, 0, 0, DateTimeKind.Utc);
@@ -31,6 +32,7 @@ public class AssignmentEngineTests
         _clock.UtcNow.Returns(_now);
         _jobs.GetActiveCountsByLabAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, int>());
+        _scoringConfigurations.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ScoringParameterSet.Active);
         _unitOfWork.TrySaveChangesSafeAsync(Arg.Any<CancellationToken>()).Returns(true);
         // Every machine is free from "now" and half loaded unless a test says otherwise.
         _timeline.FindEarliestFreeSlotAsync(
@@ -64,11 +66,10 @@ public class AssignmentEngineTests
         _jobs,
         _labs,
         new CapabilityFilter(),
-        new AssignmentScorer(),
+        _scoringConfigurations,
         _timeline,
         _unitOfWork,
         _decisions,
-        ScoringParameterSet.Active,
         _clock,
         NullLogger<AssignmentEngine>.Instance);
 
@@ -109,6 +110,25 @@ public class AssignmentEngineTests
         outcome.Assigned.Should().BeTrue();
         outcome.Result!.LabId.Should().Be(other.Id,
             "BR-RESCHED-001: repairing a refusal must not hand the job straight back");
+    }
+
+    [Fact]
+    public async Task Assign_reads_the_active_weight_period_for_each_new_assignment()
+    {
+        OneCapableLab();
+        var configured = new ScoringParameterSet("2026.11-load", new ScoringWeights
+        {
+            DueDateSlack = 0m, LabReliability = 0m, LoadBalance = 1m, Cost = 0m, Transit = 0m
+        });
+        _scoringConfigurations.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(configured);
+        AssignmentDecision? logged = null;
+        await _decisions.AddAsync(Arg.Do<AssignmentDecision>(x => logged = x), Arg.Any<CancellationToken>());
+
+        var outcome = await Engine().AssignAsync(PendingJob(), new AssignmentRequest(AssignmentTriggers.InitialAssign));
+
+        outcome.Assigned.Should().BeTrue();
+        logged!.ScoringConfigVersion.Should().Be("2026.11-load");
+        await _scoringConfigurations.Received(1).GetActiveAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -49,6 +49,17 @@ public class Order : AggregateRoot<Guid>
 
     public void SetReadyForPackingAt(DateTime readyAtUtc) => ReadyForPackingAtUtc = readyAtUtc;
 
+    public Result ApplyApprovedDeliveryDate(DateOnly newDate)
+    {
+        if (newDate <= PromisedDeliveryDate)
+            return Result.Failure(Error.Validation("The approved delivery date must be later than the current promise"));
+        if (Status is OrderStatus.Delivered or OrderStatus.Cancelled)
+            return Result.Failure(Error.Conflict("A closed order cannot change its promised delivery date"));
+        PromisedDeliveryDate = newDate;
+        IsDelayed = true;
+        return Result.Success();
+    }
+
     private Order() { }
 
     public static Order CreateFromQuote(Quote quote, Address deliveryAddress, string orderNumber)

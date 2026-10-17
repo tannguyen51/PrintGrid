@@ -7,6 +7,7 @@ public enum JobStatus
     Accepted,
     InProgress,
     AwaitingInspection,
+    InTransit,
     Completed,
     Failed,
     Reassigned,

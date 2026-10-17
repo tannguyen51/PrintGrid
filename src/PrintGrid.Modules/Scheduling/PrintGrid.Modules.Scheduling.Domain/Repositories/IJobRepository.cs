@@ -8,6 +8,9 @@ public interface IJobRepository
     Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Job>> GetPendingAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Job>> GetByStatusAsync(JobStatus status, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Job>> GetProofApprovedForShipmentAsync(Guid labId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Job>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Job>> GetOperationalAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Job>> GetActiveByMachineAsync(Guid machineId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Job>> GetByLabIdAsync(Guid labId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Job>> GetAllAssignedToLabsAsync(DateTime sinceUtc, CancellationToken cancellationToken = default);

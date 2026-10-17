@@ -47,6 +47,8 @@ public class JobConfiguration : IEntityTypeConfiguration<Job>
         builder.HasIndex(j => j.InternalDueDate);
         builder.HasIndex(j => j.OrderItemId);
         builder.HasIndex(j => j.OriginalJobId);
+        builder.HasIndex(j => j.ShipmentBatchId);
+        builder.HasOne<ShipmentBatch>().WithMany().HasForeignKey(j => j.ShipmentBatchId).OnDelete(DeleteBehavior.Restrict);
 
         builder.OwnsOne(j => j.Specification, spec =>
         {

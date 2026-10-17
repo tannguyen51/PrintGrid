@@ -28,6 +28,8 @@ public class Lab : AggregateRoot<Guid>
     public string WorkingDays { get; private set; } = "Monday,Tuesday,Wednesday,Thursday,Friday";
     public string OpeningTime { get; private set; } = "08:00";
     public string ClosingTime { get; private set; } = "17:00";
+    public string TransportZone { get; private set; } = "LOCAL";
+    public string TransferDaysOfWeek { get; private set; } = "Monday,Wednesday,Friday";
     public bool IsInGoodStanding { get; private set; } = true;
     public int? MaxConcurrentJobs { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -54,7 +56,9 @@ public class Lab : AggregateRoot<Guid>
         string workingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
         string openingTime = "08:00",
         string closingTime = "17:00",
-        string? operatingHours = null)
+        string? operatingHours = null,
+        string transportZone = "LOCAL",
+        string transferDaysOfWeek = "Monday,Wednesday,Friday")
     {
         if (transitDaysToHub < 0 || (ownerUserId.HasValue && transitDaysToHub == 0))
             throw new ArgumentOutOfRangeException(nameof(transitDaysToHub), "Transit days must be positive");
@@ -74,6 +78,8 @@ public class Lab : AggregateRoot<Guid>
             WorkingDays = workingDays.Trim(),
             OpeningTime = opening.ToString("HH:mm"),
             ClosingTime = closing.ToString("HH:mm"),
+            TransportZone = NormalizeZone(transportZone),
+            TransferDaysOfWeek = NormalizeTransferDays(transferDaysOfWeek),
             // A lab registered by its owner starts inactive and Pending until an Admin approves
             // it; one created by Ops (no owner) is immediately usable.
             IsActive = ownerUserId is null,
@@ -210,6 +216,19 @@ public class Lab : AggregateRoot<Guid>
         MaxConcurrentJobs = maxConcurrentJobs;
     }
 
+    public DateOnly NextTransferDate(DateOnly from)
+    {
+        var allowed = TransferDaysOfWeek.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(value => Enum.Parse<DayOfWeek>(value, true))
+            .ToHashSet();
+        for (var offset = 0; offset < 7; offset++)
+        {
+            var candidate = from.AddDays(offset);
+            if (allowed.Contains(candidate.DayOfWeek)) return candidate;
+        }
+        throw new InvalidOperationException("Lab transfer calendar has no valid day");
+    }
+
     public void SetMaterialStock(string materialCode, string colorCode, decimal availableGrams, decimal reorderPointGrams = 0m)
     {
         var material = NormalizeStockCode(materialCode);
@@ -324,4 +343,19 @@ public class Lab : AggregateRoot<Guid>
         string.IsNullOrWhiteSpace(value)
             ? throw new ArgumentException("Material and color are required")
             : value.Trim().ToUpperInvariant();
+
+    private static string NormalizeZone(string value) =>
+        string.IsNullOrWhiteSpace(value) ? "LOCAL" : value.Trim().ToUpperInvariant();
+
+    private static string NormalizeTransferDays(string value)
+    {
+        var days = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(day => Enum.TryParse<DayOfWeek>(day, true, out var parsed)
+                ? parsed
+                : throw new ArgumentException($"Invalid transfer day: {day}"))
+            .Distinct()
+            .ToArray();
+        if (days.Length == 0) throw new ArgumentException("At least one transfer day is required");
+        return string.Join(',', days);
+    }
 }

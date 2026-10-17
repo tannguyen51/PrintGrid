@@ -12,6 +12,7 @@ public class DateChangeRequestConfiguration : IEntityTypeConfiguration<DateChang
         builder.HasKey(r => r.Id);
 
         builder.Property(r => r.Reason).HasMaxLength(500).IsRequired();
+        builder.Property(r => r.ReasonCode).HasConversion<string>().HasMaxLength(48).IsRequired();
         builder.Property(r => r.Token).HasMaxLength(64).IsRequired();
         builder.Property(r => r.Status).HasConversion<string>().HasMaxLength(16).IsRequired();
 

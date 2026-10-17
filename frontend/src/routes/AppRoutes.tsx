@@ -11,11 +11,13 @@ const ModelLibraryPage = lazy(() => import('../features/models/ModelLibraryPage'
 const StartOrderPage = lazy(() => import('../features/orders/StartOrderPage'))
 const OrderConfigPage = lazy(() => import('../features/quotes/OrderConfigPage'))
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'))
+const DateChangeDecisionPage = lazy(() => import('../features/orders/DateChangeDecisionPage'))
 const LabQueuePage = lazy(() => import('../features/lab/LabQueuePage'))
 const LabRegisterPage = lazy(() => import('../features/lab/LabRegisterPage'))
 const LabMachinesPage = lazy(() => import('../features/lab/LabMachinesPage'))
 const LabTimelineScorePage = lazy(() => import('../features/lab/LabTimelineScorePage'))
 const InventoryPage = lazy(() => import('../features/lab/InventoryPage'))
+const ShipmentBatchPlannerPage = lazy(() => import('../features/lab/ShipmentBatchPlannerPage'))
 const HubQCPage = lazy(() => import('../features/hub/HubQCPage'))
 const HubShipmentsPage = lazy(() => import('../features/hub/HubShipmentsPage'))
 const SchedulingBoardPage = lazy(() => import('../features/scheduling/SchedulingBoardPage'))
@@ -104,6 +106,14 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/date-change/:token"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <DateChangeDecisionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/lab/queue"
           element={
             <ProtectedRoute allowedRoles={['LabManager', 'LabOperator']}>
@@ -154,6 +164,14 @@ export function AppRoutes() {
         <Route
           path="/lab/settings"
           element={<ProtectedRoute allowedRoles={['LabManager']}><OpsLabsPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/lab/:labId/shipments"
+          element={
+            <ProtectedRoute allowedRoles={['LabManager', 'LabOperator']}>
+              <ShipmentBatchPlannerPage />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/hub/qc"
