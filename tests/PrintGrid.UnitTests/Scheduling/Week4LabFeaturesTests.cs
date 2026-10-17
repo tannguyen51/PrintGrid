@@ -97,7 +97,10 @@ public class Week4LabFeaturesTests
     {
         var ownerId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
-        var lab = Lab.Onboard("Xưởng Cầu Giấy", "Hà Nội", 1, "T2-T7 08:00-18:00", ownerId);
+        // Ops-created lab (active), then claimed by the owner: this test is about machine CRUD
+        // and the capability filter, not the approval workflow.
+        var lab = Lab.Onboard("Xưởng Cầu Giấy", "Hà Nội", 1, operatingHours: "T2-T7 08:00-18:00");
+        lab.ClaimOwnership(ownerId);
         var machine = Machine.Register(
             lab.Id,
             "Prusa MK4 #1",

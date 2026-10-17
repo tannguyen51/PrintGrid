@@ -153,9 +153,12 @@ public class LabRegistryTests
             0.1m, 0.2m, new[] { "PLA" });
         lab.AddMachine(machine);
         _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
-        jobs.HasActiveForMachineAsync(machine.Id, Arg.Any<CancellationToken>()).Returns(true);
+        jobs.GetActiveByMachineAsync(machine.Id, Arg.Any<CancellationToken>())
+            .Returns(new[] { Job.Create(Guid.NewGuid(), Guid.NewGuid(), PrintGrid.Modules.Scheduling.Domain.ValueObjects.JobSpecification.Create(
+                PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume.Create(20, 20, 20), "PLA", "BLACK", 0.2m, 0.3m,
+                PrintTechnology.Fdm, 10m), 30, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2))) });
 
-        var result = await new DeleteMachineCommandHandler(_labs, jobs, _unitOfWork)
+        var result = await new MachineCrudCommandHandler(_labs, jobs, _unitOfWork)
             .Handle(new DeleteMachineCommand(lab.Id, machine.Id, ownerId), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();

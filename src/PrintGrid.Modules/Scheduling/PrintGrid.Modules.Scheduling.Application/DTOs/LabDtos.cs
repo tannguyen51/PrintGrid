@@ -38,7 +38,6 @@ public record LabDto(
     IReadOnlyCollection<MachineDto> Machines,
     string Status = "Active",
     string OperatingHours = "T2-T7 08:00-18:00",
-    Guid? OwnerUserId = null,
     string? ContactPhone = null,
     string? Address = null,
     string? RejectionReason = null,

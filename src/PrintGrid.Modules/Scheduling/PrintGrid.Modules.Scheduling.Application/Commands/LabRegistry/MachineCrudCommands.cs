@@ -119,8 +119,7 @@ public class MachineCrudCommandHandler :
                 $"Không thể xóa máy '{machine.Name}' vì đang có {activeJobs.Count} đơn in chưa hoàn tất trên máy này."));
         }
 
-        lab.RemoveMachine(machine);
-        _labs.RemoveMachine(machine);
+        lab.RemoveMachine(machine.Id);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }

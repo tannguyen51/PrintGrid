@@ -59,13 +59,13 @@ public class JobRepository : IJobRepository
 
     public async Task<IReadOnlyDictionary<Guid, int>> GetActiveCountsByLabAsync(CancellationToken cancellationToken = default) =>
         await _context.Set<Job>()
-            .Where(j => j.LabId.HasValue && ActiveStatuses.Contains(j.Status))
+            .Where(j => j.LabId.HasValue && _activeStatuses.Contains(j.Status))
             .GroupBy(j => j.LabId!.Value)
             .ToDictionaryAsync(group => group.Key, group => group.Count(), cancellationToken);
 
     public Task<bool> HasActiveForMachineAsync(Guid machineId, CancellationToken cancellationToken = default) =>
         _context.Set<Job>().AnyAsync(
-            job => job.MachineId == machineId && ActiveStatuses.Contains(job.Status), cancellationToken);
+            job => job.MachineId == machineId && _activeStatuses.Contains(job.Status), cancellationToken);
 
     public async Task AddAsync(Job job, CancellationToken cancellationToken = default) =>
         await _context.Set<Job>().AddAsync(job, cancellationToken);

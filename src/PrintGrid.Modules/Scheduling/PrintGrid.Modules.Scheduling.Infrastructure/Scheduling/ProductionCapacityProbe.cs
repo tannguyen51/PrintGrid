@@ -55,7 +55,7 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
             var activeCounts = await _context.Set<Job>()
                 .Where(j => j.LabId != null
                             && cappedLabIds.Contains(j.LabId.Value)
-                            && BlockingStatuses.Contains(j.Status))
+                            && _blockingStatuses.Contains(j.Status))
                 .GroupBy(j => j.LabId!.Value)
                 .Select(g => new { LabId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.LabId, x => x.Count, cancellationToken);

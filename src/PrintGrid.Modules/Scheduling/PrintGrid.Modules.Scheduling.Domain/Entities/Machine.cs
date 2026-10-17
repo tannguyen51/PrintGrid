@@ -54,27 +54,6 @@ public class Machine : Entity<Guid>
         return machine;
     }
 
-    public void UpdateSpecifications(
-        string name,
-        string model,
-        PrintTechnology technology,
-        BuildVolume buildVolume,
-        decimal minLayerHeightMm,
-        decimal achievableToleranceMm,
-        IEnumerable<string> supportedMaterials)
-    {
-        Name = name.Trim();
-        Model = model.Trim();
-        Technology = technology;
-        BuildVolume = buildVolume;
-        MinLayerHeightMm = minLayerHeightMm;
-        AchievableToleranceMm = achievableToleranceMm;
-
-        _supportedMaterials.Clear();
-        _supportedMaterials.AddRange(
-            supportedMaterials.Select(m => m.Trim().ToUpperInvariant()).Where(m => m.Length > 0).Distinct());
-    }
-
     public void ScheduleMaintenance(DateTime? fromUtc, DateTime? untilUtc, string? reason, bool setMaintenanceNow = false)
     {
         if (fromUtc.HasValue && untilUtc.HasValue && untilUtc.Value <= fromUtc.Value)

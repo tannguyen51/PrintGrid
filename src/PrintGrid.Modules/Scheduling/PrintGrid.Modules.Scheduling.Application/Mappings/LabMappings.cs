@@ -40,7 +40,6 @@ public static class LabMappings
         lab.Machines.Select(ToDto).ToList(),
         lab.Status.ToString(),
         lab.OperatingHours,
-        lab.OwnerUserId,
         lab.ContactPhone,
         lab.Address,
         lab.RejectionReason,

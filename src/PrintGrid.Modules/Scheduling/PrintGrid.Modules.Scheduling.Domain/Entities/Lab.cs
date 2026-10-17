@@ -17,7 +17,6 @@ public class Lab : AggregateRoot<Guid>
     public bool IsActive { get; private set; }
     public LabStatus Status { get; private set; } = LabStatus.Active;
     public string OperatingHours { get; private set; } = "T2-T7 08:00-18:00";
-    public Guid? OwnerUserId { get; private set; }
     public string? ContactPhone { get; private set; }
     public string? Address { get; private set; }
     public string? RejectionReason { get; private set; }
@@ -75,7 +74,10 @@ public class Lab : AggregateRoot<Guid>
             WorkingDays = workingDays.Trim(),
             OpeningTime = opening.ToString("HH:mm"),
             ClosingTime = closing.ToString("HH:mm"),
+            // A lab registered by its owner starts inactive and Pending until an Admin approves
+            // it; one created by Ops (no owner) is immediately usable.
             IsActive = ownerUserId is null,
+            Status = ownerUserId is null ? LabStatus.Active : LabStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
     }

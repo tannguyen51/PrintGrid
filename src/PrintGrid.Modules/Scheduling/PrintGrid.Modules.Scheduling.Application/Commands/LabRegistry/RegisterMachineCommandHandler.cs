@@ -38,7 +38,7 @@ public class RegisterMachineCommandHandler : IRequestHandler<RegisterMachineComm
         {
             return Result.Failure<MachineDto>(Error.Forbidden("You can only manage machines in your own lab"));
         }
-        if (lab.Status is LabStatus.Inactive or LabStatus.Rejected || (!lab.IsActive && lab.Status != LabStatus.Pending))
+        if (lab.Status is LabStatus.Inactive or LabStatus.Rejected)
             return Result.Failure<MachineDto>(Error.Conflict($"Lab '{lab.Name}' is deactivated and cannot accept machines"));
 
         if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Model))
