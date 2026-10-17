@@ -143,3 +143,21 @@ export function useSetMachineStatus() {
     onSuccess: invalidate,
   })
 }
+
+export function useSetLabStanding() {
+  const invalidate = useInvalidateLabs()
+  return useMutation({
+    mutationFn: ({ labId, isInGoodStanding }: { labId: string; isInGoodStanding: boolean }) =>
+      apiClient.patch(`/labs/${labId}/standing`, { isInGoodStanding }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useSetLabCapacityLimit() {
+  const invalidate = useInvalidateLabs()
+  return useMutation({
+    mutationFn: ({ labId, maxConcurrentJobs }: { labId: string; maxConcurrentJobs: number | null }) =>
+      apiClient.patch(`/labs/${labId}/capacity-limit`, { maxConcurrentJobs }),
+    onSuccess: invalidate,
+  })
+}

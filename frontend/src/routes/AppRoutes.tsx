@@ -228,14 +228,6 @@ export function AppRoutes() {
           }
         />
         <Route
-          path="/admin/labs"
-          element={
-            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
-              <OpsLabsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/admin/users"
           element={
             <ProtectedRoute allowedRoles={['Admin']}>

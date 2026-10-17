@@ -60,10 +60,6 @@ const PRIMARY: Partial<Record<Role, NavLink[]>> = {
     { label: 'Bảng điều phối', href: '/scheduling' },
     { label: 'Duyệt xưởng & máy', href: '/admin/labs' },
   ],
-  OrderStaff: [
-    { label: 'Duyệt báo giá', href: '/quote-reviews' },
-    { label: 'Nghiệm thu QC', href: '/staff/qc-proofs' },
-  ],
 }
 
 const MORE: Partial<Record<Role, NavLink[]>> = {

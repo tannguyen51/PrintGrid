@@ -29,29 +29,43 @@ export interface Machine {
   maintenanceReason?: string | null
 }
 
+/**
+ * Mirrors `LabDto` from the Scheduling module (backend source of truth). Every field the
+ * API returns is present here: keeping this type a superset is what lets the admin
+ * approval screens and the lab/ops consoles share one model.
+ */
 export interface Lab {
   id: string
   name: string
   city: string
+  ownerUserId: string | null
   isActive: boolean
+  isInGoodStanding: boolean
+  maxConcurrentJobs: number | null
   onTimeDeliveryRate: number
   firstPassYield: number
   transitDaysToHub: number
+  workingDays: string
+  openingTime: string
+  closingTime: string
+  materialStockCount: number
   createdAt: string
   machines: Machine[]
-  status?: LabApprovalStatus
-  operatingHours?: string
-  ownerUserId?: string | null
-  contactPhone?: string | null
-  address?: string | null
-  rejectionReason?: string | null
-  isDeclarationComplete?: boolean
+  status: LabApprovalStatus
+  operatingHours: string
+  contactPhone: string | null
+  address: string | null
+  rejectionReason: string | null
+  isDeclarationComplete: boolean
 }
 
 export interface RegisterLabInput {
   name: string
   city: string
   transitDaysToHub: number
+  workingDays?: string
+  openingTime?: string
+  closingTime?: string
 }
 
 export interface SelfRegisterLabInput {
