@@ -6,7 +6,6 @@ import {
 } from '@mui/material'
 import { AddRounded, DeleteOutlineRounded, EditRounded } from '@mui/icons-material'
 import { PageBackButton } from '../../shared/components/PageBackButton'
-import { StaffNavbar } from '../home/components/StaffNavbar'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import {
   type DefectTaxonomyItem, type InspectionChecklistItem,
@@ -61,8 +60,7 @@ export default function AdminQcKnowledgePage() {
     try { await deleteDefect.mutateAsync(item.code) } catch (e) { setError(getApiErrorMessage(e, 'Không thể xóa. Hãy chuyển sang ngừng sử dụng.')) }
   }
 
-  return <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-    <StaffNavbar />
+  return <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
     <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, py: 4 }}>
     <Stack direction="row" spacing={1.5} alignItems="center" mb={3}><PageBackButton /><Box><Typography variant="h4" fontWeight={800}>Bộ kiểm &amp; danh mục lỗi</Typography><Typography color="text.secondary">Quản lý tiêu chuẩn nghiệm thu theo cấp chất lượng và các loại lỗi dùng tại Hub.</Typography></Box></Stack>
     {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}

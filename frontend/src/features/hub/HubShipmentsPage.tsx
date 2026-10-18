@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Alert,
   Box,
@@ -20,7 +19,6 @@ import {
 import {
   LocalShippingRounded,
   InventoryRounded,
-  LogoutRounded,
   CheckRounded,
   CallMergeRounded,
   CurrencyExchangeRounded,
@@ -34,7 +32,6 @@ import {
   useRefundOrderWithinScope,
   type ShipmentOrder,
 } from './useShipments'
-import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—')
@@ -70,8 +67,6 @@ interface ConsolidationCluster {
  * - "Hoàn tiền đơn gốc" enforces original-order-scoped refund limit (AC02).
  */
 export default function HubShipmentsPage() {
-  const navigate = useNavigate()
-  const { logout } = useAuth()
   const queue = useShipmentQueue()
   const ship = useShipOrder()
   const deliver = useDeliverOrder()
@@ -251,7 +246,7 @@ export default function HubShipmentsPage() {
     refundOrder.isPending
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1080, mx: 'auto' }} spacing={2.5}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -270,17 +265,6 @@ export default function HubShipmentsPage() {
               </Typography>
             </Box>
           </Stack>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<LogoutRounded />}
-            onClick={() => {
-              logout()
-              navigate('/login', { replace: true })
-            }}
-          >
-            Đăng xuất
-          </Button>
         </Stack>
 
         {errorMessage && (

@@ -122,7 +122,10 @@ export function StaffNavbar() {
 
   /** A link is current when the browser is on it or on one of its sub-pages. */
   const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(`${href}/`)
+    href === '/admin'
+      // The admin overview is a leaf: don't light it up on every /admin/* section.
+      ? pathname === '/admin'
+      : pathname === href || pathname.startsWith(`${href}/`)
 
   const roles = user?.roles ?? []
   const primary = roles.flatMap((role) => PRIMARY[role] ?? []).filter(

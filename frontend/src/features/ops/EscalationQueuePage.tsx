@@ -1,8 +1,7 @@
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
 import {
   Alert,
   Box,
-  Button,
   Chip,
   CircularProgress,
   Paper,
@@ -15,8 +14,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { WarningRounded, LogoutRounded } from '@mui/icons-material'
-import { useAuth } from '../../app/AuthContext'
+import { WarningRounded } from '@mui/icons-material'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { useOpsEscalations, type OpsEscalationKind, type OpsEscalationStatus } from './useOps'
 
@@ -39,13 +37,11 @@ const fmtDateTime = (d: string | null | undefined) =>
  * decision trace / scheduling board, not here.
  */
 export default function EscalationQueuePage() {
-  const navigate = useNavigate()
-  const { logout } = useAuth()
   const escalations = useOpsEscalations()
   const rows = escalations.data ?? []
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1000, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
@@ -57,9 +53,6 @@ export default function EscalationQueuePage() {
               <Typography color="text.secondary">Danh sách đơn in cần can thiệp xử lý: in lại vượt giới hạn hoặc không còn khung giờ khả dụng</Typography>
             </Box>
           </Stack>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
-            Đăng xuất
-          </Button>
         </Stack>
 
         {escalations.isError ? <Alert severity="error">Không tải được hàng đợi cảnh báo.</Alert> : null}

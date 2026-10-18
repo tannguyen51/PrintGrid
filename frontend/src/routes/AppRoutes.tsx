@@ -210,7 +210,7 @@ export function AppRoutes() {
         <Route
           path="/staff/qc-proofs"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager']}>
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <QcProofReviewPage />
             </ProtectedRoute>
           }
@@ -218,7 +218,7 @@ export function AppRoutes() {
         <Route
           path="/quote-reviews"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager']}>
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <QuoteReviewPage />
             </ProtectedRoute>
           }
@@ -226,7 +226,7 @@ export function AppRoutes() {
         <Route
           path="/scheduling"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager']}>
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <SchedulingBoardPage />
             </ProtectedRoute>
           }
@@ -234,7 +234,7 @@ export function AppRoutes() {
         <Route
           path="/ops/escalations"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager']}>
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <EscalationQueuePage />
             </ProtectedRoute>
           }
@@ -242,7 +242,7 @@ export function AppRoutes() {
         <Route
           path="/ops/decisions"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager']}>
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <DecisionTracePage />
             </ProtectedRoute>
           }
@@ -250,7 +250,7 @@ export function AppRoutes() {
         <Route
           path="/ops/labs"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager']}>
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <OpsLabsPage />
             </ProtectedRoute>
           }

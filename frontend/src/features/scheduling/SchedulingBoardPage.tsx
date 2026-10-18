@@ -20,7 +20,6 @@ import {
   AssignmentTurnedInRounded,
   FactoryRounded,
   HistoryRounded,
-  LogoutRounded,
   RefreshRounded,
   RocketLaunchRounded,
   WarningAmberRounded,
@@ -28,7 +27,6 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { apiClient } from '../../shared/api/apiClient'
-import { useAuth } from '../../app/AuthContext'
 import { JOB_LABELS } from '../jobs/jobTypes'
 import { useJobs } from '../jobs/useJobs'
 import { useOpsMonitor, useOpsReassign, useOpsReassignPreview, type OpsRiskJob } from '../ops/useOps'
@@ -42,7 +40,6 @@ const fmtDate = (value?: string | null) => value ? new Date(value.includes('T') 
  */
 export default function SchedulingBoardPage() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
   const queryClient = useQueryClient()
 
   // Risk-monitoring / reassignment console (incoming).
@@ -77,15 +74,12 @@ export default function SchedulingBoardPage() {
   const jobs = pending.data ?? []
   const data = monitor.data
 
-  return <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', p: { xs: 2.5, md: 4 } }}>
+  return <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default', p: { xs: 2.5, md: 4 } }}>
     <Stack spacing={3} sx={{ maxWidth: 1180, mx: 'auto' }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} gap={2}>
         <Stack direction="row" spacing={1.5}><PageBackButton /><Box><Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800 }}>Bảng vận hành & can thiệp</Typography><Typography color="text.secondary">Đơn mở · nguy cơ trễ · tải xưởng · cập nhật mỗi 30 giây</Typography></Box></Stack>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Button startIcon={<RefreshRounded />} onClick={() => monitor.refetch()} disabled={monitor.isFetching}>Làm mới</Button>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
-            Đăng xuất
-          </Button>
         </Stack>
       </Stack>
       {monitor.isError && <Alert severity="error">Không tải được dữ liệu vận hành.</Alert>}

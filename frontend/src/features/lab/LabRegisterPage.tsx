@@ -18,11 +18,9 @@ import {
   ErrorOutlineRounded,
   FactoryRounded,
   LocalShippingRounded,
-  LogoutRounded,
   PrecisionManufacturingRounded,
   ScheduleRounded,
 } from '@mui/icons-material'
-import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { useMyLab, useSelfRegisterLab } from '../ops/useLabs'
@@ -33,7 +31,6 @@ import { useMyLab, useSelfRegisterLab } from '../ops/useLabs'
  */
 export default function LabRegisterPage() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
   const { data: myLab, isLoading } = useMyLab(false)
   const selfRegister = useSelfRegisterLab()
 
@@ -84,7 +81,7 @@ export default function LabRegisterPage() {
   const status = myLab?.status ?? (myLab?.isActive ? 'Active' : 'Pending')
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 960, mx: 'auto' }} spacing={3}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -120,17 +117,6 @@ export default function LabRegisterPage() {
               sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}
             >
               Lịch máy &amp; Điểm xưởng
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<LogoutRounded />}
-              onClick={() => {
-                logout()
-                navigate('/login', { replace: true })
-              }}
-            >
-              Đăng xuất
             </Button>
           </Stack>
         </Stack>

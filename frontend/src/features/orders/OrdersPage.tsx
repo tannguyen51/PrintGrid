@@ -16,7 +16,6 @@ import { CloseRounded, VisibilityRounded, LibraryBooksRounded } from '@mui/icons
 import { useOrders } from './useOrders'
 import { OrderTimelineView } from './OrderTimelineView'
 import type { Order, OrderStatus } from '../../shared/types/order'
-import { CustomerNavbar } from '../home/components/CustomerNavbar'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { ReprintRequestPanel } from './ReprintRequestPanel'
 
@@ -94,8 +93,7 @@ export default function OrdersPage() {
   ]
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <CustomerNavbar />
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1200, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">

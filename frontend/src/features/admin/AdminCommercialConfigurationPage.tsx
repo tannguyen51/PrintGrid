@@ -3,7 +3,6 @@ import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, Dial
 import { AddRounded, CheckCircleRounded } from '@mui/icons-material'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
-import { StaffNavbar } from '../home/components/StaffNavbar'
 import { type CommercialParameters, useActivateCommercialConfiguration, useCatalogItems, useCommercialConfigurations, useCreateCommercialConfiguration } from './useAdminConfiguration'
 
 const defaults: CommercialParameters = {
@@ -38,8 +37,7 @@ export default function AdminCommercialConfigurationPage() {
   const save = async () => { try { await create.mutateAsync({ name, changeSummary: summary, parameters: params }); setOpen(false) } catch (e) { setError(getApiErrorMessage(e, 'Không thể tạo phiên bản.')) } }
   const doActivate = async (id: string) => { setError(''); try { await activate.mutateAsync(id) } catch (e) { setError(getApiErrorMessage(e, 'Không thể kích hoạt phiên bản.')) } }
 
-  return <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-    <StaffNavbar />
+  return <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
     <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, py: 4 }}>
     <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
       <Stack direction="row" spacing={1.5} alignItems="center"><PageBackButton /><Box><Typography variant="h4" fontWeight={800}>Cấu hình thương mại</Typography><Typography color="text.secondary">Mỗi lần thay đổi tạo một phiên bản mới; chỉ phiên bản đang hoạt động áp dụng cho báo giá mới.</Typography></Box></Stack>

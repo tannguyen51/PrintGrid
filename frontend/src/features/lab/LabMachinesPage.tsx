@@ -26,11 +26,9 @@ import {
   DeleteOutlineRounded,
   EditRounded,
   FactoryRounded,
-  LogoutRounded,
   PrecisionManufacturingRounded,
   ScheduleRounded,
 } from '@mui/icons-material'
-import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import {
@@ -70,7 +68,6 @@ const emptyMachineForm = {
  */
 export default function LabMachinesPage() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
   const { data: myLab, isLoading, isError } = useMyLab(true)
 
   const addMachine = useAddMachine()
@@ -230,7 +227,7 @@ export default function LabMachinesPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1100, mx: 'auto' }} spacing={2.5}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -273,17 +270,6 @@ export default function LabMachinesPage() {
                 Thêm máy in
               </Button>
             )}
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<LogoutRounded />}
-              onClick={() => {
-                logout()
-                navigate('/login', { replace: true })
-              }}
-            >
-              Đăng xuất
-            </Button>
           </Stack>
         </Stack>
 

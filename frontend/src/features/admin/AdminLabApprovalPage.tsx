@@ -1,6 +1,5 @@
 import { Alert, Box, Button, Chip, CircularProgress, Paper, Stack, Typography } from '@mui/material'
 import { CheckCircleRounded, FactoryRounded } from '@mui/icons-material'
-import { StaffNavbar } from '../home/components/StaffNavbar'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { useLabs, useSetLabActive } from '../ops/useLabs'
@@ -12,8 +11,7 @@ export default function AdminLabApprovalPage() {
   const pendingCount = items.filter((lab) => !lab.isActive).length
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <StaffNavbar />
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ maxWidth: 1180, mx: 'auto', px: 3, py: 4 }} spacing={3}>
         <Stack direction="row" spacing={1.5} alignItems="center">
           <PageBackButton />

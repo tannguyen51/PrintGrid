@@ -30,7 +30,7 @@ export default function QcProofReviewPage() {
 
   const items = queue.data ?? []
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack spacing={2.5} sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1180, mx: 'auto' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">

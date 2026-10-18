@@ -25,13 +25,11 @@ import {
   AssessmentRounded,
   BuildCircleRounded,
   FactoryRounded,
-  LogoutRounded,
   PrecisionManufacturingRounded,
   RefreshRounded,
   ScheduleRounded,
   ViewListRounded,
 } from '@mui/icons-material'
-import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { useLabPerformance, useLabTimeline, useMyLab } from '../ops/useLabs'
 import {
@@ -62,7 +60,6 @@ const pct = (v?: number) => `${Math.round((v ?? 0) * 100)}%`
  */
 export default function LabTimelineScorePage() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
 
   const { data: myLab, isLoading: loadingLab } = useMyLab(true)
   const timelineQuery = useLabTimeline(myLab?.id)
@@ -127,7 +124,7 @@ export default function LabTimelineScorePage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1180, mx: 'auto' }} spacing={3}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -175,17 +172,6 @@ export default function LabTimelineScorePage() {
               }}
             >
               Làm mới
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<LogoutRounded />}
-              onClick={() => {
-                logout()
-                navigate('/login', { replace: true })
-              }}
-            >
-              Đăng xuất
             </Button>
           </Stack>
         </Stack>

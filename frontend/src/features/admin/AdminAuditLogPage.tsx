@@ -16,7 +16,6 @@ import {
 } from '@mui/material'
 import { DataGrid, type GridColDef, type GridPaginationModel } from '@mui/x-data-grid'
 import { DownloadRounded, FactCheckRounded, VisibilityRounded } from '@mui/icons-material'
-import { StaffNavbar } from '../home/components/StaffNavbar'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { exportAuditLogs, useAuditLogs, type AuditLogEntry, type AuditLogFilters } from './useAuditLogs'
@@ -83,8 +82,7 @@ export default function AdminAuditLogPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <StaffNavbar />
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1400, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">

@@ -44,7 +44,7 @@ export default function ShipmentBatchPlannerPage() {
   if (planner.isLoading) return <Box sx={{ minHeight: '70vh', display: 'grid', placeItems: 'center' }}><CircularProgress /></Box>
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', p: { xs: 2, md: 4 } }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default', p: { xs: 2, md: 4 } }}>
       <Stack spacing={3} sx={{ maxWidth: 1120, mx: 'auto' }}>
         <Stack direction="row" spacing={1.5} alignItems="flex-start">
           <PageBackButton />

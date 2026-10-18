@@ -61,9 +61,9 @@ function OverviewCard({ title, value, hint, icon, href, tone = 'primary' }: Over
           {title}
         </Typography>
       </Stack>
-      <Typography sx={{ mt: 1.5, fontSize: '1.9rem', fontWeight: 800, lineHeight: 1.1 }}>
+      <Box sx={{ mt: 1.5, fontSize: '1.9rem', fontWeight: 800, lineHeight: 1.1 }}>
         {value}
-      </Typography>
+      </Box>
       <Typography sx={{ mt: 0.5, fontSize: '0.8rem', color: 'text.secondary' }}>{hint}</Typography>
     </Paper>
   )

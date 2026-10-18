@@ -28,12 +28,10 @@ import {
   PlayArrowRounded,
   LibraryBooksRounded,
   LocalShippingRounded,
-  LogoutRounded,
 } from '@mui/icons-material'
 import type { Job } from '../jobs/jobTypes'
 import { JOB_LABELS } from '../jobs/jobTypes'
 import { useJobs, useAcceptJob, useDeclineJob, useStartJob, useCompleteJob, downloadJobFile } from '../jobs/useJobs'
-import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—')
@@ -149,7 +147,6 @@ function JobCountdown({ deadline, onExpire }: { deadline?: string | null; onExpi
  */
 export default function LabQueuePage() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
 
   // Three concurrent views; each uses the same cache key namespace.
   const assigned = useJobs('Assigned')
@@ -248,7 +245,7 @@ export default function LabQueuePage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1100, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
@@ -275,9 +272,6 @@ export default function LabQueuePage() {
             </Button>
             <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} disabled={!jobs[0]?.j.labId} onClick={() => navigate(`/lab/${jobs[0]?.j.labId}/inventory`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
               Kho vật liệu
-            </Button>
-            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
-              Đăng xuất
             </Button>
           </Stack>
         </Stack>

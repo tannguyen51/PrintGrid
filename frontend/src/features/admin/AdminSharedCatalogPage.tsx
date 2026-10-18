@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton, MenuItem, Paper, Stack, Switch, Tab, Tabs, TextField, Tooltip, Typography } from '@mui/material'
 import { AddRounded, DeleteOutlineRounded, EditRounded } from '@mui/icons-material'
 import { PageBackButton } from '../../shared/components/PageBackButton'
-import { StaffNavbar } from '../home/components/StaffNavbar'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { type CatalogItem, useCatalogItems, useDeleteCatalogItem, useSaveCatalogItem } from './useAdminConfiguration'
 
@@ -61,8 +60,7 @@ export default function AdminSharedCatalogPage() {
   }
   const remove = async (item: CatalogItem) => { if (!confirm(`Xóa “${item.name}”? Mục đã được sử dụng sẽ bị chặn.`)) return; setError(''); try { await deleteMutation.mutateAsync({ type: item.catalogType, code: item.code }) } catch (e) { setError(getApiErrorMessage(e, 'Không thể xóa. Hãy ngừng sử dụng mục này thay vì xóa.')) } }
 
-  return <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-    <StaffNavbar />
+  return <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
     <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, py: 4 }}>
     <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}><Stack direction="row" spacing={1.5} alignItems="center"><PageBackButton /><Box><Typography variant="h4" fontWeight={800}>Danh mục dùng chung</Typography><Typography color="text.secondary">Dữ liệu chuẩn dùng xuyên suốt báo giá, sản xuất và kiểm tra chất lượng.</Typography></Box></Stack><Button variant="contained" startIcon={<AddRounded />} onClick={showCreate}>Thêm mục</Button></Stack>
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

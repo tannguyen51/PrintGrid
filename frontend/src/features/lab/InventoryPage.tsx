@@ -29,7 +29,7 @@ export default function InventoryPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['inventory', labId] }); setMessage('Đã ghi nhận giao dịch kho.') },
   })
 
-  return <Box sx={{ minHeight: '100vh', p: { xs: 2, md: 4 }, maxWidth: 1000, mx: 'auto' }}>
+  return <Box sx={{ minHeight: 'calc(100vh - 72px)', p: { xs: 2, md: 4 }, maxWidth: 1000, mx: 'auto' }}>
     <Stack spacing={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Stack direction="row" spacing={1.5} alignItems="flex-start">

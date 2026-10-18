@@ -21,11 +21,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { InsightsRounded, LogoutRounded } from '@mui/icons-material'
-import { useNavigate } from 'react-router-dom'
+import { InsightsRounded } from '@mui/icons-material'
 import { apiClient } from '../../shared/api/apiClient'
 import { getApiErrorMessage } from '../../shared/api/apiError'
-import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 
 interface ScoringConfiguration {
@@ -78,8 +76,6 @@ const EMPTY_FORM: ActivateForm = {
  * in force, so changing weights never rewrites history.
  */
 export function AdminScoringConfigurationPage() {
-  const { logout } = useAuth()
-  const navigate = useNavigate()
   const client = useQueryClient()
   const configurations = useScoringConfigurations()
 
@@ -140,14 +136,6 @@ export function AdminScoringConfigurationPage() {
             onClick={() => { setError(null); setFormOpen(true) }}
           >
             Kích hoạt phiên bản mới
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<LogoutRounded />}
-            onClick={() => { logout(); navigate('/login', { replace: true }) }}
-          >
-            Đăng xuất
           </Button>
         </Stack>
       </Stack>

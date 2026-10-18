@@ -26,7 +26,6 @@ import type { Quote } from './quoteTypes'
 import { COLORS, INFILL_OPTIONS, MATERIALS, QUALITY_GRADES } from './quoteTypes'
 import { useCreateQuote, usePlaceOrder } from './useQuotes'
 import { useAuth } from '../../app/AuthContext'
-import { CustomerNavbar } from '../home/components/CustomerNavbar'
 
 /**
  * G3 — Print configuration & pre-order flow.
@@ -35,7 +34,6 @@ import { CustomerNavbar } from '../home/components/CustomerNavbar'
  */
 export default function OrderConfigPage() {
   const { modelId } = useParams<{ modelId: string }>()
-  const { logout } = useAuth()
   const navigate = useNavigate()
   const createQuote = useCreateQuote()
   const placeOrder = usePlaceOrder()
@@ -150,16 +148,12 @@ export default function OrderConfigPage() {
     : null
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <CustomerNavbar />
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 860, mx: 'auto' }} spacing={2.5}>
         {/* Header */}
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Button onClick={() => navigate(-1)} startIcon={<ArrowBackRounded />} color="inherit" sx={{ color: 'text.primary' }}>
             Quay lại
-          </Button>
-          <Button onClick={() => { logout(); navigate('/', { replace: true }) }} color="error" variant="outlined" size="small">
-            Đăng xuất
           </Button>
         </Stack>
 

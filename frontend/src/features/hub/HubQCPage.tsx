@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import {
   Alert,
   Box,
@@ -28,7 +27,6 @@ import {
   CheckCircleRounded,
   CancelRounded,
   FactoryRounded,
-  LogoutRounded,
   AddPhotoAlternateRounded,
   DeleteOutlineRounded,
   ReportProblemRounded,
@@ -38,7 +36,6 @@ import { useEffect, useRef, useState } from 'react'
 import { JOB_LABELS } from '../jobs/jobTypes'
 import type { Job } from '../jobs/jobTypes'
 import { useJobs, useInspectJob, useUploadInspectionPhotos } from '../jobs/useJobs'
-import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { useQcKnowledge } from './useQcKnowledge'
 
@@ -70,8 +67,6 @@ const MAX_PHOTO_BYTES = 5 * 1024 * 1024
  * - Lab/Hub fault triggers urgent reprint; Customer fault notifies customer without reprint.
  */
 export default function HubQCPage() {
-  const navigate = useNavigate()
-  const { logout } = useAuth()
   const awaiting = useJobs('AwaitingInspection')
   const inspect = useInspectJob()
   const uploadPhotos = useUploadInspectionPhotos()
@@ -247,7 +242,7 @@ export default function HubQCPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1000, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
@@ -259,9 +254,6 @@ export default function HubQCPage() {
               <Typography color="text.secondary">Kiểm định và đánh giá chất lượng sản phẩm in hoàn thiện</Typography>
             </Box>
           </Stack>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
-            Đăng xuất
-          </Button>
         </Stack>
 
         {successNotice && (
