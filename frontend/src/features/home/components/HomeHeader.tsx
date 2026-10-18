@@ -48,7 +48,10 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
   const handleLogout = () => {
     setDrawerOpen(false)
     logout()
-    navigate('/', { replace: true })
+    // Staff sign back in through the full login page; only customers return to the
+    // public landing page with its sign-in dialog.
+    const wasCustomerOnly = user?.roles?.length === 1 && user.roles[0] === 'Customer'
+    navigate(wasCustomerOnly ? '/' : '/login', { replace: true })
   }
 
   const roles = user?.roles ?? []

@@ -182,7 +182,7 @@ export default function LabTimelineScorePage() {
               startIcon={<LogoutRounded />}
               onClick={() => {
                 logout()
-                navigate('/', { replace: true })
+                navigate('/login', { replace: true })
               }}
             >
               Đăng xuất

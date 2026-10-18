@@ -259,7 +259,7 @@ export default function HubQCPage() {
               <Typography color="text.secondary">Kiểm định và đánh giá chất lượng sản phẩm in hoàn thiện</Typography>
             </Box>
           </Stack>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
+          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
             Đăng xuất
           </Button>
         </Stack>

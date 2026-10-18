@@ -16,7 +16,7 @@ import {
   Menu,
   MenuItem,
 } from '@mui/material'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth, type Role } from '../../../app/AuthContext'
 import { MenuRounded, CloseRounded, LogoutRounded, PersonOutlineRounded } from '@mui/icons-material'
 import { BrandGlyph } from '../../../shared/components/BrandGlyph'
@@ -57,6 +57,7 @@ const PRIMARY: Partial<Record<Role, NavLink[]>> = {
     { label: 'Duyệt xưởng & máy', href: '/ops/labs' },
   ],
   Admin: [
+    { label: 'Tổng quan quản trị', href: '/admin' },
     { label: 'Bảng điều phối', href: '/scheduling' },
     { label: 'Duyệt xưởng & máy', href: '/admin/labs' },
   ],
@@ -82,6 +83,11 @@ const MORE: Partial<Record<Role, NavLink[]>> = {
     { label: 'Cảnh báo', href: '/ops/escalations' },
     { label: 'Nhật ký quyết định', href: '/ops/decisions' },
     { label: 'Người dùng & phân quyền', href: '/admin/users' },
+    { label: 'Kho tri thức QC', href: '/admin/qc-knowledge' },
+    { label: 'Cấu hình thương mại', href: '/admin/commercial-configurations' },
+    { label: 'Catalogue dùng chung', href: '/admin/catalogs' },
+    { label: 'Trọng số chấm điểm', href: '/admin/scoring-configurations' },
+    { label: 'Nhật ký kiểm toán', href: '/admin/audit-logs' },
   ],
 }
 
@@ -110,8 +116,13 @@ export function staffPrimaryLink(roles: Role[]): NavLink | null {
 export function StaffNavbar() {
   const { logout, user } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+
+  /** A link is current when the browser is on it or on one of its sub-pages. */
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`)
 
   const roles = user?.roles ?? []
   const primary = roles.flatMap((role) => PRIMARY[role] ?? []).filter(
@@ -127,7 +138,7 @@ export function StaffNavbar() {
     setAnchorEl(null)
     setDrawerOpen(false)
     logout()
-    navigate('/', { replace: true })
+    navigate('/login', { replace: true })
   }
 
   const go = (href: string) => {
@@ -170,7 +181,17 @@ export function StaffNavbar() {
 
           <Stack direction="row" spacing={0.5} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
             {primary.map((link) => (
-              <Button key={link.href} onClick={() => go(link.href)} sx={{ ...linkSx, textTransform: 'none' }}>
+              <Button
+                key={link.href}
+                onClick={() => go(link.href)}
+                sx={{
+                  ...linkSx,
+                  textTransform: 'none',
+                  color: isActive(link.href) ? landing.text : landing.textMuted,
+                  fontWeight: isActive(link.href) ? 700 : 500,
+                  bgcolor: isActive(link.href) ? 'rgba(255,255,255,0.08)' : 'transparent',
+                }}
+              >
                 {link.label}
               </Button>
             ))}
@@ -204,7 +225,12 @@ export function StaffNavbar() {
               </MenuItem>
               <Divider sx={{ borderColor: landing.hairlineSoft }} />
               {more.map((link) => (
-                <MenuItem key={link.href} onClick={() => { setAnchorEl(null); go(link.href) }}>
+                <MenuItem
+                  key={link.href}
+                  onClick={() => { setAnchorEl(null); go(link.href) }}
+                  selected={isActive(link.href)}
+                  sx={{ fontWeight: isActive(link.href) ? 700 : 400 }}
+                >
                   {link.label}
                 </MenuItem>
               ))}
@@ -231,8 +257,14 @@ export function StaffNavbar() {
         <List>
           {[...primary, ...more].map((link) => (
             <ListItem key={link.href} disablePadding>
-              <ListItemButton onClick={() => go(link.href)}>
-                <ListItemText primary={link.label} sx={{ color: landing.text, '& .MuiListItemText-primary': { fontWeight: 500 } }} />
+              <ListItemButton onClick={() => go(link.href)} selected={isActive(link.href)}>
+                <ListItemText
+                  primary={link.label}
+                  sx={{
+                    color: isActive(link.href) ? 'primary.main' : landing.text,
+                    '& .MuiListItemText-primary': { fontWeight: isActive(link.href) ? 700 : 500 },
+                  }}
+                />
               </ListItemButton>
             </ListItem>
           ))}

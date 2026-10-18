@@ -57,7 +57,7 @@ export default function EscalationQueuePage() {
               <Typography color="text.secondary">Danh sách đơn in cần can thiệp xử lý: in lại vượt giới hạn hoặc không còn khung giờ khả dụng</Typography>
             </Box>
           </Stack>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
+          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
             Đăng xuất
           </Button>
         </Stack>

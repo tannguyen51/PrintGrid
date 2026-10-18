@@ -35,6 +35,11 @@ const AdminLabApprovalPage = lazy(() => import('../features/admin/AdminLabApprov
 const ForbiddenPage = lazy(() => import('../features/errors/ForbiddenPage'))
 const NotFoundPage = lazy(() => import('../features/errors/NotFoundPage'))
 const AccountPage = lazy(() => import('../features/account/AccountPage'))
+const AdminOverviewPage = lazy(() => import('../features/admin/AdminOverviewPage'))
+const AdminScoringConfigurationPage = lazy(() => import('../features/admin/AdminScoringConfigurationPage'))
+const AdminLayout = lazy(() => import('../features/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })))
+const StaffLayout = lazy(() => import('./StaffLayout').then((m) => ({ default: m.StaffLayout })))
+const CustomerLayout = lazy(() => import('./CustomerLayout').then((m) => ({ default: m.CustomerLayout })))
 
 function RouteFallback() {
   return (
@@ -57,6 +62,8 @@ export function AppRoutes() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/" element={<HomePage />} />
+        {/* Customer pages share the customer navbar so navigation never disappears. */}
+        <Route element={<CustomerLayout />}>
         <Route
           path="/models"
           element={
@@ -113,6 +120,9 @@ export function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        </Route>
+        {/* Staff consoles share one navbar shell so navigation never disappears. */}
+        <Route element={<StaffLayout />}>
         <Route
           path="/lab/queue"
           element={
@@ -245,6 +255,7 @@ export function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route element={<AdminLayout />}>
         <Route
           path="/admin/users"
           element={
@@ -277,6 +288,16 @@ export function AppRoutes() {
           path="/admin/labs"
           element={<ProtectedRoute allowedRoles={['Admin']}><AdminLabApprovalPage /></ProtectedRoute>}
         />
+        <Route
+          path="/admin"
+          element={<ProtectedRoute allowedRoles={['Admin']}><AdminOverviewPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/admin/scoring-configurations"
+          element={<ProtectedRoute allowedRoles={['Admin']}><AdminScoringConfigurationPage /></ProtectedRoute>}
+        />
+        </Route>
+        </Route>
         <Route path="/forbidden" element={<ForbiddenPage />} />
         {/* Catch-all must stay last — unknown URLs used to render a blank page. */}
         <Route path="*" element={<NotFoundPage />} />

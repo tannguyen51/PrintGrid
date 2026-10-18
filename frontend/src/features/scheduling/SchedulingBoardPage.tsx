@@ -83,7 +83,7 @@ export default function SchedulingBoardPage() {
         <Stack direction="row" spacing={1.5}><PageBackButton /><Box><Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800 }}>Bảng vận hành & can thiệp</Typography><Typography color="text.secondary">Đơn mở · nguy cơ trễ · tải xưởng · cập nhật mỗi 30 giây</Typography></Box></Stack>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Button startIcon={<RefreshRounded />} onClick={() => monitor.refetch()} disabled={monitor.isFetching}>Làm mới</Button>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
+          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
             Đăng xuất
           </Button>
         </Stack>

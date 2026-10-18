@@ -276,7 +276,7 @@ export default function LabQueuePage() {
             <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} disabled={!jobs[0]?.j.labId} onClick={() => navigate(`/lab/${jobs[0]?.j.labId}/inventory`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
               Kho vật liệu
             </Button>
-            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
+            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
               Đăng xuất
             </Button>
           </Stack>

@@ -190,7 +190,7 @@ export default function AdminUsersPage() {
             <Button variant="contained" color="primary" startIcon={<PersonAddRounded />} onClick={() => { setFormError(null); setFormOpen(true) }}>
               Tạo tài khoản
             </Button>
-            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
+            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/login', { replace: true }) }}>
               Đăng xuất
             </Button>
           </Stack>

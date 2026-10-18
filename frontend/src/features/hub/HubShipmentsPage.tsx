@@ -276,7 +276,7 @@ export default function HubShipmentsPage() {
             startIcon={<LogoutRounded />}
             onClick={() => {
               logout()
-              navigate('/', { replace: true })
+              navigate('/login', { replace: true })
             }}
           >
             Đăng xuất
