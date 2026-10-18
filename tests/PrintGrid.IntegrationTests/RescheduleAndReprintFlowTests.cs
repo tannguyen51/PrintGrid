@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Npgsql;
 using PrintGrid.Infrastructure.Shared.Persistence;
+using PrintGrid.Modules.Admin.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Application.Abstractions;
 using PrintGrid.Modules.Scheduling.Application.Commands.AssignJob;
 using PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
@@ -105,6 +106,33 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
         });
     }
 
+    /// <summary>
+    /// The inspection checklist and defect taxonomy the QC knowledge base requires (the
+    /// inspection command validates against them and the job carries FKs to both).
+    /// </summary>
+    private async Task<(Guid ChecklistVersionId, string DefectCode)> SeedQcKnowledge()
+    {
+        return await InScope(async sp =>
+        {
+            var db = sp.GetRequiredService<PrintGridDbContext>();
+            var actorId = Guid.NewGuid();
+
+            var checklist = InspectionChecklistVersion.Create(
+                "A",
+                1,
+                """[{"code":"SURFACE","isMandatory":true},{"code":"DIMENSIONS","isMandatory":true}]""",
+                actorId);
+            var defect = DefectTaxonomyItem.Create(
+                "LAYER_SHIFT", "Layer shift", "Printed layers misaligned", "Lab", isDeprecated: false, actorId);
+
+            db.Add(checklist);
+            db.Add(defect);
+            await db.SaveChangesAsync();
+
+            return (checklist.Id, defect.Code);
+        });
+    }
+
     [Fact]
     public async Task A_declined_job_is_replanned_automatically_and_the_decision_is_logged()
     {
@@ -186,14 +214,21 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
         });
 
         // FR-HUB-002: a FAIL must carry evidence, a full checklist and a fault attribution.
+        var (checklistVersionId, defectCode) = await SeedQcKnowledge();
         var inspected = await InScope(sp =>
             sp.GetRequiredService<ISender>().Send(new InspectJobCommand(
                 jobId,
                 Passed: false,
-                ChecklistResults: new[] { new ChecklistItemResult("layer_adhesion", "fail", "Layer shift") },
+                ChecklistResults: new[]
+                {
+                    new ChecklistItemResult("SURFACE", "fail", "Layer shift", ItemCode: "SURFACE"),
+                    new ChecklistItemResult("DIMENSIONS", "pass", null, ItemCode: "DIMENSIONS"),
+                },
                 PhotoUrls: new[] { "qc/defect.jpg" },
                 FaultAttribution: FaultAttribution.Lab,
-                Note: "Layer shift")));
+                Note: "Layer shift",
+                ChecklistVersionId: checklistVersionId,
+                DefectCode: defectCode)));
         inspected.IsSuccess.Should().BeTrue();
 
         var state = await InScope(async sp =>
@@ -326,14 +361,21 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
             return (await db.Set<Job>().FirstAsync(j => j.Id == jobId)).LabId!.Value;
         });
 
+        var (checklistVersionId, defectCode) = await SeedQcKnowledge();
         var inspected = await InScope(sp =>
             sp.GetRequiredService<ISender>().Send(new InspectJobCommand(
                 jobId,
                 Passed: false,
-                ChecklistResults: new[] { new ChecklistItemResult("packaging", "fail", "Crushed at the hub") },
+                ChecklistResults: new[]
+                {
+                    new ChecklistItemResult("SURFACE", "pass", null, ItemCode: "SURFACE"),
+                    new ChecklistItemResult("DIMENSIONS", "fail", "Crushed at the hub", ItemCode: "DIMENSIONS"),
+                },
                 PhotoUrls: new[] { "qc/defect.jpg" },
                 FaultAttribution: FaultAttribution.Hub,
-                Note: "Crushed in hub handling")));
+                Note: "Crushed in hub handling",
+                ChecklistVersionId: checklistVersionId,
+                DefectCode: defectCode)));
         inspected.IsSuccess.Should().BeTrue();
 
         var reprint = await InScope(async sp =>

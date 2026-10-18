@@ -11,42 +11,22 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // OwnerUserId and IX_labs_OwnerUserId are created by 20261012070000_AddWeek4LabAndHubConsolidation;
+            // repeating them here made the merged migration chain fail on a fresh database
+            // (42701: column "OwnerUserId" already exists). Only the capacity column remains.
             migrationBuilder.AddColumn<int>(
                 name: "MaxConcurrentJobs",
                 schema: "scheduling",
                 table: "labs",
                 type: "integer",
                 nullable: true);
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "OwnerUserId",
-                schema: "scheduling",
-                table: "labs",
-                type: "uuid",
-                nullable: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_labs_OwnerUserId",
-                schema: "scheduling",
-                table: "labs",
-                column: "OwnerUserId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_labs_OwnerUserId",
-                schema: "scheduling",
-                table: "labs");
-
             migrationBuilder.DropColumn(
                 name: "MaxConcurrentJobs",
-                schema: "scheduling",
-                table: "labs");
-
-            migrationBuilder.DropColumn(
-                name: "OwnerUserId",
                 schema: "scheduling",
                 table: "labs");
         }
