@@ -74,6 +74,18 @@ public sealed class StrategyAssigner
         var scorer = new AssignmentScorer(WeightsFor(strategy));
         var ranked = scorer.Rank(job, proposals, proposals.Max(p => p.EstimatedCost));
 
+        // Deterministic tie-break. A single-criterion strategy (nearest = transit only) ties
+        // EVERY lab in the same city, and LINQ's stable sort would then hand all work to
+        // whichever lab the filter happened to list first — a starved-network artifact that
+        // says nothing about the strategy. Equal scores go to the earliest finish instead.
+        if (strategy != SchedulingStrategy.Random)
+        {
+            ranked = ranked
+                .OrderByDescending(s => s.Score)
+                .ThenBy(s => s.Placement.PlannedEndUtc)
+                .ToList();
+        }
+
         var chosen = strategy == SchedulingStrategy.Random
             ? ranked[strategyRandom.Next(ranked.Count)]
             : ranked[0];
