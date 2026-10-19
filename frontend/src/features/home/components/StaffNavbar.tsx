@@ -59,7 +59,9 @@ const PRIMARY: Partial<Record<Role, NavLink[]>> = {
   Admin: [
     { label: 'Tổng quan quản trị', href: '/admin' },
     { label: 'Bảng điều phối', href: '/scheduling' },
-    { label: 'Duyệt xưởng & máy', href: '/admin/labs' },
+    // Same wording as the OpsManager link above but a different console; keep the labels
+    // distinct so an account holding BOTH roles doesn't render the same text twice.
+    { label: 'Duyệt xưởng (quản trị)', href: '/admin/labs' },
   ],
 }
 

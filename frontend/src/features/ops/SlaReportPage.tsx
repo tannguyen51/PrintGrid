@@ -177,10 +177,10 @@ function LabRow({ row }: { row: SlaLabRow }) {
           )}
         </Stack>
       </TableCell>
-      <RateCell value={row.onTimeDeliveryRate} />
-      <RateCell value={row.firstPassYield} />
-      <RateCell value={row.acceptanceRate} />
-      <RateCell value={row.utilizationRate} />
+      <RateCell value={row.onTimeDeliveryRate} hasData={row.assignedJobs > 0} />
+      <RateCell value={row.firstPassYield} hasData={row.completedJobs > 0} />
+      <RateCell value={row.acceptanceRate} hasData={row.assignedJobs > 0} />
+      <RateCell value={row.utilizationRate} hasData={row.assignedJobs > 0} />
       <TableCell align="right">{row.completedJobs}</TableCell>
       <TableCell align="right">{row.assignedJobs}</TableCell>
       <TableCell align="right" sx={{ color: row.lateJobs > 0 ? 'error.main' : 'text.primary' }}>
@@ -190,7 +190,11 @@ function LabRow({ row }: { row: SlaLabRow }) {
   )
 }
 
-function RateCell({ value }: { value: number }) {
+function RateCell({ value, hasData = true }: { value: number; hasData?: boolean }) {
+  // A lab with no jobs in the window has no rate to report — 0% in red reads as a failure.
+  if (!hasData) {
+    return <TableCell align="right" sx={{ color: 'text.disabled' }}>—</TableCell>
+  }
   return (
     <TableCell align="right" sx={{ color: rateColor(value), fontWeight: 700 }}>
       {pct(value)}
