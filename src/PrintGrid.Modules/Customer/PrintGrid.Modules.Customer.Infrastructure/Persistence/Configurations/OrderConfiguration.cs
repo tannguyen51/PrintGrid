@@ -24,6 +24,8 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.ReadyForPackingAtUtc);
         builder.Property(o => o.ConsolidatedShipmentId);
         builder.Property(o => o.RefundedAmount).HasPrecision(18, 2).HasDefaultValue(0m);
+        builder.Property(o => o.DepositAmount).HasPrecision(18, 2).HasDefaultValue(0m);
+        builder.Property(o => o.PaidAmount).HasPrecision(18, 2).HasDefaultValue(0m);
         builder.HasIndex(o => o.ConsolidatedShipmentId);
 
         builder.OwnsOne(o => o.TotalPrice, price =>

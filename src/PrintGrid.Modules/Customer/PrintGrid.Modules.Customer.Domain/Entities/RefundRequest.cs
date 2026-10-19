@@ -1,4 +1,5 @@
 using PrintGrid.SharedKernel.Common;
+using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Customer.Domain.Entities;
 
@@ -32,4 +33,19 @@ public sealed class RefundRequest : Entity<Guid>
         Reason = reason,
         CreatedAtUtc = createdAtUtc
     };
+
+    /// <summary>FR-ANAL-005: ops approves the queued refund. Only a Pending request can be decided.</summary>
+    public Result Approve() => Decide("Approved");
+
+    /// <summary>FR-ANAL-005: ops rejects the queued refund. Only a Pending request can be decided.</summary>
+    public Result Reject() => Decide("Rejected");
+
+    private Result Decide(string next)
+    {
+        if (Status != "Pending")
+            return Result.Failure(Error.Conflict($"Yêu cầu hoàn tiền đã được xử lý (trạng thái hiện tại: {Status})."));
+
+        Status = next;
+        return Result.Success();
+    }
 }

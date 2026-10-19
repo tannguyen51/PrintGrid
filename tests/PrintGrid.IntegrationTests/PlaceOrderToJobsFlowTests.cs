@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PrintGrid.Infrastructure.Shared.Persistence;
+using PrintGrid.Modules.Customer.Application.Commands.Payments;
 using PrintGrid.Modules.Customer.Application.Commands.PlaceOrder;
 using PrintGrid.Modules.Customer.Application.Quotes;
 using PrintGrid.Modules.Customer.Domain.Entities;
@@ -21,12 +22,12 @@ using Testcontainers.PostgreSql;
 namespace PrintGrid.IntegrationTests;
 
 /// <summary>
-/// The order→jobs seam against a real PostgreSQL with the real MediatR wiring:
-/// PlaceOrderCommand (with the payment bypass from c7130e2) must leave the order Confirmed,
-/// publish OrderConfirmedEvent from Order aggregate → PrintGridDbContext.SaveChanges, and the
-/// Scheduling module's OrderConfirmedEventHandler must decompose it into scheduling.jobs rows
-/// carrying the frozen estimates (FR-SCHED-006) and the BR-SCHED-001 back-dated internal due.
-/// Before c7130e2 nothing called ConfirmPayment outside tests, so this chain had never run.
+/// The order→jobs seam against a real PostgreSQL with the real MediatR wiring, under FR-CUST-012:
+/// PlaceOrderCommand leaves the order PaymentPending with a deposit and raises no event, so no job
+/// exists yet. MarkOrderPaidCommand covering the deposit raises OrderConfirmedEvent from the Order
+/// aggregate → PrintGridDbContext.SaveChanges, and the Scheduling module's OrderConfirmedEventHandler
+/// decomposes it into scheduling.jobs rows carrying the frozen estimates (FR-SCHED-006) and the
+/// BR-SCHED-001 back-dated internal due.
 /// </summary>
 public class PlaceOrderToJobsFlowTests : IAsyncLifetime
 {
@@ -119,7 +120,7 @@ public class PlaceOrderToJobsFlowTests : IAsyncLifetime
                 AcceptTerms: true));
 
             result.IsSuccess.Should().BeTrue(result.Error.Message);
-            result.Value.Status.Should().Be(OrderStatus.Confirmed.ToString());
+            result.Value.Status.Should().Be(OrderStatus.PaymentPending.ToString());
 
             var db = sp.GetRequiredService<PrintGridDbContext>();
             return await db.Set<Order>()
@@ -127,9 +128,31 @@ public class PlaceOrderToJobsFlowTests : IAsyncLifetime
                 .SingleAsync(o => o.Id == result.Value.Id);
         });
 
-        order.Status.Should().Be(OrderStatus.Confirmed);
-        order.PaymentTransactionId.Should().Be(PlaceOrderCommandHandler.PaymentBypassTransactionId);
+        order.Status.Should().Be(OrderStatus.PaymentPending);
+        order.DepositAmount.Should().Be(150_000m, "50% of the 300,000 quote total");
+        order.PaidAmount.Should().Be(0m);
+        order.PaymentTransactionId.Should().BeNull();
         var orderItemId = order.Items.Single().Id;
+
+        // FR-CUST-012: no job may exist before the deposit is paid.
+        var jobsBeforeDeposit = await InScope(async sp =>
+        {
+            var db = sp.GetRequiredService<PrintGridDbContext>();
+            return await db.Set<Job>().AnyAsync(j => j.OrderItemId == orderItemId);
+        });
+        jobsBeforeDeposit.Should().BeFalse("jobs only start after the deposit is covered");
+
+        // Ops records the deposit — this is the first payment that reaches DepositAmount.
+        var payment = await InScope(async sp =>
+        {
+            var sender = sp.GetRequiredService<ISender>();
+            var result = await sender.Send(new MarkOrderPaidCommand(order.Id, order.DepositAmount));
+            result.IsSuccess.Should().BeTrue(result.Error.Message);
+            return result.Value;
+        });
+        payment.IsDeposited.Should().BeTrue();
+        payment.IsSettled.Should().BeFalse();
+        payment.PaidAmount.Should().Be(150_000m);
 
         // The payoff: the event consumer decomposed the confirmed order into a real
         // scheduling.jobs row with the frozen estimates.

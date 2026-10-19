@@ -14,6 +14,9 @@ public interface IJobRepository
     Task<IReadOnlyList<Job>> GetActiveByMachineAsync(Guid machineId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Job>> GetByLabIdAsync(Guid labId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Job>> GetAllAssignedToLabsAsync(DateTime sinceUtc, CancellationToken cancellationToken = default);
+
+    /// <summary>Completed jobs with a reported actual duration — the FR-SCHED-008 sample source.</summary>
+    Task<IReadOnlyList<Job>> GetCompletedWithActualTimeAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyDictionary<Guid, int>> GetActiveCountsByLabAsync(CancellationToken cancellationToken = default);
     Task<bool> HasActiveForMachineAsync(Guid machineId, CancellationToken cancellationToken = default);
     Task AddAsync(Job job, CancellationToken cancellationToken = default);

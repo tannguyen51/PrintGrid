@@ -102,6 +102,9 @@ public class ShipmentReceiptFlowTests : IAsyncLifetime
                 Address.Create("1 Dai Co Viet", "Bach Khoa", "Hai Ba Trung", "Ha Noi", "100000"),
                 $"PG-TEST-{Guid.NewGuid():N}"[..20]);
             order.ConfirmPayment("integration");
+            // BR-PAY-008: goods may only leave the hub on a fully settled order, so the seed pays
+            // the remaining balance before the pack gate would otherwise block shipping.
+            order.ApplyPayment(order.TotalPrice.Amount, "integration-settlement").IsSuccess.Should().BeTrue();
             order.TransitionTo(OrderStatus.InProduction);
             order.TransitionTo(OrderStatus.QualityCheck);
 

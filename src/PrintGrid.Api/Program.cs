@@ -88,6 +88,13 @@ RecurringJob.AddOrUpdate<EmailDeliveryJob>(
     job => job.ExecuteAsync(CancellationToken.None),
     Cron.Minutely());
 
+// FR-SCHED-008 / BR-ESTIM-006: refit every machine's estimate factor once a day from the
+// completed jobs of the last window. Off-peak (02:17) so it never competes with the scheduler.
+RecurringJob.AddOrUpdate<CalibrationNightlyJob>(
+    "estimation-calibration",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "17 2 * * *");
+
 app.Run();
 
 /// <summary>Exposed for WebApplicationFactory in PrintGrid.IntegrationTests.</summary>

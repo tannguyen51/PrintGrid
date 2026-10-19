@@ -82,6 +82,16 @@ public class JobRepository : IJobRepository
             .Where(j => j.LabId != null && j.CreatedAt >= sinceUtc)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Job>> GetCompletedWithActualTimeAsync(CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .AsNoTracking()
+            .Where(j => j.Status == JobStatus.Completed
+                        && j.ActualPrintMinutes != null
+                        && j.ActualPrintMinutes > 0
+                        && j.MachineId != null)
+            .OrderBy(j => j.CompletedAtUtc)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyDictionary<Guid, int>> GetActiveCountsByLabAsync(CancellationToken cancellationToken = default) =>
         await _context.Set<Job>()
             .Where(j => j.LabId.HasValue && _activeStatuses.Contains(j.Status))

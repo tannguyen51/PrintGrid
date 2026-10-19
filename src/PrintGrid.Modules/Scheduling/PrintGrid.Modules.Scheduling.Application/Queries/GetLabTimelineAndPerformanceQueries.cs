@@ -1,6 +1,7 @@
 using MediatR;
 using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.Modules.Scheduling.Application.DTOs;
+using PrintGrid.Modules.Scheduling.Application.Services;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
@@ -135,7 +136,7 @@ public class GetLabTimelineAndPerformanceQueryHandler :
             .ToDictionary(g => g.Key, g => (IReadOnlyList<Job>)g.ToList());
 
         var targetJobs = jobsByLab.GetValueOrDefault(lab.Id) ?? Array.Empty<Job>();
-        var targetStats = ComputeForLab(lab, targetJobs, now);
+        var targetStats = LabMetricsCalculator.ComputeForLab(lab, targetJobs, now);
 
         var benchmarkLabs = allLabs
             .Where(l => l.IsActive && l.Status == LabStatus.Active)
@@ -144,16 +145,21 @@ public class GetLabTimelineAndPerformanceQueryHandler :
             benchmarkLabs.Add(lab);
 
         var benchmarkStats = benchmarkLabs
-            .Select(l => ComputeForLab(l, jobsByLab.GetValueOrDefault(l.Id) ?? Array.Empty<Job>(), now))
+            .Select(l => LabMetricsCalculator.ComputeForLab(l, jobsByLab.GetValueOrDefault(l.Id) ?? Array.Empty<Job>(), now))
             .ToList();
 
         var networkAvg = new LabPerformanceMetricsDto(
-            OnTimeDeliveryRate: decimal.Round(benchmarkStats.Average(s => s.Metrics.OnTimeDeliveryRate), 4),
-            FirstPassYield: decimal.Round(benchmarkStats.Average(s => s.Metrics.FirstPassYield), 4),
-            AcceptanceRate: decimal.Round(benchmarkStats.Average(s => s.Metrics.AcceptanceRate), 4),
-            UtilizationRate: decimal.Round(benchmarkStats.Average(s => s.Metrics.UtilizationRate), 4));
+            OnTimeDeliveryRate: decimal.Round(benchmarkStats.Average(s => s.OnTimeDeliveryRate), 4),
+            FirstPassYield: decimal.Round(benchmarkStats.Average(s => s.FirstPassYield), 4),
+            AcceptanceRate: decimal.Round(benchmarkStats.Average(s => s.AcceptanceRate), 4),
+            UtilizationRate: decimal.Round(benchmarkStats.Average(s => s.UtilizationRate), 4));
 
-        var networkAvgStanding = decimal.Round(benchmarkStats.Average(s => s.StandingScore), 4);
+        var networkAvgStanding = decimal.Round(benchmarkStats.Average(s => s.IsProvisional ? 0.70m : Standing(s)), 4);
+
+        var targetStanding = targetStats.IsProvisional ? 0.70m : Standing(targetStats);
+        var targetLabel = targetStats.IsProvisional
+            ? "Điểm tạm (< 10 job)"
+            : StandingLabel(targetStanding);
 
         return Result.Success(new LabPerformanceDto(
             LabId: lab.Id,
@@ -161,96 +167,35 @@ public class GetLabTimelineAndPerformanceQueryHandler :
             CompletedJobsCount: targetStats.CompletedCount,
             TotalAssignedJobsCount: targetStats.TotalAssignedCount,
             IsProvisional: targetStats.IsProvisional,
-            StandingScore: targetStats.StandingScore,
-            StandingLabel: targetStats.StandingLabel,
-            LabMetrics: targetStats.Metrics,
+            StandingScore: targetStanding,
+            StandingLabel: targetLabel,
+            LabMetrics: new LabPerformanceMetricsDto(
+                targetStats.OnTimeDeliveryRate,
+                targetStats.FirstPassYield,
+                targetStats.AcceptanceRate,
+                targetStats.UtilizationRate),
             NetworkAnonymousAverage: networkAvg,
             NetworkAverageStandingScore: networkAvgStanding,
             ActiveLabsInBenchmark: benchmarkLabs.Count));
     }
 
-    private static (
-        int CompletedCount,
-        int TotalAssignedCount,
-        bool IsProvisional,
-        decimal StandingScore,
-        string StandingLabel,
-        LabPerformanceMetricsDto Metrics) ComputeForLab(Lab lab, IReadOnlyList<Job> labJobs, DateTime nowUtc)
-    {
-        var completedJobs = labJobs
-            .Where(j => j.Status is JobStatus.AwaitingInspection or JobStatus.Completed || j.CompletedAtUtc.HasValue)
-            .ToList();
-
-        var completedCount = completedJobs.Count;
-        var totalAssignedCount = labJobs.Count;
-
-        decimal odr;
-        if (completedCount > 0)
-        {
-            var onTime = completedJobs.Count(j =>
-                DateOnly.FromDateTime(j.CompletedAtUtc ?? nowUtc) <= j.InternalDueDate);
-            odr = decimal.Round((decimal)onTime / completedCount, 4);
-        }
-        else
-        {
-            odr = decimal.Round(lab.OnTimeDeliveryRate, 4);
-        }
-
-        decimal fpy;
-        if (completedCount > 0)
-        {
-            var passedFirstAttempt = completedJobs.Count(j =>
-                j.AttemptNumber == 1
-                && j.Status != JobStatus.Failed
-                && j.QcProofStatus != QcProofStatus.Rejected);
-            fpy = decimal.Round((decimal)passedFirstAttempt / completedCount, 4);
-        }
-        else
-        {
-            fpy = decimal.Round(lab.FirstPassYield, 4);
-        }
-
-        decimal acceptanceRate;
-        if (totalAssignedCount > 0)
-        {
-            var acceptedCount = labJobs.Count(j =>
-                j.Status is JobStatus.Accepted or JobStatus.InProgress or JobStatus.AwaitingInspection or JobStatus.Completed
-                || j.StartedAtUtc.HasValue
-                || j.CompletedAtUtc.HasValue);
-            acceptanceRate = decimal.Round((decimal)acceptedCount / totalAssignedCount, 4);
-        }
-        else
-        {
-            acceptanceRate = 1.0m;
-        }
-
-        var activeMachinesCount = Math.Max(1, lab.Machines.Count(m => m.Status != MachineStatus.Offline));
-        var recentMinutes = labJobs
-            .Where(j => j.CreatedAt >= nowUtc.AddDays(-7))
-            .Sum(j => j.ActualPrintMinutes ?? j.EstimatedPrintMinutes);
-        var capacityMinutes7d = activeMachinesCount * 7m * 8m * 60m;
-        var utilizationRate = capacityMinutes7d > 0
-            ? decimal.Round(Math.Clamp(recentMinutes / capacityMinutes7d, 0m, 1m), 4)
-            : 0m;
-
-        // BR-PERF-002: < 10 completed jobs => provisional score 0.70 (điểm tạm)
-        var isProvisional = completedCount < 10;
-        var compositeScore = decimal.Round(
-            Math.Clamp(0.35m * odr + 0.30m * fpy + 0.15m * acceptanceRate + 0.10m * utilizationRate + 0.10m, 0m, 1m),
+    private static decimal Standing(LabMetricsSnapshot metrics) =>
+        decimal.Round(
+            Math.Clamp(
+                0.35m * metrics.OnTimeDeliveryRate
+                + 0.30m * metrics.FirstPassYield
+                + 0.15m * metrics.AcceptanceRate
+                + 0.10m * metrics.UtilizationRate
+                + 0.10m,
+                0m, 1m),
             4);
-        var standingScore = isProvisional ? 0.70m : compositeScore;
 
-        var standingLabel = isProvisional
-            ? "Điểm tạm (< 10 job)"
-            : standingScore >= 0.85m
-                ? "Xuất sắc"
-                : standingScore >= 0.70m
-                    ? "Tốt"
-                    : standingScore >= 0.50m
-                        ? "Đạt"
-                        : "Cần cải thiện";
-
-        var metrics = new LabPerformanceMetricsDto(odr, fpy, acceptanceRate, utilizationRate);
-        return (completedCount, totalAssignedCount, isProvisional, standingScore, standingLabel, metrics);
-    }
+    private static string StandingLabel(decimal standingScore) =>
+        standingScore >= 0.85m
+            ? "Xuất sắc"
+            : standingScore >= 0.70m
+                ? "Tốt"
+                : standingScore >= 0.50m
+                    ? "Đạt"
+                    : "Cần cải thiện";
 }

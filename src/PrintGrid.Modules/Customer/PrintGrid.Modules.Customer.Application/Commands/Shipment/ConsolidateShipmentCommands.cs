@@ -93,6 +93,18 @@ public class ConsolidateShipmentCommandHandler :
         var consolidatedId = Guid.NewGuid();
         var tracking = command.TrackingNumber.Trim();
 
+        // FR-CUST-012 AC02 / BR-PAY-008: a consolidated package may only ship when every included
+        // order is settled — one unpaid order blocks the whole package.
+        foreach (var order in loaded)
+        {
+            if (!order.IsSettled)
+            {
+                var shortfall = order.TotalPrice.Amount - order.PaidAmount;
+                return Result.Failure<ConsolidatedShipmentResultDto>(Error.Conflict(
+                    $"Đơn {order.OrderNumber} chưa tất toán đủ — còn thiếu {shortfall:N0} {order.TotalPrice.Currency}, không thể xuất kho."));
+            }
+        }
+
         foreach (var order in loaded)
         {
             var shipResult = order.Ship(tracking, consolidatedId);

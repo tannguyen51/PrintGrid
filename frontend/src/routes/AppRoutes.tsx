@@ -40,6 +40,11 @@ const AdminScoringConfigurationPage = lazy(() => import('../features/admin/Admin
 const AdminLayout = lazy(() => import('../features/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })))
 const StaffLayout = lazy(() => import('./StaffLayout').then((m) => ({ default: m.StaffLayout })))
 const CustomerLayout = lazy(() => import('./CustomerLayout').then((m) => ({ default: m.CustomerLayout })))
+const ModelPreviewPage = lazy(() => import('../features/models/ModelPreviewPage'))
+const SlaReportPage = lazy(() => import('../features/ops/SlaReportPage'))
+const RefundsPage = lazy(() => import('../features/ops/RefundsPage'))
+const DesignRequestsPage = lazy(() => import('../features/ops/DesignRequestsPage'))
+const DesignRequestPage = lazy(() => import('../features/design/DesignRequestPage'))
 
 function RouteFallback() {
   return (
@@ -101,6 +106,22 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['Customer']}>
               <OrderConfigPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/models/:modelId/preview"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <ModelPreviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/design-request"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <DesignRequestPage />
             </ProtectedRoute>
           }
         />
@@ -252,6 +273,30 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <OpsLabsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ops/sla"
+          element={
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+              <SlaReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ops/refunds"
+          element={
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+              <RefundsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ops/design-requests"
+          element={
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+              <DesignRequestsPage />
             </ProtectedRoute>
           }
         />

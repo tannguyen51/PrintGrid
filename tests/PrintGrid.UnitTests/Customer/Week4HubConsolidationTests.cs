@@ -40,7 +40,8 @@ public class Week4HubConsolidationTests
         quote.MarkReady(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(4)), PricingParameterSet.Active.Version, "test");
 
         var order = Order.CreateFromQuote(quote, address, orderNumber);
-        order.ConfirmPayment("pay-tx");
+        // FR-CUST-012 / BR-PAY-008: shipment requires the order to be fully settled.
+        order.ApplyPayment(priceAmount, "pay-tx");
         order.TransitionTo(OrderStatus.InProduction);
         order.TransitionTo(OrderStatus.QualityCheck);
         order.SetReadyForPackingAt(readyAtUtc);

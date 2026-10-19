@@ -40,6 +40,7 @@ const CUSTOMER_NAV: NavItem[] = [
   { label: 'Đặt in', href: '/order/new' },
   { label: 'Thư viện model', href: '/models' },
   { label: 'Đơn hàng', href: '/orders' },
+  { label: 'Yêu cầu thiết kế', href: '/design-request' },
 ]
 
 const linkSx = {

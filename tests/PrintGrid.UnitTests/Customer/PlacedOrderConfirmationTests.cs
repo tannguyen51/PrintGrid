@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using NSubstitute;
 using PrintGrid.Modules.Customer.Application.Commands.PlaceOrder;
 using PrintGrid.Modules.Customer.Application.DTOs;
@@ -15,73 +16,46 @@ using PrintGrid.SharedKernel.ValueObjects;
 namespace PrintGrid.UnitTests.Customer;
 
 /// <summary>
-/// Pins the order→jobs seam at the payment-bypass commit (c7130e2, 07/10): placing an
-/// order must CONFIRM it immediately (the payment lane is deferred) and raise exactly one
-/// OrderConfirmedEvent carrying the frozen quote estimates, or no job is ever created.
-///
-/// Two wiring traps this file deliberately walks around — both were suspects for the
-/// earlier failed attempt of this test, which saw "not_found — Quote with id ..." even
-/// with a stubbed GetByIdAsync:
-///  1. PlaceOrderCommand is (CustomerId, QuoteId, ...) — Customer FIRST. Both are Guid,
-///     so swapping them compiles silently and makes the handler look up the customer id
-///     as if it were the quote id.
-///  2. An NSubstitute substitute that is stubbed but never handed to the constructor is
-///     indistinguishable from one that was never stubbed: the fresh substitute the handler
-///     actually holds auto-returns a completed Task&lt;Quote?&gt; whose result is null →
-///     not_found, no matter how the other instance is configured (Arg.Any included).
-///     The substitute stubbed here is the same instance the handler receives — that is
-///     the wiring regression this test protects.
+/// Pins the order→jobs seam after FR-CUST-012 removed the payment bypass: placing an order must
+/// leave it PaymentPending with a deposit requirement and raise NO OrderConfirmedEvent. The event
+/// (and therefore the Scheduling jobs) is raised only once the deposit is actually paid.
 /// </summary>
 public class PlacedOrderConfirmationTests
 {
     [Fact]
-    public async Task Placing_an_order_confirms_it_instead_of_leaving_it_payment_pending()
+    public async Task Placing_an_order_leaves_it_payment_pending_with_the_configured_deposit()
     {
         var (_, _, _, result, placed) = await PlaceWithQuote();
 
         result.IsSuccess.Should().BeTrue(result.Error.Message);
-        result.Value.Status.Should().Be(OrderStatus.Confirmed.ToString());
+        result.Value.Status.Should().Be(OrderStatus.PaymentPending.ToString());
 
-        placed!.Status.Should().Be(OrderStatus.Confirmed);
-        placed.Status.Should().NotBe(OrderStatus.PaymentPending,
-            "the payment bypass (c7130e2) must run straight after Order.CreateFromQuote, " +
-            "otherwise the fulfilment chain is never reached");
+        placed!.Status.Should().Be(OrderStatus.PaymentPending,
+            "FR-CUST-012 / BR-PAY-007: placement no longer confirms the order");
+        placed.DepositAmount.Should().Be(150_000m, "50% of the 300,000 quote total");
+        placed.PaidAmount.Should().Be(0m);
+        placed.IsDeposited.Should().BeFalse();
+        placed.IsSettled.Should().BeFalse();
     }
 
     [Fact]
-    public async Task Placing_an_order_records_the_bypass_sentinel_in_PaymentTransactionId()
+    public async Task Placing_an_order_does_not_record_a_payment_or_confirm_timestamp()
     {
         var (_, _, _, result, placed) = await PlaceWithQuote();
 
         result.IsSuccess.Should().BeTrue(result.Error.Message);
-        placed!.PaymentTransactionId.Should().Be(PlaceOrderCommandHandler.PaymentBypassTransactionId);
-        placed.ConfirmedAt.Should().NotBeNull();
+        placed!.PaymentTransactionId.Should().BeNull();
+        placed.ConfirmedAt.Should().BeNull();
     }
 
     [Fact]
-    public async Task Placing_an_order_raises_exactly_one_OrderConfirmedEvent_with_the_frozen_estimates()
+    public async Task Placing_an_order_raises_no_OrderConfirmedEvent_until_the_deposit_is_paid()
     {
-        var (customerId, _, _, result, placed) = await PlaceWithQuote();
+        var (_, _, _, result, placed) = await PlaceWithQuote();
 
         result.IsSuccess.Should().BeTrue(result.Error.Message);
-        placed!.DomainEvents.Should().ContainSingle(e => e is OrderConfirmedEvent,
-            "ConfirmPayment raises the one event the Scheduling module turns into jobs");
-
-        var evt = placed.DomainEvents.OfType<OrderConfirmedEvent>().Single();
-        evt.OrderId.Should().Be(placed.Id);
-        evt.CustomerId.Should().Be(customerId);
-        evt.PromisedDeliveryDate.Should().Be(placed.PromisedDeliveryDate);
-
-        var item = evt.Items.Should().ContainSingle().Subject;
-        item.OrderItemId.Should().Be(placed.Items.Single().Id);
-        item.Quantity.Should().Be(2);
-        item.MaterialCode.Should().Be("PLA");
-        item.ColorCode.Should().Be("BLACK");
-        item.EstimatedPrintMinutes.Should().Be(180);
-        item.EstimatedMaterialGrams.Should().Be(40m);
-        item.BoundingWidthMm.Should().Be(60m);
-        item.BoundingDepthMm.Should().Be(60m);
-        item.BoundingHeightMm.Should().Be(40m);
+        placed!.DomainEvents.Should().NotContain(e => e is OrderConfirmedEvent,
+            "jobs must only be scheduled once the deposit is actually paid");
     }
 
     [Fact]
@@ -116,7 +90,10 @@ public class PlacedOrderConfirmationTests
         clock.UtcNow.Returns(DateTime.UtcNow);
         clock.Today.Returns(DateOnly.FromDateTime(DateTime.UtcNow));
 
-        var handler = new PlaceOrderCommandHandler(quotes, orders, uow, clock);
+        var configuration = Substitute.For<IConfiguration>();
+        configuration["Payment:DepositPercent"].Returns("50");
+
+        var handler = new PlaceOrderCommandHandler(quotes, orders, uow, clock, configuration);
 
         // (CustomerId, QuoteId, ...) — not QuoteId first; see class comment, trap 1.
         var result = await handler.Handle(

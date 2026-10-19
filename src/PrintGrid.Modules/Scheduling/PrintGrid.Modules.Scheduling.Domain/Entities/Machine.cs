@@ -17,6 +17,23 @@ public class Machine : Entity<Guid>
     public decimal AchievableToleranceMm { get; private set; }
     public MachineStatus Status { get; private set; }
     public decimal SpeedFactor { get; private set; } = 1.0m;
+
+    /// <summary>
+    /// FR-SCHED-008 correction factor learned from completed jobs on this machine.
+    /// 1.0 means no correction. It is forward-looking only: it is applied to NEW estimates
+    /// (quotes/jobs created after it is computed) and never rewrites a job that has already
+    /// been promised (BR-ESTIM-004).
+    /// </summary>
+    public decimal CalibrationFactor { get; private set; } = 1.0m;
+
+    /// <summary>Valid (post-outlier) samples used by the last successful calibration.</summary>
+    public int CalibrationSampleCount { get; private set; }
+
+    /// <summary>MAPE of the last successful calibration, as a 0..1 fraction (BR-ESTIM-005).</summary>
+    public decimal CalibrationMape { get; private set; }
+
+    public DateTime? CalibrationComputedAtUtc { get; private set; }
+
     public DateTime? MaintenanceFromUtc { get; private set; }
     public DateTime? MaintenanceUntilUtc { get; private set; }
     public string? MaintenanceReason { get; private set; }
@@ -138,5 +155,36 @@ public class Machine : Entity<Guid>
             throw new ArgumentOutOfRangeException(nameof(factor), "Speed factor must stay between 0.5 and 2.0");
 
         SpeedFactor = decimal.Round(factor, 3);
+    }
+
+    /// <summary>
+    /// Persists a calibration result (FR-SCHED-008). The factor is clamped to 0.5..2.0, the
+    /// same guardrail as <see cref="SpeedFactor"/>; a result computed from fewer than ten
+    /// valid samples (BR-ESTIM-006) is rejected rather than silently accepted.
+    /// </summary>
+    public void ApplyCalibrationFactor(decimal factor, int sampleCount, decimal mape, DateTime computedAtUtc)
+    {
+        if (sampleCount < PrintGrid.Modules.Scheduling.Domain.Services.EstimationCalibration.MinimumSamples)
+            throw new ArgumentOutOfRangeException(nameof(sampleCount), "At least 10 valid samples are required before a factor can be applied");
+        if (mape < 0m)
+            throw new ArgumentOutOfRangeException(nameof(mape), "MAPE cannot be negative");
+
+        CalibrationFactor = decimal.Round(Math.Clamp(factor, 0.5m, 2.0m), 3);
+        CalibrationSampleCount = sampleCount;
+        CalibrationMape = decimal.Round(mape, 4);
+        CalibrationComputedAtUtc = computedAtUtc;
+    }
+
+    /// <summary>
+    /// The forward-application point for BR-ESTIM-004: the raw slicer estimate is multiplied by
+    /// <see cref="CalibrationFactor"/> for THIS machine. It is applied by
+    /// <c>AssignmentEngine</c> when computing the machine-specific duration, so the stored
+    /// <c>Job.EstimatedPrintMinutes</c> stays the untouched baseline that MAPE is measured
+    /// against and no existing job is ever rewritten.
+    /// </summary>
+    public int ApplyToEstimate(int rawEstimatedMinutes)
+    {
+        if (rawEstimatedMinutes <= 0) return rawEstimatedMinutes;
+        return Math.Max(1, (int)Math.Round(rawEstimatedMinutes * CalibrationFactor, MidpointRounding.AwayFromZero));
     }
 }

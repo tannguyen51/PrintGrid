@@ -101,9 +101,14 @@ public class AssignmentEngine : IAssignmentEngine
 
         foreach (var candidate in filter.Candidates)
         {
+            // BR-ESTIM-004 / FR-SCHED-008: the quote estimate is machine-agnostic, so the
+            // machine's own calibration factor is applied here, at the point a concrete
+            // machine is considered. Job.EstimatedPrintMinutes stays untouched — it is the
+            // baseline the calibration loop measures MAPE against, never rewritten.
+            var machineEstimateMinutes = candidate.Machine.ApplyToEstimate(job.EstimatedPrintMinutes);
             var start = await _timeline.FindEarliestFreeSlotAsync(
-                candidate.Machine, job.EstimatedPrintMinutes, _clock.UtcNow, cancellationToken);
-            var duration = job.EstimatedPrintMinutes / candidate.Machine.SpeedFactor;
+                candidate.Machine, machineEstimateMinutes, _clock.UtcNow, cancellationToken);
+            var duration = machineEstimateMinutes / candidate.Machine.SpeedFactor;
             var end = start.AddMinutes((double)duration);
 
             if (earliestEnd is null || end < earliestEnd.Value)

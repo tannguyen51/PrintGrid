@@ -458,6 +458,50 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.ToTable("customer_addresses", "customer");
                 });
 
+            modelBuilder.Entity("PrintGrid.Modules.Customer.Domain.Entities.DesignRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<Guid?>("QuoteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<List<string>>("_referenceImageKeys")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("reference_image_keys");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId", "Status");
+
+                    b.HasIndex("Status", "CreatedAtUtc");
+
+                    b.ToTable("design_requests", "customer");
+                });
+
             modelBuilder.Entity("PrintGrid.Modules.Customer.Domain.Entities.Model", b =>
                 {
                     b.Property<Guid>("Id")
@@ -576,6 +620,12 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<DateTime?>("DeliveredAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal>("DepositAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m);
+
                     b.Property<bool>("IsDelayed")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -585,6 +635,12 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<decimal>("PaidAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m);
 
                     b.Property<string>("PaymentTransactionId")
                         .HasMaxLength(128)
@@ -987,6 +1043,47 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.ToTable("assignment_decisions", "scheduling");
                 });
 
+            modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.CalibrationSample", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ActualMinutes")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("EstimatedMinutes")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MachineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MaterialCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("ModelId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId")
+                        .IsUnique();
+
+                    b.HasIndex("MachineId", "CreatedAtUtc");
+
+                    b.ToTable("calibration_samples", "scheduling");
+                });
+
             modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.DateChangeRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1320,6 +1417,20 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<decimal>("AchievableToleranceMm")
                         .HasPrecision(5, 3)
                         .HasColumnType("numeric(5,3)");
+
+                    b.Property<DateTime?>("CalibrationComputedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("CalibrationFactor")
+                        .HasPrecision(5, 3)
+                        .HasColumnType("numeric(5,3)");
+
+                    b.Property<decimal>("CalibrationMape")
+                        .HasPrecision(6, 4)
+                        .HasColumnType("numeric(6,4)");
+
+                    b.Property<int>("CalibrationSampleCount")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("LabId")
                         .HasColumnType("uuid");
@@ -1677,6 +1788,15 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PrintGrid.Modules.Customer.Domain.Entities.DesignRequest", b =>
+                {
+                    b.HasOne("PrintGrid.Modules.Customer.Domain.Entities.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PrintGrid.Modules.Customer.Domain.Entities.Order", b =>
                 {
                     b.OwnsOne("PrintGrid.SharedKernel.ValueObjects.Money", "TotalPrice", b1 =>
@@ -1956,6 +2076,15 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.HasOne("PrintGrid.Modules.Customer.Domain.Entities.Order", null)
                         .WithMany()
                         .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.CalibrationSample", b =>
+                {
+                    b.HasOne("PrintGrid.Modules.Scheduling.Domain.Entities.Machine", null)
+                        .WithMany()
+                        .HasForeignKey("MachineId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -43,7 +43,19 @@ public class Order : AggregateRoot<Guid>
     /// <summary>Total amount refunded on this specific order — strictly bounded by this order's TotalPrice (BR-LOG-002 / AC02).</summary>
     public decimal RefundedAmount { get; private set; }
 
+    /// <summary>Deposit required before production starts (FR-CUST-012 / BR-PAY-007).</summary>
+    public decimal DepositAmount { get; private set; }
+
+    /// <summary>Amount the customer has actually paid so far (deposit + settlement instalments).</summary>
+    public decimal PaidAmount { get; private set; }
+
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
+
+    /// <summary>FR-CUST-012 / BR-PAY-007: the deposit has been covered, so production may start.</summary>
+    public bool IsDeposited => PaidAmount >= DepositAmount;
+
+    /// <summary>FR-CUST-012 / BR-PAY-008: the order is fully paid and may leave the hub.</summary>
+    public bool IsSettled => PaidAmount >= TotalPrice.Amount;
 
     public void MarkAsDelayed() => IsDelayed = true;
 
@@ -62,8 +74,13 @@ public class Order : AggregateRoot<Guid>
 
     private Order() { }
 
-    public static Order CreateFromQuote(Quote quote, Address deliveryAddress, string orderNumber)
+    public static Order CreateFromQuote(
+        Quote quote,
+        Address deliveryAddress,
+        string orderNumber,
+        decimal depositPercent = 0m)
     {
+        var depositPercentSafe = Math.Clamp(depositPercent, 0m, 100m);
         var order = new Order
         {
             Id = Guid.NewGuid(),
@@ -75,7 +92,11 @@ public class Order : AggregateRoot<Guid>
             PromisedDeliveryDate = quote.PromisedDeliveryDate,
             DeliveryAddress = deliveryAddress,
             CreatedAt = DateTime.UtcNow,
-            IsDelayed = false
+            IsDelayed = false,
+            DepositAmount = decimal.Round(
+                quote.TotalPrice.Amount * depositPercentSafe / 100m,
+                2,
+                MidpointRounding.AwayFromZero)
         };
 
         foreach (var quoteItem in quote.Items)
@@ -84,6 +105,46 @@ public class Order : AggregateRoot<Guid>
         }
 
         return order;
+    }
+
+    /// <summary>
+    /// Records a customer payment (FR-CUST-012 / BR-PAY-007/008). The first payment that covers the
+    /// deposit confirms the order and raises <see cref="OrderConfirmedEvent"/> — jobs are only created
+    /// once the deposit is in, never on placement alone.
+    /// </summary>
+    /// <param name="amount">Amount received. Must be positive and may not exceed the remaining balance.</param>
+    /// <param name="paymentReference">Gateway/manual reference stored on the order for reconciliation.</param>
+    public Result ApplyPayment(decimal amount, string? paymentReference = null)
+    {
+        if (amount <= 0m)
+            return Result.Failure(Error.Validation("Số tiền thanh toán phải lớn hơn 0."));
+
+        if (Status == OrderStatus.Cancelled)
+            return Result.Failure(Error.Conflict($"Đơn hàng {OrderNumber} đã bị huỷ, không thể ghi nhận thanh toán."));
+
+        var remaining = TotalPrice.Amount - PaidAmount;
+        if (amount > remaining)
+        {
+            return Result.Failure(Error.Conflict(
+                $"Số tiền thanh toán ({amount:N0} {TotalPrice.Currency}) vượt quá số tiền còn lại của đơn {OrderNumber} ({remaining:N0} {TotalPrice.Currency})."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(paymentReference))
+            PaymentTransactionId = paymentReference.Trim();
+
+        PaidAmount += amount;
+
+        if (Status == OrderStatus.PaymentPending && PaidAmount >= DepositAmount)
+        {
+            var reference = string.IsNullOrWhiteSpace(paymentReference)
+                ? $"PAYMENT-{Guid.NewGuid():N}"
+                : paymentReference.Trim();
+            var confirmed = ConfirmPayment(reference);
+            if (confirmed.IsFailure)
+                return confirmed;
+        }
+
+        return Result.Success();
     }
 
     public Result ConfirmPayment(string paymentTransactionId)
