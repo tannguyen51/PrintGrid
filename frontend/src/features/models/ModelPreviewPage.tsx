@@ -35,11 +35,9 @@ function formatDimensions(model: ThreeDModel): string {
 /**
  * Customer full-screen 3D preview (FR-CUST-003).
  *
- * Intended route (Customer only, inside CustomerLayout, next to /models/:modelId/order):
- *   path="/models/:modelId/preview"
- *   element={<ProtectedRoute allowedRoles={['Customer']}><ModelPreviewPage /></ProtectedRoute>}
- * It is default-exported so the router can lazy-import it:
- *   const ModelPreviewPage = lazy(() => import('../features/models/ModelPreviewPage'))
+ * Route (Customer only, inside CustomerLayout, next to /models/:modelId/order):
+ *   path="/models/:modelId/preview"  — wired in AppRoutes; reached from the library's
+ *   detail drawer ("Xem 3D"). Default-exported so the router can lazy-import it.
  *
  * AC01: the bounding-box legend beside the viewer renders the very same
  * boundingWidthMm × boundingDepthMm × boundingHeightMm figures as the analysis list.

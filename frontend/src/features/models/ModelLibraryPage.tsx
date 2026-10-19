@@ -270,6 +270,7 @@ export default function ModelLibraryPage() {
         onEdit={(m) => { setDetail(null); setEditing(m); setFormError(null); setFormOpen(true) }}
         onDelete={(m) => setDeleting(m)}
         onOrder={(m) => { setDetail(null); navigate(`/models/${m.id}/order`) }}
+        onPreview={(m) => { setDetail(null); navigate(`/models/${m.id}/preview`) }}
       />
 
       <DeleteConfirmDialog
