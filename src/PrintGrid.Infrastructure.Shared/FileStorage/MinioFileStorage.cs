@@ -15,13 +15,14 @@ public class MinioFileStorage : IFileStorage
         _client = new MinioClient()
             .WithEndpoint(config.Endpoint)
             .WithCredentials(config.AccessKey, config.SecretKey)
+            .WithRegion(config.Region)
             .WithSSL(config.UseSsl)
             .Build();
 
         _presignClient = new MinioClient()
             .WithEndpoint(config.PublicEndpoint ?? config.Endpoint)
             .WithCredentials(config.AccessKey, config.SecretKey)
-            .WithRegion("us-east-1")
+            .WithRegion(config.Region)
             .WithSSL(config.UseSsl)
             .Build();
     }

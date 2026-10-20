@@ -63,7 +63,13 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseHsts();
-    app.UseHttpsRedirection();
+    // Behind a TLS-terminating proxy (Railway et al.) the container only sees plain
+    // HTTP; env var HttpsRedirection__Enabled=false keeps /health and API calls from
+    // bouncing in a 307 loop. Keep it enabled for direct Kestrel/HTTPS hosts.
+    if (app.Configuration.GetValue("HttpsRedirection:Enabled", true))
+    {
+        app.UseHttpsRedirection();
+    }
 }
 
 app.UseCors("PrintGridSpa");
