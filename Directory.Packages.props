@@ -6,6 +6,9 @@
     <PackageVersion Include="MediatR" Version="12.4.1" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
   </ItemGroup>
+  <ItemGroup Label="Dev tooling">
+    <PackageVersion Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
   <ItemGroup Label="Validation">
     <PackageVersion Include="FluentValidation" Version="11.11.0" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
