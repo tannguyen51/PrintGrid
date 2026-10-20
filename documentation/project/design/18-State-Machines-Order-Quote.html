@@ -1,0 +1,652 @@
+﻿<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PrintGrid Order &amp; Quote States</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --ink:#172029; --muted:#5c6b79;
+  --line:#d3dae1; --line-strong:#9fb0bf;
+  --accent:#0f5f8a; --accent-soft:#e3eef5;
+  --warn:#a8490b; --warn-soft:#f7e6d8;
+  --node:#ffffff; --edge:#7d8f9e;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f151a; --surface:#151d24; --ink:#e3eaf0; --muted:#93a3b2;
+    --line:#2a3641; --line-strong:#43535f;
+    --accent:#74b9e6; --accent-soft:#172a37;
+    --warn:#e8a067; --warn-soft:#2e2119;
+    --node:#172028; --edge:#71848f;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f151a; --surface:#151d24; --ink:#e3eaf0; --muted:#93a3b2;
+  --line:#2a3641; --line-strong:#43535f;
+  --accent:#74b9e6; --accent-soft:#172a37;
+  --warn:#e8a067; --warn-soft:#2e2119;
+  --node:#172028; --edge:#71848f;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--sans); font-size:16px; line-height:1.55;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:0;
+}
+.page{max-width:1120px; margin:0 auto; padding-block:clamp(28px,5vw,56px) 72px}
+
+.masthead{border-top:2px solid var(--ink); padding-top:26px}
+.eyebrow{
+  font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--accent); margin:0 0 14px;
+}
+h1{
+  font-size:clamp(1.9rem,4.6vw,3rem); line-height:1.06; font-weight:600;
+  letter-spacing:-.025em; margin:0 0 18px; text-wrap:balance; max-width:18ch;
+}
+.lede{font-size:clamp(1rem,1.6vw,1.12rem); color:var(--muted); margin:0; max-width:62ch}
+.meta{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px 32px;
+  margin:30px 0 0; padding:18px 0 0; border-top:1px solid var(--line);
+}
+.meta div{min-width:0}
+.meta dt{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--muted); margin:0 0 4px;
+}
+.meta dd{margin:0; font-size:13.5px; overflow-wrap:anywhere}
+.meta code{font-family:var(--mono); font-size:12px; color:var(--ink)}
+
+main{margin-top:clamp(44px,7vw,76px); display:flex; flex-direction:column; gap:clamp(52px,8vw,88px)}
+
+.entity{scroll-margin-top:24px}
+.entity-head{display:flex; flex-wrap:wrap; align-items:baseline; gap:10px 16px; margin-bottom:6px}
+.tag{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--accent); background:var(--accent-soft); border:1px solid var(--accent);
+  border-radius:3px; padding:3px 7px; white-space:nowrap;
+}
+h2{font-size:clamp(1.35rem,2.6vw,1.7rem); font-weight:600; letter-spacing:-.015em; margin:0}
+.entity > p{margin:10px 0 0; color:var(--muted); max-width:66ch}
+.entity > p code{font-family:var(--mono); font-size:.88em; color:var(--ink)}
+
+.states{display:flex; flex-wrap:wrap; gap:6px; margin:18px 0 0; padding:0; list-style:none}
+.states li{
+  font-family:var(--mono); font-size:11.5px; padding:3px 8px; border-radius:3px;
+  border:1px solid var(--line-strong); color:var(--muted); white-space:nowrap;
+}
+.states li.term{border-color:var(--accent); color:var(--accent); background:var(--accent-soft)}
+
+figure{margin:24px 0 0}
+.diagram{
+  background:var(--surface); border:1px solid var(--line); border-radius:4px;
+  padding:14px 10px; overflow-x:auto;
+}
+.diagram svg{display:block; width:100%; min-width:720px; height:auto}
+figcaption{
+  font-size:12.5px; color:var(--muted); margin-top:10px; max-width:78ch;
+}
+
+.legend{
+  display:flex; flex-wrap:wrap; gap:8px 22px; align-items:center;
+  font-size:12px; color:var(--muted); margin-top:12px;
+}
+.legend span{display:inline-flex; align-items:center; gap:7px}
+.swatch{display:inline-block; width:26px; height:0; border-top:2px solid var(--edge)}
+.swatch.dash{border-top:2px dashed var(--warn)}
+.swatch.term{width:14px; height:10px; border:1.5px solid var(--accent); background:var(--accent-soft); border-radius:2px}
+.swatch.dot{width:9px; height:9px; border-radius:50%; background:var(--ink); border:0}
+
+.table-wrap{overflow-x:auto; margin-top:22px; border:1px solid var(--line); border-radius:4px; background:var(--surface)}
+table{border-collapse:collapse; width:100%; min-width:860px; font-size:13px}
+th{
+  text-align:left; font-family:var(--mono); font-size:10.5px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--muted); font-weight:500;
+  padding:11px 14px; border-bottom:1px solid var(--line-strong); white-space:nowrap;
+}
+td{padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:top}
+tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap}
+td code{font-family:var(--mono); font-size:11.5px; overflow-wrap:anywhere}
+td code.st{color:var(--ink)}
+td .arrow{color:var(--muted); padding:0 5px}
+tr.gap-row td{background:var(--warn-soft)}
+tr.gap-row td:first-child code{color:var(--warn)}
+
+.notes{margin:22px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:11px}
+.notes li{position:relative; padding-left:20px; font-size:14.5px; color:var(--ink); max-width:78ch}
+.notes li::before{
+  content:""; position:absolute; left:2px; top:.62em; width:6px; height:6px;
+  background:var(--accent); border-radius:50%;
+}
+.notes strong{font-weight:600}
+.notes code{font-family:var(--mono); font-size:.88em}
+
+.callout{
+  border-left:3px solid var(--warn); background:var(--warn-soft);
+  padding:16px 20px; border-radius:0 4px 4px 0; margin-top:26px;
+}
+.callout h3{margin:0 0 8px; font-size:14px; font-weight:600; letter-spacing:.01em}
+.callout p{margin:0; font-size:14px; max-width:76ch}
+.callout p + p{margin-top:9px}
+
+.footer{
+  margin-top:64px; padding-top:20px; border-top:1px solid var(--line);
+  font-size:12.5px; color:var(--muted); display:flex; flex-wrap:wrap; gap:8px 28px;
+}
+.footer code{font-family:var(--mono); font-size:11.5px; overflow-wrap:anywhere}
+
+/* SVG primitives */
+.st-node{fill:var(--node); stroke:var(--line-strong); stroke-width:1.4}
+.st-node.terminal{fill:var(--accent-soft); stroke:var(--accent); stroke-width:1.6}
+.st-label{font-family:var(--mono); font-size:12px; fill:var(--ink); text-anchor:middle; dominant-baseline:middle}
+.edge{stroke:var(--edge); stroke-width:1.5; fill:none}
+.edge.gap{stroke:var(--warn); stroke-dasharray:5 4}
+.elabel{font-family:var(--mono); font-size:9.5px; fill:var(--muted)}
+.elabel.gap{fill:var(--warn)}
+.start{fill:var(--ink)}
+.enddot{fill:var(--ink)}
+
+@media (max-width:640px){
+  .diagram svg{min-width:640px}
+  h1{max-width:none}
+}
+</style>
+
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow">PrintGrid · B9 Vòng đời trạng thái</p>
+    <h1>Order &amp; Quote State Machines</h1>
+    <p class="lede">Hai máy trạng thái lõi của module Customer, đọc trực tiếp từ domain method trong code: mỗi mũi tên là một method thật, mỗi guard là điều kiện thật đang chặn.</p>
+    <dl class="meta">
+      <div>
+        <dt>Nguồn sự thật</dt>
+        <dd><code>Order.cs</code> · <code>Quote.cs</code> · <code>Enums/</code></dd>
+      </div>
+      <div>
+        <dt>Aggregate</dt>
+        <dd><code>Order</code>, <code>Quote</code> — module Customer</dd>
+      </div>
+      <div>
+        <dt>Đối chiếu</dt>
+        <dd>18/10/2026 · nhánh <code>merge/w4-integration</code></dd>
+      </div>
+      <div>
+        <dt>Phạm vi</dt>
+        <dd>As-built (khớp code), không phải bản lý thuyết</dd>
+      </div>
+    </dl>
+  </header>
+
+  <main>
+    <section class="entity" id="order">
+      <div class="entity-head">
+        <span class="tag">Customer · Order</span>
+        <h2>Vòng đời Order</h2>
+      </div>
+      <p>Bảy trạng thái trong <code>OrderStatus</code>. Đường chính đi một chiều từ thanh toán tới giao hàng; chỉ <code>QualityCheck</code> có nhánh quay lại sản xuất, và <code>Cancelled</code> chỉ mở từ hai trạng thái đầu.</p>
+
+      <ul class="states">
+        <li>PaymentPending</li>
+        <li>Confirmed</li>
+        <li>InProduction</li>
+        <li>QualityCheck</li>
+        <li>Shipping</li>
+        <li class="term">Delivered</li>
+        <li class="term">Cancelled</li>
+      </ul>
+
+      <figure>
+        <div class="diagram">
+          <svg viewBox="0 0 1180 460" role="img" aria-label="Sơ đồ trạng thái Order: PaymentPending sang Confirmed sang InProduction sang QualityCheck sang Shipping sang Delivered; QualityCheck quay lại InProduction; Confirmed và InProduction huỷ được sang Cancelled; Delivered có vòng lặp ConfirmReceipt.">
+            <defs>
+              <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"/>
+              </marker>
+              <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--warn)"/>
+              </marker>
+            </defs>
+
+            <!-- start -->
+            <circle class="start" cx="34" cy="118" r="6"/>
+            <path class="edge" d="M42,118 H11" marker-end="url(#ar)"/>
+
+            <!-- main chain -->
+            <path class="edge" d="M161,118 H241" marker-end="url(#ar)"/>
+            <path class="edge" d="M391,118 H471" marker-end="url(#ar)"/>
+            <path class="edge" d="M621,118 H701" marker-end="url(#ar)"/>
+            <path class="edge" d="M851,118 H931" marker-end="url(#ar)"/>
+
+            <!-- rework arc -->
+            <path class="edge" d="M745,90 C700,36 600,36 566,90" marker-end="url(#ar)"/>
+
+            <!-- cancel branches -->
+            <path class="edge" d="M316,146 V302" marker-end="url(#ar)"/>
+            <path class="edge" d="M546,146 L370,302" marker-end="url(#ar)"/>
+
+            <!-- shipping to delivered -->
+            <path class="edge" d="M1006,146 V302" marker-end="url(#ar)"/>
+
+            <!-- self loop ConfirmReceipt -->
+            <path class="edge" d="M1081,314 C1150,316 1150,344 1081,346" marker-end="url(#ar)"/>
+
+            <!-- terminal exits -->
+            <path class="edge" d="M1006,358 V400" marker-end="url(#ar)"/>
+            <path class="edge" d="M316,358 V400" marker-end="url(#ar)"/>
+
+            <!-- missing edge -->
+            <path class="edge gap" d="M86,146 C86,240 150,330 236,330" marker-end="url(#arw)"/>
+
+            <!-- nodes -->
+            <rect class="st-node" x="11" y="90" width="150" height="56" rx="10"/>
+            <text class="st-label" x="86" y="118">PaymentPending</text>
+
+            <rect class="st-node" x="241" y="90" width="150" height="56" rx="10"/>
+            <text class="st-label" x="316" y="118">Confirmed</text>
+
+            <rect class="st-node" x="471" y="90" width="150" height="56" rx="10"/>
+            <text class="st-label" x="546" y="118">InProduction</text>
+
+            <rect class="st-node" x="701" y="90" width="150" height="56" rx="10"/>
+            <text class="st-label" x="776" y="118">QualityCheck</text>
+
+            <rect class="st-node" x="931" y="90" width="150" height="56" rx="10"/>
+            <text class="st-label" x="1006" y="118">Shipping</text>
+
+            <rect class="st-node terminal" x="931" y="302" width="150" height="56" rx="10"/>
+            <text class="st-label" x="1006" y="330">Delivered</text>
+
+            <rect class="st-node terminal" x="241" y="302" width="150" height="56" rx="10"/>
+            <text class="st-label" x="316" y="330">Cancelled</text>
+
+            <!-- end markers -->
+            <circle class="enddot" cx="1006" cy="408" r="7"/>
+            <circle class="enddot" cx="316" cy="408" r="7"/>
+
+            <!-- edge labels -->
+            <text class="elabel" x="201" y="108" text-anchor="middle">ConfirmPayment</text>
+            <text class="elabel" x="431" y="108" text-anchor="middle">TransitionTo</text>
+            <text class="elabel" x="661" y="108" text-anchor="middle">TransitionTo</text>
+            <text class="elabel" x="891" y="108" text-anchor="middle">Ship(tracking)</text>
+            <text class="elabel" x="650" y="44" text-anchor="middle">TransitionTo / rework</text>
+
+            <text class="elabel" x="304" y="228" text-anchor="end">TransitionTo</text>
+            <text class="elabel" x="452" y="252" text-anchor="start">TransitionTo</text>
+            <text class="elabel" x="1018" y="228" text-anchor="start">MarkDelivered</text>
+            <text class="elabel" x="1145" y="376" text-anchor="end">ConfirmReceipt</text>
+
+            <text class="elabel gap" x="48" y="282" text-anchor="start">GAP: không huỷ được</text>
+          </svg>
+        </div>
+        <figcaption>Order chỉ có một đường tiến và hai nhánh huỷ. Nét đứt màu cam là chỗ code <em>không</em> có transition: đơn còn <code>PaymentPending</code> không thể chuyển sang <code>Cancelled</code>.</figcaption>
+      </figure>
+
+      <div class="legend">
+        <span><i class="swatch"></i> transition có method + guard</span>
+        <span><i class="swatch dash"></i> transition thiếu / không guard</span>
+        <span><i class="swatch term"></i> trạng thái kết thúc</span>
+        <span><i class="swatch dot"></i> start / end</span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Chuyển trạng thái</th>
+              <th>Sự kiện / method</th>
+              <th>Actor</th>
+              <th>Guard</th>
+              <th>Tác dụng phụ</th>
+              <th>BR / FR</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>—</code><span class="arrow">→</span><code class="st">PaymentPending</code></td>
+              <td><code>CreateFromQuote</code></td>
+              <td>Customer / System</td>
+              <td>Quote phải ở <code>Ready</code></td>
+              <td>Copy item, giá, ngày giao từ quote</td>
+              <td>FR-CUST-006</td>
+            </tr>
+            <tr>
+              <td><code class="st">PaymentPending</code><span class="arrow">→</span><code class="st">Confirmed</code></td>
+              <td><code>ConfirmPayment(txn)</code></td>
+              <td>Payment Gateway (system actor)</td>
+              <td>Status đúng bằng <code>PaymentPending</code></td>
+              <td>Ghi <code>PaymentTransactionId</code>, <code>ConfirmedAt</code>; phát <code>OrderConfirmedEvent</code></td>
+              <td>BR-PAY</td>
+            </tr>
+            <tr>
+              <td><code class="st">Confirmed</code><span class="arrow">→</span><code class="st">InProduction</code></td>
+              <td><code>TransitionTo</code></td>
+              <td>Scheduler (system)</td>
+              <td>Nằm trong allowed-list của <code>TransitionTo</code></td>
+              <td>—</td>
+              <td>FR-SCHED-006</td>
+            </tr>
+            <tr>
+              <td><code class="st">Confirmed</code><span class="arrow">→</span><code class="st">Cancelled</code></td>
+              <td><code>TransitionTo</code></td>
+              <td>Ops</td>
+              <td>Allowed-list</td>
+              <td>—</td>
+              <td>BR (huỷ đơn)</td>
+            </tr>
+            <tr>
+              <td><code class="st">InProduction</code><span class="arrow">→</span><code class="st">QualityCheck</code></td>
+              <td><code>TransitionTo</code></td>
+              <td>System (handler)</td>
+              <td>Mọi item đã <code>QualityCheck</code>/<code>Completed</code></td>
+              <td>Ghi <code>ReadyForPackingAtUtc</code> — mốc gom đơn 24h</td>
+              <td>FR-HUB-006</td>
+            </tr>
+            <tr>
+              <td><code class="st">InProduction</code><span class="arrow">→</span><code class="st">Cancelled</code></td>
+              <td><code>TransitionTo</code></td>
+              <td>Ops</td>
+              <td>Allowed-list</td>
+              <td>—</td>
+              <td>BR (huỷ đơn)</td>
+            </tr>
+            <tr>
+              <td><code class="st">QualityCheck</code><span class="arrow">→</span><code class="st">Shipping</code></td>
+              <td><code>Ship(tracking)</code></td>
+              <td>Hub Fulfillment Staff</td>
+              <td>Tracking number bắt buộc; allowed-list</td>
+              <td>Lưu <code>TrackingNumber</code>, <code>ConsolidatedShipmentId</code></td>
+              <td>FR-HUB-005</td>
+            </tr>
+            <tr>
+              <td><code class="st">QualityCheck</code><span class="arrow">→</span><code class="st">InProduction</code></td>
+              <td><code>TransitionTo</code></td>
+              <td>System / Ops</td>
+              <td>Allowed-list</td>
+              <td>Quay lại sản xuất (rework)</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><code class="st">Shipping</code><span class="arrow">→</span><code class="st">Delivered</code></td>
+              <td><code>MarkDelivered()</code></td>
+              <td>Hub Staff</td>
+              <td>Allowed-list</td>
+              <td>Cố ý <strong>không</strong> stamp <code>DeliveredAt</code> (rule 2)</td>
+              <td>BR-QC-009</td>
+            </tr>
+            <tr>
+              <td><code class="st">Delivered</code><span class="arrow">→</span><code class="st">Delivered</code></td>
+              <td><code>ConfirmReceipt(by)</code></td>
+              <td>Customer</td>
+              <td>Status đúng bằng <code>Delivered</code></td>
+              <td>Stamp <code>DeliveredAt</code> + <code>ReceiptConfirmedBy</code>; mở bảo hành 30 ngày</td>
+              <td>BR-QC-009</td>
+            </tr>
+            <tr class="gap-row">
+              <td><code>PaymentPending</code><span class="arrow">→</span><code>Cancelled</code></td>
+              <td>không có method</td>
+              <td>—</td>
+              <td>—</td>
+              <td>Đơn chưa thanh toán không huỷ được qua domain; phải xử lý ngoài hoặc bổ sung transition</td>
+              <td>GAP</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ul class="notes">
+        <li><strong>Giao hàng không phải điểm kết thúc nghiệp vụ.</strong> <code>Delivered</code> chỉ là hub bàn giao vật lý; đồng hồ bảo hành mở ở vòng lặp <code>ConfirmReceipt</code>, nên sơ đồ có self-loop chứ không có mũi tên thẳng ra end.</li>
+        <li><strong>Gom đơn không phải một trạng thái.</strong> Việc gộp nhiều đơn cùng khách, cùng địa chỉ, sẵn sàng trong 24h là side-effect trên <code>QualityCheck</code> (<code>CanConsolidateWith</code> + <code>ConsolidatedShipmentId</code>), không phải state <code>Consolidated</code>.</li>
+        <li><strong><code>Cancelled</code> không đến từ mọi nơi.</strong> Chỉ <code>Confirmed</code> và <code>InProduction</code> mở nhánh huỷ. <code>QualityCheck</code>, <code>Shipping</code>, <code>Delivered</code> đều không huỷ được — đúng ý đồ vì hàng đã in xong hoặc đã đi.</li>
+        <li><strong>Đổi ngày giao không đổi trạng thái.</strong> <code>ApplyApprovedDeliveryDate</code> chỉ cập nhật <code>PromisedDeliveryDate</code> và bật cờ <code>IsDelayed</code>; đây là thuộc tính, không phải state.</li>
+      </ul>
+    </section>
+
+    <section class="entity" id="quote">
+      <div class="entity-head">
+        <span class="tag">Customer · Quote</span>
+        <h2>Vòng đời Quote</h2>
+      </div>
+      <p>Sáu trạng thái trong <code>QuoteStatus</code>. Điểm khác biệt so với Order: engine chỉ tạo <code>Draft</code>, con người duyệt mới đưa sang <code>Ready</code>; và hết hạn là trạng thái được đặt lúc <em>chuyển đổi</em>, không phải bởi đồng hồ.</p>
+
+      <ul class="states">
+        <li>Pending</li>
+        <li>Draft</li>
+        <li>Ready</li>
+        <li class="term">Converted</li>
+        <li class="term">Expired</li>
+        <li class="term">Failed</li>
+      </ul>
+
+      <figure>
+        <div class="diagram">
+          <svg viewBox="0 0 1120 480" role="img" aria-label="Sơ đồ trạng thái Quote: Pending sang Draft sang Ready sang Converted; Ready sang Expired khi hết hạn; Pending, Draft và Ready đều có thể sang Failed, trong đó chỉ MarkFailed không có guard.">
+            <defs>
+              <marker id="qr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"/>
+              </marker>
+              <marker id="qrw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--warn)"/>
+              </marker>
+            </defs>
+
+            <circle class="start" cx="32" cy="140" r="6"/>
+            <path class="edge" d="M40,140 H24" marker-end="url(#qr)"/>
+
+            <path class="edge" d="M166,140 H319" marker-end="url(#qr)"/>
+            <path class="edge" d="M461,140 H614" marker-end="url(#qr)"/>
+            <path class="edge" d="M756,140 H889" marker-end="url(#qr)"/>
+
+            <!-- compat shortcut -->
+            <path class="edge" d="M130,112 C300,16 500,16 650,112" marker-end="url(#qr)"/>
+
+            <path class="edge" d="M390,168 V342" marker-end="url(#qr)"/>
+
+            <path class="edge gap" d="M95,168 C95,300 230,370 314,370" marker-end="url(#qrw)"/>
+            <path class="edge gap" d="M685,168 C685,330 560,370 466,370" marker-end="url(#qrw)"/>
+
+            <path class="edge" d="M730,168 C800,300 900,320 955,342" marker-end="url(#qr)"/>
+
+            <path class="edge" d="M1031,140 H1068" marker-end="url(#qr)"/>
+            <path class="edge" d="M390,398 V432" marker-end="url(#qr)"/>
+            <path class="edge" d="M960,398 V432" marker-end="url(#qr)"/>
+
+            <rect class="st-node" x="24" y="112" width="142" height="56" rx="10"/>
+            <text class="st-label" x="95" y="140">Pending</text>
+
+            <rect class="st-node" x="319" y="112" width="142" height="56" rx="10"/>
+            <text class="st-label" x="390" y="140">Draft</text>
+
+            <rect class="st-node" x="614" y="112" width="142" height="56" rx="10"/>
+            <text class="st-label" x="685" y="140">Ready</text>
+
+            <rect class="st-node terminal" x="889" y="112" width="142" height="56" rx="10"/>
+            <text class="st-label" x="960" y="140">Converted</text>
+
+            <rect class="st-node terminal" x="319" y="342" width="142" height="56" rx="10"/>
+            <text class="st-label" x="390" y="370">Failed</text>
+
+            <rect class="st-node terminal" x="889" y="342" width="142" height="56" rx="10"/>
+            <text class="st-label" x="960" y="370">Expired</text>
+
+            <circle class="enddot" cx="1076" cy="140" r="7"/>
+            <circle class="enddot" cx="390" cy="440" r="7"/>
+            <circle class="enddot" cx="960" cy="440" r="7"/>
+
+            <text class="elabel" x="242" y="130" text-anchor="middle">MarkDraft</text>
+            <text class="elabel" x="537" y="130" text-anchor="middle">Approve</text>
+            <text class="elabel" x="822" y="130" text-anchor="middle">MarkConverted</text>
+            <text class="elabel" x="390" y="30" text-anchor="middle">MarkReady (compat)</text>
+
+            <text class="elabel" x="402" y="255" text-anchor="start">MarkFailed</text>
+            <text class="elabel gap" x="52" y="318" text-anchor="start">MarkFailed</text>
+            <text class="elabel gap" x="700" y="300" text-anchor="start">MarkFailed</text>
+            <text class="elabel" x="972" y="300" text-anchor="start">hết hạn</text>
+          </svg>
+        </div>
+        <figcaption>Ba trạng thái kết thúc <code>Converted</code>, <code>Expired</code>, <code>Failed</code>. <code>MarkFailed</code> không có guard nên vẽ bằng nét đứt từ cả ba trạng thái sống; đây là chỗ dễ sinh dữ liệu sai nhất.</figcaption>
+      </figure>
+
+      <div class="legend">
+        <span><i class="swatch"></i> transition có method + guard</span>
+        <span><i class="swatch dash"></i> transition thiếu / không guard</span>
+        <span><i class="swatch term"></i> trạng thái kết thúc</span>
+        <span><i class="swatch dot"></i> start / end</span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Chuyển trạng thái</th>
+              <th>Sự kiện / method</th>
+              <th>Actor</th>
+              <th>Guard</th>
+              <th>Tác dụng phụ</th>
+              <th>BR / FR</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>—</code><span class="arrow">→</span><code class="st">Pending</code></td>
+              <td><code>CreatePending</code></td>
+              <td>Customer</td>
+              <td>—</td>
+              <td>Khởi tạo quote rỗng</td>
+              <td>FR-CUST-006</td>
+            </tr>
+            <tr>
+              <td><code class="st">Pending</code><span class="arrow">→</span><code class="st">Draft</code></td>
+              <td><code>MarkDraft(date, pricingVersion)</code></td>
+              <td>Pricing Engine (system)</td>
+              <td>Phải có ít nhất 1 item</td>
+              <td>Freeze <code>PromisedDeliveryDate</code>, <code>PricingVersion</code>, <code>TotalPrice</code>; phát <code>QuoteDraftedEvent</code></td>
+              <td>FR-SCHED-010 · BR-QUOTE-004</td>
+            </tr>
+            <tr>
+              <td><code class="st">Draft</code><span class="arrow">→</span><code class="st">Ready</code></td>
+              <td><code>Approve(staff, total, date, reason)</code></td>
+              <td>Order Staff</td>
+              <td>Total &gt; 0; lệch giá ≤ band %; đổi giá hoặc ngày thì bắt buộc có reason</td>
+              <td>Stamp <code>ApprovedAt</code>, <code>ExpiresAt</code> = approved + 48h, <code>AutoApproved</code>; <code>QuoteApprovedEvent</code></td>
+              <td>XĐ-1b · BR-QUOTE-004</td>
+            </tr>
+            <tr>
+              <td><code class="st">Pending</code><span class="arrow">→</span><code class="st">Ready</code></td>
+              <td><code>MarkReady(...)</code></td>
+              <td>System (compat helper)</td>
+              <td>= <code>MarkDraft</code> + <code>Approve(auto, band 100%)</code></td>
+              <td>Bỏ qua bước duyệt của người; đặt <code>ExpiresAt</code></td>
+              <td>Legacy path</td>
+            </tr>
+            <tr>
+              <td><code class="st">Ready</code><span class="arrow">→</span><code class="st">Converted</code></td>
+              <td><code>MarkConverted(now)</code></td>
+              <td>Customer</td>
+              <td>Status = <code>Ready</code> và <code>now &lt; ExpiresAt</code></td>
+              <td>Quote bị khoá, không sửa được nữa</td>
+              <td>FR-CUST-006</td>
+            </tr>
+            <tr>
+              <td><code class="st">Ready</code><span class="arrow">→</span><code class="st">Expired</code></td>
+              <td><code>MarkConverted</code> khi đã hết hạn</td>
+              <td>System (time actor — qua thao tác khách)</td>
+              <td><code>now ≥ ExpiresAt</code></td>
+              <td>Đặt <code>Expired</code> rồi trả <code>Failure</code>; bắt khách tạo quote mới</td>
+              <td>BR-QUOTE</td>
+            </tr>
+            <tr class="gap-row">
+              <td><code>Pending</code>, <code>Draft</code>, <code>Ready</code><span class="arrow">→</span><code>Failed</code></td>
+              <td><code>MarkFailed(reason)</code></td>
+              <td>System</td>
+              <td><strong>Không có guard</strong> — gọi được từ bất kỳ trạng thái nào</td>
+              <td>Ghi <code>FailureReason</code></td>
+              <td>GAP</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ul class="notes">
+        <li><strong>Hết hạn không tự xảy ra.</strong> Không có job nền nào quét và đổi <code>Ready → Expired</code>. Quote quá hạn vẫn nằm ở <code>Ready</code> trong DB cho tới khi khách bấm đặt hàng; lúc đó <code>MarkConverted</code> mới ghi <code>Expired</code> rồi trả lỗi. Nếu hội đồng hỏi "trạng thái Expired xuất hiện khi nào" — đây là câu trả lời as-built.</li>
+        <li><strong>Duyệt giá là gate của người.</strong> <code>Approve</code> kiểm tra độ lệch so với <code>EngineTotalAmount</code> theo band cấu hình; vượt band thì từ chối, đổi giá/ngày trong band thì bắt buộc ghi <code>AdjustmentReason</code>. Đây là chỗ XĐ-1b được hiện thực.</li>
+        <li><strong><code>MarkReady</code> là đường tắt còn sót lại.</strong> Nó tự duyệt với band 100%, bỏ qua Order Staff. Nếu chốt XĐ-1b là duyệt 100% đơn thì method này nên bị xoá hoặc khoá sau cờ cấu hình — nêu trong phần known gaps.</li>
+        <li><strong><code>Failed</code> không được guard.</strong> <code>MarkFailed</code> đặt thẳng status, kể cả từ <code>Converted</code>. Đây là lỗ hổng thật, không phải chủ ý thiết kế.</li>
+      </ul>
+    </section>
+
+    <section id="drift">
+      <div class="entity-head">
+        <span class="tag">Đối chiếu tài liệu</span>
+        <h2>Lệch so với danh sách trong workbook</h2>
+      </div>
+      <p>Mục B9 của <code>03_Audit-12-buoc</code> gợi ý một bộ trạng thái khác với code. Nếu nộp sơ đồ lý thuyết đứng cạnh code, hội đồng sẽ đối chiếu ra ngay.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Workbook B9 gợi ý</th>
+              <th>Code thực tế</th>
+              <th>Xử lý</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Draft → Quoted → Confirmed</code></td>
+              <td><code>PaymentPending → Confirmed</code></td>
+              <td>Bỏ <code>Draft</code>/<code>Quoted</code> ở Order; phần báo giá đã nằm ở Quote.</td>
+            </tr>
+            <tr>
+              <td><code>AtHub</code>, <code>Consolidated</code></td>
+              <td>Không tồn tại — là side-effect trên <code>QualityCheck</code></td>
+              <td>Không vẽ thành state; ghi chú cơ chế gom đơn 24h.</td>
+            </tr>
+            <tr>
+              <td><code>Completed</code> (Order)</td>
+              <td>Không có; kết thúc bằng <code>Delivered</code> + <code>ConfirmReceipt</code></td>
+              <td>Dùng đúng tên enum.</td>
+            </tr>
+            <tr>
+              <td><code>Preliminary</code>, <code>Accepted</code> (Quote)</td>
+              <td><code>Draft</code>, <code>Converted</code></td>
+              <td>Dùng đúng tên enum.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <h3>Khuyến nghị khi nộp</h3>
+        <p>Nộp bảng <strong>as-built</strong> này và thêm một dòng ghi chú: "Tên trạng thái lấy theo enum trong code; danh sách gợi ý ở B9 được giữ làm bản nháp thiết kế, đã thay bằng tên hiện thực." Cách này trung thực và không phải sửa code trước hạn.</p>
+        <p>Phần <strong>GAP</strong> nên đưa thành mục "known gaps" thay vì giấu: đó là chất liệu phản biện, chứng minh nhóm đọc code chứ không chép sơ đồ mẫu.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="footer">
+    <span>Nguồn: <code>src/PrintGrid.Modules/Customer/.../Entities/Order.cs</code></span>
+    <span><code>.../Entities/Quote.cs</code></span>
+    <span><code>.../Enums/OrderStatus.cs</code> · <code>QuoteStatus.cs</code></span>
+  </div>
+</div>
+
+</body>
+</html>
+
