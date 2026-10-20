@@ -5,12 +5,14 @@ import { useTheme } from '@mui/material/styles'
 
 /**
  * MODEL_URL
- * File lives at frontend/public/models/placeholder-cube_5.glb.
- * Vite serves `public/` at root, so the fetch URL is `/models/placeholder-cube_5.glb`.
+ * File lives at frontend/public/static-models/placeholder-cube_5.glb.
+ * Vite serves `public/` at root, so the fetch URL is `/static-models/placeholder-cube_5.glb`.
+ * The folder is deliberately NOT `public/models`: that directory shadowed the customer
+ * `/models` route (`try_files $uri/` in nginx answered 301 instead of the SPA shell).
  * The 3D canvas itself is the shared ModelViewer (07/10) — login, library and
  * sample pages all render through it so the look stays identical.
  */
-const MODEL_URL = '/models/placeholder-cube_5.glb'
+const MODEL_URL = '/static-models/placeholder-cube_5.glb'
 
 /**
  * Right showcase panel (on desktop, after the layout flip).

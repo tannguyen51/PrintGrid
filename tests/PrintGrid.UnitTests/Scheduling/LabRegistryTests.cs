@@ -69,20 +69,21 @@ public class LabRegistryTests
     }
 
     [Fact]
-    public async Task RegisterMachine_deactivated_lab_rejects_new_machines()
+    public async Task RegisterLab_with_owner_waits_for_admin_activation_and_can_add_machine()
     {
-        var lab = Lab.Onboard("Test Lab", "Hà Nội", 1);
-        lab.Deactivate();
+        var ownerId = Guid.NewGuid();
+        var lab = Lab.Onboard("Test Lab", "Hà Nội", 1, ownerId);
         _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
         var handler = new RegisterMachineCommandHandler(_labs, _unitOfWork);
 
         var result = await handler.Handle(
-            new RegisterMachineCommand(lab.Id, "M", "X", PrintTechnology.Fdm, 100, 100, 100, 0.1m, 0.2m, new[] { "PLA" }),
+            new RegisterMachineCommand(lab.Id, "M", "X", PrintTechnology.Fdm, 100, 100, 100, 0.1m, 0.2m, new[] { "PLA" }, ownerId),
             CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("conflict");
-        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        lab.IsActive.Should().BeFalse("xưởng do LabManager đăng ký phải chờ Admin duyệt");
+        result.IsSuccess.Should().BeTrue("LabManager phải khai báo máy trước khi gửi Admin duyệt");
+        lab.Machines.Should().ContainSingle();
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -103,5 +104,65 @@ public class LabRegistryTests
         result.IsSuccess.Should().BeTrue();
         machine.Status.Should().Be(MachineStatus.Maintenance);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Admin_cannot_activate_an_incomplete_lab_declaration()
+    {
+        var ownerId = Guid.NewGuid();
+        var lab = Lab.Onboard("Pending Lab", "Hà Nội", 1, ownerId);
+        lab.AddMachine(Machine.Register(lab.Id, "M1", "MK3", PrintTechnology.Fdm,
+            PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume.Create(200, 200, 200),
+            0.1m, 0.2m, new[] { "PLA" }));
+        _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
+
+        var result = await new SetLabActiveCommandHandler(_labs, _unitOfWork)
+            .Handle(new SetLabActiveCommand(lab.Id, true), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue("BR-OPS-006 requires at least one declared material");
+        lab.IsActive.Should().BeFalse();
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Admin_can_activate_a_complete_lab_declaration()
+    {
+        var ownerId = Guid.NewGuid();
+        var lab = Lab.Onboard("Complete Lab", "Hà Nội", 1, ownerId);
+        lab.AddMachine(Machine.Register(lab.Id, "M1", "MK3", PrintTechnology.Fdm,
+            PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume.Create(200, 200, 200),
+            0.1m, 0.2m, new[] { "PLA" }));
+        lab.SetMaterialStock("PLA", "BLACK", 1000m, 100m);
+        _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
+
+        var result = await new SetLabActiveCommandHandler(_labs, _unitOfWork)
+            .Handle(new SetLabActiveCommand(lab.Id, true), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        lab.IsActive.Should().BeTrue("BR-OPS-005 allows assignment only after Admin approval");
+    }
+
+    [Fact]
+    public async Task DeleteMachine_is_blocked_when_machine_has_active_jobs()
+    {
+        var jobs = Substitute.For<IJobRepository>();
+        var ownerId = Guid.NewGuid();
+        var lab = Lab.Onboard("Lab", "Hà Nội", 1, ownerId);
+        var machine = Machine.Register(lab.Id, "M1", "MK3", PrintTechnology.Fdm,
+            PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume.Create(200, 200, 200),
+            0.1m, 0.2m, new[] { "PLA" });
+        lab.AddMachine(machine);
+        _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
+        jobs.GetActiveByMachineAsync(machine.Id, Arg.Any<CancellationToken>())
+            .Returns(new[] { Job.Create(Guid.NewGuid(), Guid.NewGuid(), PrintGrid.Modules.Scheduling.Domain.ValueObjects.JobSpecification.Create(
+                PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume.Create(20, 20, 20), "PLA", "BLACK", 0.2m, 0.3m,
+                PrintTechnology.Fdm, 10m), 30, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2))) });
+
+        var result = await new MachineCrudCommandHandler(_labs, jobs, _unitOfWork)
+            .Handle(new DeleteMachineCommand(lab.Id, machine.Id, ownerId), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("conflict");
+        lab.Machines.Should().ContainSingle();
     }
 }

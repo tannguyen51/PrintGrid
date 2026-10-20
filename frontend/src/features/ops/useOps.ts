@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../shared/api/apiClient'
 
 const OPS_KEY = ['ops'] as const
@@ -99,5 +99,27 @@ export function useDecisionLog(jobId: string | null) {
     queryFn: () => apiClient.get<DecisionLog>(`/ops/decisions/${jobId}`).then((r) => r.data),
     enabled: Boolean(jobId),
     retry: false,
+  })
+}
+
+export interface OpsRiskJob { jobId: string; status: string; labId: string | null; slackHours: number; riskReason: string; internalDueDate: string; plannedEndUtc: string | null; quantity: number }
+export interface OpsLabLoad { labId: string; labName: string; activeJobs: number; machines: number; jobsPerMachine: number; isActive: boolean; isInGoodStanding: boolean }
+export interface OpsMonitor { openJobs: number; atRiskJobs: number; atRiskSlackHours: number; onTimeForecastPercent: number; risks: OpsRiskJob[]; labLoads: OpsLabLoad[]; refreshedAtUtc: string }
+export interface OpsReassignPreview { jobId: string; canKeepCustomerDate: boolean; requiresCustomerApproval: boolean; currentLabId: string | null; suggestedLabId: string | null; suggestedMachineId: string | null; plannedEndUtc: string | null; proposedCustomerDate: string | null; message: string }
+export interface OpsReassignResult { outcome: string; jobId: string; labId: string | null; machineId: string | null; dateChangeRequestId: string | null; message: string }
+
+export function useOpsMonitor() {
+  return useQuery({ queryKey: [...OPS_KEY, 'monitor'], queryFn: () => apiClient.get<OpsMonitor>('/ops/monitor').then(r => r.data), refetchInterval: 30_000 })
+}
+
+export function useOpsReassignPreview(jobId: string | null) {
+  return useQuery({ queryKey: [...OPS_KEY, 'reassign-preview', jobId], queryFn: () => apiClient.get<OpsReassignPreview>(`/ops/jobs/${jobId}/reassign-preview`).then(r => r.data), enabled: Boolean(jobId), retry: false })
+}
+
+export function useOpsReassign() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ jobId, reason, confirmCustomerDateImpact }: { jobId: string; reason: string; confirmCustomerDateImpact: boolean }) => apiClient.post<OpsReassignResult>(`/ops/jobs/${jobId}/reassign`, { reason, confirmCustomerDateImpact }).then(r => r.data),
+    onSuccess: () => { client.invalidateQueries({ queryKey: OPS_KEY }); client.invalidateQueries({ queryKey: ['jobs'] }) },
   })
 }

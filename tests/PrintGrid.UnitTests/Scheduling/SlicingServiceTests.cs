@@ -11,8 +11,8 @@ public class SlicingServiceTests
 {
     private readonly PrintSlicingService _slicing = new();
 
-    private const double H = 5.0; // half side of a 10 mm cube
-    private const decimal ExpectedVolumeCm3 = 1.0m;
+    private const double _h = 5.0; // half side of a 10 mm cube
+    private const decimal _expectedVolumeCm3 = 1.0m;
 
     [Fact]
     public async Task AnalyzeAsync_binary_stl_cube_returns_bbox_and_volume()
@@ -23,7 +23,7 @@ public class SlicingServiceTests
         geometry.WidthMm.Should().BeApproximately(10m, 1e-4m);
         geometry.DepthMm.Should().BeApproximately(10m, 1e-4m);
         geometry.HeightMm.Should().BeApproximately(10m, 1e-4m);
-        geometry.VolumeCm3.Should().BeApproximately(ExpectedVolumeCm3, 1e-4m);
+        geometry.VolumeCm3.Should().BeApproximately(_expectedVolumeCm3, 1e-4m);
         geometry.FaceCount.Should().Be(12);
         geometry.IsWatertight.Should().BeTrue();
         geometry.IsManifold.Should().BeTrue();
@@ -36,7 +36,7 @@ public class SlicingServiceTests
             new MemoryStream(Encoding.ASCII.GetBytes(WriteAsciiCube())), "STL");
 
         geometry.IsValid.Should().BeTrue();
-        geometry.VolumeCm3.Should().BeApproximately(ExpectedVolumeCm3, 1e-4m);
+        geometry.VolumeCm3.Should().BeApproximately(_expectedVolumeCm3, 1e-4m);
         geometry.HeightMm.Should().BeApproximately(10m, 1e-4m);
     }
 
@@ -47,7 +47,7 @@ public class SlicingServiceTests
 
         geometry.IsValid.Should().BeTrue();
         geometry.WidthMm.Should().BeApproximately(10m, 1e-4m);
-        geometry.VolumeCm3.Should().BeApproximately(ExpectedVolumeCm3, 1e-4m);
+        geometry.VolumeCm3.Should().BeApproximately(_expectedVolumeCm3, 1e-4m);
         geometry.VertexCount.Should().Be(8);
         geometry.FaceCount.Should().Be(12);
     }
@@ -82,7 +82,7 @@ public class SlicingServiceTests
         geometry.WidthMm.Should().BeApproximately(10m, 1e-3m);
         geometry.DepthMm.Should().BeApproximately(10m, 1e-3m);
         geometry.HeightMm.Should().BeApproximately(10m, 1e-3m);
-        geometry.VolumeCm3.Should().BeApproximately(ExpectedVolumeCm3, 1e-3m);
+        geometry.VolumeCm3.Should().BeApproximately(_expectedVolumeCm3, 1e-3m);
         geometry.VertexCount.Should().Be(8);
         geometry.FaceCount.Should().Be(12);
         geometry.IsWatertight.Should().BeTrue();
@@ -98,7 +98,7 @@ public class SlicingServiceTests
 
         geometry.IsValid.Should().BeTrue();
         geometry.WidthMm.Should().BeApproximately(10m, 1e-3m);
-        geometry.VolumeCm3.Should().BeApproximately(ExpectedVolumeCm3, 1e-3m);
+        geometry.VolumeCm3.Should().BeApproximately(_expectedVolumeCm3, 1e-3m);
     }
 
     [Fact]
@@ -254,8 +254,8 @@ public class SlicingServiceTests
     {
         var vertices = new[]
         {
-            (-H, -H, -H), (H, -H, -H), (H, H, -H), (-H, H, -H),
-            (-H, -H, H), (H, -H, H), (H, H, H), (-H, H, H),
+            (-_h, -_h, -_h), (_h, -_h, -_h), (_h, _h, -_h), (-_h, _h, -_h),
+            (-_h, -_h, _h), (_h, -_h, _h), (_h, _h, _h), (-_h, _h, _h),
         };
 
         // 6 faces × 2 triangles = 12, clockwise-wound OBJ faces.
@@ -280,23 +280,23 @@ public class SlicingServiceTests
         var tri = new List<(double, double, double)[]>
         {
             // bottom (+Z is up in these tests; convention below keeps a closed signed volume)
-            new[] { (-H, -H, -H), (-H, H, -H), (H, H, -H) },
-            new[] { (-H, -H, -H), (H, H, -H), (H, -H, -H) },
+            new[] { (-_h, -_h, -_h), (-_h, _h, -_h), (_h, _h, -_h) },
+            new[] { (-_h, -_h, -_h), (_h, _h, -_h), (_h, -_h, -_h) },
             // top
-            new[] { (-H, -H, H), (H, -H, H), (H, H, H) },
-            new[] { (-H, -H, H), (H, H, H), (-H, H, H) },
+            new[] { (-_h, -_h, _h), (_h, -_h, _h), (_h, _h, _h) },
+            new[] { (-_h, -_h, _h), (_h, _h, _h), (-_h, _h, _h) },
             // +X
-            new[] { (H, -H, -H), (H, H, -H), (H, H, H) },
-            new[] { (H, -H, -H), (H, H, H), (H, -H, H) },
+            new[] { (_h, -_h, -_h), (_h, _h, -_h), (_h, _h, _h) },
+            new[] { (_h, -_h, -_h), (_h, _h, _h), (_h, -_h, _h) },
             // -X
-            new[] { (-H, -H, -H), (-H, H, H), (-H, -H, H) },
-            new[] { (-H, -H, -H), (-H, H, -H), (-H, H, H) },
+            new[] { (-_h, -_h, -_h), (-_h, _h, _h), (-_h, -_h, _h) },
+            new[] { (-_h, -_h, -_h), (-_h, _h, -_h), (-_h, _h, _h) },
             // +Y
-            new[] { (-H, H, -H), (H, H, -H), (H, H, H) },
-            new[] { (-H, H, -H), (H, H, H), (-H, H, H) },
+            new[] { (-_h, _h, -_h), (_h, _h, -_h), (_h, _h, _h) },
+            new[] { (-_h, _h, -_h), (_h, _h, _h), (-_h, _h, _h) },
             // -Y
-            new[] { (-H, -H, -H), (-H, -H, H), (H, -H, H) },
-            new[] { (-H, -H, -H), (H, -H, H), (H, -H, -H) },
+            new[] { (-_h, -_h, -_h), (-_h, -_h, _h), (_h, -_h, _h) },
+            new[] { (-_h, -_h, -_h), (_h, -_h, _h), (_h, -_h, -_h) },
         };
         return tri;
     }
@@ -309,10 +309,10 @@ public class SlicingServiceTests
     {
         var vertices = new (double X, double Y, double Z)[]
         {
-            (-H * scale, -H * scale, -H * scale), (H * scale, -H * scale, -H * scale),
-            (H * scale, H * scale, -H * scale), (-H * scale, H * scale, -H * scale),
-            (-H * scale, -H * scale, H * scale), (H * scale, -H * scale, H * scale),
-            (H * scale, H * scale, H * scale), (-H * scale, H * scale, H * scale),
+            (-_h * scale, -_h * scale, -_h * scale), (_h * scale, -_h * scale, -_h * scale),
+            (_h * scale, _h * scale, -_h * scale), (-_h * scale, _h * scale, -_h * scale),
+            (-_h * scale, -_h * scale, _h * scale), (_h * scale, -_h * scale, _h * scale),
+            (_h * scale, _h * scale, _h * scale), (-_h * scale, _h * scale, _h * scale),
         };
         // Same winding as the OBJ fixture (1-based there, converted below).
         int[] faces =
@@ -343,8 +343,8 @@ public class SlicingServiceTests
               "meshes": [ { "primitives": [ { "attributes": { "POSITION": 0 }, "indices": 1, "mode": 4 } ] } ],
               "accessors": [
                 { "bufferView": 0, "componentType": 5126, "count": {{vertices.Length}}, "type": "VEC3",
-                  "min": [ {{-H * scale}}, {{-H * scale}}, {{-H * scale}} ],
-                  "max": [ {{H * scale}}, {{H * scale}}, {{H * scale}} ] },
+                  "min": [ {{-_h * scale}}, {{-_h * scale}}, {{-_h * scale}} ],
+                  "max": [ {{_h * scale}}, {{_h * scale}}, {{_h * scale}} ] },
                 { "bufferView": 1, "componentType": 5123, "count": {{faces.Length}}, "type": "SCALAR" }
               ],
               "bufferViews": [

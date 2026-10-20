@@ -7,6 +7,7 @@ using PrintGrid.Modules.Customer.Application.Commands.Auth.Register;
 
 using PrintGrid.Modules.Customer.Application.Commands.Auth.VerifyEmail;
 using PrintGrid.Modules.Customer.Application.Commands.Auth.ResendVerification;
+using PrintGrid.Modules.Admin.Application.AuditLogs;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -16,8 +17,13 @@ namespace PrintGrid.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly IAuditLogWriter _audit;
 
-    public AuthController(ISender sender) => _sender = sender;
+    public AuthController(ISender sender, IAuditLogWriter audit)
+    {
+        _sender = sender;
+        _audit = audit;
+    }
 
     [HttpPost("register")]
     public async Task<IActionResult> Register(
@@ -49,6 +55,19 @@ public class AuthController : ControllerBase
                 : StatusCodes.Status400BadRequest;
             return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
         }
+
+        await _audit.WriteAsync(new AuditLogWriteRequest(
+            result.Value.User.Id,
+            result.Value.User.Email,
+            string.Join(',', result.Value.User.Roles),
+            AuditActionClasses.Authentication,
+            "auth.login_succeeded",
+            "Session",
+            OldValues: null,
+            NewValues: new { result.Value.User.Id },
+            IpAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+            TraceId: HttpContext.TraceIdentifier,
+            RequirementCodes: ["FR-ADMIN-004", "UC-025", "BR-CONFIG-004"]), cancellationToken);
 
         return Ok(result.Value);
     }

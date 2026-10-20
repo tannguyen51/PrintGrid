@@ -2,6 +2,7 @@ using MediatR;
 using PrintGrid.Modules.Scheduling.Application.Abstractions;
 using PrintGrid.Modules.Scheduling.Application.Services;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
+using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
 using PrintGrid.Modules.Scheduling.Domain.Services;
 using PrintGrid.SharedKernel.Interfaces;
@@ -17,7 +18,14 @@ public class RepairAtRiskJobCommandHandler(IJobRepository jobs, ILabRepository l
         if (job is null) return Result.Failure<ScheduleRepairResult>(Error.NotFound("Job", command.JobId));
         if (job.Quantity < 2) return Result.Failure<ScheduleRepairResult>(Error.Validation("Chỉ item có số lượng từ 2 mới có thể chia lô"));
 
-        var candidates = filter.Filter(job.Specification, await labs.GetActiveWithMachinesAsync(ct)).Candidates;
+        var activeCounts = await jobs.GetActiveCountsByLabAsync(ct)
+            ?? new Dictionary<Guid, int>();
+        var availableLabs = (await labs.GetActiveWithMachinesAsync(ct))
+            .Where(lab => !lab.MaxConcurrentJobs.HasValue
+                || !activeCounts.TryGetValue(lab.Id, out var activeCount)
+                || activeCount < lab.MaxConcurrentJobs.Value)
+            .ToList();
+        var candidates = filter.Filter(job.Specification, availableLabs).Candidates;
         var dueUtc = job.InternalDueDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
         var slots = new List<(CapabilityCandidate Candidate, DateTime Start, int Capacity, decimal UnitMinutes)>();
         foreach (var candidate in candidates)
@@ -58,6 +66,8 @@ public class RepairAtRiskJobCommandHandler(IJobRepository jobs, ILabRepository l
         }
 
         if (await requests.HasPendingAsync(job.Id, ct)) return Result.Failure<ScheduleRepairResult>(Error.Conflict("Job đã có đề nghị dời ngày đang chờ xử lý"));
+        if (job.AttemptNumber < 2)
+            return Result.Failure<ScheduleRepairResult>(Error.Conflict("B16 blocks a date change until the deadline is unrecoverable after at least two reprints"));
         var totalDailyCapacity = Math.Max(1, slots.Sum(x => Math.Max(x.Capacity, 0)));
         var extraDays = Math.Max(1, (int)Math.Ceiling((decimal)Math.Max(remaining, 1) / totalDailyCapacity));
         var proposed = job.InternalDueDate.AddDays(extraDays);
@@ -69,6 +79,7 @@ public class RepairAtRiskJobCommandHandler(IJobRepository jobs, ILabRepository l
             job.OrderItemId,
             job.InternalDueDate.AddDays(PlacementShortfallService.HubAndTransitBufferDays),
             proposed.AddDays(PlacementShortfallService.HubAndTransitBufferDays),
+            DateChangeReason.ReprintDeadlineUnrecoverable,
             "Không thể đáp ứng ngày cam kết sau khi thử chia số lượng cho nhiều lab",
             token: Guid.NewGuid().ToString("N"),
             createdAtUtc: clock.UtcNow);

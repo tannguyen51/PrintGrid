@@ -16,16 +16,32 @@ public static class LabMappings
         machine.AchievableToleranceMm,
         machine.SpeedFactor,
         machine.Status,
-        machine.SupportedMaterials.ToList());
+        machine.SupportedMaterials.ToList(),
+        machine.MaintenanceFromUtc,
+        machine.MaintenanceUntilUtc,
+        machine.MaintenanceReason);
 
     public static LabDto ToDto(Domain.Entities.Lab lab) => new(
         lab.Id,
         lab.Name,
         lab.City,
+        lab.OwnerUserId,
         lab.IsActive,
+        lab.IsInGoodStanding,
+        lab.MaxConcurrentJobs,
         lab.OnTimeDeliveryRate,
         lab.FirstPassYield,
         lab.TransitDaysToHub,
+        lab.WorkingDays,
+        lab.OpeningTime,
+        lab.ClosingTime,
+        lab.MaterialStocks.Count,
         lab.CreatedAt,
-        lab.Machines.Select(ToDto).ToList());
+        lab.Machines.Select(ToDto).ToList(),
+        lab.Status.ToString(),
+        lab.OperatingHours,
+        lab.ContactPhone,
+        lab.Address,
+        lab.RejectionReason,
+        lab.IsDeclarationComplete);
 }

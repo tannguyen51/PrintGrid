@@ -15,4 +15,7 @@ public record RegisterMachineCommand(
     decimal BuildHeightMm,
     decimal MinLayerHeightMm,
     decimal AchievableToleranceMm,
-    IReadOnlyList<string> SupportedMaterials) : IRequest<Result<MachineDto>>;
+    IReadOnlyList<string> SupportedMaterials,
+    Guid? RequestingUserId = null,
+    bool IsAdminOrOps = true,
+    Guid? ActorUserId = null) : IRequest<Result<MachineDto>>;

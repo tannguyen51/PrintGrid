@@ -17,8 +17,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { FactCheckRounded, LogoutRounded, SearchRounded } from '@mui/icons-material'
-import { useAuth } from '../../app/AuthContext'
+import { FactCheckRounded, SearchRounded } from '@mui/icons-material'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import {
   useDecisionLog,
@@ -44,6 +43,7 @@ const OUTCOME_META: Record<string, { label: string; color: 'success' | 'error' |
   placement_race: { label: 'Xung đột khi đặt lịch', color: 'warning' },
   rejected_by_aggregate: { label: 'Bị job từ chối', color: 'default' },
   probe: { label: 'Chỉ thăm dò', color: 'info' },
+  pending_customer_approval: { label: 'Chờ khách duyệt ngày', color: 'warning' },
 }
 
 const ACTOR_LABELS: Record<string, string> = {
@@ -317,7 +317,6 @@ function DecisionCard({ decision: d }: { decision: DecisionEntry }) {
  */
 export default function DecisionTracePage() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeJobId = searchParams.get('jobId')
   const [draft, setDraft] = useState(activeJobId ?? '')
@@ -339,7 +338,7 @@ export default function DecisionTracePage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1000, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
@@ -348,15 +347,12 @@ export default function DecisionTracePage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Vết quyết định — Ops
               </Typography>
-              <Typography color="text.secondary">Lý do engine xếp lịch chọn lab/máy cho từng job (FR-SCHED-009) — chỉ đọc</Typography>
+              <Typography color="text.secondary">Nhật ký giải trình lý do hệ thống chọn xưởng và máy in cho từng đơn hàng — chỉ đọc</Typography>
             </Box>
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
             <Button variant="text" color="inherit" onClick={() => navigate('/ops/escalations')}>
               Hàng đợi cảnh báo
-            </Button>
-            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
-              Đăng xuất
             </Button>
           </Stack>
         </Stack>

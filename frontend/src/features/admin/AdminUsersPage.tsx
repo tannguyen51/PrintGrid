@@ -20,8 +20,7 @@ import {
   Typography,
 } from '@mui/material'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
-import { BlockRounded, LogoutRounded, ManageAccountsRounded, PersonAddRounded } from '@mui/icons-material'
-import { useNavigate } from 'react-router-dom'
+import { BlockRounded, ManageAccountsRounded, PersonAddRounded } from '@mui/icons-material'
 import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
@@ -48,8 +47,7 @@ const fmtDate = (value?: string | null) =>
   value ? new Date(value).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
 
 export default function AdminUsersPage() {
-  const navigate = useNavigate()
-  const { logout, user: currentUser } = useAuth()
+  const { user: currentUser } = useAuth()
 
   const { data, isLoading, isError } = useAdminUsers()
   const rows = useMemo(() => data ?? [], [data])
@@ -172,7 +170,7 @@ export default function AdminUsersPage() {
   ]
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1200, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
@@ -182,16 +180,13 @@ export default function AdminUsersPage() {
                 Người dùng &amp; phân quyền
               </Typography>
               <Typography color="text.secondary">
-                Tạo tài khoản và gán role cho từng vai trong mạng lưới (FR-ADMIN-001)
+                Tạo tài khoản và phân quyền vai trò cho người dùng trong hệ thống
               </Typography>
             </Box>
           </Stack>
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Button variant="contained" color="primary" startIcon={<PersonAddRounded />} onClick={() => { setFormError(null); setFormOpen(true) }}>
               Tạo tài khoản
-            </Button>
-            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
-              Đăng xuất
             </Button>
           </Stack>
         </Stack>

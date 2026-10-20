@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>PrintGrid.Simulator</RootNamespace>
+    <AssemblyName>PrintGrid.Simulator</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PrintGrid.SharedKernel\PrintGrid.SharedKernel.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Scheduling\PrintGrid.Modules.Scheduling.Domain\PrintGrid.Modules.Scheduling.Domain.csproj" />
+    <ProjectReference Include="..\PrintGrid.Modules\Scheduling\PrintGrid.Modules.Scheduling.Application\PrintGrid.Modules.Scheduling.Application.csproj" />
+  </ItemGroup>
+
+</Project>

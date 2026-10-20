@@ -18,7 +18,7 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
     /// <summary>Hub days for QC + consolidation between arrival and ship-out (cfg in FR-ADMIN-002 later).</summary>
     public const int HubProcessingDays = 1;
 
-    private static readonly JobStatus[] BlockingStatuses =
+    private static readonly JobStatus[] _blockingStatuses =
     {
         JobStatus.Assigned, JobStatus.Accepted, JobStatus.InProgress
     };
@@ -43,12 +43,35 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
 
         var labs = await _context.Set<Lab>()
             .Include(l => l.Machines)
-            .Where(l => l.IsActive)
+            .Where(l => l.IsActive && l.Status == LabStatus.Active && l.IsInGoodStanding)
             .ToListAsync(cancellationToken);
 
+        var cappedLabIds = labs
+            .Where(l => l.MaxConcurrentJobs.HasValue)
+            .Select(l => l.Id)
+            .ToList();
+        if (cappedLabIds.Count > 0)
+        {
+            var activeCounts = await _context.Set<Job>()
+                .Where(j => j.LabId != null
+                            && cappedLabIds.Contains(j.LabId.Value)
+                            && _blockingStatuses.Contains(j.Status))
+                .GroupBy(j => j.LabId!.Value)
+                .Select(g => new { LabId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.LabId, x => x.Count, cancellationToken);
+
+            labs = labs
+                .Where(l => !l.MaxConcurrentJobs.HasValue
+                    || !activeCounts.TryGetValue(l.Id, out var activeCount)
+                    || activeCount < l.MaxConcurrentJobs.Value)
+                .ToList();
+        }
+
         var candidates = labs
+            .Where(l => l.IsDeclarationComplete && l.IsInGoodStanding)
             .SelectMany(l => l.Machines.Select(m => (Lab: l, Machine: m)))
-            .Where(x => x.Machine.Status is MachineStatus.Idle or MachineStatus.Printing)
+            .Where(x => (x.Machine.Status is MachineStatus.Idle or MachineStatus.Printing)
+                        && !x.Machine.IsInMaintenanceAt(notBeforeUtc))
             .ToList();
 
         if (candidates.Count == 0) return null;
@@ -57,7 +80,7 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
         var bookedRows = await _context.Set<Job>()
             .Where(j => j.MachineId != null
                         && machineIds.Contains(j.MachineId.Value)
-                        && BlockingStatuses.Contains(j.Status)
+                        && _blockingStatuses.Contains(j.Status)
                         && j.PlannedEndUtc != null
                         && j.PlannedEndUtc > notBeforeUtc)
             .Select(j => new { j.MachineId, j.PlannedStartUtc, j.PlannedEndUtc })
@@ -78,8 +101,13 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
             if (!specs.All(machine.Supports)) continue;
 
             var windows = bookedByMachine.TryGetValue(machine.Id, out var w)
-                ? w
+                ? new List<(DateTime Start, DateTime End)>(w)
                 : new List<(DateTime Start, DateTime End)>();
+            if (machine.MaintenanceFromUtc.HasValue && machine.MaintenanceUntilUtc.HasValue && machine.MaintenanceUntilUtc.Value > notBeforeUtc)
+            {
+                windows.Add((machine.MaintenanceFromUtc.Value, machine.MaintenanceUntilUtc.Value));
+                windows.Sort((a, b) => a.Start.CompareTo(b.Start));
+            }
             var cursor = notBeforeUtc;
 
             foreach (var (line, spec) in lines.Zip(specs))

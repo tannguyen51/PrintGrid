@@ -3,6 +3,7 @@ using PrintGrid.Modules.Customer.Application.Auth;
 using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.SharedKernel.Interfaces;
 using PrintGrid.SharedKernel.Results;
+using PrintGrid.Modules.Customer.Application.Users;
 using CustomerEntity = PrintGrid.Modules.Customer.Domain.Entities.Customer;
 
 namespace PrintGrid.Modules.Customer.Application.Commands.Users.CreateUser;
@@ -36,10 +37,7 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Resul
             request.FullName,
             request.PhoneNumber);
 
-        if (!string.IsNullOrWhiteSpace(request.Role))
-        {
-            customer.AssignRole(request.Role);
-        }
+        customer.AssignRole(UserRoleCatalog.Canonicalize(request.Role));
 
         await _customers.AddAsync(customer, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

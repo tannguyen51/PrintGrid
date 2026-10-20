@@ -15,6 +15,6 @@ public class PlaceOrderCommandValidator : AbstractValidator<PlaceOrderCommand>
         RuleFor(c => c.PostalCode).MaximumLength(20);
         RuleFor(c => c.AcceptTerms)
             .Equal(true)
-            .WithMessage("Bạn phải đồng ý điều khoản dịch vụ để đặt đơn (FR-CUST-007).");
+            .WithMessage("Bạn phải đồng ý điều khoản dịch vụ để đặt đơn.");
     }
 }

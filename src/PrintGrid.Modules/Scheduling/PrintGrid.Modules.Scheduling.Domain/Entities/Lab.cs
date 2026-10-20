@@ -1,4 +1,6 @@
+using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.SharedKernel.Common;
+using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Scheduling.Domain.Entities;
 
@@ -11,12 +13,33 @@ public class Lab : AggregateRoot<Guid>
 
     public string Name { get; private set; } = string.Empty;
     public string City { get; private set; } = string.Empty;
+    public Guid? OwnerUserId { get; private set; }
     public bool IsActive { get; private set; }
+    public LabStatus Status { get; private set; } = LabStatus.Active;
+    public string OperatingHours { get; private set; } = "T2-T7 08:00-18:00";
+    public string? ContactPhone { get; private set; }
+    public string? Address { get; private set; }
+    public string? RejectionReason { get; private set; }
+    public DateTime? ApprovedAtUtc { get; private set; }
+    public Guid? ApprovedByUserId { get; private set; }
     public decimal OnTimeDeliveryRate { get; private set; } = 1.0m;
     public decimal FirstPassYield { get; private set; } = 1.0m;
     public int TransitDaysToHub { get; private set; }
+    public string WorkingDays { get; private set; } = "Monday,Tuesday,Wednesday,Thursday,Friday";
+    public string OpeningTime { get; private set; } = "08:00";
+    public string ClosingTime { get; private set; } = "17:00";
+    public string TransportZone { get; private set; } = "LOCAL";
+    public string TransferDaysOfWeek { get; private set; } = "Monday,Wednesday,Friday";
     public bool IsInGoodStanding { get; private set; } = true;
+    public int? MaxConcurrentJobs { get; private set; }
     public DateTime CreatedAt { get; private set; }
+
+    public bool IsDeclarationComplete =>
+        !string.IsNullOrWhiteSpace(Name)
+        && !string.IsNullOrWhiteSpace(City)
+        && !string.IsNullOrWhiteSpace(OperatingHours)
+        && TransitDaysToHub >= 0
+        && _machines.Count > 0;
 
     public IReadOnlyCollection<Machine> Machines => _machines.AsReadOnly();
     public IReadOnlyCollection<MaterialStock> MaterialStocks => _materialStocks.AsReadOnly();
@@ -25,8 +48,65 @@ public class Lab : AggregateRoot<Guid>
 
     private Lab() { }
 
-    public static Lab Onboard(string name, string city, int transitDaysToHub)
+    public static Lab Onboard(
+        string name,
+        string city,
+        int transitDaysToHub,
+        Guid? ownerUserId = null,
+        string workingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
+        string openingTime = "08:00",
+        string closingTime = "17:00",
+        string? operatingHours = null,
+        string transportZone = "LOCAL",
+        string transferDaysOfWeek = "Monday,Wednesday,Friday")
     {
+        if (transitDaysToHub < 0 || (ownerUserId.HasValue && transitDaysToHub == 0))
+            throw new ArgumentOutOfRangeException(nameof(transitDaysToHub), "Transit days must be positive");
+        if (string.IsNullOrWhiteSpace(workingDays))
+            throw new ArgumentException("At least one working day is required", nameof(workingDays));
+        if (!TimeOnly.TryParse(openingTime, out var opening) || !TimeOnly.TryParse(closingTime, out var closing) || closing <= opening)
+            throw new ArgumentException("Working hours are invalid");
+
+        return new Lab
+        {
+            Id = Guid.NewGuid(),
+            Name = name.Trim(),
+            City = city.Trim(),
+            OwnerUserId = ownerUserId,
+            TransitDaysToHub = transitDaysToHub,
+            OperatingHours = string.IsNullOrWhiteSpace(operatingHours) ? $"{workingDays} {opening:HH:mm}-{closing:HH:mm}".Trim() : operatingHours.Trim(),
+            WorkingDays = workingDays.Trim(),
+            OpeningTime = opening.ToString("HH:mm"),
+            ClosingTime = closing.ToString("HH:mm"),
+            TransportZone = NormalizeZone(transportZone),
+            TransferDaysOfWeek = NormalizeTransferDays(transferDaysOfWeek),
+            // A lab registered by its owner starts inactive and Pending until an Admin approves
+            // it; one created by Ops (no owner) is immediately usable.
+            IsActive = ownerUserId is null,
+            Status = ownerUserId is null ? LabStatus.Active : LabStatus.Pending,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// Lab self-registration (FR-LAB-001, BR-OPS-005/006): starts in <see cref="LabStatus.Pending"/>
+    /// with <see cref="IsActive"/> = false so the lab receives no jobs until approved by Admin.
+    /// </summary>
+    public static Lab SelfRegister(
+        string name,
+        string city,
+        int transitDaysToHub,
+        string operatingHours,
+        Guid? ownerUserId = null,
+        string? contactPhone = null,
+        string? address = null)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Lab name is required", nameof(name));
+        if (string.IsNullOrWhiteSpace(city))
+            throw new ArgumentException("City is required", nameof(city));
+        if (string.IsNullOrWhiteSpace(operatingHours))
+            throw new ArgumentException("Operating hours are required", nameof(operatingHours));
         if (transitDaysToHub < 0)
             throw new ArgumentOutOfRangeException(nameof(transitDaysToHub), "Transit days cannot be negative");
 
@@ -36,20 +116,118 @@ public class Lab : AggregateRoot<Guid>
             Name = name.Trim(),
             City = city.Trim(),
             TransitDaysToHub = transitDaysToHub,
-            IsActive = true,
+            OperatingHours = operatingHours.Trim(),
+            OwnerUserId = ownerUserId,
+            ContactPhone = string.IsNullOrWhiteSpace(contactPhone) ? null : contactPhone.Trim(),
+            Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim(),
+            Status = LabStatus.Pending,
+            IsActive = false,
             CreatedAt = DateTime.UtcNow
         };
     }
 
+    public void UpdateProfile(
+        string name,
+        string city,
+        int transitDaysToHub,
+        string operatingHours,
+        string? contactPhone = null,
+        string? address = null)
+    {
+        if (transitDaysToHub < 0)
+            throw new ArgumentOutOfRangeException(nameof(transitDaysToHub), "Transit days cannot be negative");
+
+        Name = name.Trim();
+        City = city.Trim();
+        TransitDaysToHub = transitDaysToHub;
+        OperatingHours = operatingHours.Trim();
+        ContactPhone = string.IsNullOrWhiteSpace(contactPhone) ? null : contactPhone.Trim();
+        Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
+
+        if (Status == LabStatus.Rejected)
+        {
+            Status = LabStatus.Pending;
+            RejectionReason = null;
+        }
+    }
+
+    public void ClaimOwnership(Guid ownerUserId)
+    {
+        if (OwnerUserId is null)
+            OwnerUserId = ownerUserId;
+    }
+
+    public Result Approve(Guid? approvedByUserId = null)
+    {
+        if (string.IsNullOrWhiteSpace(Name) || string.IsNullOrWhiteSpace(City) || string.IsNullOrWhiteSpace(OperatingHours) || TransitDaysToHub < 0)
+            return Result.Failure(Error.Validation("Hồ sơ xưởng chưa đầy đủ (thiếu tên, thành phố, lịch làm việc hoặc thời gian chuyển về Hub)."));
+
+        if (_machines.Count == 0)
+            return Result.Failure(Error.Conflict("Không thể duyệt xưởng khi chưa khai báo ít nhất 1 máy in."));
+
+        Status = LabStatus.Active;
+        IsActive = true;
+        RejectionReason = null;
+        ApprovedAtUtc = DateTime.UtcNow;
+        ApprovedByUserId = approvedByUserId;
+        return Result.Success();
+    }
+
+    public Result Reject(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            return Result.Failure(Error.Validation("Lý do từ chối không được để trống."));
+
+        Status = LabStatus.Rejected;
+        IsActive = false;
+        RejectionReason = reason.Trim();
+        return Result.Success();
+    }
+
     public void AddMachine(Machine machine) => _machines.Add(machine);
 
-    public void Deactivate() => IsActive = false;
+    public bool RemoveMachine(Guid machineId)
+    {
+        var machine = _machines.SingleOrDefault(x => x.Id == machineId);
+        return machine is not null && _machines.Remove(machine);
+    }
 
-    public void Activate() => IsActive = true;
+    public void Deactivate()
+    {
+        IsActive = false;
+        Status = LabStatus.Inactive;
+    }
+
+    public void Activate()
+    {
+        IsActive = true;
+        Status = LabStatus.Active;
+    }
 
     public void SuspendFromAssignments() => IsInGoodStanding = false;
 
     public void RestoreGoodStanding() => IsInGoodStanding = true;
+
+    public void SetCapacityLimit(int? maxConcurrentJobs)
+    {
+        if (maxConcurrentJobs is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxConcurrentJobs), "Capacity limit must be positive");
+
+        MaxConcurrentJobs = maxConcurrentJobs;
+    }
+
+    public DateOnly NextTransferDate(DateOnly from)
+    {
+        var allowed = TransferDaysOfWeek.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(value => Enum.Parse<DayOfWeek>(value, true))
+            .ToHashSet();
+        for (var offset = 0; offset < 7; offset++)
+        {
+            var candidate = from.AddDays(offset);
+            if (allowed.Contains(candidate.DayOfWeek)) return candidate;
+        }
+        throw new InvalidOperationException("Lab transfer calendar has no valid day");
+    }
 
     public void SetMaterialStock(string materialCode, string colorCode, decimal availableGrams, decimal reorderPointGrams = 0m)
     {
@@ -165,4 +343,19 @@ public class Lab : AggregateRoot<Guid>
         string.IsNullOrWhiteSpace(value)
             ? throw new ArgumentException("Material and color are required")
             : value.Trim().ToUpperInvariant();
+
+    private static string NormalizeZone(string value) =>
+        string.IsNullOrWhiteSpace(value) ? "LOCAL" : value.Trim().ToUpperInvariant();
+
+    private static string NormalizeTransferDays(string value)
+    {
+        var days = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(day => Enum.TryParse<DayOfWeek>(day, true, out var parsed)
+                ? parsed
+                : throw new ArgumentException($"Invalid transfer day: {day}"))
+            .Distinct()
+            .ToArray();
+        if (days.Length == 0) throw new ArgumentException("At least one transfer day is required");
+        return string.Join(',', days);
+    }
 }

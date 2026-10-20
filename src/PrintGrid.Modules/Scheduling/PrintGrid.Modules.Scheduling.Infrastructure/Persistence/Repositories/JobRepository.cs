@@ -8,7 +8,7 @@ namespace PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Repositories;
 
 public class JobRepository : IJobRepository
 {
-    private static readonly JobStatus[] ActiveStatuses =
+    private static readonly JobStatus[] _activeStatuses =
     {
         JobStatus.Assigned, JobStatus.Accepted, JobStatus.InProgress
     };
@@ -34,13 +34,73 @@ public class JobRepository : IJobRepository
             .OrderBy(j => j.InternalDueDate)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Job>> GetProofApprovedForShipmentAsync(
+        Guid labId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .Where(j => j.LabId == labId &&
+                        j.Status == JobStatus.AwaitingInspection &&
+                        j.QcProofStatus == QcProofStatus.Approved &&
+                        j.ShipmentBatchId == null)
+            .OrderBy(j => j.InternalDueDate)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Job>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>().Where(j => ids.Contains(j.Id)).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Job>> GetOperationalAsync(CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .AsNoTracking()
+            .Where(j => j.Status == JobStatus.Pending || j.Status == JobStatus.Reassigned ||
+                        j.Status == JobStatus.Assigned || j.Status == JobStatus.Accepted ||
+                        j.Status == JobStatus.InProgress)
+            .OrderBy(j => j.InternalDueDate)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Job>> GetActiveByMachineAsync(
         Guid machineId,
         CancellationToken cancellationToken = default) =>
         await _context.Set<Job>()
-            .Where(j => j.MachineId == machineId && ActiveStatuses.Contains(j.Status))
+            .Where(j => j.MachineId == machineId && _activeStatuses.Contains(j.Status))
             .OrderBy(j => j.PlannedStartUtc)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Job>> GetByLabIdAsync(
+        Guid labId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .Where(j => j.LabId == labId)
+            .OrderBy(j => j.PlannedStartUtc ?? j.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Job>> GetAllAssignedToLabsAsync(
+        DateTime sinceUtc,
+        CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .Where(j => j.LabId != null && j.CreatedAt >= sinceUtc)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Job>> GetCompletedWithActualTimeAsync(CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .AsNoTracking()
+            .Where(j => j.Status == JobStatus.Completed
+                        && j.ActualPrintMinutes != null
+                        && j.ActualPrintMinutes > 0
+                        && j.MachineId != null)
+            .OrderBy(j => j.CompletedAtUtc)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, int>> GetActiveCountsByLabAsync(CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .Where(j => j.LabId.HasValue && _activeStatuses.Contains(j.Status))
+            .GroupBy(j => j.LabId!.Value)
+            .ToDictionaryAsync(group => group.Key, group => group.Count(), cancellationToken);
+
+    public Task<bool> HasActiveForMachineAsync(Guid machineId, CancellationToken cancellationToken = default) =>
+        _context.Set<Job>().AnyAsync(
+            job => job.MachineId == machineId && _activeStatuses.Contains(job.Status), cancellationToken);
 
     public async Task AddAsync(Job job, CancellationToken cancellationToken = default) =>
         await _context.Set<Job>().AddAsync(job, cancellationToken);

@@ -4,6 +4,7 @@ export type JobStatus =
   | 'Accepted'
   | 'InProgress'
   | 'AwaitingInspection'
+  | 'InTransit'
   | 'Completed'
   | 'Failed'
   | 'Reassigned'
@@ -62,6 +63,7 @@ export const JOB_LABELS: Record<JobStatus, string> = {
   Accepted: 'Lab đã nhận',
   InProgress: 'Đang in',
   AwaitingInspection: 'Chờ kiểm tra',
+  InTransit: 'Đang chuyển đến hub',
   Completed: 'Hoàn thành',
   Failed: 'Thất bại',
   Reassigned: 'Chờ gán lại',
@@ -74,5 +76,6 @@ export const JOB_STEPS: JobStatus[] = [
   'Accepted',
   'InProgress',
   'AwaitingInspection',
+  'InTransit',
   'Completed',
 ]

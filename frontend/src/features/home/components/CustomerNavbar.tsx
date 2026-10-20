@@ -16,7 +16,7 @@ import {
   Menu,
   MenuItem,
 } from '@mui/material'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AuthContext'
 import { MenuRounded, CloseRounded, NotificationsOutlined, PersonOutlineRounded } from '@mui/icons-material'
 import { BrandGlyph } from '../../../shared/components/BrandGlyph'
@@ -40,6 +40,7 @@ const CUSTOMER_NAV: NavItem[] = [
   { label: 'Đặt in', href: '/order/new' },
   { label: 'Thư viện model', href: '/models' },
   { label: 'Đơn hàng', href: '/orders' },
+  { label: 'Yêu cầu thiết kế', href: '/design-request' },
 ]
 
 const linkSx = {
@@ -55,6 +56,11 @@ const linkSx = {
 export function CustomerNavbar() {
   const { logout, user } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+
+  /** Current link: exact match or a sub-page of it ("/models/…" highlights "Thư viện model"). */
+  const isActive = (href: string) =>
+    pathname === href || (href !== '/order/new' && pathname.startsWith(`${href}/`))
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 
@@ -104,7 +110,17 @@ export function CustomerNavbar() {
           {/* Desktop nav */}
           <Stack direction="row" spacing={0.5} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
             {CUSTOMER_NAV.map((item) => (
-              <Button key={item.href} onClick={() => go(item.href)} sx={{ ...linkSx, textTransform: 'none' }}>
+              <Button
+                key={item.href}
+                onClick={() => go(item.href)}
+                sx={{
+                  ...linkSx,
+                  textTransform: 'none',
+                  color: isActive(item.href) ? landing.text : landing.textMuted,
+                  fontWeight: isActive(item.href) ? 700 : 500,
+                  bgcolor: isActive(item.href) ? 'rgba(255,255,255,0.08)' : 'transparent',
+                }}
+              >
                 {item.label}
               </Button>
             ))}
@@ -168,8 +184,14 @@ export function CustomerNavbar() {
         <List>
           {CUSTOMER_NAV.map((item) => (
             <ListItem key={item.href} disablePadding>
-              <ListItemButton onClick={() => go(item.href)}>
-                <ListItemText primary={item.label} sx={{ color: landing.text, '& .MuiListItemText-primary': { fontWeight: 500 } }} />
+              <ListItemButton onClick={() => go(item.href)} selected={isActive(item.href)}>
+                <ListItemText
+                  primary={item.label}
+                  sx={{
+                    color: isActive(item.href) ? 'primary.main' : landing.text,
+                    '& .MuiListItemText-primary': { fontWeight: isActive(item.href) ? 700 : 500 },
+                  }}
+                />
               </ListItemButton>
             </ListItem>
           ))}

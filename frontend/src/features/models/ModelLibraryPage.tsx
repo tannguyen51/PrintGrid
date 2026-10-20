@@ -23,7 +23,6 @@ import { ModelFormDialog } from './components/ModelFormDialog'
 import { ModelDetailDrawer } from './components/ModelDetailDrawer'
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
 import { useNavigate } from 'react-router-dom'
-import { CustomerNavbar } from '../home/components/CustomerNavbar'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 
 function formatSize(bytes: number): string {
@@ -179,8 +178,7 @@ export default function ModelLibraryPage() {
   const submitting = createMutation.isPending || updateMutation.isPending || uploadMutation.isPending
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <CustomerNavbar />
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1200, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
@@ -272,6 +270,7 @@ export default function ModelLibraryPage() {
         onEdit={(m) => { setDetail(null); setEditing(m); setFormError(null); setFormOpen(true) }}
         onDelete={(m) => setDeleting(m)}
         onOrder={(m) => { setDetail(null); navigate(`/models/${m.id}/order`) }}
+        onPreview={(m) => { setDetail(null); navigate(`/models/${m.id}/preview`) }}
       />
 
       <DeleteConfirmDialog

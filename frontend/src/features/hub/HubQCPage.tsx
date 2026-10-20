@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import {
   Alert,
   Box,
@@ -18,6 +17,7 @@ import {
   RadioGroup,
   Stack,
   TextField,
+  MenuItem,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -27,7 +27,6 @@ import {
   CheckCircleRounded,
   CancelRounded,
   FactoryRounded,
-  LogoutRounded,
   AddPhotoAlternateRounded,
   DeleteOutlineRounded,
   ReportProblemRounded,
@@ -37,13 +36,16 @@ import { useEffect, useRef, useState } from 'react'
 import { JOB_LABELS } from '../jobs/jobTypes'
 import type { Job } from '../jobs/jobTypes'
 import { useJobs, useInspectJob, useUploadInspectionPhotos } from '../jobs/useJobs'
-import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
+import { useQcKnowledge } from './useQcKnowledge'
 
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—')
 
 interface ChecklistItemState {
+  code: string
   name: string
+  passCriteria: string
+  isMandatory: boolean
   status: 'Pass' | 'Fail' | 'NotApplicable'
 }
 
@@ -56,13 +58,6 @@ interface PhotoItem {
 const MAX_PHOTOS = 5
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
 
-const DEFAULT_CHECKLIST_TEMPLATE: string[] = [
-  'Kích thước hình học & dung sai (±0.2mm)',
-  'Độ nhẵn bề mặt & hoàn thiện',
-  'Độ bám dính lớp in & không tách lớp',
-  'Độ phẳng & không cong vênh đế (warping)',
-]
-
 /**
  * Hub quality control (FR-HUB-002 & FR-HUB-003):
  * - Load checklist per standard
@@ -72,8 +67,6 @@ const DEFAULT_CHECKLIST_TEMPLATE: string[] = [
  * - Lab/Hub fault triggers urgent reprint; Customer fault notifies customer without reprint.
  */
 export default function HubQCPage() {
-  const navigate = useNavigate()
-  const { logout } = useAuth()
   const awaiting = useJobs('AwaitingInspection')
   const inspect = useInspectJob()
   const uploadPhotos = useUploadInspectionPhotos()
@@ -82,12 +75,24 @@ export default function HubQCPage() {
   const [checklist, setChecklist] = useState<ChecklistItemState[]>([])
   const [photos, setPhotos] = useState<PhotoItem[]>([])
   const [faultAttribution, setFaultAttribution] = useState<'Lab' | 'Hub' | 'Customer'>('Lab')
+  const [defectCode, setDefectCode] = useState('')
   const [note, setNote] = useState('')
   const [modalMode, setModalMode] = useState<'inspect' | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successNotice, setSuccessNotice] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const qcKnowledge = useQcKnowledge(activeJob?.layerHeightMm)
+  useEffect(() => {
+    if (!qcKnowledge.data || modalMode !== 'inspect') return
+    setChecklist(qcKnowledge.data.checklist.items.map(item => ({
+      code: item.code,
+      name: item.name,
+      passCriteria: item.passCriteria,
+      isMandatory: item.isMandatory,
+      status: 'Pass',
+    })))
+  }, [qcKnowledge.data, modalMode, activeJob?.id])
   // Keep the latest photos so we can revoke their Object URLs when the page unmounts.
   const photosRef = useRef<PhotoItem[]>([])
   useEffect(() => {
@@ -104,17 +109,13 @@ export default function HubQCPage() {
 
   function openInspectionModal(job: Job) {
     setActiveJob(job)
-    setChecklist(
-      DEFAULT_CHECKLIST_TEMPLATE.map((name) => ({
-        name,
-        status: 'Pass',
-      }))
-    )
+    setChecklist([])
     setPhotos((prev) => {
       prev.forEach((p) => URL.revokeObjectURL(p.previewUrl))
       return []
     })
     setFaultAttribution('Lab')
+    setDefectCode('')
     setNote('')
     setErrorMessage(null)
     setModalMode('inspect')
@@ -175,6 +176,11 @@ export default function HubQCPage() {
   async function handleSubmitDecision(passed: boolean) {
     if (!activeJob) return
     setErrorMessage(null)
+    const knowledge = qcKnowledge.data
+    if (!knowledge) {
+      setErrorMessage('Chưa tải được phiên bản bộ kiểm đang hoạt động. Vui lòng thử lại.')
+      return
+    }
 
     // Yêu cầu bắt buộc phải có ít nhất 1 ảnh bằng chứng nghiệm thu (AC01)
     if (photos.length === 0) {
@@ -194,6 +200,10 @@ export default function HubQCPage() {
       setErrorMessage('Khi đánh trượt, bắt buộc phải chọn nguyên nhân quy trách nhiệm (Xưởng / Hub / Khách hàng).')
       return
     }
+    if (!passed && !defectCode) {
+      setErrorMessage('Khi đánh trượt, bắt buộc phải chọn mã lỗi trong danh mục.')
+      return
+    }
 
     try {
       // 1) Tải ảnh lên MinIO để lấy object keys, rồi 2) gửi keys vào kết luận kiểm định.
@@ -205,10 +215,12 @@ export default function HubQCPage() {
       await inspect.mutateAsync({
         id: activeJob.id,
         passed,
-        checklistResults: checklist.map((c) => ({ itemName: c.name, status: c.status })),
+        checklistResults: checklist.map((c) => ({ itemCode: c.code, itemName: c.name, status: c.status })),
         photoUrls: photoKeys,
         faultAttribution: passed ? undefined : faultAttribution,
         note: note.trim() || (passed ? 'Đạt tiêu chuẩn QC Hub' : `Trượt QC (${faultAttribution})`),
+        checklistVersionId: knowledge.checklist.id,
+        defectCode: passed ? undefined : defectCode,
       })
 
       if (passed) {
@@ -230,7 +242,7 @@ export default function HubQCPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1000, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
@@ -239,12 +251,9 @@ export default function HubQCPage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Kiểm tra chất lượng — Hub
               </Typography>
-              <Typography color="text.secondary">Kiểm định và đánh giá chất lượng sản phẩm in hoàn thiện (FR-HUB-002)</Typography>
+              <Typography color="text.secondary">Kiểm định và đánh giá chất lượng sản phẩm in hoàn thiện</Typography>
             </Box>
           </Stack>
-          <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
-            Đăng xuất
-          </Button>
         </Stack>
 
         {successNotice && (
@@ -312,6 +321,9 @@ export default function HubQCPage() {
             </Alert>
           )}
 
+          {qcKnowledge.isLoading && <Alert severity="info" sx={{ mb: 2 }}>Đang tải bộ kiểm theo cấp chất lượng…</Alert>}
+          {qcKnowledge.isError && <Alert severity="error" sx={{ mb: 2 }}>Không tải được bộ kiểm đang hoạt động. Liên hệ quản trị viên để cấu hình bộ kiểm.</Alert>}
+
           {activeJob && (
             <Box sx={{ mb: 3, p: 2, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: 2 }}>
               <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 0.5 }}>
@@ -344,8 +356,9 @@ export default function HubQCPage() {
                 }}
               >
                 <Typography sx={{ color: 'text.primary', fontSize: '0.92rem', fontWeight: 500 }}>
-                  {idx + 1}. {item.name}
+                  {idx + 1}. {item.name}{item.isMandatory ? ' *' : ''}
                 </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ flexBasis: '100%' }}>Điều kiện đạt: {item.passCriteria}</Typography>
                 <Stack direction="row" spacing={1}>
                   <Button
                     size="small"
@@ -508,6 +521,22 @@ export default function HubQCPage() {
                   />
                 </RadioGroup>
               </FormControl>
+              <TextField
+                select
+                fullWidth
+                label="Mã lỗi"
+                value={defectCode}
+                onChange={(e) => {
+                  const code = e.target.value
+                  setDefectCode(code)
+                  const selected = qcKnowledge.data?.defects.find(x => x.code === code)
+                  if (selected?.defaultFaultAttribution) setFaultAttribution(selected.defaultFaultAttribution)
+                }}
+                sx={{ mt: 2 }}
+                required
+              >
+                {(qcKnowledge.data?.defects ?? []).map(defect => <MenuItem key={defect.code} value={defect.code}>{defect.name} ({defect.code})</MenuItem>)}
+              </TextField>
             </Box>
           )}
 

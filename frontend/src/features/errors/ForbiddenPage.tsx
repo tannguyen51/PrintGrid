@@ -46,7 +46,7 @@ export default function ForbiddenPage() {
                 Trang bị chặn: <strong>{attempted}</strong>
               </Typography>
             )}
-            <Typography variant="body2">
+            <Typography variant="body2" component="div">
               Trang cần role:{' '}
               {state.requiredRoles?.length ? (
                 state.requiredRoles.map((r) => <Chip key={r} label={r} size="small" sx={{ ml: 0.5 }} />)
@@ -54,7 +54,7 @@ export default function ForbiddenPage() {
                 <em>không rõ (mở trực tiếp trang 403)</em>
               )}
             </Typography>
-            <Typography variant="body2">
+            <Typography variant="body2" component="div">
               Tài khoản {user ? user.email : '(chưa đăng nhập)'} có role:{' '}
               {userRoles.length > 0 ? (
                 userRoles.map((r) => (

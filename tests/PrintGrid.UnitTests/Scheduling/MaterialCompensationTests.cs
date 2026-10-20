@@ -9,7 +9,7 @@ namespace PrintGrid.UnitTests.Scheduling;
 /// </summary>
 public class MaterialCompensationTests
 {
-    private const string Reason = "Bồi hoàn do lỗi hub (hệ thống chịu phí)";
+    private const string _reason = "Bồi hoàn do lỗi hub (hệ thống chịu phí)";
 
     [Fact]
     public void Compensation_restores_the_material_a_hub_fault_consumed()
@@ -23,7 +23,7 @@ public class MaterialCompensationTests
 
         lab.MaterialStocks.Single().AvailableGrams.Should().Be(900m, "the print really consumed material");
 
-        lab.CompensateMaterial(jobId, "PLA", "BLACK", grams: 100m, reason: Reason);
+        lab.CompensateMaterial(jobId, "PLA", "BLACK", grams: 100m, reason: _reason);
 
         lab.MaterialStocks.Single().AvailableGrams.Should().Be(
             1000m, "the lab must not pay for a print the platform caused");
@@ -34,7 +34,7 @@ public class MaterialCompensationTests
         var jobMovements = lab.StockTransactions.Where(t => t.JobId == jobId).ToList();
         jobMovements.Should().HaveCount(2);
         jobMovements.Select(t => t.DeltaGrams).Should().Equal(-100m, 100m);
-        jobMovements[^1].Reason.Should().Be(Reason);
+        jobMovements[^1].Reason.Should().Be(_reason);
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class MaterialCompensationTests
     {
         var lab = Lab.Onboard("Lab A", "HCM", transitDaysToHub: 1);
 
-        var compensate = () => lab.CompensateMaterial(Guid.NewGuid(), "PLA", "BLACK", 50m, Reason);
+        var compensate = () => lab.CompensateMaterial(Guid.NewGuid(), "PLA", "BLACK", 50m, _reason);
 
         compensate.Should().NotThrow("the stock ledger is opt-in; untracked material has nothing to credit");
         lab.MaterialStocks.Should().BeEmpty();
@@ -56,7 +56,7 @@ public class MaterialCompensationTests
         lab.SetMaterialStock("PLA", "BLACK", availableGrams: 1000m);
 
         var compensatedJobId = Guid.NewGuid();
-        lab.CompensateMaterial(compensatedJobId, "PLA", "BLACK", grams: 0m, reason: Reason);
+        lab.CompensateMaterial(compensatedJobId, "PLA", "BLACK", grams: 0m, reason: _reason);
 
         lab.MaterialStocks.Single().AvailableGrams.Should().Be(1000m);
         lab.StockTransactions.Should().NotContain(

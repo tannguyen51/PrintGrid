@@ -2,6 +2,7 @@ using MediatR;
 using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.SharedKernel.Interfaces;
 using PrintGrid.SharedKernel.Results;
+using PrintGrid.Modules.Customer.Application.Users;
 
 namespace PrintGrid.Modules.Customer.Application.Commands.Users.AssignRole;
 
@@ -25,7 +26,7 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Resul
         if (customer is null)
             return Result.Failure(Error.NotFound("User", request.UserId));
 
-        customer.AssignRole(request.Role);
+        customer.AssignRole(UserRoleCatalog.Canonicalize(request.Role));
         
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();

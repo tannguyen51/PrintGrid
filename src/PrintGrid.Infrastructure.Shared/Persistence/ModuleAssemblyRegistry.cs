@@ -4,7 +4,7 @@ namespace PrintGrid.Infrastructure.Shared.Persistence;
 
 public static class ModuleAssemblyRegistry
 {
-    private static readonly List<Assembly> _persistenceAssemblies = new();
+    private static readonly List<Assembly> _persistenceAssemblies = [];
 
     public static IReadOnlyList<Assembly> PersistenceAssemblies => _persistenceAssemblies;
 

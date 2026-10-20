@@ -34,6 +34,13 @@ public class Job : AggregateRoot<Guid>
     public Guid? QcReviewedBy { get; private set; }
     public DateTime? QcReviewedAtUtc { get; private set; }
     public string? QcRejectionReason { get; private set; }
+    public Guid? InspectionChecklistVersionId { get; private set; }
+    public string? InspectionChecklistResultsJson { get; private set; }
+    public string? InspectionDefectCode { get; private set; }
+    public string? InspectionFaultAttribution { get; private set; }
+    public string? InspectionNote { get; private set; }
+    public DateTime? InspectedAtUtc { get; private set; }
+    public Guid? ShipmentBatchId { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     /// <summary>Normal for originally placed work, Urgent for reprints (BR-RESCHED-003).</summary>
@@ -184,6 +191,16 @@ public class Job : AggregateRoot<Guid>
         return Result.Success();
     }
 
+    public Result ApplyApprovedInternalDueDate(DateOnly newInternalDueDate)
+    {
+        if (newInternalDueDate <= InternalDueDate)
+            return Result.Failure(Error.Validation("The approved internal due date must be later than the current due date"));
+        if (Status is JobStatus.Completed or JobStatus.Cancelled)
+            return Result.Failure(Error.Conflict("A closed job cannot change its due date"));
+        InternalDueDate = newInternalDueDate;
+        return Result.Success();
+    }
+
     public Result Accept() => Accept(DateTime.UtcNow);
 
     public Result Accept(DateTime nowUtc)
@@ -307,6 +324,27 @@ public class Job : AggregateRoot<Guid>
         return Result.Success();
     }
 
+    public Result SealForHubShipment(Guid shipmentBatchId)
+    {
+        if (Status != JobStatus.AwaitingInspection || QcProofStatus != QcProofStatus.Approved)
+            return Result.Failure(Error.Conflict("Only proof-approved completed jobs can be sealed for hub transfer"));
+        if (ShipmentBatchId.HasValue)
+            return Result.Failure(Error.Conflict("Job already belongs to a shipment batch"));
+
+        ShipmentBatchId = shipmentBatchId;
+        Status = JobStatus.InTransit;
+        return Result.Success();
+    }
+
+    public Result ReceiveAtHub()
+    {
+        if (Status != JobStatus.InTransit || !ShipmentBatchId.HasValue)
+            return Result.Failure(Error.Conflict("Only a job in transit can be received at the hub"));
+
+        Status = JobStatus.AwaitingInspection;
+        return Result.Success();
+    }
+
     public Result Fail(string reason)
     {
         if (Status is JobStatus.Completed or JobStatus.Cancelled)
@@ -343,6 +381,24 @@ public class Job : AggregateRoot<Guid>
         return Result.Success();
     }
 
+    public Result PrepareForOpsReassignment(string reason)
+    {
+        if (Status is not (JobStatus.Assigned or JobStatus.Accepted))
+            return Result.Failure(Error.Conflict("Only an unstarted assigned job can be reassigned by operations"));
+        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 10)
+            return Result.Failure(Error.Validation("Intervention reason must contain at least 10 characters"));
+
+        AttemptNumber++;
+        Status = JobStatus.Reassigned;
+        LabId = null;
+        MachineId = null;
+        PlannedStartUtc = null;
+        PlannedEndUtc = null;
+        AssignedAtUtc = null;
+        FailureReason = reason.Trim();
+        return Result.Success();
+    }
+
     /// <summary>
     /// Hub QC pass (FR-HUB-002): the inspection evidence is recorded and the job closes.
     /// The lab's own QC evidence must already be approved; that is returned as a failure
@@ -357,6 +413,25 @@ public class Job : AggregateRoot<Guid>
 
         Status = JobStatus.Completed;
         AddDomainEvent(new JobInspectionPassedEvent(Id, photoUrls));
+        return Result.Success();
+    }
+
+    public Result RecordInspection(
+        Guid checklistVersionId, string checklistResultsJson,
+        string? defectCode, string? faultAttribution, string? note,
+        DateTime? inspectedAtUtc = null)
+    {
+        if (Status != JobStatus.AwaitingInspection)
+            return Result.Failure(Error.Conflict($"Job in state {Status} cannot be inspected"));
+        if (checklistVersionId == Guid.Empty || string.IsNullOrWhiteSpace(checklistResultsJson))
+            return Result.Failure(Error.Validation("Checklist version and results are required"));
+
+        InspectionChecklistVersionId = checklistVersionId;
+        InspectionChecklistResultsJson = checklistResultsJson;
+        InspectionDefectCode = string.IsNullOrWhiteSpace(defectCode) ? null : defectCode.Trim().ToUpperInvariant();
+        InspectionFaultAttribution = string.IsNullOrWhiteSpace(faultAttribution) ? null : faultAttribution.Trim();
+        InspectionNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        InspectedAtUtc = inspectedAtUtc ?? DateTime.UtcNow;
         return Result.Success();
     }
 

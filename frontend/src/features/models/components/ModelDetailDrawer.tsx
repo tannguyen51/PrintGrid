@@ -1,5 +1,5 @@
 import { Box, Button, Chip, CircularProgress, Divider, Drawer, Stack, Typography } from '@mui/material'
-import { CloseRounded, DeleteOutlineRounded, DescriptionRounded, DownloadRounded, EditRounded, LocalShippingOutlined } from '@mui/icons-material'
+import { CloseRounded, DeleteOutlineRounded, DescriptionRounded, DownloadRounded, EditRounded, LocalShippingOutlined, ViewInArRounded } from '@mui/icons-material'
 import type { ThreeDModel } from '../modelTypes'
 import { useModelFileUrl } from '../useModelFile'
 import { ModelViewer } from '../../../shared/components/ModelViewer'
@@ -10,6 +10,8 @@ interface ModelDetailDrawerProps {
   onEdit: (model: ThreeDModel) => void
   onDelete: (model: ThreeDModel) => void
   onOrder: (model: ThreeDModel) => void
+  /** Full-page 3D viewer (`/models/:id/preview`) — the drawer preview is a small canvas. */
+  onPreview: (model: ThreeDModel) => void
 }
 
 /** Formats the in-browser viewer can render. 3MF is a ZIP package — no browser loader. */
@@ -25,7 +27,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder }: ModelDetailDrawerProps) {
+export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, onPreview }: ModelDetailDrawerProps) {
   const format = (model?.fileFormat ?? '').toUpperCase()
   const previewable = PREVIEWABLE_FORMATS.includes(format)
   const { url, failed } = useModelFileUrl(model?.id ?? null, Boolean(model) && previewable)
@@ -197,6 +199,17 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder }:
             </Button>
             <Button variant="outlined" color="inherit" fullWidth startIcon={<EditRounded />} onClick={() => onEdit(model)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
               Sửa
+            </Button>
+            <Button
+              variant="outlined"
+              color="inherit"
+              fullWidth
+              startIcon={<ViewInArRounded />}
+              onClick={() => onPreview(model)}
+              disabled={!PREVIEWABLE_FORMATS.includes(model.fileFormat.toUpperCase())}
+              sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}
+            >
+              Xem 3D
             </Button>
             <Button variant="contained" color="error" fullWidth startIcon={<DeleteOutlineRounded />} onClick={() => onDelete(model)}>
               Xóa

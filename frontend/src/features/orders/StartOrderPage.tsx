@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { Box, Button, CircularProgress, Grid, Stack, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { AddPhotoAlternateRounded, LibraryBooksRounded } from '@mui/icons-material'
-import { CustomerNavbar } from '../home/components/CustomerNavbar'
 import { landing, PillButton } from '../../shared/theme/landing'
 import { StatusChip, landingCardSx } from '../../shared/components/StatusChip'
 import { EmptyState } from '../../shared/components/EmptyState'
@@ -98,8 +97,7 @@ export default function StartOrderPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: landing.pageBg }}>
-      <CustomerNavbar />
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: landing.pageBg }}>
 
       {/* Hero band — same gradient language as the landing hero */}
       <Box sx={{ background: landing.heroGradient, borderBottom: `1px solid ${landing.hairline}` }}>

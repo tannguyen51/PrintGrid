@@ -8,7 +8,6 @@ public static class Roles
     public const string HubQc = "HubQC";
     public const string HubFulfillment = "HubFulfillment";
     public const string OpsManager = "OpsManager";
-    public const string OrderStaff = "OrderStaff";
     public const string Admin = "Admin";
 }
 

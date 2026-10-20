@@ -8,7 +8,7 @@ namespace PrintGrid.Modules.Scheduling.Infrastructure.Scheduling;
 
 public class MachineTimelineService : IMachineTimelineService
 {
-    private static readonly JobStatus[] BlockingStatuses =
+    private static readonly JobStatus[] _blockingStatuses =
     {
         JobStatus.Assigned, JobStatus.Accepted, JobStatus.InProgress
     };
@@ -23,7 +23,7 @@ public class MachineTimelineService : IMachineTimelineService
         DateTime notBeforeUtc,
         CancellationToken cancellationToken = default)
     {
-        var booked = await LoadBookedWindowsAsync(machine.Id, notBeforeUtc, cancellationToken);
+        var booked = await LoadBookedWindowsAsync(machine, notBeforeUtc, cancellationToken);
         var adjustedDuration = TimeSpan.FromMinutes(durationMinutes / (double)machine.SpeedFactor);
         var cursor = notBeforeUtc;
 
@@ -45,7 +45,7 @@ public class MachineTimelineService : IMachineTimelineService
         var totalHours = (decimal)(windowEndUtc - windowStartUtc).TotalHours;
         if (totalHours <= 0) return 1m;
 
-        var booked = await LoadBookedWindowsAsync(machine.Id, windowStartUtc, cancellationToken);
+        var booked = await LoadBookedWindowsAsync(machine, windowStartUtc, cancellationToken);
 
         var busyHours = booked
             .Where(w => w.Start < windowEndUtc)
@@ -56,22 +56,24 @@ public class MachineTimelineService : IMachineTimelineService
     }
 
     private async Task<List<(DateTime Start, DateTime End)>> LoadBookedWindowsAsync(
-        Guid machineId,
+        Machine machine,
         DateTime fromUtc,
         CancellationToken cancellationToken)
     {
         var rows = await _context.Set<Job>()
-            .Where(j => j.MachineId == machineId
-                        && BlockingStatuses.Contains(j.Status)
+            .Where(j => j.MachineId == machine.Id
+                        && _blockingStatuses.Contains(j.Status)
                         && j.PlannedEndUtc != null
                         && j.PlannedEndUtc > fromUtc)
             .OrderBy(j => j.PlannedStartUtc)
             .Select(j => new { j.PlannedStartUtc, j.PlannedEndUtc })
             .ToListAsync(cancellationToken);
 
-        return rows
+        var windows = rows
             .Select(r => (Start: r.PlannedStartUtc!.Value, End: r.PlannedEndUtc!.Value))
             .ToList();
+
+        return windows;
     }
 
     private static DateTime Min(DateTime a, DateTime b) => a < b ? a : b;

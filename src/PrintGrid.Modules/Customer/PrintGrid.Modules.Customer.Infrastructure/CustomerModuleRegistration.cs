@@ -14,5 +14,7 @@ internal static class CustomerModuleRegistration
         services.AddScoped<IQuoteRepository, QuoteRepository>();
         services.AddScoped<IModelRepository, ModelRepository>();
         services.AddScoped<IReprintRequestRepository, ReprintRequestRepository>();
+        services.AddScoped<IRefundRequestRepository, RefundRequestRepository>();
+        services.AddScoped<IDesignRequestRepository, DesignRequestRepository>();
     }
 }

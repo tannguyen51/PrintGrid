@@ -21,7 +21,16 @@ public class RegisterLabCommandHandler : IRequestHandler<RegisterLabCommand, Res
 
     public async Task<Result<LabDto>> Handle(RegisterLabCommand command, CancellationToken cancellationToken)
     {
-        var lab = Lab.Onboard(command.Name, command.City, command.TransitDaysToHub);
+        Lab lab;
+        try
+        {
+            lab = Lab.Onboard(command.Name, command.City, command.TransitDaysToHub, command.OwnerUserId,
+                command.WorkingDays, command.OpeningTime, command.ClosingTime);
+        }
+        catch (ArgumentException exception)
+        {
+            return Result.Failure<LabDto>(Error.Validation(exception.Message));
+        }
 
         await _labs.AddAsync(lab, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

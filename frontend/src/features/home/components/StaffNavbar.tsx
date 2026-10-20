@@ -16,7 +16,7 @@ import {
   Menu,
   MenuItem,
 } from '@mui/material'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth, type Role } from '../../../app/AuthContext'
 import { MenuRounded, CloseRounded, LogoutRounded, PersonOutlineRounded } from '@mui/icons-material'
 import { BrandGlyph } from '../../../shared/components/BrandGlyph'
@@ -35,43 +35,67 @@ interface NavLink {
 }
 
 const PRIMARY: Partial<Record<Role, NavLink[]>> = {
-  LabManager: [{ label: 'Hàng đợi sản xuất', href: '/lab/queue' }],
-  LabOperator: [{ label: 'Hàng đợi sản xuất', href: '/lab/queue' }],
+  LabManager: [
+    { label: 'Hàng đợi sản xuất', href: '/lab/queue' },
+    { label: 'Máy in xưởng', href: '/lab/machines' },
+    { label: 'Lịch máy & Điểm', href: '/lab/timeline' },
+  ],
+  LabOperator: [
+    { label: 'Hàng đợi sản xuất', href: '/lab/queue' },
+    { label: 'Lịch máy & Điểm', href: '/lab/timeline' },
+  ],
   HubQC: [
     { label: 'Kiểm tra chất lượng', href: '/hub/qc' },
-    { label: 'Lô giao hàng', href: '/hub/shipments' },
+    { label: 'Hoàn tất & Gộp kiện', href: '/hub/shipments' },
   ],
   HubFulfillment: [
-    { label: 'Lô giao hàng', href: '/hub/shipments' },
+    { label: 'Hoàn tất & Gộp kiện', href: '/hub/shipments' },
     { label: 'Kiểm tra chất lượng', href: '/hub/qc' },
   ],
   OpsManager: [
     { label: 'Bảng điều phối', href: '/scheduling' },
-    { label: 'Xưởng & máy', href: '/ops/labs' },
+    { label: 'Duyệt xưởng & máy', href: '/ops/labs' },
   ],
   Admin: [
+    { label: 'Tổng quan quản trị', href: '/admin' },
     { label: 'Bảng điều phối', href: '/scheduling' },
-    { label: 'Xưởng & máy', href: '/ops/labs' },
-  ],
-  OrderStaff: [
-    { label: 'Duyệt báo giá', href: '/quote-reviews' },
-    { label: 'Nghiệm thu QC', href: '/staff/qc-proofs' },
+    // Same wording as the OpsManager link above but a different console; keep the labels
+    // distinct so an account holding BOTH roles doesn't render the same text twice.
+    { label: 'Duyệt xưởng (quản trị)', href: '/admin/labs' },
   ],
 }
 
 const MORE: Partial<Record<Role, NavLink[]>> = {
+  LabManager: [
+    { label: 'Đăng ký / Hồ sơ xưởng', href: '/lab/register' },
+  ],
+  LabOperator: [
+    { label: 'Máy in xưởng', href: '/lab/machines' },
+    { label: 'Đăng ký / Hồ sơ xưởng', href: '/lab/register' },
+  ],
   OpsManager: [
     { label: 'Duyệt báo giá', href: '/quote-reviews' },
     { label: 'Nghiệm thu QC', href: '/staff/qc-proofs' },
     { label: 'Cảnh báo', href: '/ops/escalations' },
     { label: 'Nhật ký quyết định', href: '/ops/decisions' },
+    { label: 'Báo cáo SLA', href: '/ops/sla' },
+    { label: 'Hoàn tiền', href: '/ops/refunds' },
+    { label: 'Yêu cầu thiết kế', href: '/ops/design-requests' },
   ],
   Admin: [
     { label: 'Duyệt báo giá', href: '/quote-reviews' },
     { label: 'Nghiệm thu QC', href: '/staff/qc-proofs' },
     { label: 'Cảnh báo', href: '/ops/escalations' },
     { label: 'Nhật ký quyết định', href: '/ops/decisions' },
+    { label: 'Báo cáo SLA', href: '/ops/sla' },
+    { label: 'Hoàn tiền', href: '/ops/refunds' },
+    { label: 'Yêu cầu thiết kế', href: '/ops/design-requests' },
     { label: 'Người dùng & phân quyền', href: '/admin/users' },
+    { label: 'Kho tri thức QC', href: '/admin/qc-knowledge' },
+    { label: 'Cấu hình thương mại', href: '/admin/commercial-configurations' },
+    { label: 'Catalogue dùng chung', href: '/admin/catalogs' },
+    { label: 'Trọng số chấm điểm', href: '/admin/scoring-configurations' },
+    { label: 'Nhật ký kiểm toán', href: '/admin/audit-logs' },
   ],
 }
 
@@ -100,8 +124,16 @@ export function staffPrimaryLink(roles: Role[]): NavLink | null {
 export function StaffNavbar() {
   const { logout, user } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+
+  /** A link is current when the browser is on it or on one of its sub-pages. */
+  const isActive = (href: string) =>
+    href === '/admin'
+      // The admin overview is a leaf: don't light it up on every /admin/* section.
+      ? pathname === '/admin'
+      : pathname === href || pathname.startsWith(`${href}/`)
 
   const roles = user?.roles ?? []
   const primary = roles.flatMap((role) => PRIMARY[role] ?? []).filter(
@@ -117,7 +149,7 @@ export function StaffNavbar() {
     setAnchorEl(null)
     setDrawerOpen(false)
     logout()
-    navigate('/', { replace: true })
+    navigate('/login', { replace: true })
   }
 
   const go = (href: string) => {
@@ -160,7 +192,17 @@ export function StaffNavbar() {
 
           <Stack direction="row" spacing={0.5} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
             {primary.map((link) => (
-              <Button key={link.href} onClick={() => go(link.href)} sx={{ ...linkSx, textTransform: 'none' }}>
+              <Button
+                key={link.href}
+                onClick={() => go(link.href)}
+                sx={{
+                  ...linkSx,
+                  textTransform: 'none',
+                  color: isActive(link.href) ? landing.text : landing.textMuted,
+                  fontWeight: isActive(link.href) ? 700 : 500,
+                  bgcolor: isActive(link.href) ? 'rgba(255,255,255,0.08)' : 'transparent',
+                }}
+              >
                 {link.label}
               </Button>
             ))}
@@ -194,7 +236,12 @@ export function StaffNavbar() {
               </MenuItem>
               <Divider sx={{ borderColor: landing.hairlineSoft }} />
               {more.map((link) => (
-                <MenuItem key={link.href} onClick={() => { setAnchorEl(null); go(link.href) }}>
+                <MenuItem
+                  key={link.href}
+                  onClick={() => { setAnchorEl(null); go(link.href) }}
+                  selected={isActive(link.href)}
+                  sx={{ fontWeight: isActive(link.href) ? 700 : 400 }}
+                >
                   {link.label}
                 </MenuItem>
               ))}
@@ -221,8 +268,14 @@ export function StaffNavbar() {
         <List>
           {[...primary, ...more].map((link) => (
             <ListItem key={link.href} disablePadding>
-              <ListItemButton onClick={() => go(link.href)}>
-                <ListItemText primary={link.label} sx={{ color: landing.text, '& .MuiListItemText-primary': { fontWeight: 500 } }} />
+              <ListItemButton onClick={() => go(link.href)} selected={isActive(link.href)}>
+                <ListItemText
+                  primary={link.label}
+                  sx={{
+                    color: isActive(link.href) ? 'primary.main' : landing.text,
+                    '& .MuiListItemText-primary': { fontWeight: isActive(link.href) ? 700 : 500 },
+                  }}
+                />
               </ListItemButton>
             </ListItem>
           ))}

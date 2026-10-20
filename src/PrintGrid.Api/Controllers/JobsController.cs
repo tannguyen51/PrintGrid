@@ -189,9 +189,8 @@ public class JobsController : ControllerBase
         return Ok(new { photoKeys });
     }
 
-    // UC-030 / FR-ANAL-007: the proof-reviewer actor is Order Staff. RequireQuoteReview is the
-    // trio OrderStaff + OpsManager + Admin — the same gate the quote workbench uses — so this
-    // replaces the old RequireOps (which wrongly excluded Order Staff from their own duty).
+    // UC-030 / FR-ANAL-007: quote and QC-proof review are responsibilities of
+    // Operations Manager. Admin retains operational override access.
     [HttpGet("qc-proofs")]
     [Authorize(Policy = Policies.RequireQuoteReview)]
     public async Task<IActionResult> GetQcProofs(CancellationToken cancellationToken)
@@ -233,7 +232,9 @@ public class JobsController : ControllerBase
             request.ChecklistResults ?? Array.Empty<ChecklistItemResult>(),
             request.PhotoUrls ?? Array.Empty<string>(),
             request.FaultAttribution,
-            request.Note), cancellationToken);
+            request.Note,
+            request.ChecklistVersionId,
+            request.DefectCode), cancellationToken);
         return ToResult(result);
     }
 
@@ -270,5 +271,7 @@ public record InspectRequest(
     IReadOnlyList<ChecklistItemResult>? ChecklistResults = null,
     IReadOnlyList<string>? PhotoUrls = null,
     FaultAttribution? FaultAttribution = null,
-    string? Note = null);
+    string? Note = null,
+    Guid? ChecklistVersionId = null,
+    string? DefectCode = null);
 public record DeclineJobRequest(string Reason);

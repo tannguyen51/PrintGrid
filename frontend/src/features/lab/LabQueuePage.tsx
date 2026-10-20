@@ -27,12 +27,11 @@ import {
   FactoryRounded,
   PlayArrowRounded,
   LibraryBooksRounded,
-  LogoutRounded,
+  LocalShippingRounded,
 } from '@mui/icons-material'
 import type { Job } from '../jobs/jobTypes'
 import { JOB_LABELS } from '../jobs/jobTypes'
 import { useJobs, useAcceptJob, useDeclineJob, useStartJob, useCompleteJob, downloadJobFile } from '../jobs/useJobs'
-import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—')
@@ -148,12 +147,13 @@ function JobCountdown({ deadline, onExpire }: { deadline?: string | null; onExpi
  */
 export default function LabQueuePage() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
 
   // Three concurrent views; each uses the same cache key namespace.
   const assigned = useJobs('Assigned')
   const accepted = useJobs('Accepted')
   const inProgress = useJobs('InProgress')
+  // Keeps the shipment-planner entry available after the last active job was completed.
+  const awaitingShipment = useJobs('AwaitingInspection')
 
   const accept = useAcceptJob()
   const decline = useDeclineJob()
@@ -194,6 +194,7 @@ export default function LabQueuePage() {
 
   const loading = assigned.isLoading || accepted.isLoading || inProgress.isLoading
   const error = assigned.isError || accepted.isError || inProgress.isError
+  const labId = jobs[0]?.j.labId ?? awaitingShipment.data?.find(job => job.labId)?.labId
 
   async function handleAction(action: 'accept' | 'start', id: string) {
     try {
@@ -232,6 +233,8 @@ export default function LabQueuePage() {
         photos: proofPhotos,
         actualMaterialGrams: actualMaterialGrams > 0 ? actualMaterialGrams : undefined,
       })
+      // The mutation's onSuccess invalidates every jobs query, so the Lab queue
+      // and the Hub QC queue (polling, 5s) both pick the new status up promptly.
       localStorage.removeItem(`printgrid:completion:${completeTarget.id}`)
       setCompleteTarget(null)
       setSelfReport('')
@@ -242,7 +245,7 @@ export default function LabQueuePage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1100, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
@@ -251,15 +254,24 @@ export default function LabQueuePage() {
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
                 Hàng đợi sản xuất — Lab
               </Typography>
-              <Typography color="text.secondary">Nhận / từ chối job (hạn 2 giờ) → Bắt đầu in → Báo hoàn thành (FR-LAB-004)</Typography>
+              <Typography color="text.secondary">Nhận hoặc từ chối đơn in (hạn xử lý 2 giờ) → Bắt đầu in → Báo hoàn thành</Typography>
             </Box>
           </Stack>
-          <Stack direction="row" spacing={1.5}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button variant="outlined" color="inherit" onClick={() => navigate('/lab/register')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+              Hồ sơ xưởng
+            </Button>
+            <Button variant="outlined" color="inherit" onClick={() => navigate('/lab/machines')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+              Máy in
+            </Button>
+            <Button variant="outlined" color="inherit" onClick={() => navigate('/lab/timeline')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+              Lịch máy & Điểm
+            </Button>
+            <Button variant="outlined" color="inherit" startIcon={<LocalShippingRounded />} disabled={!labId} onClick={() => navigate(`/lab/${labId}/shipments`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+              Lô chuyển hub
+            </Button>
             <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} disabled={!jobs[0]?.j.labId} onClick={() => navigate(`/lab/${jobs[0]?.j.labId}/inventory`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
               Kho vật liệu
-            </Button>
-            <Button variant="outlined" color="error" startIcon={<LogoutRounded />} onClick={() => { logout(); navigate('/', { replace: true }) }}>
-              Đăng xuất
             </Button>
           </Stack>
         </Stack>
@@ -378,7 +390,7 @@ export default function LabQueuePage() {
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>Từ chối nhận job</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: 'text.secondary', mb: 2 }}>
-            Vui lòng chọn lý do từ chối. Job sẽ được đưa về hàng đợi để hệ thống tự động gán lại (BR-ASSIGN-006).
+            Vui lòng chọn lý do từ chối. Đơn in sẽ được đưa về hàng đợi để điều phối sang xưởng khác.
           </DialogContentText>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <FormControl fullWidth size="small">
@@ -435,7 +447,7 @@ export default function LabQueuePage() {
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>Hoàn thành job</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: 'text.secondary', mb: 2 }}>
-            Ghi thời gian in thực tế (phút) để hệ thống hiệu chuẩn ước lượng (FR-SCHED-008).
+            Ghi nhận thời gian in thực tế (phút) để hệ thống tối ưu độ chính xác ước tính.
           </DialogContentText>
           <TextField
             label="Thời gian thực tế (phút)"

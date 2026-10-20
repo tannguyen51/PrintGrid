@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AddRounded, DeleteOutlineRounded, EditRounded, LocationOnOutlined, SaveRounded, VerifiedRounded } from '@mui/icons-material'
 import { Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, IconButton, Paper, Stack, TextField, Typography } from '@mui/material'
-import { CustomerNavbar } from '../home/components/CustomerNavbar'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { useAddresses, useDeleteAddress, useProfile, useSaveAddress, useUpdateProfile } from './useAccount'
 import type { AddressInput, CustomerAddress } from './accountTypes'
@@ -42,10 +41,9 @@ export default function AccountPage() {
     setEditing(undefined)
   }
 
-  if (profile.isLoading || addresses.isLoading) return <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><CircularProgress /></Box>
+  if (profile.isLoading || addresses.isLoading) return <Box sx={{ minHeight: 'calc(100vh - 72px)', display: 'grid', placeItems: 'center' }}><CircularProgress /></Box>
 
-  return <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-    <CustomerNavbar />
+  return <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
     <Stack spacing={3} sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1050, mx: 'auto' }}>
       <Stack direction="row" spacing={1.5} alignItems="flex-start"><PageBackButton /><Box>
         <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800 }}>Hồ sơ & địa chỉ</Typography>

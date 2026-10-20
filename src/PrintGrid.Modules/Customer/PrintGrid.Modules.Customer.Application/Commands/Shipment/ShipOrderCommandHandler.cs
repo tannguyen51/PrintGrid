@@ -28,6 +28,14 @@ public class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, Result>
         if (order is null)
             return Result.Failure(Error.NotFound("Order", command.OrderId));
 
+        // FR-CUST-012 AC02 / BR-PAY-008: goods may not leave the hub until the order is fully settled.
+        if (!order.IsSettled)
+        {
+            var shortfall = order.TotalPrice.Amount - order.PaidAmount;
+            return Result.Failure(Error.Conflict(
+                $"Đơn {order.OrderNumber} chưa tất toán đủ — còn thiếu {shortfall:N0} {order.TotalPrice.Currency}, không thể xuất kho."));
+        }
+
         var result = order.Ship(command.TrackingNumber);
         if (result.IsFailure)
             return result;
