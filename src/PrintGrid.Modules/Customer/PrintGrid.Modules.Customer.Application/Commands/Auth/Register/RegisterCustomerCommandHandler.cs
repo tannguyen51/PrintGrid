@@ -46,7 +46,8 @@ public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCo
             return Result.Failure<AuthSessionDto>(
                 new Error("email_exists", $"Email '{command.Email}' is already registered"));
 
-        var passwordHash = _passwordHasher.Hash(command.Password);
+        // Hash the trimmed password so it matches what login will check after it trims too.
+        var passwordHash = _passwordHasher.Hash(command.Password.Trim());
 
         var customer = CustomerEntity.Register(
             command.Email,

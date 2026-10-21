@@ -23,8 +23,9 @@ import { useAuth } from '../../../app/AuthContext'
 import { getApiErrorInfo, getApiErrorMessage } from '../../../shared/api/apiError'
 
 const loginSchema = z.object({
-  email: z.string().min(1, 'Email là bắt buộc').email('Email không hợp lệ'),
-  password: z.string().min(1, 'Mật khẩu là bắt buộc'),
+  // Trim before validation so accidental leading/trailing spaces never reach the API.
+  email: z.string().trim().min(1, 'Email là bắt buộc').email('Email không hợp lệ'),
+  password: z.string().trim().min(1, 'Mật khẩu là bắt buộc'),
 })
 
 type LoginFormValues = z.infer<typeof loginSchema>

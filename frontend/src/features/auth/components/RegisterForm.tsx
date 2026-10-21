@@ -22,14 +22,17 @@ import { getApiErrorInfo, getApiErrorMessage, normalizeFieldKey } from '../../..
 
 const registerSchema = z
   .object({
-    fullName: z.string().min(2, 'Họ tên ít nhất 2 ký tự'),
-    email: z.string().min(1, 'Email là bắt buộc').email('Email không hợp lệ'),
+    fullName: z.string().trim().min(2, 'Họ tên ít nhất 2 ký tự'),
+    email: z.string().trim().min(1, 'Email là bắt buộc').email('Email không hợp lệ'),
     phoneNumber: z
       .string()
+      .trim()
       .optional()
       .refine((v) => !v || /^[0-9+\-\s()]{7,15}$/.test(v), 'Số điện thoại không hợp lệ'),
-    password: z.string().min(8, 'Mật khẩu ít nhất 8 ký tự'),
-    confirmPassword: z.string().min(1, 'Xác nhận mật khẩu là bắt buộc'),
+    // Trim is applied consistently at registration and login, so an accidental
+    // leading/trailing space can never lock a user out.
+    password: z.string().trim().min(8, 'Mật khẩu ít nhất 8 ký tự'),
+    confirmPassword: z.string().trim().min(1, 'Xác nhận mật khẩu là bắt buộc'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Mật khẩu xác nhận không khớp',

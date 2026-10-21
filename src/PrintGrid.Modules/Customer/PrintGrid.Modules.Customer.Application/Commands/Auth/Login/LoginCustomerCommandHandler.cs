@@ -31,11 +31,16 @@ public class LoginCustomerCommandHandler : IRequestHandler<LoginCustomerCommand,
         LoginCustomerCommand command,
         CancellationToken cancellationToken)
     {
-        var customer = await _customers.GetByEmailAsync(command.Email, cancellationToken);
+        // Defence in depth for non-SPA clients: ignore accidental surrounding
+        // whitespace on both credentials. (The repository also trims the email.)
+        var email = command.Email.Trim();
+        var password = command.Password.Trim();
+
+        var customer = await _customers.GetByEmailAsync(email, cancellationToken);
 
         // Same message for "no such account" and "wrong password" to avoid
         // leaking which emails exist.
-        if (customer is null || !customer.IsActive || !_passwordHasher.Verify(command.Password, customer.PasswordHash))
+        if (customer is null || !customer.IsActive || !_passwordHasher.Verify(password, customer.PasswordHash))
             return Result.Failure<AuthSessionDto>(Error.Unauthorized("Invalid email or password"));
 
         customer.RecordLogin();
