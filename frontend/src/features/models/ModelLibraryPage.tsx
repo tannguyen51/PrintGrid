@@ -149,6 +149,11 @@ export default function ModelLibraryPage() {
       if (editing) {
         await updateMutation.mutateAsync({ id: editing.id, input: toModelInput(values) })
       } else if (file) {
+        console.info('[preview3d] upload submit', {
+          fileName: file.name,
+          sizeBytes: file.size,
+          modelName: values.name,
+        })
         uploaded = await uploadMutation.mutateAsync({
           name: values.name,
           description: values.description?.trim() || undefined,
@@ -162,7 +167,17 @@ export default function ModelLibraryPage() {
       setEditing(null)
       // Open the detail drawer for a freshly uploaded file so its 3D preview is
       // visible immediately instead of hiding behind an extra row click.
-      if (uploaded?.id) setDetail(uploaded)
+      if (uploaded?.id) {
+        console.info('[preview3d] upload returned', {
+          id: uploaded.id,
+          name: uploaded.name,
+          fileFormat: uploaded.fileFormat,
+          fileName: uploaded.fileName,
+          storageKey: uploaded.storageKey,
+          geometryStatus: uploaded.geometryStatus,
+        })
+        setDetail(uploaded)
+      }
     } catch (error) {
       setFormError(getApiErrorMessage(error, 'Không thể lưu model. Vui lòng thử lại.'))
     }

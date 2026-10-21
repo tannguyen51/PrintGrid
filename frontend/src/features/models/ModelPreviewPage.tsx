@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Alert,
@@ -59,6 +59,19 @@ export default function ModelPreviewPage() {
 
   const canOrder = model?.geometryStatus === 'Ready' && model.isPrintable !== false
   const dimensions = model ? formatDimensions(model) : '—'
+
+  useEffect(() => {
+    console.info('[preview3d] preview page state', {
+      modelId,
+      found: Boolean(model),
+      format,
+      previewable,
+      hasMesh,
+      urlReady: Boolean(url),
+      failed,
+      geometryStatus: model?.geometryStatus ?? null,
+    })
+  }, [modelId, model, format, previewable, hasMesh, url, failed])
 
   if (isLoading) {
     return (

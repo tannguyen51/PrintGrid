@@ -1,4 +1,4 @@
-import { Component, Suspense, useMemo, type ReactNode } from 'react'
+import { Component, Suspense, useEffect, useMemo, type ReactNode } from 'react'
 import { Canvas, useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Environment, Lightformer, OrbitControls, useGLTF, useProgress } from '@react-three/drei'
@@ -48,11 +48,20 @@ function GltfModel({ url, fit }: { url: string; fit: boolean }) {
   // Clone so fitting never mutates drei's cached scene (the same URL can be open
   // in two places at once). Geometries and materials stay shared.
   const object = useMemo(() => scene.clone(true), [scene])
+  useEffect(() => {
+    console.info('[preview3d] GLTF loaded', { children: object.children.length })
+  }, [object])
   return <Fitted object={object} fit={fit} />
 }
 
 function StlModel({ url, fit }: { url: string; fit: boolean }) {
   const geometry = useLoader(STLLoader, url)
+  useEffect(() => {
+    console.info('[preview3d] STL parsed', {
+      vertices: geometry.attributes.position?.count ?? 0,
+      indexed: Boolean(geometry.index),
+    })
+  }, [geometry])
   const mesh = useMemo(
     () =>
       new THREE.Mesh(
@@ -66,6 +75,9 @@ function StlModel({ url, fit }: { url: string; fit: boolean }) {
 
 function ObjModel({ url, fit }: { url: string; fit: boolean }) {
   const object = useLoader(OBJLoader, url)
+  useEffect(() => {
+    console.info('[preview3d] OBJ loaded', { children: object.children.length })
+  }, [object])
   return <Fitted object={object} fit={fit} />
 }
 
@@ -80,6 +92,16 @@ interface SceneProps {
 
 function Scene({ url, format, fit, cameraPosition, autoRotate, background }: SceneProps) {
   const normalized = (format ?? '').trim().toUpperCase()
+
+  useEffect(() => {
+    console.info('[preview3d] scene mount', {
+      format: normalized,
+      fit,
+      autoRotate,
+      urlPrefix: url.slice(0, 32),
+    })
+    return () => console.info('[preview3d] scene unmount')
+  }, [normalized, fit, autoRotate, url])
 
   return (
     <Canvas
@@ -139,6 +161,9 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback?: ReactNod
   state = { error: false }
   static getDerivedStateFromError() {
     return { error: true }
+  }
+  componentDidCatch(error: Error) {
+    console.error('[preview3d] viewer CRASHED', error)
   }
   render() {
     if (this.state.error) {

@@ -28,10 +28,11 @@ import {
   PlayArrowRounded,
   LibraryBooksRounded,
   LocalShippingRounded,
+  ReportProblemRounded,
 } from '@mui/icons-material'
 import type { Job } from '../jobs/jobTypes'
 import { JOB_LABELS } from '../jobs/jobTypes'
-import { useJobs, useAcceptJob, useDeclineJob, useStartJob, useCompleteJob, downloadJobFile } from '../jobs/useJobs'
+import { useJobs, useAcceptJob, useDeclineJob, useStartJob, useCompleteJob, useReportJobFailure, downloadJobFile } from '../jobs/useJobs'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—')
@@ -42,6 +43,14 @@ const PREDEFINED_REASONS = [
   'Máy đang bảo trì / gặp sự cố',
   'Quá tải công suất lab',
   'Không khả thi kỹ thuật / file lỗi',
+  'Khác',
+]
+
+/** Mid-print fault reasons — the job closes as Failed and an urgent reprint is created. */
+const FAILURE_REASONS = [
+  'Máy in gặp sự cố / hỏng giữa chừng',
+  'Sản phẩm in lỗi: cong vênh, tách lớp, thiếu chi tiết',
+  'Hết vật liệu trong lúc in',
   'Khác',
 ]
 
@@ -159,6 +168,7 @@ export default function LabQueuePage() {
   const decline = useDeclineJob()
   const start = useStartJob()
   const complete = useCompleteJob()
+  const reportFailure = useReportJobFailure()
 
   const [completeTarget, setCompleteTarget] = useState<Job | null>(null)
   const [actualMinutes, setActualMinutes] = useState(0)
@@ -185,6 +195,12 @@ export default function LabQueuePage() {
   const [selectedReason, setSelectedReason] = useState(PREDEFINED_REASONS[0])
   const [customReason, setCustomReason] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
+
+  // Mid-print failure reporting (machine breakdown / defective part).
+  const [failTarget, setFailTarget] = useState<Job | null>(null)
+  const [failReasonType, setFailReasonType] = useState(FAILURE_REASONS[0])
+  const [failNote, setFailNote] = useState('')
+  const [failSuccess, setFailSuccess] = useState<string | null>(null)
 
   const jobs: { j: Job; action: 'complete' | 'start' | 'accept' }[] = [
     ...(inProgress.data ?? []).map((j) => ({ j, action: 'complete' as const })),
@@ -244,6 +260,32 @@ export default function LabQueuePage() {
     }
   }
 
+  /** Build the reason string the backend stores on the failed job. */
+  function failureReasonText(): string {
+    const note = failNote.trim()
+    if (failReasonType === 'Khác') return note
+    return note ? `${failReasonType} — ${note}` : failReasonType
+  }
+
+  async function handleReportFailure() {
+    if (!failTarget) return
+    const reason = failureReasonText()
+    if (reason.trim().length < 10) return
+
+    try {
+      setActionError(null)
+      await reportFailure.mutateAsync({ id: failTarget.id, reason })
+      setFailTarget(null)
+      setFailNote('')
+      setFailReasonType(FAILURE_REASONS[0])
+      setFailSuccess(
+        'Đã báo lỗi. Job được đóng ở trạng thái Thất bại và một job in lại khẩn cấp đã được tạo (lab chịu phí).',
+      )
+    } catch (err: any) {
+      setActionError(err?.response?.data?.error?.message || 'Không thể báo lỗi job.')
+    }
+  }
+
   return (
     <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
       <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1100, mx: 'auto' }} spacing={2.5}>
@@ -278,6 +320,7 @@ export default function LabQueuePage() {
 
         {!isOnline ? <Alert severity="warning">Đang mất mạng. Dữ liệu form được giữ trên thiết bị; hãy gửi khi kết nối lại.</Alert> : null}
         {actionError ? <Alert severity="error" onClose={() => setActionError(null)}>{actionError}</Alert> : null}
+        {failSuccess ? <Alert severity="success" onClose={() => setFailSuccess(null)}>{failSuccess}</Alert> : null}
         {error ? <Alert severity="error">Không tải được hàng đợi.</Alert> : null}
         {loading && jobs.length === 0 ? <CircularProgress sx={{ alignSelf: 'center' }} /> : null}
 
@@ -359,17 +402,31 @@ export default function LabQueuePage() {
                       </Button>
                     )}
                     {action === 'complete' && (
-                      <Button variant="contained" color="success" startIcon={<CheckRounded />} onClick={() => {
-                        const saved = localStorage.getItem(`printgrid:completion:${j.id}`)
-                        const draft = saved ? JSON.parse(saved) : null
-                        setCompleteTarget(j)
-                        setActualMinutes(draft?.actualMinutes ?? j.estimatedPrintMinutes)
-                        setActualMaterialGrams(draft?.actualMaterialGrams ?? j.estimatedMaterialGrams ?? 0)
-                        setSelfReport('')
-                        setProofPhotos([])
-                      }}>
-                        Báo hoàn thành
-                      </Button>
+                      <Stack direction="row" spacing={1.5}>
+                        <Button variant="contained" color="success" startIcon={<CheckRounded />} onClick={() => {
+                          const saved = localStorage.getItem(`printgrid:completion:${j.id}`)
+                          const draft = saved ? JSON.parse(saved) : null
+                          setCompleteTarget(j)
+                          setActualMinutes(draft?.actualMinutes ?? j.estimatedPrintMinutes)
+                          setActualMaterialGrams(draft?.actualMaterialGrams ?? j.estimatedMaterialGrams ?? 0)
+                          setSelfReport('')
+                          setProofPhotos([])
+                        }}>
+                          Báo hoàn thành
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          startIcon={<ReportProblemRounded />}
+                          onClick={() => {
+                            setFailTarget(j)
+                            setFailReasonType(FAILURE_REASONS[0])
+                            setFailNote('')
+                          }}
+                        >
+                          Báo lỗi
+                        </Button>
+                      </Stack>
                     )}
                   </Box>
                 </Stack>
@@ -498,6 +555,64 @@ export default function LabQueuePage() {
           <Button onClick={() => setCompleteTarget(null)} color="inherit" sx={{ color: 'text.secondary' }}>Hủy</Button>
           <Button onClick={handleComplete} variant="contained" color="primary" disabled={!isOnline || complete.isPending || actualMinutes < 1 || !selfReport.trim() || proofPhotos.length === 0 || actualMaterialGrams <= 0}>
             {complete.isPending ? 'Đang lưu…' : 'Hoàn thành'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Report-failure dialog — machine breakdown / defective part mid-print */}
+      <Dialog
+        open={failTarget !== null}
+        onClose={() => setFailTarget(null)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' } }}
+      >
+        <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>Báo lỗi sản xuất</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: 'text.secondary', mb: 2 }}>
+            Job sẽ được đóng ở trạng thái <strong>Thất bại</strong> và hệ thống tạo một job in lại khẩn cấp,
+            tính phí cho xưởng này. Dùng mục này khi máy hỏng hoặc sản phẩm in lỗi giữa chừng.
+          </DialogContentText>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="fail-reason-label">Loại lỗi</InputLabel>
+              <Select
+                labelId="fail-reason-label"
+                value={failReasonType}
+                label="Loại lỗi"
+                onChange={(e) => setFailReasonType(e.target.value)}
+              >
+                {FAILURE_REASONS.map((r) => (
+                  <MenuItem key={r} value={r}>{r}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              label={failReasonType === 'Khác' ? 'Mô tả lỗi (bắt buộc)' : 'Chi tiết thêm (không bắt buộc)'}
+              value={failNote}
+              onChange={(e) => setFailNote(e.target.value)}
+              multiline
+              rows={3}
+              fullWidth
+              placeholder="Ví dụ: máy số 2 dừng ở 40%, đầu phun bị tắc, sản phẩm tách lớp…"
+            />
+            {failureReasonText().trim().length > 0 && failureReasonText().trim().length < 10 && (
+              <Typography variant="caption" color="warning.main">
+                Lý do cần ít nhất 10 ký tự ({failureReasonText().trim().length}/10).
+              </Typography>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setFailTarget(null)} color="inherit" sx={{ color: 'text.secondary' }}>Hủy</Button>
+          <Button
+            onClick={handleReportFailure}
+            variant="contained"
+            color="error"
+            disabled={reportFailure.isPending || failureReasonText().trim().length < 10}
+          >
+            {reportFailure.isPending ? 'Đang gửi…' : 'Báo lỗi & tạo in lại'}
           </Button>
         </DialogActions>
       </Dialog>

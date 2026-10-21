@@ -152,6 +152,34 @@ public class JobsController : ControllerBase
         return ToResult(result);
     }
 
+    /// <summary>
+    /// Lab reports a mid-production fault (machine breakdown, defective part, out of material).
+    /// The job is closed as Failed and an urgent reprint is created, charged to the lab.
+    /// </summary>
+    [HttpPost("{jobId:guid}/fail")]
+    [Authorize(Policy = Policies.RequireLab)]
+    public async Task<IActionResult> ReportFailure(
+        Guid jobId,
+        [FromBody] ReportJobFailureRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new ReportJobFailureCommand(jobId, request.Reason), cancellationToken);
+
+        if (result.IsFailure)
+        {
+            var status = result.Error.Code switch
+            {
+                "not_found" => StatusCodes.Status404NotFound,
+                "conflict" => StatusCodes.Status409Conflict,
+                _ => StatusCodes.Status400BadRequest,
+            };
+            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
+        }
+
+        return Ok(result.Value);
+    }
+
     [HttpPost("{jobId:guid}/inspection-photos")]
     [Authorize(Policy = Policies.RequireHub)]
     [Consumes("multipart/form-data")]
@@ -275,3 +303,4 @@ public record InspectRequest(
     Guid? ChecklistVersionId = null,
     string? DefectCode = null);
 public record DeclineJobRequest(string Reason);
+public record ReportJobFailureRequest(string Reason);

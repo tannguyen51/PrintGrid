@@ -72,6 +72,19 @@ export function useCompleteJob() {
   })
 }
 
+/**
+ * Lab reports a mid-production fault (machine breakdown, defective part, out of material).
+ * The backend closes the job as Failed and creates an urgent reprint charged to this lab.
+ */
+export function useReportJobFailure() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      apiClient.post(`/jobs/${id}/fail`, { reason }),
+    onSuccess: invalidate,
+  })
+}
+
 export function useQcProofQueue() {
   return useQuery({
     queryKey: [...JOBS_KEY, 'qc-proofs'],

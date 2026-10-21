@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Box, Button, Chip, CircularProgress, Divider, Drawer, Stack, Typography } from '@mui/material'
 import { CloseRounded, DeleteOutlineRounded, DescriptionRounded, DownloadRounded, EditRounded, LocalShippingOutlined, ViewInArRounded } from '@mui/icons-material'
 import type { ThreeDModel } from '../modelTypes'
@@ -31,6 +32,18 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
   const format = (model?.fileFormat ?? '').toUpperCase()
   const previewable = PREVIEWABLE_FORMATS.includes(format)
   const { url, failed } = useModelFileUrl(model?.id ?? null, Boolean(model) && previewable)
+
+  // Diagnostic trace: shows exactly which branch the drawer takes for the 3D preview.
+  useEffect(() => {
+    console.info('[preview3d] drawer state', {
+      modelId: model?.id ?? null,
+      format,
+      previewable,
+      storageKey: model?.storageKey ?? null,
+      urlReady: Boolean(url),
+      failed,
+    })
+  }, [model?.id, model?.storageKey, format, previewable, url, failed])
 
   return (
     <Drawer
