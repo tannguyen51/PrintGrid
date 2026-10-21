@@ -3,6 +3,7 @@ import { Alert, Box, Button, Chip, Stack, TextField, Typography } from '@mui/mat
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '../../shared/api/apiClient'
+import { getApiErrorMessage } from '../../shared/api/apiError'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 
 interface Stock {
@@ -26,7 +27,12 @@ export default function InventoryPage() {
   })
   const save = useMutation({
     mutationFn: () => apiClient.put(`/labs/${labId}/inventory`, { materialCode, colorCode, quantityGrams, reorderPointGrams }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['inventory', labId] }); setMessage('Đã ghi nhận giao dịch kho.') },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory', labId] })
+      // The admin/ops lab-approval page gates activation on materialStockCount — refresh it too.
+      queryClient.invalidateQueries({ queryKey: ['labs'] })
+      setMessage('Đã ghi nhận giao dịch kho.')
+    },
   })
 
   return <Box sx={{ minHeight: 'calc(100vh - 72px)', p: { xs: 2, md: 4 }, maxWidth: 1000, mx: 'auto' }}>
@@ -39,6 +45,11 @@ export default function InventoryPage() {
         <Button onClick={() => navigate('/lab/queue')}>Hàng đợi</Button>
       </Stack>
       {message && <Alert severity="success" onClose={() => setMessage(null)}>{message}</Alert>}
+      {save.isError && (
+        <Alert severity="error" onClose={() => save.reset()}>
+          {getApiErrorMessage(save.error, 'Không lưu được tồn kho. Kiểm tra lại vật liệu/màu/số gram.')}
+        </Alert>
+      )}
       {inventory.isError && <Alert severity="error">Không tải được tồn kho.</Alert>}
       {(inventory.data ?? []).some(x => x.isLowStock) && <Alert severity="warning">Có vật liệu đã chạm ngưỡng nhập thêm.</Alert>}
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} component="form" onSubmit={e => { e.preventDefault(); save.mutate() }}>

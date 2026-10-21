@@ -31,7 +31,7 @@ public class InventoryController(ISender sender) : ControllerBase
     }
 
     [HttpPut]
-    [Authorize(Roles = Roles.LabManager)]
+    [Authorize(Roles = $"{Roles.LabManager},{Roles.OpsManager},{Roles.Admin}")]
     public async Task<IActionResult> Set(Guid labId, [FromBody] SetMaterialStockRequest request, CancellationToken ct)
     {
         if (!await CanAccessLab(labId, ct)) return Forbid();
@@ -41,7 +41,7 @@ public class InventoryController(ISender sender) : ControllerBase
     }
 
     [HttpPost("adjustments")]
-    [Authorize(Roles = Roles.LabManager)]
+    [Authorize(Roles = $"{Roles.LabManager},{Roles.OpsManager},{Roles.Admin}")]
     public async Task<IActionResult> Adjust(Guid labId, [FromBody] AdjustMaterialStockRequest request, CancellationToken ct)
     {
         if (!await CanAccessLab(labId, ct)) return Forbid();

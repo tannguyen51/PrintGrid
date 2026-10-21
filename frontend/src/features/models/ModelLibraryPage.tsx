@@ -145,10 +145,11 @@ export default function ModelLibraryPage() {
   async function handleFormSubmit(values: ModelFormValues, file?: File) {
     setFormError(null)
     try {
+      let uploaded: ThreeDModel | undefined
       if (editing) {
         await updateMutation.mutateAsync({ id: editing.id, input: toModelInput(values) })
       } else if (file) {
-        await uploadMutation.mutateAsync({
+        uploaded = await uploadMutation.mutateAsync({
           name: values.name,
           description: values.description?.trim() || undefined,
           tags: (values.tags ?? '').split(',').map((t) => t.trim()).filter(Boolean),
@@ -159,6 +160,9 @@ export default function ModelLibraryPage() {
       }
       setFormOpen(false)
       setEditing(null)
+      // Open the detail drawer for a freshly uploaded file so its 3D preview is
+      // visible immediately instead of hiding behind an extra row click.
+      if (uploaded?.id) setDetail(uploaded)
     } catch (error) {
       setFormError(getApiErrorMessage(error, 'Không thể lưu model. Vui lòng thử lại.'))
     }

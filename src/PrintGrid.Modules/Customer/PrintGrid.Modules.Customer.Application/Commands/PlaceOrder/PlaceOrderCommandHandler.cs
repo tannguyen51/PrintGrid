@@ -52,14 +52,27 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
 
         var order = Order.CreateFromQuote(quote, address, orderNumber, DepositPercent());
 
-        // FR-CUST-012 / BR-PAY-007: placement only records the required deposit. The order stays
-        // PaymentPending and no OrderConfirmedEvent is raised (so no jobs are scheduled) until
-        // the deposit is actually paid via POST /orders/{orderId}/mark-paid.
+        // Demo flow: treat placement as a completed payment so the order is confirmed
+        // immediately and OrderConfirmedEvent spawns lab jobs (the real deposit step is
+        // still available via POST /orders/{orderId}/mark-paid when this flag is off).
+        if (AutoConfirmOnPlace())
+        {
+            var confirmed = order.ConfirmPayment($"AUTO-{Guid.NewGuid():N}");
+            if (confirmed.IsFailure)
+                return Result.Failure<OrderDto>(confirmed.Error);
+        }
+
+        // When auto-confirm is disabled the order stays PaymentPending and no
+        // OrderConfirmedEvent is raised until the deposit is recorded.
         await _orders.AddAsync(order, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(Map(order));
     }
+
+    /// <summary>Defaults to true (demo): placement confirms the order without a separate payment step.</summary>
+    private bool AutoConfirmOnPlace()
+        => !bool.TryParse(_configuration["Payment:AutoConfirmOnPlace"], out var enabled) || enabled;
 
     /// <summary>Reads "Payment:DepositPercent" (50 means 50%) and falls back to 50 when absent/invalid.</summary>
     private decimal DepositPercent()
