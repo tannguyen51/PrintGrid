@@ -1,10 +1,10 @@
-import { Component, Suspense, useEffect, useMemo, type ReactNode } from 'react'
+import { Component, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Canvas, useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Environment, Lightformer, OrbitControls, useGLTF, useProgress } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
-import { Box, CircularProgress, Stack, Typography, type SxProps } from '@mui/material'
+import { Box, Button, CircularProgress, Stack, Typography, type SxProps } from '@mui/material'
 
 /**
  * Reusable 3D viewer, extracted from the login showcase (07/10) and widened to the
@@ -88,9 +88,11 @@ interface SceneProps {
   cameraPosition: [number, number, number]
   autoRotate: boolean
   background: string
+  onContextLost: () => void
+  onContextRestored: () => void
 }
 
-function Scene({ url, format, fit, cameraPosition, autoRotate, background }: SceneProps) {
+function Scene({ url, format, fit, cameraPosition, autoRotate, background, onContextLost, onContextRestored }: SceneProps) {
   const normalized = (format ?? '').trim().toUpperCase()
 
   useEffect(() => {
@@ -106,9 +108,27 @@ function Scene({ url, format, fit, cameraPosition, autoRotate, background }: Sce
   return (
     <Canvas
       camera={{ position: cameraPosition, fov: 40 }}
-      dpr={[1, 1.75]}
+      dpr={[1, 1.5]}
       style={{ background }}
       gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.5 }}
+      onCreated={({ gl }) => {
+        const ctx = gl.getContext()
+        const debug = ctx.getExtension('WEBGL_debug_renderer_info')
+        console.info('[preview3d] webgl created', {
+          version: ctx.getParameter(ctx.VERSION),
+          renderer: debug ? ctx.getParameter(debug.UNMASKED_RENDERER_WEBGL) : 'unknown',
+          maxTextureSize: ctx.getParameter(ctx.MAX_TEXTURE_SIZE),
+        })
+        gl.domElement.addEventListener('webglcontextlost', () => {
+          console.warn('[preview3d] WEBGL CONTEXT LOST — GPU reset/out of memory. ' +
+            'Close other 3D tabs, retry, or check chrome://gpu')
+          onContextLost()
+        })
+        gl.domElement.addEventListener('webglcontextrestored', () => {
+          console.info('[preview3d] WEBGL CONTEXT RESTORED')
+          onContextRestored()
+        })
+      }}
     >
       <color attach="background" args={[background]} />
 
@@ -123,7 +143,7 @@ function Scene({ url, format, fit, cameraPosition, autoRotate, background }: Sce
 
       {/* Procedural studio environment (no external HDR fetch) — gives clearcoat/
           transmission materials the reflections that make them look rich, not dark */}
-      <Environment resolution={256} frames={1}>
+      <Environment resolution={128} frames={1}>
         <Lightformer intensity={3.5} position={[0, 5, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[8, 8, 1]} />
         <Lightformer intensity={3} color="#ffffff" position={[0, 2, -6]} rotation={[0, 0, 0]} scale={[10, 2, 1]} />
         <Lightformer intensity={2.5} color="#3b82f6" position={[-5, 2, 3]} rotation={[0, Math.PI / 2, 0]} scale={[6, 2, 1]} />
@@ -216,6 +236,11 @@ export function ModelViewer({
   background = '#000000',
   sx,
 }: ModelViewerProps) {
+  // WebGL can lose its GPU context (driver reset, GPU memory, too many 3D tabs).
+  // Keep the canvas mounted but tell the user and offer a clean remount.
+  const [contextLost, setContextLost] = useState(false)
+  const [canvasKey, setCanvasKey] = useState(0)
+
   return (
     <Box
       sx={{
@@ -230,16 +255,55 @@ export function ModelViewer({
       <Box sx={{ position: 'absolute', inset: 0, zIndex: 1 }}>
         <SceneBoundary>
           <Scene
+            key={canvasKey}
             url={url}
             format={format}
             fit={fit}
             cameraPosition={cameraPosition}
             autoRotate={autoRotate}
             background={background}
+            onContextLost={() => setContextLost(true)}
+            onContextRestored={() => setContextLost(false)}
           />
           <ModelLoader />
         </SceneBoundary>
       </Box>
+
+      {contextLost && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 3,
+            display: 'grid',
+            placeItems: 'center',
+            bgcolor: 'rgba(0,0,0,0.72)',
+            p: 3,
+            textAlign: 'center',
+          }}
+        >
+          <Stack spacing={1.5} alignItems="center">
+            <Typography color="text.primary" sx={{ fontWeight: 700 }}>
+              GPU đã mất kết nối WebGL
+            </Typography>
+            <Typography color="text.secondary" sx={{ fontSize: '0.85rem', maxWidth: 320 }}>
+              Mô hình quá nặng hoặc GPU bị reset. Thử lại, đóng bớt tab 3D khác, hoặc tải lại trang.
+            </Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              color="inherit"
+              sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}
+              onClick={() => {
+                setContextLost(false)
+                setCanvasKey((k) => k + 1)
+              }}
+            >
+              Thử lại
+            </Button>
+          </Stack>
+        </Box>
+      )}
     </Box>
   )
 }

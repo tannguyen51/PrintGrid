@@ -52,14 +52,15 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
 
         var order = Order.CreateFromQuote(quote, address, orderNumber, DepositPercent());
 
-        // Demo flow: treat placement as a completed payment so the order is confirmed
-        // immediately and OrderConfirmedEvent spawns lab jobs (the real deposit step is
-        // still available via POST /orders/{orderId}/mark-paid when this flag is off).
+        // Demo flow: record the full payment up front. ApplyPayment also raises
+        // OrderConfirmedEvent (jobs are created immediately) and sets PaidAmount, so the
+        // hub's "ship" guard (IsSettled) passes later. With the flag off, the order stays
+        // PaymentPending until ops records the deposit via POST /orders/{id}/mark-paid.
         if (AutoConfirmOnPlace())
         {
-            var confirmed = order.ConfirmPayment($"AUTO-{Guid.NewGuid():N}");
-            if (confirmed.IsFailure)
-                return Result.Failure<OrderDto>(confirmed.Error);
+            var paid = order.ApplyPayment(order.TotalPrice.Amount, $"AUTO-{Guid.NewGuid():N}");
+            if (paid.IsFailure)
+                return Result.Failure<OrderDto>(paid.Error);
         }
 
         // When auto-confirm is disabled the order stays PaymentPending and no
