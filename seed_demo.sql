@@ -4,7 +4,14 @@ VALUES
   (gen_random_uuid(), 'demo@printgrid.dev', '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Khách hàng Demo',   '0900000000', ARRAY['Customer'],                 true, true, NOW(), NOW()),
   (gen_random_uuid(), 'lab@printgrid.dev',  '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Quản lý xưởng in',  '0911000001', ARRAY['LabManager'],               true, true, NOW(), NOW()),
   (gen_random_uuid(), 'qc@printgrid.dev',   '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Nhân viên QC Hub',  '0911000002', ARRAY['HubQC', 'HubFulfillment'], true, true, NOW(), NOW()),
-  (gen_random_uuid(), 'ops@printgrid.dev',  '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Ops Manager Demo',  '0911000003', ARRAY['OpsManager', 'Admin'],     true, true, NOW(), NOW())
+  (gen_random_uuid(), 'ops@printgrid.dev',  '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Ops Manager Demo',  '0911000003', ARRAY['OpsManager', 'Admin'],     true, true, NOW(), NOW()),
+  -- One dedicated account per role (same password Demo@123), so each RBAC
+  -- boundary can be demonstrated without the combo accounts above.
+  (gen_random_uuid(), 'operator@printgrid.dev',       '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Nhân viên vận hành lab', '0911000004', ARRAY['LabOperator'],    true, true, NOW(), NOW()),
+  (gen_random_uuid(), 'hub.qc@printgrid.dev',         '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Chuyên viên QC Hub',     '0911000005', ARRAY['HubQC'],          true, true, NOW(), NOW()),
+  (gen_random_uuid(), 'hub.fulfillment@printgrid.dev','$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Điều phối giao nhận',    '0911000006', ARRAY['HubFulfillment'], true, true, NOW(), NOW()),
+  (gen_random_uuid(), 'ops.manager@printgrid.dev',    '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Quản lý điều phối',      '0911000007', ARRAY['OpsManager'],     true, true, NOW(), NOW()),
+  (gen_random_uuid(), 'admin@printgrid.dev',          '$2a$12$GVi9xSIX0fFjo3DTZOpfX.wAQOddrGrTGWZa.NCxMnCuy6wRfwvPO', 'Quản trị hệ thống',      '0911000008', ARRAY['Admin'],          true, true, NOW(), NOW())
 ON CONFLICT ("Email") DO UPDATE SET
   "PasswordHash"    = EXCLUDED."PasswordHash",
   "Roles"           = EXCLUDED."Roles",
