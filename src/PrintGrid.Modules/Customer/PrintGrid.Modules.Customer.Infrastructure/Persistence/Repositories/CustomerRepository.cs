@@ -27,6 +27,10 @@ public class CustomerRepository : ICustomerRepository
             .AnyAsync(c => c.Email == normalized, cancellationToken);
     }
 
+    public Task<Domain.Entities.Customer?> GetByGoogleSubjectAsync(string googleSubject, CancellationToken cancellationToken = default) =>
+        _context.Set<Domain.Entities.Customer>()
+            .FirstOrDefaultAsync(c => c.GoogleSubject == googleSubject, cancellationToken);
+
     public async Task<IReadOnlyList<Domain.Entities.Customer>> GetAllAsync(CancellationToken cancellationToken = default) =>
         await _context.Set<Domain.Entities.Customer>()
             .AsNoTracking()

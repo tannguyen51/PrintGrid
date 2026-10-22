@@ -42,7 +42,7 @@ public class JwtTokenService : ITokenService
         };
     }
 
-    public AuthTokenPairDto CreateTokenPair(AuthUserDto user)
+    public AuthTokenPairDto CreateTokenPair(AuthUserDto user, int sessionVersion = 0)
     {
         var key = Encoding.UTF8.GetBytes(_options.Key);
 
@@ -71,6 +71,7 @@ public class JwtTokenService : ITokenService
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Typ, RefreshTokenType),
+                new Claim("session_version", sessionVersion.ToString()),
             },
             DateTime.UtcNow,
             DateTime.UtcNow.AddDays(_options.RefreshTokenDays));
@@ -82,7 +83,7 @@ public class JwtTokenService : ITokenService
     /// Verifies signature, issuer/audience and the refresh purpose, then returns
     /// the customer id encoded as the token's subject — or null when invalid.
     /// </summary>
-    public Guid? ValidateRefreshToken(string refreshToken)
+    public RefreshTokenIdentity? ValidateRefreshToken(string refreshToken)
     {
         try
         {
@@ -99,7 +100,10 @@ public class JwtTokenService : ITokenService
             if (!isRefresh) return null;
 
             var sub = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
-            return Guid.TryParse(sub, out var id) ? id : null;
+            var version = principal.FindFirstValue("session_version");
+            return Guid.TryParse(sub, out var id) && int.TryParse(version, out var sessionVersion)
+                ? new RefreshTokenIdentity(id, sessionVersion)
+                : null;
         }
         catch (Exception ex) when (ex is SecurityTokenException or ArgumentException or FormatException)
         {

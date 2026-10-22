@@ -6,6 +6,8 @@ import { ProtectedRoute } from './ProtectedRoute'
 const LoginPage = lazy(() => import('../features/auth/LoginPage'))
 const RegisterPage = lazy(() => import('../features/auth/RegisterPage'))
 const VerifyEmailPage = lazy(() => import('../features/auth/VerifyEmailPage'))
+const ForgotPasswordPage = lazy(() => import('../features/auth/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('../features/auth/ResetPasswordPage'))
 const HomePage = lazy(() => import('../features/home/HomePage'))
 const ModelLibraryPage = lazy(() => import('../features/models/ModelLibraryPage'))
 const StartOrderPage = lazy(() => import('../features/orders/StartOrderPage'))
@@ -66,6 +68,8 @@ export function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/" element={<HomePage />} />
         {/* Customer pages share the customer navbar so navigation never disappears. */}
         <Route element={<CustomerLayout />}>

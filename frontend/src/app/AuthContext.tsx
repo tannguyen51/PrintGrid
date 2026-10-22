@@ -31,6 +31,7 @@ interface AuthContextValue {
   isAuthenticated: boolean
   /** remember=true lưu token vào localStorage (giữ qua nhiều phiên mở trình duyệt). */
   login: (email: string, password: string, remember?: boolean) => Promise<AuthUser>
+  googleLogin: (credential: string, remember?: boolean) => Promise<AuthUser>
   register: (input: RegisterInput) => Promise<void>
   logout: () => void
 }
@@ -107,14 +108,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const googleLogin = useCallback(async (credential: string, remember = true): Promise<AuthUser> => {
+    const { data } = await apiClient.post<LoginResponse>('/auth/google', { credential })
+    const user: AuthUser = { ...data.user, roles: normalizeRoles(data.user.roles ?? []) }
+    setTokens(data.accessToken, data.refreshToken, remember)
+    setUser(user)
+    return user
+  }, [])
+
   const logout = useCallback(() => {
     clearTokens()
     setUser(null)
   }, [])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isAuthenticated: user !== null && getAccessToken() !== null, login, register, logout }),
-    [user, login, register, logout],
+    () => ({ user, isAuthenticated: user !== null && getAccessToken() !== null, login, googleLogin, register, logout }),
+    [user, login, googleLogin, register, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

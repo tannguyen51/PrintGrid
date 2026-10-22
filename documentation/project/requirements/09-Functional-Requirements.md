@@ -7,7 +7,7 @@
 
 | Req ID | Type | Requirement Description | Category | Priority | Source | Acceptance Criteria | Status | Notes |
 |--------|------|-------------------------|----------|----------|--------|---------------------|--------|-------|
-| FR-CUST-001 | FR | Customer registers, signs in, manages profile and delivery addresses | Customer | Must | P-19 | Verified email required to order; address delete blocked while undelivered order exists; **password ≥ 8 ký tự (khớp openapi `minLength: 8`)** | Approved | Actor: Customer · BR: ACCESS-005 · UC-001,026 · US-001,040 · M |
+| FR-CUST-001 | FR | Customer registers, signs in (email/password or Google), recovers password by email, and manages profile/delivery addresses | Customer | Must | P-19 | Google ID token audience verified server-side; reset response does not reveal account existence; reset token one-use, expires in 30 min; verified email required to order; **password ≥ 8 ký tự** | Approved | Actor: Customer · BR: ACCESS-005 · UC-001,026 · US-001,040 · M |
 | FR-CUST-002 | FR | Upload 3D model (STL/OBJ/3MF, ≤50 MB) into secure storage | Customer | Must | P-20 | Unsupported format rejected with message; quota per account enforced; **SHA-256 hash recorded + customer email receipt (time,size,hash)** | Approved · **R1 amended** | Actor: Customer · BR: ACCESS-006, IP-001/002 · UC-001 · US-001 · M |
 | FR-CUST-003 | FR | In-browser 3D preview with bounding-box readout | Customer | Should | P-20 | Model renders; rotate/zoom; dims match analysis result | Approved | Actor: Customer · UC-001 · US-002 · L — cut-candidate #2 |
 | FR-CUST-004 | FR | Validation feedback on mesh integrity and oversize | Customer | Must | P-21 | Issues listed per item; part exceeding max build volume cannot proceed to quote | Approved | Actor: Customer · BR: QUOTE-006 · UC-002 · US-003 · M |
@@ -71,14 +71,17 @@
 - Register with email, password, full name
 - Email verification required
 - Login with email and password
-- Password reset functionality
+- Login/register with a verified Google identity; backend validates the ID-token audience before issuing PrintGrid JWTs
+- Password reset email uses a random, one-use token that expires after 30 minutes; request response never reveals whether the email is registered
 - Session management
 - Remember me option
 
 **Acceptance Criteria:**
 - User can create account and receive verification email
 - User can login with verified credentials
-- Password meets security requirements (min 8 chars, uppercase, lowercase, number)
+- Existing email accounts may be linked to the matching verified Google identity; Google-created accounts are email-verified
+- Password-reset link changes the password once, then becomes invalid; resend is rate-limited
+- Password meets the contract requirement (minimum 8 characters)
 - Failed login attempts tracked and limited
 
 ---

@@ -48,6 +48,37 @@ paths:
       security: []
       summary: Đăng nhập → JWT access+refresh (existing)
       responses: { '200': { description: AuthSession } }
+  /auth/google:
+    post:
+      tags: [auth]
+      security: []
+      summary: Đăng nhập/đăng ký bằng Google Identity Services → JWT access+refresh
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/GoogleLoginRequest' } } }
+      responses:
+        '200': { description: AuthSession }
+        '401': { description: Google ID token không hợp lệ, hết hạn hoặc sai audience }
+  /auth/forgot-password:
+    post:
+      tags: [auth]
+      security: []
+      summary: Gửi liên kết đặt lại mật khẩu; luôn trả cùng kết quả để chống dò email
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ForgotPasswordRequest' } } }
+      responses: { '202': { description: Yêu cầu đã được tiếp nhận } }
+  /auth/reset-password:
+    post:
+      tags: [auth]
+      security: []
+      summary: Đặt mật khẩu mới bằng token một lần, hiệu lực 30 phút
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ResetPasswordRequest' } } }
+      responses:
+        '200': { description: Mật khẩu đã cập nhật; token bị vô hiệu hóa }
+        '400': { description: Token sai hoặc hết hạn }
   /auth/refresh:
     post: { tags: [auth], security: [], summary: Làm mới token (existing), responses: { '200': { description: OK } } }
   /auth/verify-email:
@@ -404,6 +435,23 @@ components:
         email: { type: string, format: email }
         password: { type: string, minLength: 8 }
         fullName: { type: string }
+    GoogleLoginRequest:
+      type: object
+      required: [credential]
+      properties:
+        credential: { type: string, description: Google ID token do Google Identity Services trả về }
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    ResetPasswordRequest:
+      type: object
+      required: [email, token, newPassword]
+      properties:
+        email: { type: string, format: email }
+        token: { type: string }
+        newPassword: { type: string, minLength: 8, maxLength: 128 }
     AddressInput:
       type: object
       required: [label, recipientName, phoneNumber, street, city, isDefault]

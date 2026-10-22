@@ -15,12 +15,16 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Domain.Entities.Cu
         builder.Property(c => c.PasswordHash).HasMaxLength(256).IsRequired();
         builder.Property(c => c.FullName).HasMaxLength(200).IsRequired();
         builder.Property(c => c.PhoneNumber).HasMaxLength(32);
+        builder.Property(c => c.GoogleSubject).HasMaxLength(255);
+        builder.Property(c => c.PasswordResetTokenHash).HasMaxLength(256);
+        builder.Property(c => c.SessionVersion).IsRequired().HasDefaultValue(0);
         builder.Property(c => c.CreatedAt).IsRequired();
         
         builder.Property(c => c.IsActive).IsRequired().HasDefaultValue(true);
         builder.Property(c => c.Roles).HasColumnType("text[]").IsRequired();
 
         builder.HasIndex(c => c.Email).IsUnique();
+        builder.HasIndex(c => c.GoogleSubject).IsUnique();
         builder.Ignore(c => c.DomainEvents);
     }
 }

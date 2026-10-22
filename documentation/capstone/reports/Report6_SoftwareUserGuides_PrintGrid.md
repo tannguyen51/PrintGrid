@@ -149,7 +149,7 @@ Feature flow implemented in this release:
 
 The quotes and orders module has a partial implementation: the backend exposes a place-order endpoint and a customer order page exists, but the order list is not yet wired to the backend, so the order flow is not part of the verified user journeys in this release. It is described in the repository documentation (FR-CUST-006 to 009) and scheduled in the project plan.
 
-#### 3.2 Workflow 1 — Account (Register, Login, Logout)
+#### 3.2 Workflow 1 — Account (Register, Google Login, Password Recovery, Logout)
 
 Purpose: create an account, sign in, and sign out. This is the entry gate to the customer areas.
 
@@ -158,14 +158,18 @@ Step-by-step guide:
 1. Open the application. The home page is shown.
 2. Click Đăng nhập (Login) or Tạo tài khoản (Register) in the top-right. A modal window opens over the current page (the login view shows the 3D model showcase on the right; the register view shows the form only).
 3. Register:
-   - Fill in Họ và tên (full name), Email, Mật khẩu (password, at least 6 characters), and Xác nhận mật khẩu (confirm password).
-   - The form validates input as you type and shows Vietnamese messages under each invalid field (for example, Mật khẩu ít nhất 6 ký tự, Mật khẩu xác nhận không khớp).
-   - Click TẠO TÀI KHOẢN (Create account). On success you are taken back to the home page and logged in.
+   - Fill in Họ và tên (full name), Email, Mật khẩu (password, at least 8 characters), and Xác nhận mật khẩu (confirm password).
+   - The form validates input as you type and shows Vietnamese messages under each invalid field (for example, Mật khẩu ít nhất 8 ký tự, Mật khẩu xác nhận không khớp).
+   - Click TẠO TÀI KHOẢN (Create account). On success, check the verification email before placing an order.
    - If the email is already registered, the server returns the message Email ... is already registered and no account is created.
 4. Login:
    - Enter email and password, click ĐĂNG NHẬP (Login).
+   - Alternatively, click Continue with Google and choose the Google account whose verified email should be used by PrintGrid. A first-time Google user receives a new verified customer account; a matching local account is linked safely.
    - If the credentials are wrong, the screen shows Email hoặc mật khẩu không đúng. The same message is shown for an unknown email and for a wrong password on a known account.
-5. Logout:
+5. Forgot password:
+   - Click Quên mật khẩu?, enter the account email, and submit. The screen always shows the same confirmation so registered emails cannot be discovered.
+   - Open the PrintGrid email and follow the link within 30 minutes. Enter the new password twice. The link is invalid after a successful reset.
+6. Logout:
    - When logged in, the navbar shows Thư viện model (Model library), Bảng điều khiển (Dashboard), and Đăng xuất (Logout). The model library page has a red Đăng xuất button next to Thêm model.
    - Clicking Đăng xuất clears the session tokens and returns to the public area.
 
