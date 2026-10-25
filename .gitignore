@@ -101,3 +101,7 @@ agent_changes.md
 
 # Figma MCP downloaded assets
 .figma-images/
+
+# Local database dumps and editor backups (never commit)
+.db-backups/
+*.drawio.bkp

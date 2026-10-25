@@ -16,9 +16,9 @@ import {
   Typography,
 } from '@mui/material'
 import { Visibility, VisibilityOff, ArrowForward, PersonRounded, PhoneRounded } from '@mui/icons-material'
-import { FaGoogle } from 'react-icons/fa6'
 import { useAuth } from '../../../app/AuthContext'
 import { getApiErrorInfo, getApiErrorMessage, normalizeFieldKey } from '../../../shared/api/apiError'
+import { GoogleSignInButton } from './GoogleSignInButton'
 
 const registerSchema = z
   .object({
@@ -49,7 +49,6 @@ interface RegisterFormProps {
   /** Called after a successful registration (lets a dialog close itself). When unset the page navigates home. */
   onSuccess?: () => void
 }
-
 /**
  * Register card on the unified dark background.
  * Mirrors LoginForm's premium-tech layout. Creates the account and navigates home (or closes a dialog).
@@ -293,9 +292,7 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
           </Stack>
 
           {/* ── Google ── */}
-          <Button variant="outlined" color="inherit" fullWidth disabled startIcon={<GoogleMark />} sx={{ py: 1.2, color: 'text.primary', borderColor: 'rgba(255,255,255,0.2)', justifyContent: 'flex-start', pl: 3 }}>
-            Đăng ký với Google
-          </Button>
+          <GoogleSignInButton onSuccess={onSuccess} text="signup_with" />
 
           {/* ── Login footer ── */}
           <Stack direction="row" justifyContent="center" spacing={0.5} sx={{ mt: 1 }}>
@@ -315,18 +312,5 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
         </Stack>
       </Box>
     </Box>
-  )
-}
-
-/**
- * Google brand mark via react-icons (MIT-licensed SVG).
- * Neutral single-glyph brand icon, consistent with the muted social button.
- */
-function GoogleMark() {
-  return (
-    <FaGoogle
-      aria-hidden
-      style={{ display: 'inline-block', width: 18, height: 18, flexShrink: 0, color: '#8A8A8A' }}
-    />
   )
 }

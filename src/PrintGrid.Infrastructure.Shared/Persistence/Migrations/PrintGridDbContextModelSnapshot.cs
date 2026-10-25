@@ -353,6 +353,10 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("GoogleSubject")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -369,6 +373,13 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<DateTime?>("PasswordResetTokenExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PasswordResetTokenHash")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
@@ -376,6 +387,11 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<string[]>("Roles")
                         .IsRequired()
                         .HasColumnType("text[]");
+
+                    b.Property<int>("SessionVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime?>("VerificationTokenExpiresAt")
                         .HasColumnType("timestamp with time zone");
@@ -386,6 +402,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("GoogleSubject")
                         .IsUnique();
 
                     b.ToTable("customers", "customer");

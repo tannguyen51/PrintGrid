@@ -18,10 +18,10 @@ import {
   Typography,
 } from '@mui/material'
 import { Visibility, VisibilityOff, ArrowForward } from '@mui/icons-material'
-import { FaGoogle } from 'react-icons/fa6'
 import { useAuth } from '../../../app/AuthContext'
 import { getApiErrorInfo, getApiErrorMessage } from '../../../shared/api/apiError'
 import { resolvePostLoginPath } from '../postLoginRedirect'
+import { GoogleSignInButton } from './GoogleSignInButton'
 
 const loginSchema = z.object({
   // Trim before validation so accidental leading/trailing spaces never reach the API.
@@ -37,7 +37,6 @@ interface LoginFormProps {
   /** Called after a successful login (lets a dialog close itself). When unset the page navigates home. */
   onSuccess?: () => void
 }
-
 /**
  * Right-hand login card on the unified dark background.
  * Keeps `useAuth().login()` flow; UI follows the premium-tech layout.
@@ -50,7 +49,6 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
   const [remember, setRemember] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
-  const [forgotNotice, setForgotNotice] = useState<string | null>(null)
 
   const {
     register,
@@ -118,7 +116,6 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
           </Typography>
 
           {serverError && <Alert severity="error">{serverError}</Alert>}
-          {forgotNotice && <Alert severity="info">{forgotNotice}</Alert>}
 
           {/* ── Email ── */}
           <TextField
@@ -139,11 +136,10 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
                 Mật khẩu
               </Typography>
               <Link
-                component="button"
-                type="button"
+                component={RouterLink}
+                to="/forgot-password"
                 variant="body2"
                 underline="hover"
-                onClick={() => setForgotNotice('Liên hệ quản trị viên để được cấp lại mật khẩu.')}
                 sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
               >
                 Quên mật khẩu?
@@ -216,9 +212,7 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
           </Stack>
 
           {/* ── Google ── */}
-          <Button variant="outlined" color="inherit" fullWidth disabled startIcon={<GoogleMark />} sx={{ py: 1.2, color: 'text.primary', borderColor: 'rgba(255,255,255,0.2)', justifyContent: 'flex-start', pl: 3 }}>
-            Tiếp tục với Google
-          </Button>
+          <GoogleSignInButton onSuccess={onSuccess} />
 
           {/* ── Signup footer ── */}
           <Stack direction="row" justifyContent="center" spacing={0.5} sx={{ mt: 1 }}>
@@ -238,18 +232,5 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
         </Stack>
       </Box>
     </Box>
-  )
-}
-
-/**
- * Google brand mark via react-icons (MIT-licensed SVG).
- * Neutral single-glyph brand icon, consistent with the muted social button.
- */
-function GoogleMark() {
-  return (
-    <FaGoogle
-      aria-hidden
-      style={{ display: 'inline-block', width: 18, height: 18, flexShrink: 0, color: '#8A8A8A' }}
-    />
   )
 }

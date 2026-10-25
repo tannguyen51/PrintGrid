@@ -2,11 +2,15 @@ using NSubstitute;
 using PrintGrid.Modules.Customer.Application.Auth;
 using PrintGrid.Modules.Customer.Application.Commands.Auth.Login;
 using PrintGrid.Modules.Customer.Application.Commands.Auth.Register;
+using PrintGrid.Modules.Customer.Application.Commands.Auth.GoogleLogin;
+using PrintGrid.Modules.Customer.Application.Commands.Auth.ForgotPassword;
+using PrintGrid.Modules.Customer.Application.Commands.Auth.ResetPassword;
 using PrintGrid.Modules.Customer.Application.DTOs;
 using PrintGrid.Modules.Customer.Domain.Entities;
 using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.SharedKernel.Interfaces;
 using CustomerEntity = PrintGrid.Modules.Customer.Domain.Entities.Customer;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace PrintGrid.UnitTests.Customer;
 
@@ -25,7 +29,7 @@ public class RegisterLoginTests
     {
         _hasher.Hash(Arg.Any<string>()).Returns("hashed-password");
         _hasher.Verify(Arg.Any<string>(), Arg.Any<string>()).Returns(true);
-        _tokens.CreateTokenPair(Arg.Any<AuthUserDto>()).Returns(_pair);
+        _tokens.CreateTokenPair(Arg.Any<AuthUserDto>(), Arg.Any<int>()).Returns(_pair);
         _configuration["App:FrontendUrl"].Returns("http://localhost:5173");
     }
 
@@ -109,5 +113,60 @@ public class RegisterLoginTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("unauthorized");
+    }
+
+    [Fact]
+    public async Task Google_login_creates_verified_customer_and_returns_session()
+    {
+        var google = Substitute.For<IGoogleIdentityVerifier>();
+        google.VerifyAsync("credential", Arg.Any<CancellationToken>())
+            .Returns(new GoogleIdentity("google-sub", "google@example.com", "Google User", true));
+        _customers.GetByGoogleSubjectAsync("google-sub", Arg.Any<CancellationToken>()).Returns((CustomerEntity?)null);
+        _customers.GetByEmailAsync("google@example.com", Arg.Any<CancellationToken>()).Returns((CustomerEntity?)null);
+        var handler = new GoogleLoginCommandHandler(google, _customers, _unitOfWork, _hasher, _tokens);
+
+        var result = await handler.Handle(new GoogleLoginCommand("credential"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.User.IsEmailVerified.Should().BeTrue();
+        await _customers.Received(1).AddAsync(
+            Arg.Is<CustomerEntity>(c => c.GoogleSubject == "google-sub" && c.IsEmailVerified),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Forgot_password_does_not_reveal_unknown_email()
+    {
+        var cache = Substitute.For<IDistributedCache>();
+        cache.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((byte[]?)null);
+        _customers.GetByEmailAsync("unknown@example.com", Arg.Any<CancellationToken>()).Returns((CustomerEntity?)null);
+        var handler = new ForgotPasswordCommandHandler(
+            _customers, _unitOfWork, _hasher, _emailService, _configuration, cache);
+
+        var result = await handler.Handle(new ForgotPasswordCommand("unknown@example.com"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _emailService.DidNotReceiveWithAnyArgs().SendEmailAsync(default!, default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Reset_password_consumes_valid_token()
+    {
+        var customer = CustomerEntity.Register("reset@example.com", "old-hash", "Reset User", null);
+        customer.SetPasswordResetToken("reset-token-hash", TimeSpan.FromMinutes(30));
+        _customers.GetByEmailAsync("reset@example.com", Arg.Any<CancellationToken>()).Returns(customer);
+        _hasher.Verify("raw-token", "reset-token-hash").Returns(true);
+        _hasher.Hash("new-password").Returns("new-hash");
+        var handler = new ResetPasswordCommandHandler(_customers, _unitOfWork, _hasher);
+
+        var result = await handler.Handle(
+            new ResetPasswordCommand("reset@example.com", "raw-token", "new-password"),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        customer.PasswordHash.Should().Be("new-hash");
+        customer.PasswordResetTokenHash.Should().BeNull();
+        customer.SessionVersion.Should().Be(1);
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

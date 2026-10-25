@@ -168,6 +168,9 @@ Test cases are prepared per the attached templates:
 | UT-AUTH-003 | Login returns a session for valid credentials | Success; user id matches customer |
 | UT-AUTH-004 | Login rejects wrong password | Failure, code = `unauthorized` |
 | UT-AUTH-005 | Login does not reveal whether an email exists | Unknown email → same `unauthorized` error |
+| UT-AUTH-006 | Google login creates a verified customer | Valid verified Google identity → customer linked to `sub`, session returned |
+| UT-AUTH-007 | Forgot-password does not reveal unknown email | Unknown and known emails receive the same success result |
+| UT-AUTH-008 | Reset password consumes a valid token | Password hash changes; token and expiry are cleared |
 | UT-MOD-001 | Create model returns DTO and persists when owned by customer | Success; tags mapped; repo.Add once |
 | UT-MOD-002 | Update edits only a model owned by the customer | Success; update called once |
 | UT-MOD-003 | Update/delete a foreign model | Failure, code = `not_found`; no mutation |
@@ -180,6 +183,8 @@ Test cases are prepared per the attached templates:
 | IT-AUTH-001 | Register → login → refresh full flow | POST /auth/register, /auth/login, /auth/refresh | register 201 → login 200 → refresh 200 (new pair) |
 | IT-AUTH-002 | Wrong password / unknown email | POST /auth/login with bad creds | 401 `unauthorized` for both |
 | IT-AUTH-003 | Garbage or access token used as refresh | POST /auth/refresh | 401 |
+| IT-AUTH-004 | Google ID token validation | POST /auth/google with valid/invalid token and configured audience | valid → 200 session; invalid audience/expired → 401 |
+| IT-AUTH-005 | Forgot → reset password | POST /auth/forgot-password, follow emailed token, POST /auth/reset-password twice | first reset 200; token reuse 400; old password rejected |
 | IT-MOD-001 | Model full CRUD | POST /models, GET list?search, GET /{id}, PUT, DELETE | create 201 → search hit → get 200 → update → delete 204 → get 404 |
 | IT-MOD-002 | Cross-user isolation | User A creates model; user B tries GET/PUT/DELETE | all 404; B's list shows 0 |
 | IT-MOD-003 | Unauthenticated access | GET /models without token | 401 |

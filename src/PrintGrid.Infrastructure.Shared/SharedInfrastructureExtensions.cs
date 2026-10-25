@@ -6,6 +6,7 @@ using PrintGrid.Infrastructure.Shared.FileStorage;
 using PrintGrid.Infrastructure.Shared.Outbox;
 using PrintGrid.Infrastructure.Shared.Persistence;
 using PrintGrid.Infrastructure.Shared.Time;
+using PrintGrid.Infrastructure.Shared.Services;
 using PrintGrid.SharedKernel.Interfaces;
 
 namespace PrintGrid.Infrastructure.Shared;
@@ -32,7 +33,11 @@ public static class SharedInfrastructureExtensions
         services.Configure<MinioOptions>(configuration.GetSection(MinioOptions.SectionName));
         services.AddSingleton<IFileStorage, MinioFileStorage>();
 
-        services.AddScoped<IEmailService, PrintGrid.Infrastructure.Shared.Services.DummyEmailService>();
+        services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
+        if (configuration.GetValue<bool>($"{SmtpOptions.SectionName}:Enabled"))
+            services.AddScoped<IEmailService, SmtpEmailService>();
+        else
+            services.AddScoped<IEmailService, DummyEmailService>();
 
         return services;
     }

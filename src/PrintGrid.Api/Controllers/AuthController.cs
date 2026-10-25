@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Modules.Customer.Application.Commands.Auth.Login;
 using PrintGrid.Modules.Customer.Application.Commands.Auth.Refresh;
 using PrintGrid.Modules.Customer.Application.Commands.Auth.Register;
+using PrintGrid.Modules.Customer.Application.Commands.Auth.GoogleLogin;
+using PrintGrid.Modules.Customer.Application.Commands.Auth.ForgotPassword;
+using PrintGrid.Modules.Customer.Application.Commands.Auth.ResetPassword;
 
 using PrintGrid.Modules.Customer.Application.Commands.Auth.VerifyEmail;
 using PrintGrid.Modules.Customer.Application.Commands.Auth.ResendVerification;
@@ -92,6 +95,57 @@ public class AuthController : ControllerBase
         return Ok(result.Value);
     }
 
+    [HttpPost("google")]
+    public async Task<IActionResult> GoogleLogin(
+        [FromBody] GoogleLoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GoogleLoginCommand(request.Credential), cancellationToken);
+        if (result.IsFailure)
+            return Unauthorized(new { error = new { code = result.Error.Code, message = result.Error.Message } });
+
+        await _audit.WriteAsync(new AuditLogWriteRequest(
+            result.Value.User.Id,
+            result.Value.User.Email,
+            string.Join(',', result.Value.User.Roles),
+            AuditActionClasses.Authentication,
+            "auth.google_login_succeeded",
+            "Session",
+            OldValues: null,
+            NewValues: new { result.Value.User.Id, Provider = "Google" },
+            IpAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+            TraceId: HttpContext.TraceIdentifier,
+            RequirementCodes: ["FR-CUST-001", "UC-026"]), cancellationToken);
+
+        return Ok(result.Value);
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _sender.Send(new ForgotPasswordCommand(request.Email), cancellationToken);
+        return Accepted(new
+        {
+            message = "Nếu email tồn tại, PrintGrid đã gửi liên kết đặt lại mật khẩu."
+        });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new ResetPasswordCommand(request.Email, request.Token, request.NewPassword),
+            cancellationToken);
+
+        return result.IsFailure
+            ? BadRequest(new { error = new { code = result.Error.Code, message = result.Error.Message } })
+            : Ok(new { message = "Mật khẩu đã được cập nhật." });
+    }
+
     [HttpPost("verify-email")]
     public async Task<IActionResult> VerifyEmail(
         [FromBody] VerifyEmailRequest request,
@@ -127,3 +181,6 @@ public record LoginRequest(string Email, string Password);
 public record RefreshRequest(string RefreshToken);
 public record VerifyEmailRequest(string Email, string Token);
 public record ResendVerificationRequest(string Email);
+public record GoogleLoginRequest(string Credential);
+public record ForgotPasswordRequest(string Email);
+public record ResetPasswordRequest(string Email, string Token, string NewPassword);

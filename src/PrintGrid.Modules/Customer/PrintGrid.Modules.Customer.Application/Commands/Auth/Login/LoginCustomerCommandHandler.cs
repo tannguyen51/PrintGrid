@@ -47,7 +47,7 @@ public class LoginCustomerCommandHandler : IRequestHandler<LoginCustomerCommand,
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var user = ToUserDto(customer);
-        var tokens = _tokenService.CreateTokenPair(user);
+        var tokens = _tokenService.CreateTokenPair(user, customer.SessionVersion);
         return Result.Success(new AuthSessionDto(tokens.AccessToken, tokens.RefreshToken, user));
     }
 

@@ -51,6 +51,20 @@ cd frontend && npm install && cd ..
 `JWT_SIGNING_KEY` must be at least 32 characters. Generate one with
 `openssl rand -base64 48`. Compose refuses to start if any of the three secrets is missing.
 
+### Google login and email delivery
+
+Copy `frontend/.env.example` to `frontend/.env.local` for host development. Set the same OAuth web
+client ID in `GOOGLE_CLIENT_ID` (API/Compose) and `VITE_GOOGLE_CLIENT_ID` (SPA). In Google Cloud,
+add the actual SPA origins, for example `http://localhost:5173` and the production HTTPS origin, to
+the OAuth client's authorized JavaScript origins. The backend validates the Google ID token and its
+audience before creating a PrintGrid session.
+
+For Gmail SMTP, enable 2-Step Verification on the sender account and create an App Password. Put the
+16-character App Password in `SMTP_PASSWORD` and set `SMTP_ENABLED=true`; never use or commit the
+normal Gmail password. `APP_FRONTEND_URL` must be the public SPA origin so reset and verification
+links open the correct deployment. When SMTP is disabled, development uses the logging-only email
+service.
+
 ## Running
 
 Infrastructure only (recommended while developing — API and SPA run on the host):
@@ -112,9 +126,12 @@ packages without a `Version` attribute.
 
 ## Security notes
 
-- Every controller requires an authenticated JWT with a role policy; there are no anonymous endpoints
-  beyond `/health`. Auth endpoints are not implemented yet — `POST /auth/login` and `/auth/refresh`
-  are consumed by the SPA and still need handlers.
+- Business controllers require authenticated JWTs with role policies. Anonymous endpoints are
+  limited to health and authentication (`register`, email/password login, Google login, refresh,
+  email verification, forgot password, and reset password).
+- Password-reset requests return the same accepted response for known and unknown emails. Reset
+  tokens are hashed at rest, one-use, expire after 30 minutes, revoke existing refresh tokens, and
+  requests have a 60-second cooldown.
 - The Hangfire dashboard at `/jobs` requires an authenticated user in the `Admin` role.
 - `.env` is gitignored. Never commit real credentials; `appsettings.json` ships with empty secret
   values that must come from environment variables.

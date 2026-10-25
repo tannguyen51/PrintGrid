@@ -17,6 +17,10 @@ public class Customer : AggregateRoot<Guid>
     public bool IsEmailVerified { get; private set; } = false;
     public string? VerificationTokenHash { get; private set; }
     public DateTime? VerificationTokenExpiresAt { get; private set; }
+    public string? GoogleSubject { get; private set; }
+    public string? PasswordResetTokenHash { get; private set; }
+    public DateTime? PasswordResetTokenExpiresAt { get; private set; }
+    public int SessionVersion { get; private set; }
 
     private Customer() { }
 
@@ -36,6 +40,17 @@ public class Customer : AggregateRoot<Guid>
         };
 
         customer.AddDomainEvent(new CustomerRegisteredEvent(customer.Id, customer.Email));
+        return customer;
+    }
+
+    public static Customer RegisterWithGoogle(string email, string passwordHash, string fullName, string googleSubject)
+    {
+        if (string.IsNullOrWhiteSpace(googleSubject))
+            throw new ArgumentException("Google subject is required", nameof(googleSubject));
+
+        var customer = Register(email, passwordHash, fullName, null);
+        customer.GoogleSubject = googleSubject;
+        customer.VerifyEmail();
         return customer;
     }
 
@@ -68,5 +83,34 @@ public class Customer : AggregateRoot<Guid>
         IsEmailVerified = true;
         VerificationTokenHash = null;
         VerificationTokenExpiresAt = null;
+    }
+
+    public void LinkGoogleIdentity(string googleSubject)
+    {
+        if (string.IsNullOrWhiteSpace(googleSubject))
+            throw new ArgumentException("Google subject is required", nameof(googleSubject));
+
+        GoogleSubject = googleSubject;
+        VerifyEmail();
+    }
+
+    public void SetPasswordResetToken(string hash, TimeSpan expiresIn)
+    {
+        PasswordResetTokenHash = hash;
+        PasswordResetTokenExpiresAt = DateTime.UtcNow.Add(expiresIn);
+    }
+
+    public bool IsPasswordResetTokenValid(DateTime utcNow) =>
+        PasswordResetTokenHash is not null && PasswordResetTokenExpiresAt > utcNow;
+
+    public void ResetPassword(string passwordHash)
+    {
+        if (string.IsNullOrWhiteSpace(passwordHash))
+            throw new ArgumentException("Password hash is required", nameof(passwordHash));
+
+        PasswordHash = passwordHash;
+        PasswordResetTokenHash = null;
+        PasswordResetTokenExpiresAt = null;
+        SessionVersion++;
     }
 }
