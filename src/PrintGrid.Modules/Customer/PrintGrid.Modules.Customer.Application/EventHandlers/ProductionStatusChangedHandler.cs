@@ -47,6 +47,12 @@ public class ProductionStatusChangedHandler :
                     order.TransitionTo(OrderStatus.QualityCheck);
                 }
             }
+            else if (notification.NewStatus == "Completed")
+            {
+                // "Completed" = job finished + hub inspection passed + proof approved. It is an ITEM-level
+                // signal only: the order must NOT jump forward here. When the order is already QualityCheck
+                // it stays QualityCheck until the hub ships it, which is gated on every item being Completed.
+            }
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             await _publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
         }

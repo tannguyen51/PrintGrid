@@ -44,6 +44,8 @@ public class Week4HubConsolidationTests
         order.ApplyPayment(priceAmount, "pay-tx");
         order.TransitionTo(OrderStatus.InProduction);
         order.TransitionTo(OrderStatus.QualityCheck);
+        // Goods-out gate: every item must have passed hub QC (ItemStatus = Completed) before it can ship.
+        foreach (var item in order.Items) item.UpdateStatus("Completed");
         order.SetReadyForPackingAt(readyAtUtc);
         return order;
     }

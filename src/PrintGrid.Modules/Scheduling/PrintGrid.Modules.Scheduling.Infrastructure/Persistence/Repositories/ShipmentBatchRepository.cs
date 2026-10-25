@@ -10,9 +10,19 @@ public sealed class ShipmentBatchRepository(PrintGridDbContext context) : IShipm
     public Task AddAsync(ShipmentBatch batch, CancellationToken cancellationToken = default) =>
         context.Set<ShipmentBatch>().AddAsync(batch, cancellationToken).AsTask();
 
+    public Task<ShipmentBatch?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        context.Set<ShipmentBatch>().FirstOrDefaultAsync(batch => batch.Id == id, cancellationToken);
+
     public async Task<IReadOnlyList<ShipmentBatch>> GetByLabAsync(Guid labId, CancellationToken cancellationToken = default) =>
         await context.Set<ShipmentBatch>().AsNoTracking()
             .Where(batch => batch.LabId == labId)
             .OrderByDescending(batch => batch.SealedAtUtc)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<ShipmentBatch>> GetByStatusAsync(
+        ShipmentBatchStatus status, CancellationToken cancellationToken = default) =>
+        await context.Set<ShipmentBatch>().AsNoTracking()
+            .Where(batch => batch.Status == status)
+            .OrderBy(batch => batch.SealedAtUtc)
             .ToListAsync(cancellationToken);
 }

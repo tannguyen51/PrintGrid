@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useNavigate, Link as RouterLink } from 'react-router-dom'
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'
 import {
   Alert,
   Box,
@@ -21,6 +21,7 @@ import { Visibility, VisibilityOff, ArrowForward } from '@mui/icons-material'
 import { FaGoogle } from 'react-icons/fa6'
 import { useAuth } from '../../../app/AuthContext'
 import { getApiErrorInfo, getApiErrorMessage } from '../../../shared/api/apiError'
+import { resolvePostLoginPath } from '../postLoginRedirect'
 
 const loginSchema = z.object({
   // Trim before validation so accidental leading/trailing spaces never reach the API.
@@ -44,6 +45,7 @@ interface LoginFormProps {
 export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}) {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -61,8 +63,13 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
     setServerError(null)
     try {
       await login(values.email, values.password, remember)
-      if (onSuccess) onSuccess()
-      navigate('/', { replace: true })
+      if (onSuccess) {
+        // A dialog (homepage auth modal) closes itself; it must not steal the current page.
+        onSuccess()
+        return
+      }
+      // ProtectedRoute stored the page the visitor wanted before bouncing to /login.
+      navigate(resolvePostLoginPath(location.state), { replace: true })
     } catch (error) {
       // In nguyên nhân thật ra console để debug, còn UI hiển thị câu diễn giải
       // từ API (sai mật khẩu, 403, 500, server chưa chạy…) thay vì một câu cứng.

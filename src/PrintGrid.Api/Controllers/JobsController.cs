@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
+using PrintGrid.Modules.Scheduling.Application.DTOs;
 using PrintGrid.Modules.Scheduling.Application.Queries;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.SharedKernel.Results;
@@ -37,12 +38,54 @@ public class JobsController : ControllerBase
         _models = models;
     }
 
+    /// <summary>True for the two lab roles, which are scoped to one lab (BR-ACCESS-003/004).</summary>
+    private bool CallerIsLab =>
+        User.IsInRole(Roles.LabManager) || User.IsInRole(Roles.LabOperator);
+
+    /// <summary>
+    /// Resolves the lab the caller belongs to. Legacy labs without an owner fall back to the
+    /// first unclaimed lab, matching GetMyLabQuery's existing behaviour.
+    /// </summary>
+    private async Task<Guid?> CallerLabIdAsync(CancellationToken cancellationToken)
+    {
+        var userId = User.GetCustomerId();
+        if (userId is null) return null;
+        var result = await _sender.Send(new GetMyLabQuery(userId.Value), cancellationToken);
+        return result.IsSuccess ? result.Value?.Id : null;
+    }
+
+    /// <summary>
+    /// BR-ACCESS-001/003: a lab may only touch a job currently assigned to it. Returns a
+    /// Forbid result when it may not, or null when the action may proceed. Ops/hub pass.
+    /// A missing job is left to the command so the caller still gets its 404.
+    /// </summary>
+    private async Task<IActionResult?> ForbidIfNotCallersJobAsync(Guid jobId, CancellationToken cancellationToken)
+    {
+        if (!CallerIsLab) return null;
+
+        var labId = await CallerLabIdAsync(cancellationToken);
+        if (labId is null) return Forbid();
+
+        var job = await _sender.Send(new GetJobQuery(jobId), cancellationToken);
+        if (job.IsFailure) return null;
+
+        return job.Value.LabId == labId ? null : Forbid();
+    }
+
     [HttpGet]
     [Authorize(Policy = Policies.RequireProduction)]
     // Lab/Hub/Ops each read the job board — they filter by status in the UI.
     public async Task<IActionResult> GetJobs([FromQuery] JobStatus? status, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetJobsQuery(status ?? JobStatus.Pending), cancellationToken);
+        // A lab only sees work placed at its own lab; Ops/Hub keep the network-wide board.
+        Guid? labFilter = null;
+        if (CallerIsLab)
+        {
+            labFilter = await CallerLabIdAsync(cancellationToken);
+            if (labFilter is null) return Ok(Array.Empty<JobDto>());
+        }
+
+        var result = await _sender.Send(new GetJobsQuery(status ?? JobStatus.Pending, labFilter), cancellationToken);
         if (result.IsFailure) return BadRequest(result.Error);
         var jobs = result.Value;
         if (status == JobStatus.AwaitingInspection &&
@@ -55,6 +98,7 @@ public class JobsController : ControllerBase
     [Authorize(Policy = Policies.RequireLab)]
     public async Task<IActionResult> Accept(Guid jobId, CancellationToken cancellationToken)
     {
+        if (await ForbidIfNotCallersJobAsync(jobId, cancellationToken) is { } forbidden) return forbidden;
         var result = await _sender.Send(new AcceptJobCommand(jobId), cancellationToken);
         return ToResult(result);
     }
@@ -71,6 +115,18 @@ public class JobsController : ControllerBase
         var job = await _sender.Send(new GetJobQuery(jobId), cancellationToken);
         if (job.IsFailure)
             return NotFound(new { error = new { code = "not_found", message = job.Error.Message } });
+
+        // BR-ACCESS-001/003/004: a lab may only download the file of a job currently placed
+        // at its own lab, and only while the job is live (plus a 4h grace after completion).
+        if (CallerIsLab)
+        {
+            var labId = await CallerLabIdAsync(cancellationToken);
+            if (labId is null || job.Value.LabId != labId) return Forbid();
+            if (job.Value.Status == JobStatus.Completed.ToString()
+                && job.Value.CompletedAtUtc is { } completedAt
+                && DateTime.UtcNow - completedAt > TimeSpan.FromHours(4))
+                return Forbid();
+        }
 
         var order = await _orders.GetByItemIdAsync(job.Value.OrderItemId, cancellationToken);
         var item = order?.Items.FirstOrDefault(i => i.Id == job.Value.OrderItemId);
@@ -105,6 +161,7 @@ public class JobsController : ControllerBase
     [Authorize(Policy = Policies.RequireLab)]
     public async Task<IActionResult> Decline(Guid jobId, [FromBody] DeclineJobRequest request, CancellationToken cancellationToken)
     {
+        if (await ForbidIfNotCallersJobAsync(jobId, cancellationToken) is { } forbidden) return forbidden;
         var result = await _sender.Send(new DeclineJobCommand(jobId, request.Reason), cancellationToken);
         return ToResult(result);
     }
@@ -113,6 +170,7 @@ public class JobsController : ControllerBase
     [Authorize(Policy = Policies.RequireLab)]
     public async Task<IActionResult> Start(Guid jobId, CancellationToken cancellationToken)
     {
+        if (await ForbidIfNotCallersJobAsync(jobId, cancellationToken) is { } forbidden) return forbidden;
         var result = await _sender.Send(new StartJobCommand(jobId), cancellationToken);
         return ToResult(result);
     }
@@ -123,6 +181,7 @@ public class JobsController : ControllerBase
     [RequestSizeLimit(26 * 1024 * 1024)]
     public async Task<IActionResult> Complete(Guid jobId, [FromForm] CompleteJobRequest request, CancellationToken cancellationToken)
     {
+        if (await ForbidIfNotCallersJobAsync(jobId, cancellationToken) is { } forbidden) return forbidden;
         if (request.Photos is null || request.Photos.Count is < 1 or > 5)
             return BadRequest(new { error = new { code = "validation_error", message = "Tải lên từ 1 đến 5 ảnh QC." } });
         if (request.Photos.Any(photo =>
@@ -163,6 +222,7 @@ public class JobsController : ControllerBase
         [FromBody] ReportJobFailureRequest request,
         CancellationToken cancellationToken)
     {
+        if (await ForbidIfNotCallersJobAsync(jobId, cancellationToken) is { } forbidden) return forbidden;
         var result = await _sender.Send(
             new ReportJobFailureCommand(jobId, request.Reason), cancellationToken);
 

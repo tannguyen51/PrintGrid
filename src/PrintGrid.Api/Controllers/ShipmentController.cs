@@ -10,11 +10,11 @@ namespace PrintGrid.Api.Controllers;
 /// <summary>
 /// Hub goods-out / delivery (FR-HUB tail of the core flow). The hub ships the parcel (tracking required)
 /// and later confirms physical handover. The customer's warranty anchor is NOT set here — that happens
-/// on <c>POST /orders/{orderId}/confirm-receipt</c>. Requires the hub policy.
+/// on <c>POST /orders/{orderId}/confirm-receipt</c>. Hub actions require the hub policy; the refund
+/// action is an ops/finance concern and requires the ops policy.
 /// </summary>
 [ApiController]
 [Route("api/v1/hub/orders")]
-[Authorize(Policy = Policies.RequireHub)]
 public class ShipmentController : ControllerBase
 {
     private readonly ISender _sender;
@@ -22,6 +22,7 @@ public class ShipmentController : ControllerBase
     public ShipmentController(ISender sender) => _sender = sender;
 
     [HttpGet("shipment-queue")]
+    [Authorize(Policy = Policies.RequireHub)]
     public async Task<IActionResult> GetShipmentQueue(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetShipmentQueueQuery(), cancellationToken);
@@ -29,6 +30,7 @@ public class ShipmentController : ControllerBase
     }
 
     [HttpPost("{orderId:guid}/ship")]
+    [Authorize(Policy = Policies.RequireHub)]
     public async Task<IActionResult> Ship(Guid orderId, [FromBody] ShipRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ShipOrderCommand(orderId, request.TrackingNumber), cancellationToken);
@@ -36,6 +38,7 @@ public class ShipmentController : ControllerBase
     }
 
     [HttpPost("ship-consolidated")]
+    [Authorize(Policy = Policies.RequireHub)]
     public async Task<IActionResult> ShipConsolidated([FromBody] ShipConsolidatedRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
@@ -47,6 +50,7 @@ public class ShipmentController : ControllerBase
     }
 
     [HttpPost("{orderId:guid}/deliver")]
+    [Authorize(Policy = Policies.RequireHub)]
     public async Task<IActionResult> Deliver(Guid orderId, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new DeliverOrderCommand(orderId), cancellationToken);
@@ -54,13 +58,17 @@ public class ShipmentController : ControllerBase
     }
 
     [HttpPost("deliver-consolidated")]
+    [Authorize(Policy = Policies.RequireHub)]
     public async Task<IActionResult> DeliverConsolidated([FromBody] DeliverConsolidatedRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new DeliverConsolidatedOrdersCommand(request.OrderIds), cancellationToken);
         return ToResult(result);
     }
 
+    // Ops/finance — deliberately NOT the hub policy (method-level [Authorize] does not override the
+    // controller's: policies combine, so the controller-level hub policy had to move onto the other actions).
     [HttpPost("{orderId:guid}/refund")]
+    [Authorize(Policy = Policies.RequireOps)]
     public async Task<IActionResult> RefundOrder(Guid orderId, [FromBody] RefundOrderRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new RefundOrderWithinScopeCommand(orderId, request.Amount, request.Reason), cancellationToken);

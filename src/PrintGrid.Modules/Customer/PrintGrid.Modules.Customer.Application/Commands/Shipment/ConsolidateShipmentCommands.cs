@@ -94,7 +94,8 @@ public class ConsolidateShipmentCommandHandler :
         var tracking = command.TrackingNumber.Trim();
 
         // FR-CUST-012 AC02 / BR-PAY-008: a consolidated package may only ship when every included
-        // order is settled — one unpaid order blocks the whole package.
+        // order is settled — one unpaid order blocks the whole package. The same QC-completed gate
+        // applies to every member: one item still in QualityCheck/Pending blocks the whole package.
         foreach (var order in loaded)
         {
             if (!order.IsSettled)
@@ -103,6 +104,10 @@ public class ConsolidateShipmentCommandHandler :
                 return Result.Failure<ConsolidatedShipmentResultDto>(Error.Conflict(
                     $"Đơn {order.OrderNumber} chưa tất toán đủ — còn thiếu {shortfall:N0} {order.TotalPrice.Currency}, không thể xuất kho."));
             }
+
+            var gate = ShipmentGate.EnsureReadyToLeaveHub(order);
+            if (gate.IsFailure)
+                return Result.Failure<ConsolidatedShipmentResultDto>(gate.Error);
         }
 
         foreach (var order in loaded)

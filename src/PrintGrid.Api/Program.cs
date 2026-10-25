@@ -45,6 +45,9 @@ builder.Services.AddHangfireServer();
 
 builder.Services.AddScoped<AnalyzeModelJob>();
 builder.Services.AddScoped<EmailDeliveryJob>();
+// Registered explicitly like the other recurring jobs so the nightly calibration never
+// depends on Hangfire's create-if-missing activator.
+builder.Services.AddScoped<CalibrationNightlyJob>();
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "postgres")

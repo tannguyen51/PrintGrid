@@ -43,6 +43,7 @@ const CustomerLayout = lazy(() => import('./CustomerLayout').then((m) => ({ defa
 const ModelPreviewPage = lazy(() => import('../features/models/ModelPreviewPage'))
 const SlaReportPage = lazy(() => import('../features/ops/SlaReportPage'))
 const RefundsPage = lazy(() => import('../features/ops/RefundsPage'))
+const PaymentsPage = lazy(() => import('../features/ops/PaymentsPage'))
 const DesignRequestsPage = lazy(() => import('../features/ops/DesignRequestsPage'))
 const DesignRequestPage = lazy(() => import('../features/design/DesignRequestPage'))
 
@@ -289,6 +290,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
               <RefundsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ops/payments"
+          element={
+            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+              <PaymentsPage />
             </ProtectedRoute>
           }
         />

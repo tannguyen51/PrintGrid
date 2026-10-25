@@ -160,6 +160,54 @@ public class OrderTests
         order.ReceiptConfirmedBy.Should().Be(customerId);
     }
 
+    [Fact]
+    public void Refund_cannot_exceed_the_amount_actually_paid()
+    {
+        var order = OrderFromReadyQuote();
+        order.ApplyPayment(100_000m, "partial");
+
+        var result = order.RefundWithinOriginalOrderScope(100_001m);
+
+        result.IsFailure.Should().BeTrue("the refund ceiling is what the customer actually paid, not the quoted total");
+        result.Error.Code.Should().Be("conflict");
+        result.Error.Message.Should().Contain("đã thu").And.Contain("còn có thể hoàn");
+        order.RefundedAmount.Should().Be(0m);
+        order.IsFullyRefunded.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Refunding_everything_paid_marks_the_order_as_fully_refunded()
+    {
+        var order = OrderFromReadyQuote();
+        order.ApplyPayment(300_000m, "full");
+
+        var result = order.RefundWithinOriginalOrderScope(300_000m);
+
+        result.IsSuccess.Should().BeTrue(result.Error.Message);
+        order.RefundedAmount.Should().Be(300_000m);
+        order.IsFullyRefunded.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Partial_refund_is_not_considered_fully_refunded()
+    {
+        var order = OrderFromReadyQuote();
+        order.ApplyPayment(300_000m, "full");
+
+        var result = order.RefundWithinOriginalOrderScope(100_000m);
+
+        result.IsSuccess.Should().BeTrue(result.Error.Message);
+        order.IsFullyRefunded.Should().BeFalse();
+    }
+
+    [Fact]
+    public void An_unpaid_order_is_never_fully_refunded()
+    {
+        var order = OrderFromReadyQuote();
+
+        order.IsFullyRefunded.Should().BeFalse("nothing was collected, so there is nothing to refund");
+    }
+
     private static Order OrderInQualityCheck()
     {
         var order = OrderFromReadyQuote();

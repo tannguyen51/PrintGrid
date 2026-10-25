@@ -92,6 +92,8 @@ public class PlacedOrderConfirmationTests
 
         var configuration = Substitute.For<IConfiguration>();
         configuration["Payment:DepositPercent"].Returns("50");
+        // These tests pin the deposit-gated flow, so auto-confirm-on-place must be explicitly disabled.
+        configuration["Payment:AutoConfirmOnPlace"].Returns("false");
 
         var handler = new PlaceOrderCommandHandler(quotes, orders, uow, clock, configuration);
 

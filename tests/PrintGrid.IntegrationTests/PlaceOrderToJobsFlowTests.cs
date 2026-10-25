@@ -50,7 +50,11 @@ public class PlaceOrderToJobsFlowTests : IAsyncLifetime
             builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(
                 new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:DefaultConnection"] = _postgres.GetConnectionString()
+                    ["ConnectionStrings:DefaultConnection"] = _postgres.GetConnectionString(),
+                    // This test owns the real deposit chain: placement must stay PaymentPending
+                    // and only mark-paid may raise OrderConfirmedEvent. The demo default
+                    // (Payment:AutoConfirmOnPlace=true) would short-circuit that.
+                    ["Payment:AutoConfirmOnPlace"] = "false"
                 }));
         });
 
@@ -171,7 +175,10 @@ public class PlaceOrderToJobsFlowTests : IAsyncLifetime
         job.Specification.MaterialGrams.Should().Be(80m, "40 g per unit × 2");
         job.Specification.RequiredVolume.WidthMm.Should().Be(60m);
         job.Specification.RequiredVolume.HeightMm.Should().Be(40m);
-        job.Status.Should().Be(JobStatus.Pending, "job creation does not assign anything");
+        // Auto-assign runs right after the deposit, but this test seeds no labs/machines, so
+        // the engine can only report NoCapableMachine and the job legitimately stays Pending
+        // (with an ops escalation) instead of being silently dropped.
+        job.Status.Should().Be(JobStatus.Pending);
         job.InternalDueDate.Should().Be(
             promised.AddDays(-OrderConfirmedEventHandler.HubAndTransitBufferDays),
             "BR-SCHED-001: internal due is the promised date minus the hub buffer");

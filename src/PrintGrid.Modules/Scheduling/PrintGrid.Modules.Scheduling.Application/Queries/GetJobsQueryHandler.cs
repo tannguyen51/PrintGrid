@@ -30,6 +30,12 @@ public class GetJobsQueryHandler : IRequestHandler<GetJobsQuery, Result<IReadOnl
     public async Task<Result<IReadOnlyList<JobDto>>> Handle(GetJobsQuery query, CancellationToken cancellationToken)
     {
         var entities = await _jobs.GetByStatusAsync(query.Status, cancellationToken);
+
+        // BR-ACCESS-004: a lab only ever sees its own work. The controller supplies the
+        // caller's lab; ops/hub pass null and keep the network-wide board.
+        if (query.LabId is { } labId)
+            entities = entities.Where(j => j.LabId == labId).ToList();
+
         var now = DateTime.UtcNow;
 
         if (query.Status == JobStatus.Assigned)

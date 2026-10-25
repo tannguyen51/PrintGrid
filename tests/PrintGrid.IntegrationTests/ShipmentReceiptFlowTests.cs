@@ -107,6 +107,8 @@ public class ShipmentReceiptFlowTests : IAsyncLifetime
             order.ApplyPayment(order.TotalPrice.Amount, "integration-settlement").IsSuccess.Should().BeTrue();
             order.TransitionTo(OrderStatus.InProduction);
             order.TransitionTo(OrderStatus.QualityCheck);
+            // Goods-out gate: the hub may only ship once every item has passed QC (ItemStatus = Completed).
+            foreach (var item in order.Items) item.UpdateStatus("Completed");
 
             db.Add(order);
             await db.SaveChangesAsync();

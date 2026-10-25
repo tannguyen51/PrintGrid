@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -29,7 +30,7 @@ import { PageBackButton } from '../../shared/components/PageBackButton'
 import { apiClient } from '../../shared/api/apiClient'
 import { JOB_LABELS } from '../jobs/jobTypes'
 import { useJobs } from '../jobs/useJobs'
-import { useOpsMonitor, useOpsReassign, useOpsReassignPreview, type OpsRiskJob } from '../ops/useOps'
+import { useOpsMonitor, useOpsReassign, useOpsReassignPreview, type DateChangeReason, type OpsRiskJob } from '../ops/useOps'
 
 const fmtDate = (value?: string | null) => value ? new Date(value.includes('T') ? value : `${value}T00:00:00`).toLocaleString('vi-VN') : '—'
 
@@ -47,15 +48,27 @@ export default function SchedulingBoardPage() {
   const reassign = useOpsReassign()
   const [target, setTarget] = useState<OpsRiskJob | null>(null)
   const [reason, setReason] = useState('')
+  const [dateChangeReason, setDateChangeReason] = useState<DateChangeReason | ''>('')
   const [step, setStep] = useState<1 | 2>(1)
   const preview = useOpsReassignPreview(target?.jobId ?? null)
-  const close = () => { setTarget(null); setReason(''); setStep(1); reassign.reset() }
-  const open = (risk: OpsRiskJob) => { setTarget(risk); setReason(''); setStep(1) }
+  const close = () => { setTarget(null); setReason(''); setDateChangeReason(''); setStep(1); reassign.reset() }
+  const open = (risk: OpsRiskJob) => { setTarget(risk); setReason(''); setDateChangeReason(''); setStep(1) }
   async function confirm() {
     if (!target) return
     const impact = Boolean(preview.data?.requiresCustomerApproval)
     if (impact && step === 1) { setStep(2); return }
-    await reassign.mutateAsync({ jobId: target.jobId, reason: reason.trim(), confirmCustomerDateImpact: impact && step === 2 })
+    let reasonCode: DateChangeReason | undefined
+    if (impact && step === 2) {
+      // B16 requires one of the three approved conditions before a date-change request exists.
+      if (!dateChangeReason) return
+      reasonCode = dateChangeReason
+    }
+    await reassign.mutateAsync({
+      jobId: target.jobId,
+      reason: reason.trim(),
+      confirmCustomerDateImpact: impact && step === 2,
+      dateChangeReason: reasonCode,
+    })
   }
 
   // Pending-job board — assign / repair-risk (HEAD).
@@ -155,8 +168,20 @@ export default function SchedulingBoardPage() {
       {preview.data && <Alert severity={preview.data.requiresCustomerApproval ? 'warning' : 'success'}>{preview.data.message}{preview.data.proposedCustomerDate ? ` Ngày đề xuất: ${fmtDate(preview.data.proposedCustomerDate)}.` : ''}</Alert>}
       {step === 2 && <Alert severity="warning">Xác nhận này chỉ tạo yêu cầu đổi ngày cho khách. Hệ thống giữ nguyên lịch hiện tại cho đến khi khách duyệt.</Alert>}
       <TextField label="Lý do can thiệp" value={reason} onChange={e => setReason(e.target.value)} multiline minRows={3} required helperText="Tối thiểu 10 ký tự; lý do được ghi bất biến vào audit log." />
+      {step === 2 && <TextField
+        select
+        label="Điều kiện đổi ngày (B16)"
+        value={dateChangeReason}
+        onChange={e => setDateChangeReason(e.target.value as DateChangeReason)}
+        required
+        helperText="Bắt buộc chọn một trong ba điều kiện đã được duyệt để tạo yêu cầu đổi ngày cho khách."
+      >
+        <MenuItem value="CustomerRequested">Khách xin dời</MenuItem>
+        <MenuItem value="ForceMajeure">Bất khả kháng</MenuItem>
+        <MenuItem value="ReprintDeadlineUnrecoverable">In lại ≥ 2 lần không kịp lịch</MenuItem>
+      </TextField>}
       {reassign.isError && <Alert severity="error">{(reassign.error as any)?.response?.data?.error?.message ?? 'Không thể gán lại job.'}</Alert>}
       {reassign.isSuccess && <Alert severity="success">{reassign.data.message}</Alert>}
-    </Stack></DialogContent><DialogActions><Button onClick={close}>Đóng</Button>{!reassign.isSuccess && <Button variant="contained" color={preview.data?.requiresCustomerApproval ? 'warning' : 'primary'} disabled={reason.trim().length < 10 || preview.isLoading || reassign.isPending} onClick={confirm}>{reassign.isPending ? 'Đang xử lý…' : preview.data?.requiresCustomerApproval && step === 1 ? 'Tiếp tục bước 2' : 'Xác nhận can thiệp'}</Button>}</DialogActions></Dialog>
+    </Stack></DialogContent><DialogActions><Button onClick={close}>Đóng</Button>{!reassign.isSuccess && <Button variant="contained" color={preview.data?.requiresCustomerApproval ? 'warning' : 'primary'} disabled={reason.trim().length < 10 || preview.isLoading || reassign.isPending || (step === 2 && !dateChangeReason)} onClick={confirm}>{reassign.isPending ? 'Đang xử lý…' : preview.data?.requiresCustomerApproval && step === 1 ? 'Tiếp tục bước 2' : 'Xác nhận can thiệp'}</Button>}</DialogActions></Dialog>
   </Box>
 }

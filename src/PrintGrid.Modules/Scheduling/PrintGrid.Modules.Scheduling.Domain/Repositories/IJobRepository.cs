@@ -10,6 +10,12 @@ public interface IJobRepository
     Task<IReadOnlyList<Job>> GetByStatusAsync(JobStatus status, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Job>> GetProofApprovedForShipmentAsync(Guid labId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Job>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
+
+    /// <summary>Every job for one order item — item completion needs all of them (BR-SCHED-010 split).</summary>
+    Task<IReadOnlyList<Job>> GetByOrderItemIdAsync(Guid orderItemId, CancellationToken cancellationToken = default);
+
+    /// <summary>Jobs sealed into one hub shipment batch — the FR-HUB-001 receipt source.</summary>
+    Task<IReadOnlyList<Job>> GetByShipmentBatchIdAsync(Guid shipmentBatchId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Job>> GetOperationalAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Job>> GetActiveByMachineAsync(Guid machineId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Job>> GetByLabIdAsync(Guid labId, CancellationToken cancellationToken = default);

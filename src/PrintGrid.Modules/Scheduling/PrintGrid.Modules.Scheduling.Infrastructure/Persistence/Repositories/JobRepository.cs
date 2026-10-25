@@ -50,6 +50,22 @@ public class JobRepository : IJobRepository
         CancellationToken cancellationToken = default) =>
         await _context.Set<Job>().Where(j => ids.Contains(j.Id)).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Job>> GetByOrderItemIdAsync(
+        Guid orderItemId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .AsNoTracking()
+            .Where(j => j.OrderItemId == orderItemId)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Job>> GetByShipmentBatchIdAsync(
+        Guid shipmentBatchId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Set<Job>()
+            .Where(j => j.ShipmentBatchId == shipmentBatchId)
+            .OrderBy(j => j.CreatedAt)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Job>> GetOperationalAsync(CancellationToken cancellationToken = default) =>
         await _context.Set<Job>()
             .AsNoTracking()

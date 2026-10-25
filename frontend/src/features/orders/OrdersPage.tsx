@@ -18,6 +18,7 @@ import { OrderTimelineView } from './OrderTimelineView'
 import type { Order, OrderStatus } from '../../shared/types/order'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { ReprintRequestPanel } from './ReprintRequestPanel'
+import { OrderPaymentPanel } from './OrderPaymentPanel'
 
 const statusColor: Record<OrderStatus, 'warning' | 'info' | 'success' | 'error'> = {
   PaymentPending: 'warning',
@@ -55,9 +56,35 @@ export default function OrdersPage() {
     {
       field: 'status',
       headerName: 'Trạng thái',
-      width: 170,
+      width: 230,
       renderCell: (params) => (
-        <Chip size="small" label={statusLabel[params.row.status] ?? params.row.status} color={statusColor[params.row.status] ?? 'info'} />
+        <Stack spacing={0.25} sx={{ py: 0.75, height: '100%', justifyContent: 'center' }}>
+          <Chip
+            size="small"
+            label={statusLabel[params.row.status] ?? params.row.status}
+            color={statusColor[params.row.status] ?? 'info'}
+            sx={{ alignSelf: 'flex-start' }}
+          />
+          {params.row.status === 'PaymentPending' && (
+            <Typography variant="caption" sx={{ color: 'warning.main', lineHeight: 1.2 }}>
+              Cần thanh toán tiền cọc để xác nhận đơn
+            </Typography>
+          )}
+          {typeof params.row.depositAmount === 'number' && params.row.depositAmount > 0 && (
+            <Typography variant="caption" color="text.disabled" sx={{ lineHeight: 1.2 }}>
+              Cọc: {fmt(params.row.depositAmount)} đ
+            </Typography>
+          )}
+          {typeof params.row.refundedAmount === 'number' && params.row.refundedAmount > 0 && (
+            <Chip
+              size="small"
+              variant="outlined"
+              color="error"
+              label={`Đã hoàn ${fmt(params.row.refundedAmount)} đ`}
+              sx={{ alignSelf: 'flex-start' }}
+            />
+          )}
+        </Stack>
       ),
     },
     {
@@ -121,6 +148,7 @@ export default function OrdersPage() {
               columns={columns}
               loading={isLoading}
               autoHeight
+              rowHeight={64}
               disableRowSelectionOnClick
               initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
               pageSizeOptions={[10, 25, 50]}
@@ -150,6 +178,12 @@ export default function OrdersPage() {
             </Box>
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
             <Box sx={{ p: 3, flex: 1, overflowY: 'auto' }}>
+              {selected.status === 'PaymentPending' && (
+                <>
+                  <OrderPaymentPanel orderId={selected.id} />
+                  <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.08)' }} />
+                </>
+              )}
               <OrderTimelineView orderId={selected.id} />
 
               <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.08)' }} />

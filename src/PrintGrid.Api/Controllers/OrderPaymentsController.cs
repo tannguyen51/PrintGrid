@@ -20,6 +20,17 @@ public class OrderPaymentsController : ControllerBase
 
     public OrderPaymentsController(ISender sender) => _sender = sender;
 
+    /// <summary>Ops queue: orders still waiting for their deposit (PaymentPending).</summary>
+    [HttpGet("pending-payment")]
+    [Authorize(Policy = Policies.RequireOps)]
+    public async Task<IActionResult> GetPendingPayment(
+        [FromQuery] string? search,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetOrdersPendingPaymentQuery(search), cancellationToken);
+        return result.IsFailure ? ToError(result.Error) : Ok(result.Value);
+    }
+
     [HttpGet("{orderId:guid}/payment")]
     [Authorize(Policy = Policies.RequireCustomer)]
     public async Task<IActionResult> GetPayment(Guid orderId, CancellationToken cancellationToken)

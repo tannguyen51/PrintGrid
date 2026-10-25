@@ -5,4 +5,4 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Scheduling.Application.Queries;
 
-public record GetJobsQuery(JobStatus Status) : IRequest<Result<IReadOnlyList<JobDto>>>;
+public record GetJobsQuery(JobStatus Status, Guid? LabId = null) : IRequest<Result<IReadOnlyList<JobDto>>>;

@@ -1,10 +1,46 @@
 using MediatR;
+using PrintGrid.Modules.Customer.Domain.Entities;
 using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.SharedKernel.Events;
 using PrintGrid.SharedKernel.Interfaces;
 using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Customer.Application.Commands.Shipment;
+
+/// <summary>
+/// Shared goods-out gate for every path that moves an order into <c>Shipping</c>: a fully refunded
+/// order can no longer leave the hub, and every item must have completed the hub QC gate
+/// (<c>Completed</c> — job done, hub inspection passed and proof approved). "QualityCheck" is only
+/// a request for inspection and is deliberately NOT enough.
+/// </summary>
+internal static class ShipmentGate
+{
+    internal const string CompletedItemStatus = "Completed";
+
+    internal static Result EnsureReadyToLeaveHub(Order order)
+    {
+        if (order.IsFullyRefunded)
+        {
+            return Result.Failure(Error.Conflict(
+                $"Đơn {order.OrderNumber} đã được hoàn tiền toàn phần " +
+                $"(đã thu {order.PaidAmount:N0} {order.TotalPrice.Currency}, đã hoàn {order.RefundedAmount:N0} {order.TotalPrice.Currency}), không thể xuất kho."));
+        }
+
+        var notCompleted = order.Items
+            .Where(i => !string.Equals(i.ItemStatus, CompletedItemStatus, StringComparison.Ordinal))
+            .Select(i => $"{i.Id} ({i.ItemStatus})")
+            .ToList();
+
+        if (notCompleted.Count > 0)
+        {
+            return Result.Failure(Error.Conflict(
+                $"Đơn {order.OrderNumber} còn {notCompleted.Count} item chưa hoàn tất QC: {string.Join(", ", notCompleted)}. " +
+                $"Chỉ xuất kho khi mọi item ở trạng thái {CompletedItemStatus}."));
+        }
+
+        return Result.Success();
+    }
+}
 
 public class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, Result>
 {
@@ -35,6 +71,11 @@ public class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, Result>
             return Result.Failure(Error.Conflict(
                 $"Đơn {order.OrderNumber} chưa tất toán đủ — còn thiếu {shortfall:N0} {order.TotalPrice.Currency}, không thể xuất kho."));
         }
+
+        // Fully-refunded orders are dead, and no item may skip the QC-completed gate.
+        var gate = ShipmentGate.EnsureReadyToLeaveHub(order);
+        if (gate.IsFailure)
+            return gate;
 
         var result = order.Ship(command.TrackingNumber);
         if (result.IsFailure)

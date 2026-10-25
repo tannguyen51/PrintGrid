@@ -57,6 +57,12 @@ public class Order : AggregateRoot<Guid>
     /// <summary>FR-CUST-012 / BR-PAY-008: the order is fully paid and may leave the hub.</summary>
     public bool IsSettled => PaidAmount >= TotalPrice.Amount;
 
+    /// <summary>
+    /// The customer has been refunded everything they actually paid, so there is nothing left to ship
+    /// against. An order that never collected money (PaidAmount = 0) is never "fully refunded".
+    /// </summary>
+    public bool IsFullyRefunded => PaidAmount > 0m && RefundedAmount >= PaidAmount;
+
     public void MarkAsDelayed() => IsDelayed = true;
 
     public void SetReadyForPackingAt(DateTime readyAtUtc) => ReadyForPackingAtUtc = readyAtUtc;
@@ -246,6 +252,18 @@ public class Order : AggregateRoot<Guid>
         if (amount <= 0m)
             return Result.Failure(Error.Validation("Số tiền hoàn phải lớn hơn 0."));
 
+        // The real ceiling is what the customer actually paid — a refund can only give back money
+        // that was collected, never the quoted (unpaid) balance.
+        if (RefundedAmount + amount > PaidAmount)
+        {
+            var refundable = Math.Max(0m, PaidAmount - RefundedAmount);
+            return Result.Failure(Error.Conflict(
+                $"Số tiền hoàn ({amount:N0} {TotalPrice.Currency}) vượt quá số tiền thực thu còn có thể hoàn của đơn {OrderNumber}: " +
+                $"đã thu {PaidAmount:N0} {TotalPrice.Currency}, đã hoàn {RefundedAmount:N0} {TotalPrice.Currency}, " +
+                $"còn có thể hoàn {refundable:N0} {TotalPrice.Currency}."));
+        }
+
+        // Enclosing business ceiling: a refund never exceeds the original order value (BR-LOG-002 / AC02).
         if (RefundedAmount + amount > TotalPrice.Amount)
         {
             return Result.Failure(Error.Conflict(
