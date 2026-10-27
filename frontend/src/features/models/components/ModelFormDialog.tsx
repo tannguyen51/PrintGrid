@@ -16,6 +16,10 @@ import {
 import { SaveRounded, UploadFileRounded } from '@mui/icons-material'
 import type { ThreeDModel } from '../modelTypes'
 import { modelSchema, type ModelFormValues } from '../modelSchema'
+import { ModelViewer } from '../../../shared/components/ModelViewer'
+
+/** Formats the in-browser viewer can render. 3MF is a ZIP package — no browser loader. */
+const PREVIEWABLE_FORMATS = ['STL', 'OBJ', 'GLB', 'GLTF']
 
 interface ModelFormDialogProps {
   open: boolean
@@ -48,7 +52,39 @@ function defaultsFor(editing: ThreeDModel | null): ModelFormValues {
 export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, error }: ModelFormDialogProps) {
   const [file, setFile] = useState<File | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const isCreate = !editing
+
+  // Preview the picked file locally (blob URL) before it is uploaded — the upload
+  // itself only happens on Save, which previously left the dialog with no 3D view.
+  const previewFormat = file ? (file.name.split('.').pop() ?? '').toUpperCase() : ''
+  const previewable = PREVIEWABLE_FORMATS.includes(previewFormat)
+
+  useEffect(() => {
+    if (!file || !previewable) {
+      setPreviewUrl(null)
+      if (file) {
+        console.info('[preview3d] form file NOT previewable', {
+          name: file.name,
+          format: previewFormat,
+        })
+      }
+      return
+    }
+
+    const url = URL.createObjectURL(file)
+    setPreviewUrl(url)
+    console.info('[preview3d] form preview URL ready', {
+      name: file.name,
+      format: previewFormat,
+      bytes: file.size,
+    })
+
+    return () => {
+      URL.revokeObjectURL(url)
+      console.info('[preview3d] form preview URL revoked', { name: file.name })
+    }
+  }, [file, previewable, previewFormat])
 
   const {
     register,
@@ -72,6 +108,11 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
     setFileError(null)
     if (next) {
       const extension = next.name.split('.').pop()?.toLowerCase()
+      console.info('[preview3d] form file selected', {
+        name: next.name,
+        sizeBytes: next.size,
+        extension,
+      })
       if (!extension || !['stl', 'obj', '3mf', 'glb'].includes(extension)) {
         setFile(null)
         setFileError('Chỉ chấp nhận file STL, OBJ, 3MF hoặc GLB.')
@@ -135,6 +176,33 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
                   {file ? `Đã chọn: ${file.name} (${(file.size / 1024).toFixed(1)} KB)` : 'Chọn file STL / OBJ / 3MF / GLB để tải lên'}
                 </Button>
                 {fileError && <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.75 }}>{fileError}</Typography>}
+
+                {/* ── Local 3D preview as soon as a file is picked ── */}
+                {file && previewable && previewUrl && (
+                  <Box
+                    sx={{
+                      mt: 2,
+                      height: 260,
+                      borderRadius: 3,
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                    }}
+                  >
+                    <ModelViewer
+                      url={previewUrl}
+                      format={previewFormat}
+                      fit
+                      height={260}
+                      background="#050505"
+                    />
+                  </Box>
+                )}
+                {file && !previewable && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+                    Định dạng {previewFormat || 'này'} chưa xem trước 3D được trong trình duyệt —
+                    file vẫn được tải lên và phân tích hình học bình thường.
+                  </Typography>
+                )}
               </Box>
             )}
 
