@@ -19,8 +19,8 @@ import { ModelViewer } from '../../shared/components/ModelViewer'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { landing } from '../../shared/theme/landing'
 
-/** Formats the in-browser viewer can render (same list as ModelDetailDrawer). 3MF is a ZIP package. */
-const PREVIEWABLE_FORMATS = ['GLB', 'GLTF', 'STL', 'OBJ']
+/** Formats the in-browser viewer can render (same list as ModelDetailDrawer). */
+const PREVIEWABLE_FORMATS = ['GLB', 'GLTF', 'STL', 'OBJ', '3MF']
 
 /** Same formatting as ModelDetailDrawer so the numbers match the analysis table exactly. */
 function formatDimensions(model: ThreeDModel): string {

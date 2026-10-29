@@ -1,6 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '../../shared/api/apiClient'
 
+export interface NetworkRegion {
+  city: string
+  labs: number
+  machines: number
+}
+
 export interface NetworkStats {
   totalLabs: number
   activeLabs: number
@@ -10,6 +16,7 @@ export interface NetworkStats {
   slsMachines: number
   averageOnTimeDeliveryRate: number
   averageFirstPassYield: number
+  regions: NetworkRegion[]
 }
 
 /**

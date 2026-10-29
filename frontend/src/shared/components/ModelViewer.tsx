@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { Environment, Lightformer, OrbitControls, useGLTF, useProgress } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
+import { ThreeMFLoader } from 'three/examples/jsm/loaders/3MFLoader.js'
 import { Box, Button, CircularProgress, Stack, Typography, type SxProps } from '@mui/material'
 
 /**
@@ -77,6 +78,15 @@ function ObjModel({ url, fit }: { url: string; fit: boolean }) {
   const object = useLoader(OBJLoader, url)
   useEffect(() => {
     console.info('[preview3d] OBJ loaded', { children: object.children.length })
+  }, [object])
+  return <Fitted object={object} fit={fit} />
+}
+
+/** 3MF is a ZIP package; three's 3MFLoader unzips it (fflate) and parses the model XML. */
+function ThreeMfModel({ url, fit }: { url: string; fit: boolean }) {
+  const object = useLoader(ThreeMFLoader, url)
+  useEffect(() => {
+    console.info('[preview3d] 3MF loaded', { children: object.children.length })
   }, [object])
   return <Fitted object={object} fit={fit} />
 }
@@ -155,6 +165,8 @@ function Scene({ url, format, fit, cameraPosition, autoRotate, background, onCon
           <StlModel url={url} fit={fit} />
         ) : normalized === 'OBJ' ? (
           <ObjModel url={url} fit={fit} />
+        ) : normalized === '3MF' ? (
+          <ThreeMfModel url={url} fit={fit} />
         ) : (
           <GltfModel url={url} fit={fit} />
         )}

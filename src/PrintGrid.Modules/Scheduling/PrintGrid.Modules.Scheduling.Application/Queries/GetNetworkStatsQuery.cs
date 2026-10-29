@@ -13,4 +13,8 @@ public record NetworkStatsDto(
     int SlaMachines,
     int SlsMachines,
     decimal AverageOnTimeDeliveryRate,
-    decimal AverageFirstPassYield);
+    decimal AverageFirstPassYield,
+    IReadOnlyList<NetworkRegionDto> Regions);
+
+/// <summary>City-level aggregate — deliberately no lab id, name or address.</summary>
+public record NetworkRegionDto(string City, int Labs, int Machines);

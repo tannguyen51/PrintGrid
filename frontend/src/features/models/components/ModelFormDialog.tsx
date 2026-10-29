@@ -18,8 +18,8 @@ import type { ThreeDModel } from '../modelTypes'
 import { modelSchema, type ModelFormValues } from '../modelSchema'
 import { ModelViewer } from '../../../shared/components/ModelViewer'
 
-/** Formats the in-browser viewer can render. 3MF is a ZIP package — no browser loader. */
-const PREVIEWABLE_FORMATS = ['STL', 'OBJ', 'GLB', 'GLTF']
+/** Formats the in-browser viewer can render — 3MF is unzipped by three's 3MFLoader. */
+const PREVIEWABLE_FORMATS = ['STL', 'OBJ', 'GLB', 'GLTF', '3MF']
 
 interface ModelFormDialogProps {
   open: boolean

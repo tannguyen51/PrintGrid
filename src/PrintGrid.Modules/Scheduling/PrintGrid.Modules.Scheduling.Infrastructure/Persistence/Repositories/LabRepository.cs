@@ -68,6 +68,17 @@ public class LabRepository : ILabRepository
         var active = labs.Where(l => l.IsActive).ToList();
         var machines = active.SelectMany(l => l.Machines).ToList();
 
+        // City-level aggregate only — the public page cannot reverse-map a single lab.
+        var regions = active
+            .GroupBy(l => string.IsNullOrWhiteSpace(l.City) ? "Khác" : l.City.Trim())
+            .Select(group => new NetworkRegionSnapshot(
+                group.Key,
+                group.Count(),
+                group.Sum(l => l.Machines.Count)))
+            .OrderByDescending(region => region.Machines)
+            .ThenBy(region => region.City)
+            .ToList();
+
         return new NetworkStatsSnapshot(
             TotalLabs: labs.Count,
             ActiveLabs: active.Count,
@@ -76,6 +87,7 @@ public class LabRepository : ILabRepository
             SlaMachines: machines.Count(m => m.Technology == PrintTechnology.Sla),
             SlsMachines: machines.Count(m => m.Technology == PrintTechnology.Sls),
             AverageOnTimeDeliveryRate: active.Count == 0 ? 0m : active.Average(l => l.OnTimeDeliveryRate),
-            AverageFirstPassYield: active.Count == 0 ? 0m : active.Average(l => l.FirstPassYield));
+            AverageFirstPassYield: active.Count == 0 ? 0m : active.Average(l => l.FirstPassYield),
+            Regions: regions);
     }
 }

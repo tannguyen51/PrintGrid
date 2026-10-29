@@ -15,8 +15,8 @@ interface ModelDetailDrawerProps {
   onPreview: (model: ThreeDModel) => void
 }
 
-/** Formats the in-browser viewer can render. 3MF is a ZIP package — no browser loader. */
-const PREVIEWABLE_FORMATS = ['GLB', 'GLTF', 'STL', 'OBJ']
+/** Formats the in-browser viewer can render — 3MF is unzipped by three's 3MFLoader. */
+const PREVIEWABLE_FORMATS = ['GLB', 'GLTF', 'STL', 'OBJ', '3MF']
 
 function formatSize(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`

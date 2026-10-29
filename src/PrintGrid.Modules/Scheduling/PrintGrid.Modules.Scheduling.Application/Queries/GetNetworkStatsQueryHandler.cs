@@ -24,6 +24,7 @@ public class GetNetworkStatsQueryHandler : IRequestHandler<GetNetworkStatsQuery,
             snapshot.SlaMachines,
             snapshot.SlsMachines,
             decimal.Round(snapshot.AverageOnTimeDeliveryRate * 100m, 1),
-            decimal.Round(snapshot.AverageFirstPassYield * 100m, 1)));
+            decimal.Round(snapshot.AverageFirstPassYield * 100m, 1),
+            snapshot.Regions.Select(region => new NetworkRegionDto(region.City, region.Labs, region.Machines)).ToList()));
     }
 }

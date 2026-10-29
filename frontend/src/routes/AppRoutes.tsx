@@ -48,6 +48,13 @@ const RefundsPage = lazy(() => import('../features/ops/RefundsPage'))
 const PaymentsPage = lazy(() => import('../features/ops/PaymentsPage'))
 const DesignRequestsPage = lazy(() => import('../features/ops/DesignRequestsPage'))
 const DesignRequestPage = lazy(() => import('../features/design/DesignRequestPage'))
+const PublicLayout = lazy(() => import('../features/public/PublicLayout').then((m) => ({ default: m.PublicLayout })))
+const SampleLibraryPage = lazy(() => import('../features/samples/SampleLibraryPage'))
+const SampleDetailPage = lazy(() => import('../features/samples/SampleDetailPage'))
+const PricingPage = lazy(() => import('../features/pricing/PricingPage'))
+const NetworkPage = lazy(() => import('../features/network/NetworkPage'))
+const GuidesPage = lazy(() => import('../features/guides/GuidesPage'))
+const AdminSamplesPage = lazy(() => import('../features/admin/AdminSamplesPage'))
 
 function RouteFallback() {
   return (
@@ -72,6 +79,14 @@ export function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/" element={<HomePage />} />
+        {/* Public screens behind the guest navbar — real routes now, no more scroll anchors. */}
+        <Route element={<PublicLayout />}>
+          <Route path="/samples" element={<SampleLibraryPage />} />
+          <Route path="/samples/:slug" element={<SampleDetailPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/network" element={<NetworkPage />} />
+          <Route path="/guides" element={<GuidesPage />} />
+        </Route>
         {/* Customer pages share the customer navbar so navigation never disappears. */}
         <Route element={<CustomerLayout />}>
         <Route
@@ -337,6 +352,10 @@ export function AppRoutes() {
         <Route
           path="/admin/catalogs"
           element={<ProtectedRoute allowedRoles={['Admin']}><AdminSharedCatalogPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/admin/samples"
+          element={<ProtectedRoute allowedRoles={['Admin']}><AdminSamplesPage /></ProtectedRoute>}
         />
         <Route
           path="/admin/qc-knowledge"

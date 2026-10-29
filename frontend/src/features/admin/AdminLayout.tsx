@@ -16,6 +16,7 @@ import {
   PeopleRounded,
   StorefrontRounded,
   TuneRounded,
+  ViewInArRounded,
 } from '@mui/icons-material'
 import type { ReactNode } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -34,6 +35,7 @@ const SECTIONS: AdminSection[] = [
   { label: 'Kho tri thức QC', href: '/admin/qc-knowledge', icon: <FactCheckRounded fontSize="small" /> },
   { label: 'Cấu hình thương mại', href: '/admin/commercial-configurations', icon: <TuneRounded fontSize="small" /> },
   { label: 'Catalogue dùng chung', href: '/admin/catalogs', icon: <CategoryRounded fontSize="small" /> },
+  { label: 'Kho mẫu 3D', href: '/admin/samples', icon: <ViewInArRounded fontSize="small" /> },
   { label: 'Trọng số chấm điểm', href: '/admin/scoring-configurations', icon: <InsightsRounded fontSize="small" /> },
   { label: 'Nhật ký kiểm toán', href: '/admin/audit-logs', icon: <HistoryRounded fontSize="small" /> },
 ]

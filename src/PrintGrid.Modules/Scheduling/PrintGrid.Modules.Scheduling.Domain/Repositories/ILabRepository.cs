@@ -24,4 +24,11 @@ public sealed record NetworkStatsSnapshot(
     int SlaMachines,
     int SlsMachines,
     decimal AverageOnTimeDeliveryRate,
-    decimal AverageFirstPassYield);
+    decimal AverageFirstPassYield,
+    IReadOnlyList<NetworkRegionSnapshot> Regions);
+
+/// <summary>
+/// Region-level aggregate (city only). The public network page must never be able to
+/// identify or enumerate an individual lab (FR-CUST-016), so no id/name leaves here.
+/// </summary>
+public sealed record NetworkRegionSnapshot(string City, int Labs, int Machines);

@@ -110,6 +110,10 @@ figcaption{
 .swatch.dash{border-top:2px dashed var(--warn)}
 .swatch.term{width:14px; height:10px; border:1.5px solid var(--accent); background:var(--accent-soft); border-radius:2px}
 .swatch.dot{width:9px; height:9px; border-radius:50%; background:var(--ink); border:0}
+.swatch.endn{
+  width:11px; height:11px; border-radius:50%; border:1.6px solid var(--ink);
+  background:radial-gradient(circle, var(--ink) 2.2px, transparent 2.6px);
+}
 
 .table-wrap{overflow-x:auto; margin-top:22px; border:1px solid var(--line); border-radius:4px; background:var(--surface)}
 table{border-collapse:collapse; width:100%; min-width:860px; font-size:13px}
@@ -159,7 +163,8 @@ tr.gap-row td:first-child code{color:var(--warn)}
 .elabel{font-family:var(--mono); font-size:9.5px; fill:var(--muted)}
 .elabel.gap{fill:var(--warn)}
 .start{fill:var(--ink)}
-.enddot{fill:var(--ink)}
+.end-ring{fill:none;stroke:var(--ink);stroke-width:1.6}
+.end-core{fill:var(--ink)}
 
 @media (max-width:640px){
   .diagram svg{min-width:640px}
@@ -214,95 +219,97 @@ tr.gap-row td:first-child code{color:var(--warn)}
 
       <figure>
         <div class="diagram">
-          <svg viewBox="0 0 1180 460" role="img" aria-label="Sơ đồ trạng thái Order: PaymentPending sang Confirmed sang InProduction sang QualityCheck sang Shipping sang Delivered; QualityCheck quay lại InProduction; Confirmed và InProduction huỷ được sang Cancelled; Delivered có vòng lặp ConfirmReceipt.">
+          <svg viewBox="0 0 1300 480" role="img" aria-label="Sơ đồ trạng thái Order: nút bắt đầu đi vào PaymentPending, rồi Confirmed, InProduction, QualityCheck, Shipping, Delivered; QualityCheck quay lại InProduction; Confirmed và InProduction huỷ được sang Cancelled; Delivered có vòng lặp ConfirmReceipt; Delivered và Cancelled đi tới nút kết thúc.">
             <defs>
               <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
                 <path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"/>
               </marker>
-              <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-                <path d="M0,0 L10,5 L0,10 z" fill="var(--warn)"/>
-              </marker>
             </defs>
 
-            <!-- start -->
-            <circle class="start" cx="34" cy="118" r="6"/>
-            <path class="edge" d="M42,118 H11" marker-end="url(#ar)"/>
+            <!-- start pseudostate -->
+            <circle class="start" cx="30" cy="128" r="7"/>
+            <path class="edge" d="M40,128 H76" marker-end="url(#ar)"/>
 
             <!-- main chain -->
-            <path class="edge" d="M161,118 H241" marker-end="url(#ar)"/>
-            <path class="edge" d="M391,118 H471" marker-end="url(#ar)"/>
-            <path class="edge" d="M621,118 H701" marker-end="url(#ar)"/>
-            <path class="edge" d="M851,118 H931" marker-end="url(#ar)"/>
+            <path class="edge" d="M226,128 H316" marker-end="url(#ar)"/>
+            <path class="edge" d="M466,128 H556" marker-end="url(#ar)"/>
+            <path class="edge" d="M706,128 H796" marker-end="url(#ar)"/>
+            <path class="edge" d="M946,128 H1086" marker-end="url(#ar)"/>
 
             <!-- rework arc -->
-            <path class="edge" d="M745,90 C700,36 600,36 566,90" marker-end="url(#ar)"/>
+            <path class="edge" d="M876,100 C840,46 690,46 646,100" marker-end="url(#ar)"/>
 
             <!-- cancel branches -->
-            <path class="edge" d="M316,146 V302" marker-end="url(#ar)"/>
-            <path class="edge" d="M546,146 L370,302" marker-end="url(#ar)"/>
+            <path class="edge" d="M391,156 V300" marker-end="url(#ar)"/>
+            <path class="edge" d="M596,156 C560,236 500,260 460,300" marker-end="url(#ar)"/>
 
             <!-- shipping to delivered -->
-            <path class="edge" d="M1006,146 V302" marker-end="url(#ar)"/>
+            <path class="edge" d="M1161,156 V300" marker-end="url(#ar)"/>
 
-            <!-- self loop ConfirmReceipt -->
-            <path class="edge" d="M1081,314 C1150,316 1150,344 1081,346" marker-end="url(#ar)"/>
+            <!-- ConfirmReceipt self loop -->
+            <path class="edge" d="M1236,316 C1292,318 1292,338 1236,340" marker-end="url(#ar)"/>
 
-            <!-- terminal exits -->
-            <path class="edge" d="M1006,358 V400" marker-end="url(#ar)"/>
-            <path class="edge" d="M316,358 V400" marker-end="url(#ar)"/>
+            <!-- to final states -->
+            <path class="edge" d="M1161,356 V416" marker-end="url(#ar)"/>
+            <path class="edge" d="M391,356 V416" marker-end="url(#ar)"/>
 
-            <!-- missing edge -->
-            <path class="edge gap" d="M86,146 C86,240 150,330 236,330" marker-end="url(#arw)"/>
+            <!-- absent transition, drawn as a stub with a cross -->
+            <path class="edge gap" d="M151,156 V238"/>
+            <path class="edge gap" d="M143,240 L159,256"/>
+            <path class="edge gap" d="M159,240 L143,256"/>
 
             <!-- nodes -->
-            <rect class="st-node" x="11" y="90" width="150" height="56" rx="10"/>
-            <text class="st-label" x="86" y="118">PaymentPending</text>
+            <rect class="st-node" x="76" y="100" width="150" height="56" rx="10"/>
+            <text class="st-label" x="151" y="128">PaymentPending</text>
 
-            <rect class="st-node" x="241" y="90" width="150" height="56" rx="10"/>
-            <text class="st-label" x="316" y="118">Confirmed</text>
+            <rect class="st-node" x="316" y="100" width="150" height="56" rx="10"/>
+            <text class="st-label" x="391" y="128">Confirmed</text>
 
-            <rect class="st-node" x="471" y="90" width="150" height="56" rx="10"/>
-            <text class="st-label" x="546" y="118">InProduction</text>
+            <rect class="st-node" x="556" y="100" width="150" height="56" rx="10"/>
+            <text class="st-label" x="631" y="128">InProduction</text>
 
-            <rect class="st-node" x="701" y="90" width="150" height="56" rx="10"/>
-            <text class="st-label" x="776" y="118">QualityCheck</text>
+            <rect class="st-node" x="796" y="100" width="150" height="56" rx="10"/>
+            <text class="st-label" x="871" y="128">QualityCheck</text>
 
-            <rect class="st-node" x="931" y="90" width="150" height="56" rx="10"/>
-            <text class="st-label" x="1006" y="118">Shipping</text>
+            <rect class="st-node" x="1086" y="100" width="150" height="56" rx="10"/>
+            <text class="st-label" x="1161" y="128">Shipping</text>
 
-            <rect class="st-node terminal" x="931" y="302" width="150" height="56" rx="10"/>
-            <text class="st-label" x="1006" y="330">Delivered</text>
+            <rect class="st-node terminal" x="1086" y="300" width="150" height="56" rx="10"/>
+            <text class="st-label" x="1161" y="328">Delivered</text>
 
-            <rect class="st-node terminal" x="241" y="302" width="150" height="56" rx="10"/>
-            <text class="st-label" x="316" y="330">Cancelled</text>
+            <rect class="st-node terminal" x="316" y="300" width="150" height="56" rx="10"/>
+            <text class="st-label" x="391" y="328">Cancelled</text>
 
-            <!-- end markers -->
-            <circle class="enddot" cx="1006" cy="408" r="7"/>
-            <circle class="enddot" cx="316" cy="408" r="7"/>
+            <!-- final states -->
+            <circle class="end-ring" cx="1161" cy="426" r="10"/>
+            <circle class="end-core" cx="1161" cy="426" r="4.5"/>
+            <circle class="end-ring" cx="391" cy="426" r="10"/>
+            <circle class="end-core" cx="391" cy="426" r="4.5"/>
 
             <!-- edge labels -->
-            <text class="elabel" x="201" y="108" text-anchor="middle">ConfirmPayment</text>
-            <text class="elabel" x="431" y="108" text-anchor="middle">TransitionTo</text>
-            <text class="elabel" x="661" y="108" text-anchor="middle">TransitionTo</text>
-            <text class="elabel" x="891" y="108" text-anchor="middle">Ship(tracking)</text>
-            <text class="elabel" x="650" y="44" text-anchor="middle">TransitionTo / rework</text>
+            <text class="elabel" x="271" y="118" text-anchor="middle">ConfirmPayment</text>
+            <text class="elabel" x="511" y="118" text-anchor="middle">TransitionTo</text>
+            <text class="elabel" x="751" y="118" text-anchor="middle">TransitionTo</text>
+            <text class="elabel" x="1016" y="118" text-anchor="middle">Ship(tracking)</text>
+            <text class="elabel" x="761" y="34" text-anchor="middle">TransitionTo / rework</text>
 
-            <text class="elabel" x="304" y="228" text-anchor="end">TransitionTo</text>
-            <text class="elabel" x="452" y="252" text-anchor="start">TransitionTo</text>
-            <text class="elabel" x="1018" y="228" text-anchor="start">MarkDelivered</text>
-            <text class="elabel" x="1145" y="376" text-anchor="end">ConfirmReceipt</text>
+            <text class="elabel" x="400" y="232" text-anchor="start">TransitionTo</text>
+            <text class="elabel" x="492" y="240" text-anchor="start">TransitionTo</text>
+            <text class="elabel" x="1172" y="232" text-anchor="start">MarkDelivered</text>
+            <text class="elabel" x="1292" y="300" text-anchor="end">ConfirmReceipt</text>
 
-            <text class="elabel gap" x="48" y="282" text-anchor="start">GAP: không huỷ được</text>
+            <text class="elabel gap" x="162" y="238" text-anchor="start">không có transition</text>
           </svg>
         </div>
-        <figcaption>Order chỉ có một đường tiến và hai nhánh huỷ. Nét đứt màu cam là chỗ code <em>không</em> có transition: đơn còn <code>PaymentPending</code> không thể chuyển sang <code>Cancelled</code>.</figcaption>
+        <figcaption>Order chỉ có một đường tiến và hai nhánh huỷ. Vòng tròn đen bên trái là trạng thái bắt đầu; hai vòng tròn đích là nơi vòng đời kết thúc. Nét đứt màu cam dưới <code>PaymentPending</code> là chỗ code <em>không</em> có transition: đơn chưa thanh toán không thể chuyển sang <code>Cancelled</code>.</figcaption>
       </figure>
 
       <div class="legend">
         <span><i class="swatch"></i> transition có method + guard</span>
         <span><i class="swatch dash"></i> transition thiếu / không guard</span>
         <span><i class="swatch term"></i> trạng thái kết thúc</span>
-        <span><i class="swatch dot"></i> start / end</span>
+        <span><i class="swatch dot"></i> start</span>
+        <span><i class="swatch endn"></i> end</span>
       </div>
 
       <div class="table-wrap">
@@ -436,7 +443,7 @@ tr.gap-row td:first-child code{color:var(--warn)}
 
       <figure>
         <div class="diagram">
-          <svg viewBox="0 0 1120 480" role="img" aria-label="Sơ đồ trạng thái Quote: Pending sang Draft sang Ready sang Converted; Ready sang Expired khi hết hạn; Pending, Draft và Ready đều có thể sang Failed, trong đó chỉ MarkFailed không có guard.">
+          <svg viewBox="0 0 1300 500" role="img" aria-label="Sơ đồ trạng thái Quote: nút bắt đầu đi vào Pending, rồi Draft, Ready, Converted; Pending có đường tắt MarkReady sang Ready; Ready sang Expired khi hết hạn; MarkFailed không guard dẫn từ Pending, Draft và Ready sang Failed; Converted, Failed và Expired đều đi tới nút kết thúc.">
             <defs>
               <marker id="qr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
                 <path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"/>
@@ -446,68 +453,77 @@ tr.gap-row td:first-child code{color:var(--warn)}
               </marker>
             </defs>
 
-            <circle class="start" cx="32" cy="140" r="6"/>
-            <path class="edge" d="M40,140 H24" marker-end="url(#qr)"/>
+            <!-- start pseudostate -->
+            <circle class="start" cx="30" cy="138" r="7"/>
+            <path class="edge" d="M40,138 H76" marker-end="url(#qr)"/>
 
-            <path class="edge" d="M166,140 H319" marker-end="url(#qr)"/>
-            <path class="edge" d="M461,140 H614" marker-end="url(#qr)"/>
-            <path class="edge" d="M756,140 H889" marker-end="url(#qr)"/>
+            <!-- main chain -->
+            <path class="edge" d="M226,138 H316" marker-end="url(#qr)"/>
+            <path class="edge" d="M466,138 H556" marker-end="url(#qr)"/>
+            <path class="edge" d="M706,138 H796" marker-end="url(#qr)"/>
 
             <!-- compat shortcut -->
-            <path class="edge" d="M130,112 C300,16 500,16 650,112" marker-end="url(#qr)"/>
+            <path class="edge" d="M155,110 C270,38 520,38 627,110" marker-end="url(#qr)"/>
 
-            <path class="edge" d="M390,168 V342" marker-end="url(#qr)"/>
+            <path class="edge" d="M391,166 V340" marker-end="url(#qr)"/>
 
-            <path class="edge gap" d="M95,168 C95,300 230,370 314,370" marker-end="url(#qrw)"/>
-            <path class="edge gap" d="M685,168 C685,330 560,370 466,370" marker-end="url(#qrw)"/>
+            <!-- MarkFailed has no guard -->
+            <path class="edge gap" d="M151,166 C151,260 300,280 340,340" marker-end="url(#qrw)"/>
+            <path class="edge gap" d="M631,166 C631,270 490,285 442,340" marker-end="url(#qrw)"/>
 
-            <path class="edge" d="M730,168 C800,300 900,320 955,342" marker-end="url(#qr)"/>
+            <path class="edge" d="M680,166 C740,260 830,300 856,340" marker-end="url(#qr)"/>
 
-            <path class="edge" d="M1031,140 H1068" marker-end="url(#qr)"/>
-            <path class="edge" d="M390,398 V432" marker-end="url(#qr)"/>
-            <path class="edge" d="M960,398 V432" marker-end="url(#qr)"/>
+            <!-- to final states -->
+            <path class="edge" d="M946,138 H992" marker-end="url(#qr)"/>
+            <path class="edge" d="M391,396 V452" marker-end="url(#qr)"/>
+            <path class="edge" d="M871,396 V452" marker-end="url(#qr)"/>
 
-            <rect class="st-node" x="24" y="112" width="142" height="56" rx="10"/>
-            <text class="st-label" x="95" y="140">Pending</text>
+            <rect class="st-node" x="76" y="110" width="150" height="56" rx="10"/>
+            <text class="st-label" x="151" y="138">Pending</text>
 
-            <rect class="st-node" x="319" y="112" width="142" height="56" rx="10"/>
-            <text class="st-label" x="390" y="140">Draft</text>
+            <rect class="st-node" x="316" y="110" width="150" height="56" rx="10"/>
+            <text class="st-label" x="391" y="138">Draft</text>
 
-            <rect class="st-node" x="614" y="112" width="142" height="56" rx="10"/>
-            <text class="st-label" x="685" y="140">Ready</text>
+            <rect class="st-node" x="556" y="110" width="150" height="56" rx="10"/>
+            <text class="st-label" x="631" y="138">Ready</text>
 
-            <rect class="st-node terminal" x="889" y="112" width="142" height="56" rx="10"/>
-            <text class="st-label" x="960" y="140">Converted</text>
+            <rect class="st-node terminal" x="796" y="110" width="150" height="56" rx="10"/>
+            <text class="st-label" x="871" y="138">Converted</text>
 
-            <rect class="st-node terminal" x="319" y="342" width="142" height="56" rx="10"/>
-            <text class="st-label" x="390" y="370">Failed</text>
+            <rect class="st-node terminal" x="316" y="340" width="150" height="56" rx="10"/>
+            <text class="st-label" x="391" y="368">Failed</text>
 
-            <rect class="st-node terminal" x="889" y="342" width="142" height="56" rx="10"/>
-            <text class="st-label" x="960" y="370">Expired</text>
+            <rect class="st-node terminal" x="796" y="340" width="150" height="56" rx="10"/>
+            <text class="st-label" x="871" y="368">Expired</text>
 
-            <circle class="enddot" cx="1076" cy="140" r="7"/>
-            <circle class="enddot" cx="390" cy="440" r="7"/>
-            <circle class="enddot" cx="960" cy="440" r="7"/>
+            <!-- final states -->
+            <circle class="end-ring" cx="1002" cy="138" r="10"/>
+            <circle class="end-core" cx="1002" cy="138" r="4.5"/>
+            <circle class="end-ring" cx="391" cy="462" r="10"/>
+            <circle class="end-core" cx="391" cy="462" r="4.5"/>
+            <circle class="end-ring" cx="871" cy="462" r="10"/>
+            <circle class="end-core" cx="871" cy="462" r="4.5"/>
 
-            <text class="elabel" x="242" y="130" text-anchor="middle">MarkDraft</text>
-            <text class="elabel" x="537" y="130" text-anchor="middle">Approve</text>
-            <text class="elabel" x="822" y="130" text-anchor="middle">MarkConverted</text>
-            <text class="elabel" x="390" y="30" text-anchor="middle">MarkReady (compat)</text>
+            <text class="elabel" x="271" y="128" text-anchor="middle">MarkDraft</text>
+            <text class="elabel" x="511" y="128" text-anchor="middle">Approve</text>
+            <text class="elabel" x="751" y="128" text-anchor="middle">MarkConverted</text>
+            <text class="elabel" x="391" y="30" text-anchor="middle">MarkReady (compat)</text>
 
-            <text class="elabel" x="402" y="255" text-anchor="start">MarkFailed</text>
-            <text class="elabel gap" x="52" y="318" text-anchor="start">MarkFailed</text>
-            <text class="elabel gap" x="700" y="300" text-anchor="start">MarkFailed</text>
-            <text class="elabel" x="972" y="300" text-anchor="start">hết hạn</text>
+            <text class="elabel" x="400" y="270" text-anchor="start">MarkFailed</text>
+            <text class="elabel gap" x="145" y="252" text-anchor="end">MarkFailed</text>
+            <text class="elabel gap" x="520" y="272" text-anchor="end">MarkFailed</text>
+            <text class="elabel" x="756" y="300" text-anchor="end">hết hạn</text>
           </svg>
         </div>
-        <figcaption>Ba trạng thái kết thúc <code>Converted</code>, <code>Expired</code>, <code>Failed</code>. <code>MarkFailed</code> không có guard nên vẽ bằng nét đứt từ cả ba trạng thái sống; đây là chỗ dễ sinh dữ liệu sai nhất.</figcaption>
+        <figcaption>Ba trạng thái kết thúc <code>Converted</code>, <code>Expired</code>, <code>Failed</code>, mỗi trạng thái có vòng tròn đích riêng. <code>MarkFailed</code> không có guard nên vẽ bằng nét đứt từ cả ba trạng thái sống; đây là chỗ dễ sinh dữ liệu sai nhất.</figcaption>
       </figure>
 
       <div class="legend">
         <span><i class="swatch"></i> transition có method + guard</span>
         <span><i class="swatch dash"></i> transition thiếu / không guard</span>
         <span><i class="swatch term"></i> trạng thái kết thúc</span>
-        <span><i class="swatch dot"></i> start / end</span>
+        <span><i class="swatch dot"></i> start</span>
+        <span><i class="swatch endn"></i> end</span>
       </div>
 
       <div class="table-wrap">
@@ -646,7 +662,6 @@ tr.gap-row td:first-child code{color:var(--warn)}
     <span><code>.../Enums/OrderStatus.cs</code> · <code>QuoteStatus.cs</code></span>
   </div>
 </div>
-
 </body>
 </html>
 

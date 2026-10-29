@@ -17,12 +17,14 @@ import {
   PeopleRounded,
   StorefrontRounded,
   TuneRounded,
+  ViewInArRounded,
 } from '@mui/icons-material'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAdminUsers } from './useAdminUsers'
 import { useCatalogItems, useCommercialConfigurations } from './useAdminConfiguration'
 import { useDefectTaxonomy, useInspectionChecklists } from './useQcKnowledge'
+import { useAdminSamples } from './useAdminSamples'
 import { useLabs } from '../ops/useLabs'
 
 interface OverviewCardProps {
@@ -81,10 +83,11 @@ export function AdminOverviewPage() {
   const catalog = useCatalogItems()
   const checklists = useInspectionChecklists()
   const defects = useDefectTaxonomy()
+  const samples = useAdminSamples()
 
   const loading =
     users.isLoading || labs.isLoading || commercial.isLoading || catalog.isLoading ||
-    checklists.isLoading || defects.isLoading
+    checklists.isLoading || defects.isLoading || samples.isLoading
 
   const pendingLabs = useMemo(
     () => (labs.data ?? []).filter((lab) => lab.status === 'Pending').length,
@@ -152,6 +155,15 @@ export function AdminOverviewPage() {
             hint="Vật liệu, màu, định mức đang công bố"
             icon={<CategoryRounded />}
             href="/admin/catalogs"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <OverviewCard
+            title="Kho mẫu 3D"
+            value={samples.isLoading ? '…' : String(samples.data?.length ?? 0)}
+            hint={`${(samples.data ?? []).filter((sample) => sample.isPublished).length} đang công khai`}
+            icon={<ViewInArRounded />}
+            href="/admin/samples"
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>

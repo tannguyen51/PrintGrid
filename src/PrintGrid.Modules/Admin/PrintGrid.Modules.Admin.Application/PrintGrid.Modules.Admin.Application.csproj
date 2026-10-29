@@ -2,6 +2,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PrintGrid.Modules.Admin.Domain\PrintGrid.Modules.Admin.Domain.csproj" />
+    <!-- Public pricing must be derived from the ONE pricing engine (FR-CUST-015:
+         the FE never re-implements the formula). -->
+    <ProjectReference Include="..\..\Customer\PrintGrid.Modules.Customer.Application\PrintGrid.Modules.Customer.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

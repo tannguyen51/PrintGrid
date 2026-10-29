@@ -62,7 +62,8 @@ public class Model : AggregateRoot<Guid>
         long sizeBytes,
         IEnumerable<string>? tags,
         string? storageKey = null,
-        string? sha256 = null)
+        string? sha256 = null,
+        bool emitUploadReceipt = true)
     {
         if (customerId == Guid.Empty) throw new ArgumentException("Customer id is required", nameof(customerId));
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name is required", nameof(name));
@@ -89,8 +90,9 @@ public class Model : AggregateRoot<Guid>
         }
 
         // Electronic handover evidence chain (BR-IP-001/002): every real upload emits
-        // the event that drives the customer confirmation email.
-        if (storageKey is not null && sha256 is not null)
+        // the event that drives the customer confirmation email. A copy created from a
+        // platform sample is not an upload by the customer, so it opts out.
+        if (emitUploadReceipt && storageKey is not null && sha256 is not null)
         {
             model.AddDomainEvent(new Events.ModelUploadedEvent(
                 customerId, model.Id, model.FileName, storageKey, sha256.ToLowerInvariant(), sizeBytes));
