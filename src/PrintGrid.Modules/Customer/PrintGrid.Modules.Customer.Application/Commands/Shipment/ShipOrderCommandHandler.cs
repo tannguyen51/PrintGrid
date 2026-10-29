@@ -1,4 +1,6 @@
 using MediatR;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using PrintGrid.Modules.Customer.Domain.Entities;
 using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.SharedKernel.Events;
@@ -42,20 +44,41 @@ internal static class ShipmentGate
     }
 }
 
+/// <summary>
+/// Kill switch for the goods-out business rules (settlement, full refund, per-item QC completion).
+/// Rules are enforced by default; set <c>Shipping:Gates:Enforce=false</c> (environment variable
+/// <c>Shipping__Gates__Enforce</c>) to waive them temporarily, e.g. for a demo. The order state machine
+/// (only <c>QualityCheck → Shipping</c>) and the mandatory tracking number are deliberately NOT part of
+/// this switch — bypassing them would corrupt order history and leave shipped orders without a waybill.
+/// </summary>
+internal static class ShippingGateSettings
+{
+    internal const string EnforceKey = "Shipping:Gates:Enforce";
+
+    internal static bool IsEnforced(IConfiguration configuration) =>
+        !bool.TryParse(configuration[EnforceKey], out var enforce) || enforce;
+}
+
 public class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, Result>
 {
     private readonly IOrderRepository _orders;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPublisher _publisher;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<ShipOrderCommandHandler> _logger;
 
     public ShipOrderCommandHandler(
         IOrderRepository orders,
         IUnitOfWork unitOfWork,
-        IPublisher publisher)
+        IPublisher publisher,
+        IConfiguration configuration,
+        ILogger<ShipOrderCommandHandler> logger)
     {
         _orders = orders;
         _unitOfWork = unitOfWork;
         _publisher = publisher;
+        _configuration = configuration;
+        _logger = logger;
     }
 
     public async Task<Result> Handle(ShipOrderCommand command, CancellationToken cancellationToken)
@@ -64,19 +87,30 @@ public class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, Result>
         if (order is null)
             return Result.Failure(Error.NotFound("Order", command.OrderId));
 
-        // FR-CUST-012 AC02 / BR-PAY-008: goods may not leave the hub until the order is fully settled.
-        if (!order.IsSettled)
+        if (ShippingGateSettings.IsEnforced(_configuration))
         {
-            var shortfall = order.TotalPrice.Amount - order.PaidAmount;
-            return Result.Failure(Error.Conflict(
-                $"Đơn {order.OrderNumber} chưa tất toán đủ — còn thiếu {shortfall:N0} {order.TotalPrice.Currency}, không thể xuất kho."));
+            // FR-CUST-012 AC02 / BR-PAY-008: goods may not leave the hub until the order is fully settled.
+            if (!order.IsSettled)
+            {
+                var shortfall = order.TotalPrice.Amount - order.PaidAmount;
+                return Result.Failure(Error.Conflict(
+                    $"Đơn {order.OrderNumber} chưa tất toán đủ — còn thiếu {shortfall:N0} {order.TotalPrice.Currency}, không thể xuất kho."));
+            }
+
+            // Fully-refunded orders are dead, and no item may skip the QC-completed gate.
+            var gate = ShipmentGate.EnsureReadyToLeaveHub(order);
+            if (gate.IsFailure)
+                return gate;
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Shipping gates are disabled (Shipping:Gates:Enforce=false) — order {OrderNumber} ships " +
+                "without the settlement / full-refund / item-QC checks.",
+                order.OrderNumber);
         }
 
-        // Fully-refunded orders are dead, and no item may skip the QC-completed gate.
-        var gate = ShipmentGate.EnsureReadyToLeaveHub(order);
-        if (gate.IsFailure)
-            return gate;
-
+        // Still enforced with the gates off: a tracking number is required and only QualityCheck may ship.
         var result = order.Ship(command.TrackingNumber);
         if (result.IsFailure)
             return result;

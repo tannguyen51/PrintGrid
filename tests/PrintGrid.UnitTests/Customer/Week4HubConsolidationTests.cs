@@ -1,4 +1,6 @@
 using MediatR;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PrintGrid.Modules.Customer.Application.Commands.Shipment;
 using PrintGrid.Modules.Customer.Application.Quotes;
@@ -16,6 +18,15 @@ public class Week4HubConsolidationTests
     private readonly IOrderRepository _orders = Substitute.For<IOrderRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IPublisher _publisher = Substitute.For<IPublisher>();
+    // Unconfigured: Shipping:Gates:Enforce is absent, so the goods-out gates stay enforced.
+    private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
+
+    private ConsolidateShipmentCommandHandler ConsolidateHandler() => new(
+        _orders,
+        _unitOfWork,
+        _publisher,
+        _configuration,
+        NullLogger<ConsolidateShipmentCommandHandler>.Instance);
 
     private static Order BuildReadyOrder(
         Guid customerId,
@@ -82,7 +93,7 @@ public class Week4HubConsolidationTests
         _orders.GetByIdAsync(order1.Id, Arg.Any<CancellationToken>()).Returns(order1);
         _orders.GetByIdAsync(order2.Id, Arg.Any<CancellationToken>()).Returns(order2);
 
-        var consolidateHandler = new ConsolidateShipmentCommandHandler(_orders, _unitOfWork, _publisher);
+        var consolidateHandler = ConsolidateHandler();
         var shipResult = await consolidateHandler.Handle(
             new ShipConsolidatedOrdersCommand([order1.Id, order2.Id], "GHN-CONSOL-999"),
             CancellationToken.None);
@@ -110,7 +121,7 @@ public class Week4HubConsolidationTests
         _orders.GetByIdAsync(orderEarly.Id, Arg.Any<CancellationToken>()).Returns(orderEarly);
         _orders.GetByIdAsync(orderLate.Id, Arg.Any<CancellationToken>()).Returns(orderLate);
 
-        var handler = new ConsolidateShipmentCommandHandler(_orders, _unitOfWork, _publisher);
+        var handler = ConsolidateHandler();
         var tooFarApart = await handler.Handle(
             new ShipConsolidatedOrdersCommand([orderEarly.Id, orderLate.Id], "VNPOST-001"),
             CancellationToken.None);
@@ -132,7 +143,7 @@ public class Week4HubConsolidationTests
         _orders.GetByIdAsync(order1.Id, Arg.Any<CancellationToken>()).Returns(order1);
         _orders.GetByIdAsync(order2.Id, Arg.Any<CancellationToken>()).Returns(order2);
 
-        var handler = new ConsolidateShipmentCommandHandler(_orders, _unitOfWork, _publisher);
+        var handler = ConsolidateHandler();
         await handler.Handle(new ShipConsolidatedOrdersCommand([order1.Id, order2.Id], "GHN-BUNDLE-01"), CancellationToken.None);
 
         // Attempting to refund 250,000 VND on order1 (whose original TotalPrice is 200,000 VND, even though the bundle total is 700,000 VND) must FAIL (AC02 / BR-LOG-002)

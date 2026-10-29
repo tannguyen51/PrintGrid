@@ -11,11 +11,12 @@ export function App() {
     <ThemeProvider theme={printGridTheme}>
       <CssBaseline />
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <BrowserRouter>
+        <BrowserRouter>
+          {/* Inside the router so AuthContext.logout() can send the visitor to the guest homepage. */}
+          <AuthProvider>
             <AppRoutes />
-          </BrowserRouter>
-        </AuthProvider>
+          </AuthProvider>
+        </BrowserRouter>
       </QueryClientProvider>
     </ThemeProvider>
   )

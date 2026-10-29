@@ -1,4 +1,6 @@
 using MediatR;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PrintGrid.Modules.Customer.Application.Commands.Shipment;
 using PrintGrid.Modules.Customer.Application.EventHandlers;
@@ -22,6 +24,8 @@ public class ShipmentGateTests
     private readonly IOrderRepository _orders = Substitute.For<IOrderRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IPublisher _publisher = Substitute.For<IPublisher>();
+    // Shipping:Gates:Enforce unavailable -> TryParse fails -> gates stay enforced by default.
+    private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
 
     [Fact]
     public async Task Ship_is_blocked_while_any_item_is_still_Pending()
@@ -90,7 +94,12 @@ public class ShipmentGateTests
         _orders.GetByIdAsync(order1.Id, Arg.Any<CancellationToken>()).Returns(order1);
         _orders.GetByIdAsync(order2.Id, Arg.Any<CancellationToken>()).Returns(order2);
 
-        var handler = new ConsolidateShipmentCommandHandler(_orders, _unitOfWork, _publisher);
+        var handler = new ConsolidateShipmentCommandHandler(
+            _orders,
+            _unitOfWork,
+            _publisher,
+            _configuration,
+            NullLogger<ConsolidateShipmentCommandHandler>.Instance);
         var result = await handler.Handle(
             new ShipConsolidatedOrdersCommand([order1.Id, order2.Id], "GHN-CONSOL-001"),
             CancellationToken.None);
@@ -132,7 +141,60 @@ public class ShipmentGateTests
             "a ready order waits for the hub to ship it; Completed must not move it");
     }
 
-    private ShipOrderCommandHandler Handler() => new(_orders, _unitOfWork, _publisher);
+    [Fact]
+    public async Task Gates_off_lets_an_order_ship_with_items_that_never_passed_QC()
+    {
+        var order = BuildQualityCheckOrder("Completed", "Pending");
+        _orders.GetByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+
+        var result = await Handler(GatesDisabled())
+            .Handle(new ShipOrderCommand(order.Id, "TRACK-DEMO-001"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue(result.Error.Message);
+        order.Status.Should().Be(OrderStatus.Shipping);
+        order.TrackingNumber.Should().Be("TRACK-DEMO-001");
+    }
+
+    [Fact]
+    public async Task Gates_off_still_refuses_a_tracking_number_free_ship()
+    {
+        var order = BuildQualityCheckOrder("Completed", "Completed");
+        _orders.GetByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+
+        var result = await Handler(GatesDisabled())
+            .Handle(new ShipOrderCommand(order.Id, "   "), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue("the waybill requirement is not part of the kill switch");
+        order.Status.Should().Be(OrderStatus.QualityCheck);
+    }
+
+    [Fact]
+    public async Task Gates_off_still_refuses_to_jump_the_state_machine()
+    {
+        var order = BuildProductionOrder(); // InProduction, not QualityCheck
+        _orders.GetByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+
+        var result = await Handler(GatesDisabled())
+            .Handle(new ShipOrderCommand(order.Id, "TRACK-DEMO-002"), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue("only QualityCheck -> Shipping is a legal transition");
+        result.Error.Code.Should().Be("conflict");
+        order.Status.Should().Be(OrderStatus.InProduction);
+    }
+
+    private static IConfiguration GatesDisabled()
+    {
+        var configuration = Substitute.For<IConfiguration>();
+        configuration["Shipping:Gates:Enforce"].Returns("false");
+        return configuration;
+    }
+
+    private ShipOrderCommandHandler Handler(IConfiguration? configuration = null) => new(
+        _orders,
+        _unitOfWork,
+        _publisher,
+        configuration ?? _configuration,
+        NullLogger<ShipOrderCommandHandler>.Instance);
 
     private static Order BuildProductionOrder()
     {

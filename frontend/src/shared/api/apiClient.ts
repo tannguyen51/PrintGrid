@@ -51,7 +51,8 @@ apiClient.interceptors.response.use(
       return apiClient(request)
     } catch (refreshError) {
       clearTokens()
-      window.location.assign('/login')
+      // Session is gone; land on the guest homepage like an explicit logout.
+      window.location.assign('/')
       return Promise.reject(refreshError)
     }
   },

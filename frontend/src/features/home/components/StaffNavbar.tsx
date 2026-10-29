@@ -150,8 +150,8 @@ export function StaffNavbar() {
   const handleLogout = () => {
     setAnchorEl(null)
     setDrawerOpen(false)
+    // AuthContext.logout() clears the session and returns to the guest homepage.
     logout()
-    navigate('/login', { replace: true })
   }
 
   const go = (href: string) => {

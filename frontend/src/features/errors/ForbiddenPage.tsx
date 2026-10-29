@@ -79,15 +79,13 @@ export default function ForbiddenPage() {
           </Button>
           {user && (
             <Button
-              component={RouterLink}
-              to="/"
               variant="outlined"
               color="inherit"
               size="large"
               onClick={logout}
               sx={{ borderColor: 'rgba(255,255,255,0.2)' }}
             >
-              Đăng nhập lại
+              Đăng xuất
             </Button>
           )}
         </Stack>

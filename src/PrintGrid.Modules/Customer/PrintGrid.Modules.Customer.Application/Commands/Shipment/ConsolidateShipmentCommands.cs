@@ -1,4 +1,6 @@
 using MediatR;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using PrintGrid.Modules.Customer.Domain.Entities;
 using PrintGrid.Modules.Customer.Domain.Enums;
 using PrintGrid.Modules.Customer.Domain.Repositories;
@@ -34,15 +36,21 @@ public class ConsolidateShipmentCommandHandler :
     private readonly IOrderRepository _orders;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPublisher _publisher;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<ConsolidateShipmentCommandHandler> _logger;
 
     public ConsolidateShipmentCommandHandler(
         IOrderRepository orders,
         IUnitOfWork unitOfWork,
-        IPublisher publisher)
+        IPublisher publisher,
+        IConfiguration configuration,
+        ILogger<ConsolidateShipmentCommandHandler> logger)
     {
         _orders = orders;
         _unitOfWork = unitOfWork;
         _publisher = publisher;
+        _configuration = configuration;
+        _logger = logger;
     }
 
     public async Task<Result<ConsolidatedShipmentResultDto>> Handle(
@@ -96,18 +104,28 @@ public class ConsolidateShipmentCommandHandler :
         // FR-CUST-012 AC02 / BR-PAY-008: a consolidated package may only ship when every included
         // order is settled — one unpaid order blocks the whole package. The same QC-completed gate
         // applies to every member: one item still in QualityCheck/Pending blocks the whole package.
-        foreach (var order in loaded)
+        if (ShippingGateSettings.IsEnforced(_configuration))
         {
-            if (!order.IsSettled)
+            foreach (var order in loaded)
             {
-                var shortfall = order.TotalPrice.Amount - order.PaidAmount;
-                return Result.Failure<ConsolidatedShipmentResultDto>(Error.Conflict(
-                    $"Đơn {order.OrderNumber} chưa tất toán đủ — còn thiếu {shortfall:N0} {order.TotalPrice.Currency}, không thể xuất kho."));
-            }
+                if (!order.IsSettled)
+                {
+                    var shortfall = order.TotalPrice.Amount - order.PaidAmount;
+                    return Result.Failure<ConsolidatedShipmentResultDto>(Error.Conflict(
+                        $"Đơn {order.OrderNumber} chưa tất toán đủ — còn thiếu {shortfall:N0} {order.TotalPrice.Currency}, không thể xuất kho."));
+                }
 
-            var gate = ShipmentGate.EnsureReadyToLeaveHub(order);
-            if (gate.IsFailure)
-                return Result.Failure<ConsolidatedShipmentResultDto>(gate.Error);
+                var gate = ShipmentGate.EnsureReadyToLeaveHub(order);
+                if (gate.IsFailure)
+                    return Result.Failure<ConsolidatedShipmentResultDto>(gate.Error);
+            }
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Shipping gates are disabled (Shipping:Gates:Enforce=false) — consolidated package " +
+                "[{OrderNumbers}] ships without the settlement / full-refund / item-QC checks.",
+                string.Join(", ", loaded.Select(o => o.OrderNumber)));
         }
 
         foreach (var order in loaded)

@@ -1,6 +1,8 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { apiClient } from '../shared/api/apiClient'
 import { clearTokens, getAccessToken, setTokens } from '../shared/api/tokenStore'
+import { queryClient } from './queryClient'
 
 export type Role =
   | 'Customer'
@@ -33,6 +35,10 @@ interface AuthContextValue {
   login: (email: string, password: string, remember?: boolean) => Promise<AuthUser>
   googleLogin: (credential: string, remember?: boolean) => Promise<AuthUser>
   register: (input: RegisterInput) => Promise<void>
+  /** Đồng bộ lại tài khoản (và role) từ server — dùng khi token đang mang role cũ. */
+  refreshUser: () => Promise<void>
+  /** False trong lúc phiên đang được đồng bộ lại từ server ngay sau khi mở app. */
+  sessionReady: boolean
   logout: () => void
 }
 
@@ -86,6 +92,7 @@ function userFromAccessToken(token: string): AuthUser | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate()
   // Khôi phục phiên ngay từ state khởi tạo khi có access token.
   const [user, setUser] = useState<AuthUser | null>(() => {
     const token = getAccessToken()
@@ -116,14 +123,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return user
   }, [])
 
+  /**
+   * Role là dữ liệu của server, token chỉ là bản cache: một access token được cấp trước khi
+   * tài khoản nhận role mới vẫn khai role cũ, khiến chính chủ bị đá khỏi console của mình (403)
+   * cho tới khi token hết hạn. Đọc lại /auth/me để lấy role hiện tại trong DB.
+   */
+  const refreshUser = useCallback(async () => {
+    if (!getAccessToken()) return
+    try {
+      const { data } = await apiClient.get<AuthUser>('/auth/me')
+      setUser({ ...data, roles: normalizeRoles(data.roles ?? []) })
+    } catch {
+      // 401 đã được interceptor của apiClient xử lý (clear token + về trang chủ);
+      // lỗi mạng thì giữ nguyên user suy ra từ token.
+    }
+  }, [])
+
+  // Đồng bộ ngay khi mở app, trước khi ProtectedRoute kịp chặn theo role cũ trong token.
+  // Chưa có token thì phiên đã "sẵn sàng" (khách), khỏi gọi server.
+  const [sessionReady, setSessionReady] = useState(() => !getAccessToken())
+  useEffect(() => {
+    if (sessionReady) return
+    void refreshUser().finally(() => setSessionReady(true))
+  }, [sessionReady, refreshUser])
+
+  /**
+   * Signing out always lands on the guest homepage ("/"), for every role — staff consoles
+   * are gone from the navbar once the tokens are cleared, so returning to /login only made
+   * sense for the customer app. The query cache is dropped too: otherwise the next person
+   * to sign in on this tab would briefly see the previous user's queued data.
+   */
   const logout = useCallback(() => {
     clearTokens()
     setUser(null)
-  }, [])
+    queryClient.clear()
+    setSessionReady(true)
+    navigate('/', { replace: true })
+  }, [navigate])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isAuthenticated: user !== null && getAccessToken() !== null, login, googleLogin, register, logout }),
-    [user, login, googleLogin, register, logout],
+    () => ({ user, isAuthenticated: user !== null && getAccessToken() !== null, login, googleLogin, register, refreshUser, sessionReady, logout }),
+    [user, login, googleLogin, register, refreshUser, sessionReady, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
