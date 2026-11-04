@@ -67,7 +67,7 @@ var quoteSlicerOptions = app.Services
     .GetRequiredService<Microsoft.Extensions.Options.IOptions<PrintGrid.Modules.Customer.Infrastructure.Slicing.CuraQuoteOptions>>()
     .Value;
 app.Logger.LogInformation(
-    "Quote slicer startup check: {MachineCount} machine profile(s), executable available: {ExecutableAvailable}",
+    "Quote slicer startup check: {MachineCount} legacy mapping(s); active profiles now come from the database. Executable available: {ExecutableAvailable}",
     quoteSlicerOptions.Machines.Count,
     File.Exists(quoteSlicerOptions.ExecutablePath));
 

@@ -60,6 +60,7 @@ const PRIMARY: Partial<Record<Role, NavLink[]>> = {
     // Admin and Operations are separate consoles: the admin bar never links into /ops,
     // /scheduling, /quote-reviews or /model-reviews.
     { label: 'Duyệt xưởng (quản trị)', href: '/admin/labs' },
+    { label: 'Profile & duyệt máy', href: '/admin/cura-profiles' },
   ],
 }
 

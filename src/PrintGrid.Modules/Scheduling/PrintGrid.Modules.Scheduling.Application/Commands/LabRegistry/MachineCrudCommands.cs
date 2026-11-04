@@ -22,7 +22,8 @@ public record UpdateMachineCommand(
     decimal AchievableToleranceMm,
     IReadOnlyList<string> SupportedMaterials,
     Guid? RequestingUserId = null,
-    bool IsAdminOrOps = true) : IRequest<Result<MachineDto>>;
+    bool IsAdminOrOps = true,
+    PrinterConfiguration? PrinterConfiguration = null) : IRequest<Result<MachineDto>>;
 
 public record DeleteMachineCommand(
     Guid LabId,
@@ -49,12 +50,15 @@ public class MachineCrudCommandHandler :
     private readonly ILabRepository _labs;
     private readonly IJobRepository _jobs;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly Abstractions.IMachineProfileMatcher? _profiles;
 
-    public MachineCrudCommandHandler(ILabRepository labs, IJobRepository jobs, IUnitOfWork unitOfWork)
+    public MachineCrudCommandHandler(ILabRepository labs, IJobRepository jobs, IUnitOfWork unitOfWork,
+        Abstractions.IMachineProfileMatcher? profiles = null)
     {
         _labs = labs;
         _jobs = jobs;
         _unitOfWork = unitOfWork;
+        _profiles = profiles;
     }
 
     public async Task<Result<MachineDto>> Handle(UpdateMachineCommand command, CancellationToken cancellationToken)
@@ -83,6 +87,11 @@ public class MachineCrudCommandHandler :
             return Result.Failure<MachineDto>(Error.Validation("Layer height và dung sai phải lớn hơn 0."));
 
         var buildVolume = BuildVolume.Create(command.BuildWidthMm, command.BuildDepthMm, command.BuildHeightMm);
+        if (command.PrinterConfiguration is not null)
+        {
+            try { machine.ConfigurePrinter(command.PrinterConfiguration); }
+            catch (ArgumentException e) { return Result.Failure<MachineDto>(Error.Validation(e.Message)); }
+        }
         machine.UpdateSpecifications(
             command.Name,
             command.Model,
@@ -91,6 +100,9 @@ public class MachineCrudCommandHandler :
             command.MinLayerHeightMm,
             command.AchievableToleranceMm,
             command.SupportedMaterials);
+
+        // Any specification change invalidates the previous approval.
+        if (_profiles is not null) await _profiles.MatchAsync(machine, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(LabMappings.ToDto(machine));

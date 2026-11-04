@@ -161,7 +161,8 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
     private async Task<Result<QuoteDto>> CreateSlicedQuote(CreateQuoteCommand command, Model model,
         CommercialPolicy policy, CancellationToken cancellationToken)
     {
-        if (_quoteSlicer is null || _quoteSlicer.ConfiguredMachineIds.Count == 0)
+        var machineIds = _quoteSlicer is null ? [] : await _quoteSlicer.GetConfiguredMachineIdsAsync(cancellationToken);
+        if (_quoteSlicer is null || machineIds.Count == 0)
             return Result.Failure<QuoteDto>(Error.Conflict("Chưa cấu hình CuraEngine và profile máy để báo giá tự động. Vui lòng liên hệ PrintGrid."));
         var colors = (command.ColorCodes ?? new[] { command.ColorCode })
             .Select(c => c.Trim().ToUpperInvariant()).ToList();
@@ -179,7 +180,7 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
         QuotePriceBreakdown? best = null;
         TrialPlacementResult? placement = null;
         string? failure = null;
-        foreach (var machineId in _quoteSlicer.ConfiguredMachineIds)
+        foreach (var machineId in machineIds)
         {
             // Cheap dimensional/capacity check before starting an external engine process.
             var feasible = await _capacity.FindEarliestFeasibleDeliveryAsync(

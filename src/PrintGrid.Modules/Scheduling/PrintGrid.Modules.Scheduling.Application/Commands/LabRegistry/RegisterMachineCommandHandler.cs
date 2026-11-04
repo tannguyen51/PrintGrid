@@ -15,11 +15,13 @@ public class RegisterMachineCommandHandler : IRequestHandler<RegisterMachineComm
 {
     private readonly ILabRepository _labs;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly Abstractions.IMachineProfileMatcher? _profiles;
 
-    public RegisterMachineCommandHandler(ILabRepository labs, IUnitOfWork unitOfWork)
+    public RegisterMachineCommandHandler(ILabRepository labs, IUnitOfWork unitOfWork, Abstractions.IMachineProfileMatcher? profiles = null)
     {
         _labs = labs;
         _unitOfWork = unitOfWork;
+        _profiles = profiles;
     }
 
     public async Task<Result<MachineDto>> Handle(RegisterMachineCommand command, CancellationToken cancellationToken)
@@ -63,6 +65,12 @@ public class RegisterMachineCommandHandler : IRequestHandler<RegisterMachineComm
             command.AchievableToleranceMm,
             command.SupportedMaterials);
 
+        if (command.PrinterConfiguration is not null)
+        {
+            try { machine.ConfigurePrinter(command.PrinterConfiguration); }
+            catch (ArgumentException e) { return Result.Failure<MachineDto>(Error.Validation(e.Message)); }
+            if (_profiles is not null) await _profiles.MatchAsync(machine, cancellationToken);
+        }
         lab.AddMachine(machine);
         _labs.AddMachine(machine);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

@@ -19,7 +19,11 @@ public static class LabMappings
         machine.SupportedMaterials.ToList(),
         machine.MaintenanceFromUtc,
         machine.MaintenanceUntilUtc,
-        machine.MaintenanceReason);
+        machine.MaintenanceReason,
+        machine.PrinterConfiguration,
+        machine.ProfileStatus,
+        machine.CuraProfileIds,
+        machine.ProfileReviewReason);
 
     public static LabDto ToDto(Domain.Entities.Lab lab) => new(
         lab.Id,

@@ -21,6 +21,8 @@ public class SchedulingModule : IModule
         ModuleAssemblyRegistry.Register(InfrastructureAssembly);
         services.AddSchedulingApplication();
         SchedulingModuleRegistration.AddRepositories(services);
+        services.AddScoped<Application.Abstractions.IMachineProfileMatcher, Slicing.MachineProfileRegistry>();
+        services.AddScoped<PrintGrid.SharedKernel.Interfaces.ICuraProfileRegistry, Slicing.MachineProfileRegistry>();
         var rates = configuration.GetSection("ShipmentBatch:ZoneRates").GetChildren()
             .ToDictionary(
                 item => item.Key.ToUpperInvariant(),

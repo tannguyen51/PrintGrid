@@ -48,6 +48,7 @@ public class CapabilityFilter
     {
         if (machine.Status == MachineStatus.Offline) return "machine_offline";
         if (machine.Status == MachineStatus.Maintenance || machine.IsInMaintenanceAt(DateTime.UtcNow)) return "machine_in_maintenance";
+        if (machine.Technology == PrintTechnology.Fdm && machine.ProfileStatus != "Approved") return "machine_profile_not_approved";
         if (machine.Technology != spec.Technology) return "technology_mismatch";
         if (!machine.BuildVolume.CanFit(spec.RequiredVolume)) return "build_volume_too_small";
         if (machine.MinLayerHeightMm > spec.LayerHeightMm) return "layer_height_unachievable";

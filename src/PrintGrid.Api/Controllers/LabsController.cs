@@ -227,7 +227,8 @@ public class LabsController : ControllerBase
                 request.SupportedMaterials,
                 actorUserId,
                 IsAdminOrOps,
-                actorUserId),
+                actorUserId,
+                request.PrinterConfiguration),
             cancellationToken);
 
         if (result.IsFailure)
@@ -261,7 +262,8 @@ public class LabsController : ControllerBase
                 request.AchievableToleranceMm,
                 request.SupportedMaterials,
                 User.GetCustomerId(),
-                IsAdminOrOps),
+                IsAdminOrOps,
+                request.PrinterConfiguration),
             cancellationToken);
 
         if (result.IsFailure)
@@ -456,7 +458,8 @@ public record RegisterMachineRequest(
     decimal BuildHeightMm,
     decimal MinLayerHeightMm,
     decimal AchievableToleranceMm,
-    IReadOnlyList<string> SupportedMaterials);
+    IReadOnlyList<string> SupportedMaterials,
+    PrintGrid.Modules.Scheduling.Domain.ValueObjects.PrinterConfiguration PrinterConfiguration);
 
 public record SetActiveRequest(bool IsActive);
 

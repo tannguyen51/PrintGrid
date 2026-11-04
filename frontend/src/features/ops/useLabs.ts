@@ -4,6 +4,7 @@ import type {
   Lab,
   LabPerformance,
   LabTimeline,
+  Machine,
   MachineStatus,
   RegisterLabInput,
   RegisterMachineInput,
@@ -94,7 +95,7 @@ export function useAddMachine() {
   const invalidate = useInvalidateLabs()
   return useMutation({
     mutationFn: ({ labId, ...input }: RegisterMachineInput) =>
-      apiClient.post(`/labs/${labId}/machines`, input).then((r) => r.data),
+      apiClient.post<Machine>(`/labs/${labId}/machines`, input).then((r) => r.data),
     onSuccess: invalidate,
   })
 }
@@ -103,7 +104,7 @@ export function useUpdateMachine() {
   const invalidate = useInvalidateLabs()
   return useMutation({
     mutationFn: ({ labId, machineId, ...input }: UpdateMachineInput) =>
-      apiClient.put(`/labs/${labId}/machines/${machineId}`, input).then((r) => r.data),
+      apiClient.put<Machine>(`/labs/${labId}/machines/${machineId}`, input).then((r) => r.data),
     onSuccess: invalidate,
   })
 }

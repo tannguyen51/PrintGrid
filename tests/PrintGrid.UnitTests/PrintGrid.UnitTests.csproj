@@ -31,5 +31,8 @@
     <Using Include="Xunit" />
     <Using Include="FluentAssertions" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="../../infra/slicer/profiles/*.json" Link="profiles/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
 </Project>

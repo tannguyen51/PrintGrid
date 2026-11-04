@@ -17,7 +17,11 @@ public record MachineDto(
     IReadOnlyCollection<string> SupportedMaterials,
     DateTime? MaintenanceFromUtc = null,
     DateTime? MaintenanceUntilUtc = null,
-    string? MaintenanceReason = null);
+    string? MaintenanceReason = null,
+    Domain.ValueObjects.PrinterConfiguration? PrinterConfiguration = null,
+    string ProfileStatus = "MissingProfile",
+    IReadOnlyList<Guid>? CuraProfileIds = null,
+    string? ProfileReviewReason = null);
 
 public record LabDto(
     Guid Id,

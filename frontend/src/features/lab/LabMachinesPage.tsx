@@ -30,6 +30,7 @@ import {
   ScheduleRounded,
 } from '@mui/icons-material'
 import { PageBackButton } from '../../shared/components/PageBackButton'
+import { defaultPrinterConfiguration, PrinterConfigurationFields, ProfilePresetField } from './PrinterConfigurationFields'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import {
   useAddMachine,
@@ -41,6 +42,7 @@ import {
 } from '../ops/useLabs'
 import {
   MACHINE_STATUS_LABELS,
+  PROFILE_STATUS_LABELS,
   PRINT_TECHNOLOGY_LABELS,
   type Machine,
   type MachineStatus,
@@ -57,6 +59,7 @@ const emptyMachineForm = {
   minLayerHeightMm: 0.1,
   achievableToleranceMm: 0.2,
   materials: 'PLA, PETG',
+  printerConfiguration: defaultPrinterConfiguration,
 }
 
 /**
@@ -112,6 +115,7 @@ export default function LabMachinesPage() {
       minLayerHeightMm: m.minLayerHeightMm,
       achievableToleranceMm: m.achievableToleranceMm,
       materials: m.supportedMaterials.join(', '),
+      printerConfiguration: m.printerConfiguration ?? defaultPrinterConfiguration,
     })
     setFormError(null)
     setFormOpen(true)
@@ -139,7 +143,7 @@ export default function LabMachinesPage() {
 
     try {
       if (editingMachine) {
-        await updateMachine.mutateAsync({
+        const saved = await updateMachine.mutateAsync({
           labId: myLab.id,
           machineId: editingMachine.id,
           name: machineForm.name.trim(),
@@ -151,10 +155,11 @@ export default function LabMachinesPage() {
           minLayerHeightMm: Number(machineForm.minLayerHeightMm),
           achievableToleranceMm: Number(machineForm.achievableToleranceMm),
           supportedMaterials,
+          printerConfiguration: machineForm.printerConfiguration,
         })
-        setBannerSuccess(`Đã cập nhật thông số máy "${machineForm.name.trim()}".`)
+        setBannerSuccess(`Đã cập nhật máy "${saved.name}". ${PROFILE_STATUS_LABELS[saved.profileStatus]}.`)
       } else {
-        await addMachine.mutateAsync({
+        const saved = await addMachine.mutateAsync({
           labId: myLab.id,
           name: machineForm.name.trim(),
           model: machineForm.model.trim(),
@@ -165,8 +170,9 @@ export default function LabMachinesPage() {
           minLayerHeightMm: Number(machineForm.minLayerHeightMm),
           achievableToleranceMm: Number(machineForm.achievableToleranceMm),
           supportedMaterials,
+          printerConfiguration: machineForm.printerConfiguration,
         })
-        setBannerSuccess(`Đã thêm máy "${machineForm.name.trim()}" vào xưởng.`)
+        setBannerSuccess(`Đã thêm máy "${saved.name}". ${PROFILE_STATUS_LABELS[saved.profileStatus]}.`)
       }
       setFormOpen(false)
     } catch (err) {
@@ -425,6 +431,10 @@ export default function LabMachinesPage() {
                                 {machine.maintenanceReason ? ` (${machine.maintenanceReason})` : ''}
                               </Typography>
                             )}
+                            <Chip size="small" sx={{ mt: 1 }}
+                              color={machine.profileStatus === 'Approved' ? 'success' : 'warning'}
+                              label={PROFILE_STATUS_LABELS[machine.profileStatus] ?? 'Chưa có profile'} />
+                            {machine.profileReviewReason && <Typography color="error" variant="body2">{machine.profileReviewReason}</Typography>}
                             <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.75 }}>
                               {machine.supportedMaterials.map((mat) => (
                                 <Chip
@@ -507,7 +517,18 @@ export default function LabMachinesPage() {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {formError && <Alert severity="error">{formError}</Alert>}
+            {editingMachine && <Alert severity="info">Lưu thông số máy sẽ tìm lại profile và chuyển hồ sơ sang chờ duyệt lại.</Alert>}
             <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <ProfilePresetField onSelect={p => setMachineForm(f => ({ ...f, model: p.machineModel, technology: 0,
+                  buildWidthMm: p.widthMm, buildDepthMm: p.depthMm, buildHeightMm: p.heightMm, materials: p.materialCode,
+                  printerConfiguration: { ...f.printerConfiguration, manufacturer: p.manufacturer,
+                    extruderCount: p.extruderCount, maximumColorSlots: p.maximumColorSlots,
+                    nozzleDiameterMm: p.nozzleDiameterMm, filamentDiameterMm: p.filamentDiameterMm,
+                    heatedBed: p.heatedBed, maxNozzleTemperatureC: Math.max(p.requiredNozzleTemperatureC, 260),
+                    maxBedTemperatureC: p.heatedBed ? Math.max(p.requiredBedTemperatureC, 100) : 0 },
+                }))} />
+              </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   label="Tên máy"
@@ -598,6 +619,8 @@ export default function LabMachinesPage() {
                   fullWidth
                 />
               </Grid>
+              <PrinterConfigurationFields value={machineForm.printerConfiguration}
+                onChange={printerConfiguration => setMachineForm(f => ({ ...f, printerConfiguration }))} />
             </Grid>
           </Stack>
         </DialogContent>

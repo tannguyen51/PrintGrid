@@ -5,23 +5,35 @@ using PrintGrid.Infrastructure.Shared.FileStorage;
 using PrintGrid.Modules.Customer.Application.Quotes;
 using PrintGrid.Modules.Customer.Infrastructure.Slicing;
 using PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
+using PrintGrid.SharedKernel.Interfaces;
 
 var root = Path.GetFullPath(args.FirstOrDefault(a => !a.StartsWith("--")) ?? Directory.GetCurrentDirectory());
 var executable = Path.Combine(root, ".local", "cura-5.11.0", "CuraEngine.exe");
 var colors = new[] { "BLUE", "WHITE", "SIGNALRED", "BLACK", "GREEN", "YELLOW", "ORANGE", "GREY", "TRANSPARENT" };
 var ids = new[] { Guid.Parse("11111111-1111-4111-8111-111111111101"), Guid.Parse("22222222-2222-4222-8222-222222222202") };
 var options = new CuraQuoteOptions { ExecutablePath = executable, TimeoutSeconds = 120 };
+if (args.Contains("--registry-api-smoke"))
+{
+    await ProfileApiSmoke.RunAsync(root);
+    return;
+}
 options.Machines[ids[0].ToString()] = new() { SettingsPath = Path.Combine(root, "infra/slicer/profiles/local-standard-pla.resolved.json"),
     Materials = ["PLA"], Colors = colors, PricePerHour = 6000, FailureRate = .08m };
 options.Machines[ids[1].ToString()] = new() { SettingsPath = Path.Combine(root, "infra/slicer/profiles/local-fast-pla.resolved.json"),
     Materials = ["PLA"], Colors = colors, PricePerHour = 7500, FailureRate = .05m };
+if (args.Contains("--import-current-profiles"))
+{
+    await LocalSetup.ImportRegisteredProfilesAsync(root, options, ids);
+    return;
+}
 if (args.Contains("--configure") || args.Contains("--seed-local-db"))
 {
     await LocalSetup.ConfigureAsync(root, options);
     if (args.Contains("--seed-local-db")) await LocalSetup.SeedAsync(root, ids, colors);
     return;
 }
-var slicer = new CuraQuoteSlicer(new LocalFiles(Path.Combine(root, "tests/manual/slicer")), Options.Create(options), NullLogger<CuraQuoteSlicer>.Instance);
+var slicer = new CuraQuoteSlicer(new LocalFiles(Path.Combine(root, "tests/manual/slicer")), Options.Create(options),
+    NullLogger<CuraQuoteSlicer>.Instance, new SmokeProfileRegistry(options));
 var rates = PricingParameterSet.Active with { PolishingPerUnit = 30000,
     ColorPricePerKg = new Dictionary<string, decimal> { ["PLA:BLUE"] = 300000, ["PLA:WHITE"] = 290000, ["PLA:SIGNALRED"] = 310000 } };
 var reports = new List<object>();
@@ -66,4 +78,16 @@ internal sealed class LocalFiles(string directory) : IFileStorage
     public Task<string> GetPresignedUrlAsync(string bucket, string objectName, TimeSpan expiry) => throw new NotSupportedException();
     public Task DeleteAsync(string bucket, string objectName, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task EnsureBucketAsync(string bucket, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+}
+
+// Explicit test-only registry: production resolves approved profiles from PostgreSQL.
+internal sealed class SmokeProfileRegistry(CuraQuoteOptions options) : ICuraProfileRegistry
+{
+    public Task<IReadOnlyList<Guid>> GetApprovedMachineIdsAsync(CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Guid>>(options.Machines.Keys.Select(Guid.Parse).ToArray());
+    public async Task<RegisteredCuraSettings?> ResolveAsync(Guid machineId, string material, CancellationToken cancellationToken)
+    {
+        if (!options.Machines.TryGetValue(machineId.ToString(), out var profile) || !profile.Materials.Contains(material)) return null;
+        return new(await File.ReadAllTextAsync(profile.SettingsPath, cancellationToken), 4, profile.PricePerHour!.Value, profile.FailureRate!.Value);
+    }
 }

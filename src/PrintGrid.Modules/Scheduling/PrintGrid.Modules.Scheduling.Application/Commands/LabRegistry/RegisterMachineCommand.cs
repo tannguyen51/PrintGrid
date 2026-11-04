@@ -18,4 +18,5 @@ public record RegisterMachineCommand(
     IReadOnlyList<string> SupportedMaterials,
     Guid? RequestingUserId = null,
     bool IsAdminOrOps = true,
-    Guid? ActorUserId = null) : IRequest<Result<MachineDto>>;
+    Guid? ActorUserId = null,
+    Domain.ValueObjects.PrinterConfiguration? PrinterConfiguration = null) : IRequest<Result<MachineDto>>;

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using PrintGrid.Infrastructure.Shared.FileStorage;
 using PrintGrid.Infrastructure.Shared.Slicing;
 using PrintGrid.Modules.Customer.Application.Quotes;
+using PrintGrid.SharedKernel.Interfaces;
 
 namespace PrintGrid.Modules.Customer.Infrastructure.Slicing;
 
@@ -31,35 +32,27 @@ public sealed class CuraMachineProfile
 }
 
 public sealed class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuoteOptions> options,
-    ILogger<CuraQuoteSlicer> logger) : IQuoteSlicer
+    ILogger<CuraQuoteSlicer> logger, ICuraProfileRegistry registry) : IQuoteSlicer
 {
     private static readonly SemaphoreSlim Slots = new(2);
-    public IReadOnlyList<Guid> ConfiguredMachineIds => options.Value.Machines.Keys
-        .Select(key => Guid.TryParse(key, out var id) ? id : Guid.Empty)
-        .Where(id => id != Guid.Empty)
-        .Distinct()
-        .Order()
-        .ToList();
-
+    public Task<IReadOnlyList<Guid>> GetConfiguredMachineIdsAsync(CancellationToken cancellationToken) =>
+        registry.GetApprovedMachineIdsAsync(cancellationToken);
     public async Task<QuoteSliceResult> SliceAsync(QuoteSliceRequest request, CancellationToken cancellationToken)
     {
         var config = options.Value;
-        if (string.IsNullOrWhiteSpace(config.ExecutablePath) ||
-            !config.Machines.TryGetValue(request.MachineId.ToString(), out var profile))
-            throw new InvalidOperationException("Chưa cấu hình CuraEngine cho máy in.");
-        if (!profile.Materials.Contains(request.MaterialCode, StringComparer.OrdinalIgnoreCase) ||
-            request.Colors.Any(c => !profile.Colors.Contains(c, StringComparer.OrdinalIgnoreCase)))
-            throw new InvalidOperationException("Máy chưa đăng ký đủ vật liệu và màu đã chọn.");
+        if (string.IsNullOrWhiteSpace(config.ExecutablePath))
+            throw new InvalidOperationException("Chưa cấu hình đường dẫn CuraEngine.");
+        var profile = await registry.ResolveAsync(request.MachineId, request.MaterialCode, cancellationToken)
+            ?? throw new InvalidOperationException("Máy chưa có profile phù hợp được quản trị viên duyệt.");
+        if (request.Colors.Count > profile.MaximumColorSlots)
+            throw new InvalidOperationException("Số màu yêu cầu vượt khả năng máy.");
         if (request.MaterialCode.Equals("RESIN", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("CuraEngine phục vụ in sợi FDM; resin cần slicer riêng.");
         await Slots.WaitAsync(cancellationToken);
         var directory = Directory.CreateTempSubdirectory("printgrid-quote-");
         try
         {
-            var profilePath = profile.SettingsByMaterial.TryGetValue(request.MaterialCode, out var materialPath)
-                ? materialPath : profile.Materials.Length == 1 ? profile.SettingsPath
-                : throw new InvalidDataException("Cần profile slicer riêng cho từng vật liệu của máy.");
-            var settings = JsonNode.Parse(await File.ReadAllTextAsync(profilePath, cancellationToken))?.AsObject()
+            var settings = JsonNode.Parse(profile.SettingsJson)?.AsObject()
                 ?? throw new InvalidDataException("Profile Cura không hợp lệ.");
             if (settings.Any(p => p.Key != "global" && !p.Key.StartsWith("extruder.") && p.Key != "limit_to_extruder"))
                 throw new InvalidDataException("Profile Cura chỉ được chứa global, extruder.N và limit_to_extruder.");

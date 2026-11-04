@@ -13,6 +13,12 @@ namespace PrintGrid.UnitTests.Scheduling;
 
 public class Week4LabFeaturesTests
 {
+    private static void ApprovePrinter(Machine machine)
+    {
+        machine.ConfigurePrinter(new("Test", 1, 1, .4m, 1.75m, true, 260, 100, 6000, .08m));
+        machine.SetMatchedProfiles([Guid.NewGuid()], true);
+        machine.ReviewProfile(true, Guid.NewGuid(), null);
+    }
     private readonly ILabRepository _labs = Substitute.For<ILabRepository>();
     private readonly IJobRepository _jobs = Substitute.For<IJobRepository>();
     private readonly IOrderRepository _orders = Substitute.For<IOrderRepository>();
@@ -48,6 +54,7 @@ public class Week4LabFeaturesTests
             0.15m,
             new[] { "PLA", "PETG" });
         capturedLab.AddMachine(machine);
+        ApprovePrinter(machine);
         // BR-OPS-006: approval also requires a material declaration, otherwise the lab would
         // pass every capability check and then fail at reservation.
         capturedLab.SetMaterialStock("PLA", "BLACK", 1_000m);
@@ -115,6 +122,8 @@ public class Week4LabFeaturesTests
             new[] { "PLA" });
         lab.AddMachine(machine);
         _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
+
+        ApprovePrinter(machine);
 
         var crudHandler = new MachineCrudCommandHandler(_labs, _jobs, _unitOfWork);
 

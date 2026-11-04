@@ -1267,6 +1267,96 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.ToTable("calibration_samples", "scheduling");
                 });
 
+            modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.CuraProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("DepthMm")
+                        .HasPrecision(10, 3)
+                        .HasColumnType("numeric(10,3)");
+
+                    b.Property<string>("EngineVersion")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<int>("ExtruderCount")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("FilamentDiameterMm")
+                        .HasPrecision(10, 3)
+                        .HasColumnType("numeric(10,3)");
+
+                    b.Property<bool>("HeatedBed")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("HeightMm")
+                        .HasPrecision(10, 3)
+                        .HasColumnType("numeric(10,3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MachineModel")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Manufacturer")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("MaterialCode")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<int>("MaximumColorSlots")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<decimal>("NozzleDiameterMm")
+                        .HasPrecision(10, 3)
+                        .HasColumnType("numeric(10,3)");
+
+                    b.Property<decimal>("RequiredBedTemperatureC")
+                        .HasPrecision(10, 3)
+                        .HasColumnType("numeric(10,3)");
+
+                    b.Property<decimal>("RequiredNozzleTemperatureC")
+                        .HasPrecision(10, 3)
+                        .HasColumnType("numeric(10,3)");
+
+                    b.Property<string>("SettingsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<decimal>("WidthMm")
+                        .HasPrecision(10, 3)
+                        .HasColumnType("numeric(10,3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Manufacturer", "MachineModel", "MaterialCode");
+
+                    b.ToTable("cura_profiles", "scheduling");
+                });
+
             modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.DateChangeRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1653,6 +1743,10 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<int>("CalibrationSampleCount")
                         .HasColumnType("integer");
 
+                    b.Property<Guid[]>("CuraProfileIds")
+                        .IsRequired()
+                        .HasColumnType("uuid[]");
+
                     b.Property<Guid>("LabId")
                         .HasColumnType("uuid");
 
@@ -1679,6 +1773,21 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ProfileReviewReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("ProfileReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ProfileReviewedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ProfileStatus")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<decimal>("SpeedFactor")
                         .HasPrecision(5, 3)
@@ -2454,8 +2563,61 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                                 .HasForeignKey("MachineId");
                         });
 
+                    b.OwnsOne("PrintGrid.Modules.Scheduling.Domain.ValueObjects.PrinterConfiguration", "PrinterConfiguration", b1 =>
+                        {
+                            b1.Property<Guid>("MachineId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("ExtruderCount")
+                                .HasColumnType("integer");
+
+                            b1.Property<decimal>("FailureRate")
+                                .HasPrecision(7, 6)
+                                .HasColumnType("numeric(7,6)");
+
+                            b1.Property<decimal>("FilamentDiameterMm")
+                                .HasPrecision(6, 3)
+                                .HasColumnType("numeric(6,3)");
+
+                            b1.Property<bool>("HeatedBed")
+                                .HasColumnType("boolean");
+
+                            b1.Property<string>("Manufacturer")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)");
+
+                            b1.Property<decimal>("MaxBedTemperatureC")
+                                .HasPrecision(6, 2)
+                                .HasColumnType("numeric(6,2)");
+
+                            b1.Property<decimal>("MaxNozzleTemperatureC")
+                                .HasPrecision(6, 2)
+                                .HasColumnType("numeric(6,2)");
+
+                            b1.Property<int>("MaximumColorSlots")
+                                .HasColumnType("integer");
+
+                            b1.Property<decimal>("NozzleDiameterMm")
+                                .HasPrecision(6, 3)
+                                .HasColumnType("numeric(6,3)");
+
+                            b1.Property<decimal>("PricePerHour")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)");
+
+                            b1.HasKey("MachineId");
+
+                            b1.ToTable("machines", "scheduling");
+
+                            b1.WithOwner()
+                                .HasForeignKey("MachineId");
+                        });
+
                     b.Navigation("BuildVolume")
                         .IsRequired();
+
+                    b.Navigation("PrinterConfiguration");
                 });
 
             modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.MaterialReservation", b =>

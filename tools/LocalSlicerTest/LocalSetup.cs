@@ -12,9 +12,48 @@ using PrintGrid.Modules.Customer.Infrastructure.Slicing;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
+using PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
 
 internal static class LocalSetup
 {
+    public static async Task ImportRegisteredProfilesAsync(string root, CuraQuoteOptions options, Guid[] ids)
+    {
+        var config = new ConfigurationBuilder().AddJsonFile(Path.Combine(root, "src/PrintGrid.Api/appsettings.json"))
+            .AddJsonFile(Path.Combine(root, "src/PrintGrid.Api/appsettings.Development.json"), optional: true)
+            .AddJsonFile(Path.Combine(root, "src/PrintGrid.Api/appsettings.Local.json"), optional: true).AddEnvironmentVariables().Build();
+        var connection = config.GetConnectionString("DefaultConnection")!;
+        var parsed = new Npgsql.NpgsqlConnectionStringBuilder(connection);
+        if (parsed.Host is not ("localhost" or "127.0.0.1" or "::1"))
+            throw new InvalidOperationException("Profile import is local only.");
+        new ServiceCollection().AddApplicationModules(config);
+        await using var db = new PrintGridDbContext(new DbContextOptionsBuilder<PrintGridDbContext>().UseNpgsql(connection,
+            pg => pg.MigrationsHistoryTable("__ef_migrations_history", "shared")).Options);
+        await db.Database.MigrateAsync();
+        foreach (var id in ids)
+        {
+            var machine = await db.Set<Machine>().SingleOrDefaultAsync(m => m.Id == id);
+            var standard = id == ids[0];
+            var model = machine?.Model ?? (standard ? "VIRTUAL STANDARD 220" : "VIRTUAL FAST 320");
+            var width = standard ? 220m : 320m;
+            if (!await db.Set<CuraProfile>().AnyAsync(p => p.Manufacturer == "PRINTGRID LOCAL TEST" && p.MachineModel == model.ToUpper() && p.WidthMm == width))
+            {
+                var source = options.Machines[id.ToString()];
+                var profile = CuraProfileImporter.Parse(machine?.Name ?? model, "PrintGrid Local Test", model, "PLA", "1-local",
+                    "5.11.0", 4, await File.ReadAllTextAsync(source.SettingsPath));
+                db.Add(profile);
+                if (machine is not null && machine.PrinterConfiguration is null)
+                    machine.ConfigurePrinter(new("PrintGrid Local Test", 4, 4, .4m, 1.75m, true, 260, 100,
+                        source.PricePerHour!.Value, source.FailureRate!.Value));
+            }
+        }
+        await db.SaveChangesAsync();
+        var matcher = new MachineProfileRegistry(db, config);
+        foreach (var machine in await db.Set<Machine>().Where(m => ids.Contains(m.Id) && m.ProfileStatus != "Approved").ToListAsync())
+            await matcher.MatchAsync(machine, default);
+        await db.SaveChangesAsync();
+        Console.WriteLine("Imported local virtual profiles into database; matching machines await Admin approval.");
+    }
+
     public static async Task ConfigureAsync(string root, CuraQuoteOptions options)
     {
         var path = Path.Combine(root, "src/PrintGrid.Api/appsettings.Local.json");

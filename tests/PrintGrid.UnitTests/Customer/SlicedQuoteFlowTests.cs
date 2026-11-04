@@ -26,7 +26,7 @@ public class SlicedQuoteFlowTests
         clock.UtcNow.Returns(new DateTime(2026, 11, 4, 8, 0, 0, DateTimeKind.Utc));
         var first = Guid.NewGuid(); var second = Guid.NewGuid();
         var slicer = Substitute.For<IQuoteSlicer>();
-        slicer.ConfiguredMachineIds.Returns(new[] { first, second });
+        slicer.GetConfiguredMachineIdsAsync(Arg.Any<CancellationToken>()).Returns(new[] { first, second });
         slicer.SliceAsync(Arg.Any<QuoteSliceRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             var request = call.Arg<QuoteSliceRequest>();

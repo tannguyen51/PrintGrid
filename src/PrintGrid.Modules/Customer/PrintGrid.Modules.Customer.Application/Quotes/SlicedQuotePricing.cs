@@ -10,7 +10,7 @@ public sealed record QuoteSliceResult(IReadOnlyList<QuoteColorUsage> Colors, dec
 
 public interface IQuoteSlicer
 {
-    IReadOnlyList<Guid> ConfiguredMachineIds { get; }
+    Task<IReadOnlyList<Guid>> GetConfiguredMachineIdsAsync(CancellationToken cancellationToken);
     Task<QuoteSliceResult> SliceAsync(QuoteSliceRequest request, CancellationToken cancellationToken);
 }
 
