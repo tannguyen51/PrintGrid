@@ -20,6 +20,7 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth, type Role } from '../../../app/AuthContext'
 import { MenuRounded, CloseRounded, LogoutRounded, PersonOutlineRounded } from '@mui/icons-material'
 import { BrandGlyph } from '../../../shared/components/BrandGlyph'
+import { NotificationBell } from '../../../shared/components/NotificationBell'
 import { palette } from '../../../shared/theme/tokens'
 
 /**
@@ -204,6 +205,8 @@ export function StaffNavbar() {
               </Button>
             ))}
           </Stack>
+
+          <NotificationBell />
 
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0.5 }} aria-label="Menu tài khoản">

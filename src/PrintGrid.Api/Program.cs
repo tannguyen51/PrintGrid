@@ -86,6 +86,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");
 app.MapHub<LabHub>("/hubs/labs");
+app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHealthChecks("/health");
 app.MapHangfireDashboard("/jobs", new DashboardOptions
 {

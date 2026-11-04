@@ -61,6 +61,47 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.ToTable("email_outbox", "shared");
                 });
 
+            modelBuilder.Entity("PrintGrid.Infrastructure.Shared.Persistence.Notifications.UserNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("ReadAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ReadAtUtc", "CreatedAtUtc");
+
+                    b.ToTable("user_notifications", "shared");
+                });
+
             modelBuilder.Entity("PrintGrid.Modules.Admin.Domain.Entities.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1994,7 +2035,31 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
             modelBuilder.Entity("PrintGrid.Modules.Customer.Domain.Entities.Order", b =>
                 {
-                    b.OwnsOne("PrintGrid.Modules.Customer.Domain.Entities.Order.DeliveryAddress#PrintGrid.SharedKernel.ValueObjects.Address", "DeliveryAddress", b1 =>
+                    b.OwnsOne("PrintGrid.SharedKernel.ValueObjects.Money", "TotalPrice", b1 =>
+                        {
+                            b1.Property<Guid>("OrderId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("total_amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("total_currency");
+
+                            b1.HasKey("OrderId");
+
+                            b1.ToTable("orders", "customer");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrderId");
+                        });
+
+                    b.OwnsOne("PrintGrid.SharedKernel.ValueObjects.Address", "DeliveryAddress", b1 =>
                         {
                             b1.Property<Guid>("OrderId")
                                 .HasColumnType("uuid");
@@ -2043,30 +2108,6 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                                 .HasForeignKey("OrderId");
                         });
 
-                    b.OwnsOne("PrintGrid.Modules.Customer.Domain.Entities.Order.TotalPrice#PrintGrid.SharedKernel.ValueObjects.Money", "TotalPrice", b1 =>
-                        {
-                            b1.Property<Guid>("OrderId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)")
-                                .HasColumnName("total_amount");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .HasMaxLength(3)
-                                .HasColumnType("character varying(3)")
-                                .HasColumnName("total_currency");
-
-                            b1.HasKey("OrderId");
-
-                            b1.ToTable("orders", "customer");
-
-                            b1.WithOwner()
-                                .HasForeignKey("OrderId");
-                        });
-
                     b.Navigation("DeliveryAddress")
                         .IsRequired();
 
@@ -2082,7 +2123,7 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("PrintGrid.Modules.Customer.Domain.Entities.OrderItem.Configuration#PrintGrid.Modules.Customer.Domain.ValueObjects.PrintConfiguration", "Configuration", b1 =>
+                    b.OwnsOne("PrintGrid.Modules.Customer.Domain.ValueObjects.PrintConfiguration", "Configuration", b1 =>
                         {
                             b1.Property<Guid>("OrderItemId")
                                 .HasColumnType("uuid");
@@ -2121,7 +2162,7 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                                 .HasForeignKey("OrderItemId");
                         });
 
-                    b.OwnsOne("PrintGrid.Modules.Customer.Domain.Entities.OrderItem.UnitPrice#PrintGrid.SharedKernel.ValueObjects.Money", "UnitPrice", b1 =>
+                    b.OwnsOne("PrintGrid.SharedKernel.ValueObjects.Money", "UnitPrice", b1 =>
                         {
                             b1.Property<Guid>("OrderItemId")
                                 .HasColumnType("uuid");
@@ -2154,7 +2195,7 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
             modelBuilder.Entity("PrintGrid.Modules.Customer.Domain.Entities.Quote", b =>
                 {
-                    b.OwnsOne("PrintGrid.Modules.Customer.Domain.Entities.Quote.TotalPrice#PrintGrid.SharedKernel.ValueObjects.Money", "TotalPrice", b1 =>
+                    b.OwnsOne("PrintGrid.SharedKernel.ValueObjects.Money", "TotalPrice", b1 =>
                         {
                             b1.Property<Guid>("QuoteId")
                                 .HasColumnType("uuid");
@@ -2190,7 +2231,7 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("PrintGrid.Modules.Customer.Domain.Entities.QuoteItem.Configuration#PrintGrid.Modules.Customer.Domain.ValueObjects.PrintConfiguration", "Configuration", b1 =>
+                    b.OwnsOne("PrintGrid.Modules.Customer.Domain.ValueObjects.PrintConfiguration", "Configuration", b1 =>
                         {
                             b1.Property<Guid>("QuoteItemId")
                                 .HasColumnType("uuid");
@@ -2229,7 +2270,7 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                                 .HasForeignKey("QuoteItemId");
                         });
 
-                    b.OwnsOne("PrintGrid.Modules.Customer.Domain.Entities.QuoteItem.UnitPrice#PrintGrid.SharedKernel.ValueObjects.Money", "UnitPrice", b1 =>
+                    b.OwnsOne("PrintGrid.SharedKernel.ValueObjects.Money", "UnitPrice", b1 =>
                         {
                             b1.Property<Guid>("QuoteItemId")
                                 .HasColumnType("uuid");
@@ -2302,7 +2343,7 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasForeignKey("ShipmentBatchId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.OwnsOne("PrintGrid.Modules.Scheduling.Domain.Entities.Job.Specification#PrintGrid.Modules.Scheduling.Domain.ValueObjects.JobSpecification", "Specification", b1 =>
+                    b.OwnsOne("PrintGrid.Modules.Scheduling.Domain.ValueObjects.JobSpecification", "Specification", b1 =>
                         {
                             b1.Property<Guid>("JobId")
                                 .HasColumnType("uuid");
@@ -2347,7 +2388,7 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("JobId");
 
-                            b1.OwnsOne("PrintGrid.Modules.Scheduling.Domain.Entities.Job.Specification#PrintGrid.Modules.Scheduling.Domain.ValueObjects.JobSpecification.RequiredVolume#PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume", "RequiredVolume", b2 =>
+                            b1.OwnsOne("PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume", "RequiredVolume", b2 =>
                                 {
                                     b2.Property<Guid>("JobSpecificationJobId")
                                         .HasColumnType("uuid");
@@ -2400,7 +2441,7 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("PrintGrid.Modules.Scheduling.Domain.Entities.Machine.BuildVolume#PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume", "BuildVolume", b1 =>
+                    b.OwnsOne("PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume", "BuildVolume", b1 =>
                         {
                             b1.Property<Guid>("MachineId")
                                 .HasColumnType("uuid");

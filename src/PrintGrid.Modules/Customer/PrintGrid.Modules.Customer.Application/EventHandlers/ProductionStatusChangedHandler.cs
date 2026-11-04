@@ -54,7 +54,9 @@ public class ProductionStatusChangedHandler :
                 // it stays QualityCheck until the hub ships it, which is gated on every item being Completed.
             }
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            await _publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
+            await _publisher.Publish(
+                new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId, notification.NewStatus),
+                cancellationToken);
         }
     }
 
@@ -65,6 +67,8 @@ public class ProductionStatusChangedHandler :
 
         order.MarkAsDelayed();
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
+        await _publisher.Publish(
+            new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId, "Delayed"),
+            cancellationToken);
     }
 }

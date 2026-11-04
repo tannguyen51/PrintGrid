@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using PrintGrid.Infrastructure.Shared.Outbox;
+using PrintGrid.Infrastructure.Shared.Persistence.Notifications;
 using PrintGrid.SharedKernel.Common;
 
 namespace PrintGrid.Infrastructure.Shared.Persistence;
@@ -17,6 +18,7 @@ public class PrintGridDbContext : DbContext
 
     /// <summary>Durable email outbox (shared infra holds no module of its own — BR-IP-002).</summary>
     public DbSet<EmailOutboxItem> EmailOutbox => Set<EmailOutboxItem>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +36,17 @@ public class PrintGridDbContext : DbContext
             b.Property(e => e.Body).IsRequired();
             b.Property(e => e.Status).HasMaxLength(16).IsRequired();
             b.HasIndex(e => new { e.Status, e.CreatedAtUtc });
+        });
+
+        modelBuilder.Entity<UserNotification>(b =>
+        {
+            b.ToTable("user_notifications", "shared");
+            b.HasKey(n => n.Id);
+            b.Property(n => n.Title).HasMaxLength(200).IsRequired();
+            b.Property(n => n.Message).HasMaxLength(1000).IsRequired();
+            b.Property(n => n.Type).HasMaxLength(64).IsRequired();
+            b.Property(n => n.Link).HasMaxLength(512);
+            b.HasIndex(n => new { n.UserId, n.ReadAtUtc, n.CreatedAtUtc });
         });
 
         base.OnModelCreating(modelBuilder);
