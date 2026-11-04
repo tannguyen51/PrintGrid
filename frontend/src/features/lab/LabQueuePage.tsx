@@ -30,9 +30,11 @@ import {
   LocalShippingRounded,
   ReportProblemRounded,
 } from '@mui/icons-material'
+import { useAuth } from '../../app/AuthContext'
 import type { Job } from '../jobs/jobTypes'
 import { JOB_LABELS } from '../jobs/jobTypes'
 import { useJobs, useAcceptJob, useDeclineJob, useStartJob, useCompleteJob, useReportJobFailure, downloadJobFile } from '../jobs/useJobs'
+import { useMyLab } from '../ops/useLabs'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('vi-VN') : '—')
@@ -156,6 +158,8 @@ function JobCountdown({ deadline, onExpire }: { deadline?: string | null; onExpi
  */
 export default function LabQueuePage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const myLab = useMyLab(true)
 
   // Three concurrent views; each uses the same cache key namespace.
   const assigned = useJobs('Assigned')
@@ -211,6 +215,7 @@ export default function LabQueuePage() {
   const loading = assigned.isLoading || accepted.isLoading || inProgress.isLoading
   const error = assigned.isError || accepted.isError || inProgress.isError
   const labId = jobs[0]?.j.labId ?? awaitingShipment.data?.find(job => job.labId)?.labId
+  const inventoryLabId = myLab.data?.id ?? labId
 
   async function handleAction(action: 'accept' | 'start', id: string) {
     try {
@@ -312,9 +317,18 @@ export default function LabQueuePage() {
             <Button variant="outlined" color="inherit" startIcon={<LocalShippingRounded />} disabled={!labId} onClick={() => navigate(`/lab/${labId}/shipments`)} sx={{ color: 'text.primary', borderColor: 'divider' }}>
               Lô chuyển hub
             </Button>
-            <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} disabled={!jobs[0]?.j.labId} onClick={() => navigate(`/lab/${jobs[0]?.j.labId}/inventory`)} sx={{ color: 'text.primary', borderColor: 'divider' }}>
-              Kho vật liệu
-            </Button>
+            {user?.roles.includes('LabManager') && (
+              <Button
+                variant="outlined"
+                color="inherit"
+                startIcon={<LibraryBooksRounded />}
+                disabled={!inventoryLabId}
+                onClick={() => navigate(`/lab/${inventoryLabId}/inventory`)}
+                sx={{ color: 'text.primary', borderColor: 'divider' }}
+              >
+                Kho vật liệu
+              </Button>
+            )}
           </Stack>
         </Stack>
 
