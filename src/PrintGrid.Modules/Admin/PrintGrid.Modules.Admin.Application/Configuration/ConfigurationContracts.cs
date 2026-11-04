@@ -14,7 +14,10 @@ public sealed record CommercialParametersDto(
     IReadOnlyDictionary<string, decimal> AssignmentWeights,
     int MaxBatchSize,
     int SchedulingTimeBudgetSeconds,
-    int SlaRiskThresholdHours);
+    int SlaRiskThresholdHours,
+    IReadOnlyDictionary<string, decimal>? ColorPricePerKg = null,
+    decimal FailureRate = 0m,
+    decimal PolishingPerUnit = 0m);
 
 public sealed record CommercialConfigurationDto(
     Guid Id, int VersionNumber, string Name, string Status,

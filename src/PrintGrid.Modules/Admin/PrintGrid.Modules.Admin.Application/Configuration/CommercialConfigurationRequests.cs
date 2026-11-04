@@ -24,6 +24,11 @@ public sealed class CommercialParametersValidator : AbstractValidator<Commercial
         RuleFor(x => x.MaterialDensities).Cascade(CascadeMode.Stop).NotEmpty().Must(x => x.All(p => !string.IsNullOrWhiteSpace(p.Key) && p.Value > 0))
             .WithMessage("Mỗi vật liệu phải có khối lượng riêng lớn hơn 0.");
         RuleFor(x => x.PricePerPrintHour).GreaterThan(0);
+        RuleFor(x => x.FailureRate).GreaterThanOrEqualTo(0).LessThan(1);
+        RuleFor(x => x.PolishingPerUnit).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.ColorPricePerKg).Must(x => x is null || x.All(p =>
+            System.Text.RegularExpressions.Regex.IsMatch(p.Key, "^[A-Z0-9_]+:[A-Z0-9_]+$") && p.Value > 0))
+            .WithMessage("Đơn giá màu dùng khóa VẬT_LIỆU:MÀU và đơn vị đồng/kg.");
         RuleFor(x => x.HubHandlingFee).GreaterThanOrEqualTo(0);
         RuleFor(x => x.PlatformMarginPercent).InclusiveBetween(0, 100);
         RuleFor(x => x.PrioritySurchargePercent).InclusiveBetween(0, 500);

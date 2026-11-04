@@ -25,7 +25,8 @@ public sealed class CommercialPolicyProvider(PrintGridDbContext context) : IComm
             new Dictionary<string, decimal>(parameters.MaterialRates, StringComparer.OrdinalIgnoreCase),
             new Dictionary<string, decimal>(parameters.MaterialDensities, StringComparer.OrdinalIgnoreCase),
             parameters.PricePerPrintHour,
-            PricingParameterSet.Active.TimeMultiplierByLayer);
+            PricingParameterSet.Active.TimeMultiplierByLayer,
+            parameters.ColorPricePerKg, parameters.FailureRate, parameters.PolishingPerUnit);
         return new CommercialPolicy(pricing, parameters.AutoLaneThreshold, parameters.QuoteValidityHours);
     }
 }

@@ -73,12 +73,12 @@ public class AssignmentEngineTests
         _clock,
         NullLogger<AssignmentEngine>.Instance);
 
-    private static Job PendingJob(int dueInDays = 5) => Job.Create(
+    private Job PendingJob(int dueInDays = 5) => Job.Create(
         Guid.NewGuid(),
         Guid.NewGuid(),
         SpecBuilder.Default(),
         estimatedPrintMinutes: 60,
-        internalDueDate: DateOnly.FromDateTime(DateTime.UtcNow.AddDays(dueInDays)));
+        internalDueDate: DateOnly.FromDateTime(_now.AddDays(dueInDays)));
 
     private void OneCapableLab()
     {

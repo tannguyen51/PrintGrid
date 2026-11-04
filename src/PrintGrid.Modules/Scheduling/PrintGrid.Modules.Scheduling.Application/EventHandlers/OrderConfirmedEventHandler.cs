@@ -80,6 +80,7 @@ public class OrderConfirmedEventHandler : INotificationHandler<OrderConfirmedEve
                 spec,
                 totalMinutes,
                 internalDue, item.Quantity);
+            job.SetQuotedProduction(item.CalculationJson, item.QuotedMachineId);
 
             await _jobs.AddAsync(job, cancellationToken);
             created.Add(job);

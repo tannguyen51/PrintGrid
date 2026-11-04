@@ -336,7 +336,7 @@ export default function LabQueuePage() {
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={2}>
                   <Box>
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5, flexWrap: 'wrap', gap: 1 }}>
-                      <Typography sx={{ fontWeight: 700, color: 'text.primary' }}>{j.materialCode} · {j.colorCode}</Typography>
+                      <Typography sx={{ fontWeight: 700, color: 'text.primary' }}>{j.materialCode} · {j.productionQuote?.Colors.map(c => c.ColorCode).join(', ') ?? j.colorCode}</Typography>
                       <Chip label={JOB_LABELS[j.status]} size="small" color={j.status === 'InProgress' ? 'primary' : j.status === 'Accepted' ? 'info' : 'warning'} />
                       {j.status === 'Assigned' && (
                         <JobCountdown
@@ -362,6 +362,11 @@ export default function LabQueuePage() {
                       </Typography>
                     )}
                     <DownloadFileButton jobId={j.id} fileName={j.modelFileName} />
+                    {j.productionQuote && <Alert severity="info" sx={{ mt: 1 }}>
+                      In theo kích thước {j.boundingWidthMm} × {j.boundingDepthMm} × {j.boundingHeightMm} mm, giữ nguyên tỷ lệ file.
+                      {' '}{j.productionQuote.Colors.map((c, index) => `Vùng ${index + 1}: ${c.ColorCode}`).join(' · ')}.
+                      {j.productionQuote.PolishingPerUnit > 0 ? ' Có đánh bóng sau in.' : ''}
+                    </Alert>}
                     {j.qcProofStatus === 'Rejected' && j.qcRejectionReason && (
                       <Alert severity="warning" sx={{ mt: 1.5 }}>
                         QC bị từ chối: {j.qcRejectionReason}

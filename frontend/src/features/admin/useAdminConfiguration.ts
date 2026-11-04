@@ -14,6 +14,9 @@ export interface CommercialParameters {
   maxBatchSize: number
   schedulingTimeBudgetSeconds: number
   slaRiskThresholdHours: number
+  colorPricePerKg?: Record<string, number>
+  failureRate?: number
+  polishingPerUnit?: number
 }
 
 export interface CommercialConfiguration {

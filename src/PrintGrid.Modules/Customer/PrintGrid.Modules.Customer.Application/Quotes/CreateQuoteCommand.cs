@@ -12,4 +12,7 @@ public record CreateQuoteCommand(
     decimal LayerHeightMm,
     int InfillPercent,
     int Quantity,
-    decimal ToleranceMm) : IRequest<Result<QuoteDto>>;
+    decimal ToleranceMm,
+    string? SizeCode = null,
+    IReadOnlyList<string>? ColorCodes = null,
+    bool Polishing = false) : IRequest<Result<QuoteDto>>;

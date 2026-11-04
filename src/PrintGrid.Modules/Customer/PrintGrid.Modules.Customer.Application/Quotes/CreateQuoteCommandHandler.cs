@@ -20,6 +20,7 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
     private readonly IDateTimeProvider _clock;
     private readonly IProductionCapacityProbe _capacity;
     private readonly ICommercialPolicyProvider _commercialPolicy;
+    private readonly IQuoteSlicer? _quoteSlicer;
 
     public CreateQuoteCommandHandler(
         IModelRepository models,
@@ -27,7 +28,8 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
         IUnitOfWork unitOfWork,
         IDateTimeProvider clock,
         IProductionCapacityProbe capacity,
-        ICommercialPolicyProvider? commercialPolicy = null)
+        ICommercialPolicyProvider? commercialPolicy = null,
+        IQuoteSlicer? quoteSlicer = null)
     {
         _models = models;
         _quotes = quotes;
@@ -35,6 +37,7 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
         _clock = clock;
         _capacity = capacity;
         _commercialPolicy = commercialPolicy ?? new DefaultCommercialPolicyProvider();
+        _quoteSlicer = quoteSlicer;
     }
 
     public async Task<Result<QuoteDto>> Handle(CreateQuoteCommand command, CancellationToken cancellationToken)
@@ -55,7 +58,7 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
         // Only an explicit "false" blocks quoting. NULL means the model was analysed before the
 // printability flags existed (or the file predates them) — treating unknown as unprintable
 // rejected every such model outright. The trial placement below is the real feasibility gate.
-        if (model.IsPrintable == false)
+        if (model.IsPrintable == false && (command.SizeCode is null || model.IsWatertight != true || model.IsManifold != true))
             return Result.Failure<QuoteDto>(Error.Validation(
                 model.GeometryMessage ?? "Model không thể in trên bất kỳ máy nào trong mạng lưới"));
 
@@ -70,6 +73,9 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
                 model.ReviewStatus == Domain.Enums.ModelReviewStatus.Rejected
                     ? $"Model đã bị từ chối nội dung: {model.ReviewReason ?? "không rõ lý do"}"
                     : "Model đang chờ duyệt nội dung — chưa thể báo giá."));
+
+        if (command.SizeCode is not null || command.ColorCodes is not null || command.Polishing)
+            return await CreateSlicedQuote(command, model, policy, cancellationToken);
 
         // Volume & reference print time come from the async geometry analysis; fall back to
         // a deterministic envelope if analysis hasn't run yet.
@@ -149,6 +155,77 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
         await _quotes.AddAsync(quote, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        return Result.Success(QuoteMappings.ToCustomerDto(quote));
+    }
+
+    private async Task<Result<QuoteDto>> CreateSlicedQuote(CreateQuoteCommand command, Model model,
+        CommercialPolicy policy, CancellationToken cancellationToken)
+    {
+        if (_quoteSlicer is null || _quoteSlicer.ConfiguredMachineIds.Count == 0)
+            return Result.Failure<QuoteDto>(Error.Conflict("Chưa cấu hình CuraEngine và profile máy để báo giá tự động. Vui lòng liên hệ PrintGrid."));
+        var colors = (command.ColorCodes ?? new[] { command.ColorCode })
+            .Select(c => c.Trim().ToUpperInvariant()).ToList();
+        if (colors.Count is < 1 or > 8 || colors.Distinct().Count() != colors.Count)
+            return Result.Failure<QuoteDto>(Error.Validation("Chọn từ 1 đến 8 màu khác nhau."));
+        if (command.Polishing && policy.Pricing.PolishingPerUnit <= 0)
+            return Result.Failure<QuoteDto>(Error.Conflict("Chưa cấu hình đơn giá dịch vụ đánh bóng."));
+        var size = command.SizeCode ?? "ORIGINAL";
+        decimal scale;
+        try { scale = SlicedQuotePricing.ScaleFor(size, model.BoundingWidthMm ?? 0, model.BoundingDepthMm ?? 0, model.BoundingHeightMm ?? 0); }
+        catch (ArgumentException e) { return Result.Failure<QuoteDto>(Error.Validation(e.Message)); }
+        var width = model.BoundingWidthMm!.Value;
+        var depth = model.BoundingDepthMm!.Value;
+        var height = model.BoundingHeightMm!.Value;
+        QuotePriceBreakdown? best = null;
+        TrialPlacementResult? placement = null;
+        string? failure = null;
+        foreach (var machineId in _quoteSlicer.ConfiguredMachineIds)
+        {
+            // Cheap dimensional/capacity check before starting an external engine process.
+            var feasible = await _capacity.FindEarliestFeasibleDeliveryAsync(
+                colors.Select((color, index) => new TrialPlacementLine(width * scale, depth * scale, height * scale,
+                    command.MaterialCode, color, command.LayerHeightMm, command.ToleranceMm,
+                    index == 0 ? 1 : 0, 0.1m, machineId)).ToList(), _clock.UtcNow, cancellationToken);
+            if (feasible is null) continue;
+            try
+            {
+                var density = policy.Pricing.DensityGramsPerCm3[command.MaterialCode];
+                var slice = await _quoteSlicer.SliceAsync(new(model.StorageKey!, model.FileFormat, scale,
+                    command.MaterialCode, colors, density, command.LayerHeightMm, command.InfillPercent,
+                    command.Quantity, machineId), cancellationToken);
+                if (!slice.Colors.Select(c => c.ColorCode).Order().SequenceEqual(colors.Order()))
+                    throw new InvalidDataException("Kết quả slicer không khớp các màu đã chọn.");
+                var price = SlicedQuotePricing.Calculate(policy.Pricing, command.MaterialCode, size,
+                    width, depth, height, scale, command.Quantity, slice, command.Polishing);
+                var trial = await _capacity.FindEarliestFeasibleDeliveryAsync(
+                    slice.Colors.Select((color, index) => new TrialPlacementLine(price.WidthMm, price.DepthMm, price.HeightMm,
+                        command.MaterialCode, color.ColorCode, command.LayerHeightMm, command.ToleranceMm,
+                        index == 0 ? checked((int)decimal.Ceiling(slice.PrintMinutes)) : 0, color.Grams, machineId)).ToList(),
+                    _clock.UtcNow, cancellationToken);
+                if (trial is not null && (best is null || price.TotalAmount < best.TotalAmount ||
+                    (price.TotalAmount == best.TotalAmount && trial.PromisedDeliveryDate < placement!.PromisedDeliveryDate)))
+                { best = price; placement = trial; }
+            }
+            catch (Exception e) when (e is InvalidDataException or ArgumentException or InvalidOperationException)
+            { failure = e.Message; }
+        }
+        if (best is null || placement is null)
+            return Result.Failure<QuoteDto>(Error.Conflict(failure ?? "Không có máy phù hợp với kích thước, vật liệu và màu đã chọn."));
+        var quote = Quote.CreatePending(command.CustomerId, QuoteValidity);
+        var config = PrintConfiguration.Create(command.MaterialCode, colors[0], command.LayerHeightMm,
+            command.InfillPercent, command.ToleranceMm);
+        var item = quote.AddItem(model.Id, command.Quantity, config, Money.Of(best.TotalAmount / command.Quantity),
+            (int)decimal.Ceiling(best.PrintMinutes / command.Quantity),
+            best.Colors.Sum(c => c.Grams) / command.Quantity,
+            best.MaterialAmount / command.Quantity, best.MachineAmount / command.Quantity,
+            best.WidthMm, best.DepthMm, best.HeightMm);
+        item.FreezeCalculation(System.Text.Json.JsonSerializer.Serialize(best), best.TotalAmount, placement.MachineId);
+        quote.MarkDraft(placement.PromisedDeliveryDate, policy.Pricing.Version, placement.Basis, placement.CustomerBasis);
+        if (policy.AutoLaneThreshold > 0 && best.TotalAmount < policy.AutoLaneThreshold)
+            quote.Approve(null, best.TotalAmount, placement.PromisedDeliveryDate, null, _clock.UtcNow,
+                TimeSpan.FromHours(policy.QuoteValidityHours), true, 0);
+        await _quotes.AddAsync(quote, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(QuoteMappings.ToCustomerDto(quote));
     }
 }

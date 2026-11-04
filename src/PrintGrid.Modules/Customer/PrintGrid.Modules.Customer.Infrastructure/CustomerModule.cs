@@ -20,5 +20,7 @@ public class CustomerModule : IModule
         ModuleAssemblyRegistry.Register(InfrastructureAssembly);
         services.AddCustomerApplication();
         CustomerModuleRegistration.AddRepositories(services);
+        services.Configure<Slicing.CuraQuoteOptions>(configuration.GetSection("QuoteSlicer"));
+        services.AddScoped<Application.Quotes.IQuoteSlicer, Slicing.CuraQuoteSlicer>();
     }
 }

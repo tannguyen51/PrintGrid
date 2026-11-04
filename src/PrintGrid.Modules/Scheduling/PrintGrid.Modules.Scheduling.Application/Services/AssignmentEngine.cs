@@ -5,6 +5,7 @@ using PrintGrid.Modules.Scheduling.Application.Commands.AssignJob;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
 using PrintGrid.Modules.Scheduling.Domain.Services;
+using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
 using PrintGrid.SharedKernel.Interfaces;
 
 namespace PrintGrid.Modules.Scheduling.Application.Services;
@@ -81,7 +82,13 @@ public class AssignmentEngine : IAssignmentEngine
                 || activeCount < lab.MaxConcurrentJobs.Value)
             .ToList();
         var filter = ApplyExclusion(
-            _capabilityFilter.Filter(job.Specification, labs), request.ExcludeLabId, job.Id);
+            _capabilityFilter.Filter(FirstColorSpec(job), labs), request.ExcludeLabId, job.Id);
+        var colorDemands = job.MaterialByColor();
+        filter = new(filter.Candidates.Where(c => colorDemands.All(d => c.Lab.HasStock(job.Specification.MaterialCode, d.Key, d.Value))).ToList(), filter.Rejections);
+        if (job.QuotedMachineId.HasValue)
+            filter = new(filter.Candidates.Where(c => c.Machine.Id == job.QuotedMachineId).ToList(),
+                filter.Rejections.Concat(filter.Candidates.Where(c => c.Machine.Id != job.QuotedMachineId)
+                    .Select(c => new CapabilityRejection(c.Machine.Id, "different_slicer_profile"))).ToList());
 
         if (filter.Candidates.Count == 0)
         {
@@ -105,10 +112,12 @@ public class AssignmentEngine : IAssignmentEngine
             // machine's own calibration factor is applied here, at the point a concrete
             // machine is considered. Job.EstimatedPrintMinutes stays untouched — it is the
             // baseline the calibration loop measures MAPE against, never rewritten.
-            var machineEstimateMinutes = candidate.Machine.ApplyToEstimate(job.EstimatedPrintMinutes);
+            var machineEstimateMinutes = job.QuotedMachineId.HasValue ? job.EstimatedPrintMinutes
+                : candidate.Machine.ApplyToEstimate(job.EstimatedPrintMinutes);
             var start = await _timeline.FindEarliestFreeSlotAsync(
                 candidate.Machine, machineEstimateMinutes, _clock.UtcNow, cancellationToken);
-            var duration = machineEstimateMinutes / candidate.Machine.SpeedFactor;
+            var duration = job.QuotedMachineId.HasValue ? machineEstimateMinutes
+                : machineEstimateMinutes / candidate.Machine.SpeedFactor;
             var end = start.AddMinutes((double)duration);
 
             if (earliestEnd is null || end < earliestEnd.Value)
@@ -229,6 +238,15 @@ public class AssignmentEngine : IAssignmentEngine
             job, request, filter, ranked, AssignmentOutcomes.PlacementRace,
             "Every candidate placement collided with a concurrent booking — retry shortly",
             stopwatch, budget, budgetExceeded, earliestEnd, scoringConfig, cancellationToken);
+    }
+
+    private static JobSpecification FirstColorSpec(Job job)
+    {
+        if (job.ProductionQuoteJson is null) return job.Specification;
+        var first = job.MaterialByColor().First();
+        var spec = job.Specification;
+        return JobSpecification.Create(spec.RequiredVolume, spec.MaterialCode, first.Key, spec.LayerHeightMm,
+            spec.ToleranceMm, spec.Technology, first.Value);
     }
 
     /// <summary>

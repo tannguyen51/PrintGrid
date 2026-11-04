@@ -42,5 +42,6 @@ public static class QuoteMappings
             i.MaterialCostAmount,
             i.MachineTimeCostAmount,
             i.EstimatedPrintMinutes,
-            i.EstimatedMaterialGrams)).ToList());
+            i.EstimatedMaterialGrams,
+            i.CalculationJson is null ? null : System.Text.Json.JsonSerializer.Deserialize<QuotePriceBreakdown>(i.CalculationJson))).ToList());
 }

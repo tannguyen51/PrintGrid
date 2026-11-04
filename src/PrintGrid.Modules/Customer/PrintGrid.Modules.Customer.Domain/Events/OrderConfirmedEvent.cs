@@ -21,4 +21,6 @@ public sealed record OrderConfirmedItem(
     decimal EstimatedMaterialGrams,
     decimal? BoundingWidthMm,
     decimal? BoundingDepthMm,
-    decimal? BoundingHeightMm);
+    decimal? BoundingHeightMm,
+    string? CalculationJson = null,
+    Guid? QuotedMachineId = null);

@@ -157,4 +157,5 @@ public record JobDto(
     string Technology,
     string? OrderNumber = null,
     string? ModelFileName = null,
-    string? Sha256 = null);
+    string? Sha256 = null,
+    System.Text.Json.JsonElement? ProductionQuote = null);

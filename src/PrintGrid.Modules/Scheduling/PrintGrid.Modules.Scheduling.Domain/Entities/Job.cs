@@ -10,6 +10,22 @@ public class Job : AggregateRoot<Guid>
 {
     public Guid OrderItemId { get; private set; }
     public Guid ModelId { get; private set; }
+    public string? ProductionQuoteJson { get; private set; }
+    public Guid? QuotedMachineId { get; private set; }
+
+    public void SetQuotedProduction(string? json, Guid? machineId)
+    { ProductionQuoteJson = json; QuotedMachineId = machineId; }
+
+    public IReadOnlyDictionary<string, decimal> MaterialByColor()
+    {
+        if (ProductionQuoteJson is null) return new Dictionary<string, decimal> { [Specification.ColorCode] = Specification.MaterialGrams };
+        using var doc = System.Text.Json.JsonDocument.Parse(ProductionQuoteJson);
+        var root = doc.RootElement;
+        var originalQuantity = root.GetProperty("Quantity").GetDecimal();
+        return root.GetProperty("Colors").EnumerateArray().ToDictionary(
+            c => c.GetProperty("ColorCode").GetString()!,
+            c => decimal.Round(c.GetProperty("Grams").GetDecimal() * Quantity / originalQuantity, 2));
+    }
     public JobSpecification Specification { get; private set; } = null!;
     public JobStatus Status { get; private set; }
     public DateOnly InternalDueDate { get; private set; }
@@ -122,6 +138,8 @@ public class Job : AggregateRoot<Guid>
             Id = Guid.NewGuid(),
             OrderItemId = original.OrderItemId,
             ModelId = original.ModelId,
+            ProductionQuoteJson = original.ProductionQuoteJson,
+            QuotedMachineId = original.QuotedMachineId,
             Specification = specification,
             EstimatedPrintMinutes = original.EstimatedPrintMinutes,
             InternalDueDate = original.InternalDueDate,
@@ -167,7 +185,9 @@ public class Job : AggregateRoot<Guid>
                 Specification.ToleranceMm,
                 Specification.Technology,
                 decimal.Round(Specification.MaterialGrams * ratio, 2));
-            return Create(OrderItemId, ModelId, spec, Math.Max(1, (int)Math.Ceiling(EstimatedPrintMinutes * ratio)), InternalDueDate, q, Id);
+            var child = Create(OrderItemId, ModelId, spec, Math.Max(1, (int)Math.Ceiling(EstimatedPrintMinutes * ratio)), InternalDueDate, q, Id);
+            child.SetQuotedProduction(ProductionQuoteJson, QuotedMachineId);
+            return child;
         }).ToList();
         Status = JobStatus.Cancelled; FailureReason = "Split into quantity batches due to schedule risk";
         return Result.Success<IReadOnlyList<Job>>(jobs);

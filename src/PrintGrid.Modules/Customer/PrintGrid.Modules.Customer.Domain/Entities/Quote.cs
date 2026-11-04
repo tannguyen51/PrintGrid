@@ -89,7 +89,9 @@ public class Quote : AggregateRoot<Guid>
         CustomerPlacementSummary = customerPlacementSummary;
         TotalPrice = _items.Aggregate(
             Money.Zero(_items[0].UnitPrice.Currency),
-            (sum, item) => sum.Add(item.UnitPrice.Multiply(item.Quantity)));
+            (sum, item) => sum.Add(item.BatchTotalAmount.HasValue
+                ? Money.Of(item.BatchTotalAmount.Value, item.UnitPrice.Currency)
+                : item.UnitPrice.Multiply(item.Quantity)));
         EngineTotalAmount = TotalPrice.Amount;
         EnginePromisedDeliveryDate = promisedDeliveryDate;
         AddDomainEvent(new QuoteDraftedEvent(Id, TotalPrice.Amount, promisedDeliveryDate, placementBasis));

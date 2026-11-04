@@ -12,6 +12,9 @@ public class OrderItem : Entity<Guid>
     public PrintConfiguration Configuration { get; private set; } = null!;
     public Money UnitPrice { get; private set; } = Money.Zero();
     public string ItemStatus { get; private set; } = "Pending";
+    public string? CalculationJson { get; private set; }
+    public decimal? BatchTotalAmount { get; private set; }
+    public Guid? QuotedMachineId { get; private set; }
 
     /// <summary>Production estimates copied from the frozen quote — feeds real job decomposition (FR-SCHED-006).</summary>
     public int EstimatedPrintMinutes { get; private set; }
@@ -20,7 +23,7 @@ public class OrderItem : Entity<Guid>
     public decimal? BoundingDepthMm { get; private set; }
     public decimal? BoundingHeightMm { get; private set; }
 
-    public Money LineTotal => UnitPrice.Multiply(Quantity);
+    public Money LineTotal => BatchTotalAmount.HasValue ? Money.Of(BatchTotalAmount.Value, UnitPrice.Currency) : UnitPrice.Multiply(Quantity);
 
     public void UpdateStatus(string newStatus) => ItemStatus = newStatus;
 
@@ -34,6 +37,9 @@ public class OrderItem : Entity<Guid>
         Quantity = quoteItem.Quantity,
         Configuration = quoteItem.Configuration,
         UnitPrice = quoteItem.UnitPrice,
+        CalculationJson = quoteItem.CalculationJson,
+        BatchTotalAmount = quoteItem.BatchTotalAmount,
+        QuotedMachineId = quoteItem.QuotedMachineId,
         EstimatedPrintMinutes = quoteItem.EstimatedPrintMinutes,
         EstimatedMaterialGrams = quoteItem.EstimatedMaterialGrams,
         BoundingWidthMm = quoteItem.BoundingWidthMm,

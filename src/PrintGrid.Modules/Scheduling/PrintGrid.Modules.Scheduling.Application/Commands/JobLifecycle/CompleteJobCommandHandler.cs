@@ -41,8 +41,8 @@ public class CompleteJobCommandHandler : IRequestHandler<CompleteJobCommand, Res
         // The lab reports what it used; when it does not, what it reserved on acceptance is the
         // honest estimate of what the print consumed — settling on that also releases the
         // reservation instead of leaving it held forever.
-        var reservedGrams = lab.MaterialReservations
-            .FirstOrDefault(r => r.JobId == job.Id)?.ReservedGrams;
+        decimal? reservedGrams = lab.MaterialReservations.Any(r => r.JobId == job.Id)
+            ? lab.MaterialReservations.Where(r => r.JobId == job.Id).Sum(r => r.ReservedGrams) : null;
         var consumedGrams = command.ActualMaterialGrams ?? reservedGrams;
 
         if (consumedGrams is { } consumed)
@@ -55,12 +55,11 @@ public class CompleteJobCommandHandler : IRequestHandler<CompleteJobCommand, Res
         // hub-caused failure is credited back to whoever printed it (CostBearer.System).
         if (job.CostBearer == CostBearer.System && consumedGrams is { } compensated)
         {
-            lab.CompensateMaterial(
-                job.Id,
-                job.Specification.MaterialCode,
-                job.Specification.ColorCode,
-                compensated,
-                "Bồi hoàn do lỗi hub (hệ thống chịu phí)");
+            var colors = job.MaterialByColor();
+            var total = colors.Values.Sum();
+            foreach (var color in colors)
+                lab.CompensateMaterial(job.Id, job.Specification.MaterialCode, color.Key,
+                    compensated * color.Value / total, "Bồi hoàn do lỗi hub (hệ thống chịu phí)");
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

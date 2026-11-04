@@ -11,7 +11,10 @@ public sealed record PricingParameterSet(
     IReadOnlyDictionary<string, decimal> PricePerGram,
     IReadOnlyDictionary<string, decimal> DensityGramsPerCm3,
     decimal PricePerPrintHour,
-    IReadOnlyDictionary<decimal, decimal> TimeMultiplierByLayer)
+    IReadOnlyDictionary<decimal, decimal> TimeMultiplierByLayer,
+    IReadOnlyDictionary<string, decimal>? ColorPricePerKg = null,
+    decimal FailureRate = 0m,
+    decimal PolishingPerUnit = 0m)
 {
     /// <summary>Rates as they stood when the register was approved (legacy constants).</summary>
     public static readonly PricingParameterSet V2026_09 = new(

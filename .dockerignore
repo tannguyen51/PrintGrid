@@ -13,5 +13,7 @@ documentation/
 .env
 docker-compose*.yml
 **/appsettings.Development.json
+**/appsettings.Local.json
+.local/
 **/*.md
 logs/

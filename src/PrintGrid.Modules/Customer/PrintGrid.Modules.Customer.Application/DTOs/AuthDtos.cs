@@ -67,7 +67,8 @@ public record QuoteItemDto(
     decimal MaterialCostAmount,
     decimal MachineTimeCostAmount,
     int EstimatedPrintMinutes,
-    decimal EstimatedMaterialGrams);
+    decimal EstimatedMaterialGrams,
+    PrintGrid.Modules.Customer.Application.Quotes.QuotePriceBreakdown? Calculation = null);
 
 public record AuthSessionDto(
     string AccessToken,

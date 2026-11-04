@@ -98,6 +98,7 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
 
         foreach (var (lab, machine) in candidates)
         {
+            if (lines.Any(l => l.RequiredMachineId.HasValue && l.RequiredMachineId != machine.Id)) continue;
             if (!specs.All(machine.Supports)) continue;
 
             var windows = bookedByMachine.TryGetValue(machine.Id, out var w)
@@ -112,7 +113,8 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
 
             foreach (var (line, spec) in lines.Zip(specs))
             {
-                var duration = TimeSpan.FromMinutes(line.TotalMinutes / (double)machine.SpeedFactor);
+                var duration = TimeSpan.FromMinutes(line.RequiredMachineId.HasValue ? line.TotalMinutes
+                    : line.TotalMinutes / (double)machine.SpeedFactor);
                 foreach (var booked in windows)
                 {
                     if (booked.Start - cursor >= duration) break;   // fits in this gap

@@ -40,5 +40,6 @@ public static class JobMappings
         job.Specification.RequiredVolume.DepthMm,
         job.Specification.RequiredVolume.HeightMm,
         job.Specification.ToleranceMm,
-        job.Specification.Technology.ToString());
+        job.Specification.Technology.ToString(),
+        ProductionQuote: job.ProductionQuoteJson is null ? null : System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(job.ProductionQuoteJson));
 }

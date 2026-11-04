@@ -12,6 +12,14 @@ using PrintGrid.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Machine-local paths/profiles are optional and never loaded in production.
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true)
+        .AddEnvironmentVariables();
+    if (args.Length > 0) builder.Configuration.AddCommandLine(args);
+}
+
 builder.Host.UseSerilog((context, config) => config
     .ReadFrom.Configuration(context.Configuration)
     .Enrich.FromLogContext()
@@ -54,6 +62,14 @@ builder.Services.AddHealthChecks()
     .AddRedis(redisConnection, name: "redis");
 
 var app = builder.Build();
+
+var quoteSlicerOptions = app.Services
+    .GetRequiredService<Microsoft.Extensions.Options.IOptions<PrintGrid.Modules.Customer.Infrastructure.Slicing.CuraQuoteOptions>>()
+    .Value;
+app.Logger.LogInformation(
+    "Quote slicer startup check: {MachineCount} machine profile(s), executable available: {ExecutableAvailable}",
+    quoteSlicerOptions.Machines.Count,
+    File.Exists(quoteSlicerOptions.ExecutablePath));
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseSerilogRequestLogging();

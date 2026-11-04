@@ -52,7 +52,7 @@ public class QuotesController : ControllerBase
                 request.LayerHeightMm,
                 request.InfillPercent,
                 request.Quantity,
-                request.ToleranceMm),
+                request.ToleranceMm, request.SizeCode ?? "ORIGINAL", request.ColorCodes, request.Polishing),
             cancellationToken);
 
         if (result.IsFailure)
@@ -74,4 +74,7 @@ public record CreateQuoteRequest(
     decimal LayerHeightMm,
     int InfillPercent,
     int Quantity,
-    decimal ToleranceMm);
+    decimal ToleranceMm,
+    string? SizeCode = null,
+    IReadOnlyList<string>? ColorCodes = null,
+    bool Polishing = false);

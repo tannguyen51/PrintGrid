@@ -294,12 +294,12 @@ public class Lab : AggregateRoot<Guid>
     public void ReserveMaterial(Guid jobId, string materialCode, string colorCode, decimal estimatedGrams, decimal tolerancePercent = 0.03m)
     {
         if (tolerancePercent is < 0.01m or > 0.05m) throw new ArgumentOutOfRangeException(nameof(tolerancePercent));
-        if (_materialReservations.Any(r => r.JobId == jobId)) return;
 
         // The stock ledger is opt-in: a lab that keeps no record for this material is not
         // constrained by it (see HasStock), so there is nothing to reserve rather than an error.
         var stock = FindStock(materialCode, colorCode);
         if (stock is null) return;
+        if (_materialReservations.Any(r => r.JobId == jobId && r.MaterialStockId == stock.Id)) return;
 
         var reserved = decimal.Round(estimatedGrams * (1m + tolerancePercent), 2);
         stock.Reserve(reserved);
@@ -326,11 +326,12 @@ public class Lab : AggregateRoot<Guid>
 
     public void ReleaseMaterial(Guid jobId)
     {
-        var reservation = _materialReservations.SingleOrDefault(r => r.JobId == jobId);
-        if (reservation is null) return;
-        var stock = _materialStocks.Single(s => s.Id == reservation.MaterialStockId);
-        stock.Release(reservation.ReservedGrams);
-        _materialReservations.Remove(reservation);
+        foreach (var reservation in _materialReservations.Where(r => r.JobId == jobId).ToList())
+        {
+            var stock = _materialStocks.Single(s => s.Id == reservation.MaterialStockId);
+            stock.Release(reservation.ReservedGrams);
+            _materialReservations.Remove(reservation);
+        }
     }
 
     public void SettleMaterial(Guid jobId, decimal actualGrams)
@@ -339,12 +340,20 @@ public class Lab : AggregateRoot<Guid>
         // record for this material/colour (see HasStock), so there is nothing to settle here.
         // Settle must make the same promise as Reserve — completing a job on a lab that does
         // not track inventory is normal, not an error (it used to throw and block completion).
-        var reservation = _materialReservations.SingleOrDefault(r => r.JobId == jobId);
-        if (reservation is null) return;
-        var stock = _materialStocks.Single(s => s.Id == reservation.MaterialStockId);
-        stock.Settle(reservation.ReservedGrams, actualGrams);
-        _stockTransactions.Add(StockTransaction.Create(Id, stock.Id, -actualGrams, stock.AvailableGrams, "Job completion", jobId));
-        _materialReservations.Remove(reservation);
+        var reservations = _materialReservations.Where(r => r.JobId == jobId).ToList();
+        var total = reservations.Sum(r => r.ReservedGrams);
+        if (total == 0) return;
+        var remaining = actualGrams;
+        for (var index = 0; index < reservations.Count; index++)
+        {
+            var reservation = reservations[index];
+            var used = index == reservations.Count - 1 ? remaining : decimal.Round(actualGrams * reservation.ReservedGrams / total, 2);
+            remaining -= used;
+            var stock = _materialStocks.Single(s => s.Id == reservation.MaterialStockId);
+            stock.Settle(reservation.ReservedGrams, used);
+            _stockTransactions.Add(StockTransaction.Create(Id, stock.Id, -used, stock.AvailableGrams, "Job completion", jobId));
+            _materialReservations.Remove(reservation);
+        }
     }
 
     /// <summary>

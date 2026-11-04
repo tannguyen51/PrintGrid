@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/PrintGrid.Api/PrintGrid.Api.csproj" />
+    <ProjectReference Include="../../src/PrintGrid.Modules/Customer/PrintGrid.Modules.Customer.Infrastructure/PrintGrid.Modules.Customer.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/PrintGrid.Modules/Scheduling/PrintGrid.Modules.Scheduling.Infrastructure/PrintGrid.Modules.Scheduling.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

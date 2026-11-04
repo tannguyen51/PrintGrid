@@ -13,7 +13,8 @@ public sealed record TrialPlacementLine(
     decimal LayerHeightMm,
     decimal ToleranceMm,
     int TotalMinutes,
-    decimal TotalGrams);
+    decimal TotalGrams,
+    Guid? RequiredMachineId = null);
 
 /// <summary>Result of a speculative (trial-only, nothing committed) placement across the network.</summary>
 public sealed record TrialPlacementResult(

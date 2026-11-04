@@ -28,8 +28,11 @@ public class AcceptJobCommandHandler : IRequestHandler<AcceptJobCommand, Result>
         if (lab is null) return Result.Failure(Error.NotFound("Lab", job.LabId.Value));
         try
         {
-            lab.ReserveMaterial(job.Id, job.Specification.MaterialCode, job.Specification.ColorCode,
-                job.Specification.MaterialGrams);
+            var demands = job.MaterialByColor();
+            if (demands.Any(d => !lab.HasStock(job.Specification.MaterialCode, d.Key, d.Value * 1.03m)))
+                return Result.Failure(Error.Conflict("Không đủ vật liệu cho tất cả màu của đơn."));
+            foreach (var demand in demands)
+                lab.ReserveMaterial(job.Id, job.Specification.MaterialCode, demand.Key, demand.Value);
         }
         catch (InvalidOperationException ex) { return Result.Failure(Error.Conflict(ex.Message)); }
 

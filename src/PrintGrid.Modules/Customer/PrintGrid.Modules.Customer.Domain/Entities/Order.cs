@@ -204,7 +204,7 @@ public class Order : AggregateRoot<Guid>
                 i.EstimatedMaterialGrams,
                 i.BoundingWidthMm,
                 i.BoundingDepthMm,
-                i.BoundingHeightMm)).ToList()));
+                i.BoundingHeightMm, i.CalculationJson, i.QuotedMachineId)).ToList()));
 
         return Result.Success();
     }

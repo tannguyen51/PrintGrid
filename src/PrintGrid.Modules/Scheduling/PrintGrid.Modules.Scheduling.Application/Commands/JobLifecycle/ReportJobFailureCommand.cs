@@ -65,8 +65,8 @@ public class ReportJobFailureCommandHandler
         if (job.LabId is { } labId)
         {
             var lab = await _labs.GetByIdAsync(labId, cancellationToken);
-            var reservedGrams = lab?.MaterialReservations
-                .FirstOrDefault(r => r.JobId == job.Id)?.ReservedGrams;
+            decimal? reservedGrams = lab?.MaterialReservations.Any(r => r.JobId == job.Id) == true
+                ? lab.MaterialReservations.Where(r => r.JobId == job.Id).Sum(r => r.ReservedGrams) : null;
 
             if (lab is not null && reservedGrams is { } grams)
             {
