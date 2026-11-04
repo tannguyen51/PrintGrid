@@ -35,5 +35,7 @@ public class GetOrdersQueryHandler : IRequestHandler<GetOrdersQuery, Result<IRea
             i.Configuration.ColorCode,
             i.Configuration.LayerHeightMm,
             i.Configuration.InfillPercent,
-            i.UnitPrice.Amount)).ToList());
+            i.UnitPrice.Amount)).ToList(),
+        order.ContractNumber,
+        order.TermsAcceptedAtUtc);
 }

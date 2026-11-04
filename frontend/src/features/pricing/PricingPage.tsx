@@ -295,7 +295,7 @@ function MaterialCard({
         <Typography sx={{ color: landing.text, fontWeight: 700, fontSize: '1.05rem' }}>{name}</Typography>
         <Chip size="small" label={code} variant="outlined" sx={{ color: landing.textMuted, borderColor: landing.hairline }} />
         {isPremium && (
-          <Chip size="small" label="Cao cấp" sx={{ color: '#C4B5FD', bgcolor: 'rgba(139,92,246,0.16)', border: '1px solid rgba(139,92,246,0.4)' }} />
+          <Chip size="small" label="Cao cấp" sx={{ color: '#4933B8', bgcolor: '#F0ECFF', border: '1px solid #D8CDFF' }} />
         )}
       </Stack>
       <Typography sx={{ color: landing.textMuted, fontSize: '0.85rem', flex: 1 }}>

@@ -6,6 +6,8 @@ public interface ILabRepository
 {
     Task<Lab?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Lab?> GetByOwnerUserIdAsync(Guid ownerUserId, CancellationToken cancellationToken = default);
+    /// <summary>The lab an operator (or other non-owner staff member) belongs to.</summary>
+    Task<Lab?> GetByStaffUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Lab>> GetActiveWithMachinesAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Lab>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Lab>> GetByOwnerAsync(Guid ownerUserId, CancellationToken cancellationToken = default);

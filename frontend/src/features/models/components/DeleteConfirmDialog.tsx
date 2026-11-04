@@ -16,7 +16,7 @@ export function DeleteConfirmDialog({ open, modelName, deleting, onCancel, onCon
       onClose={deleting ? undefined : onCancel}
       fullWidth
       maxWidth="xs"
-      PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' } }}
+      PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}
     >
       <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>Xóa model</DialogTitle>
       <DialogContent>

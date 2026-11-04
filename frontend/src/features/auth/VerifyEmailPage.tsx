@@ -43,7 +43,7 @@ export default function VerifyEmailPage() {
         minHeight: '100vh',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: 'background.default',
+        background: 'transparent',
       }}
     >
       <Box
@@ -52,7 +52,7 @@ export default function VerifyEmailPage() {
           maxWidth: 420,
           bgcolor: 'background.paper',
           border: '1px solid',
-          borderColor: 'rgba(255,255,255,0.12)',
+          borderColor: 'divider',
           borderRadius: 4,
           p: 5,
           textAlign: 'center',

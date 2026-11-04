@@ -92,7 +92,7 @@ export default function DesignRequestPage() {
           </Box>
         </Stack>
 
-        <Box sx={{ p: 3, borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'background.paper' }}>
+        <Box sx={{ p: 3, borderRadius: 2, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
           <Stack spacing={2}>
             <TextField
               label="Tiêu đề"
@@ -154,7 +154,7 @@ export default function DesignRequestPage() {
           ) : (
             <Stack spacing={1.25}>
               {requests.map((row) => (
-                <Box key={row.id} sx={{ p: 2, borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'background.paper' }}>
+                <Box key={row.id} sx={{ p: 2, borderRadius: 2, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
                     <Box sx={{ minWidth: 0 }}>
                       <Typography sx={{ fontWeight: 700, color: 'text.primary' }}>{row.title}</Typography>

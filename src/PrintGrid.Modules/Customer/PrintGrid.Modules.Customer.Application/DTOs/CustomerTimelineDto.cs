@@ -10,7 +10,8 @@ public record CustomerTimelineDto(
     IReadOnlyCollection<CustomerOrderItemDto> Items,
     string? TrackingNumber = null,
     DateTime? DeliveredAt = null,
-    bool CanConfirmReceipt = false
+    bool CanConfirmReceipt = false,
+    string? ContractNumber = null
 );
 
 public record OrderStageDto(

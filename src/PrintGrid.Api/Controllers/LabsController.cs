@@ -47,7 +47,7 @@ public class LabsController : ControllerBase
 
     [HttpGet("me")]
     [Authorize(Policy = Policies.RequireProduction)]
-    public async Task<IActionResult> GetMyLab([FromQuery] bool allowUnclaimedFallback = true, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetMyLab([FromQuery] bool allowUnclaimedFallback = false, CancellationToken cancellationToken = default)
     {
         var userId = User.GetCustomerId();
         if (userId is null)
@@ -91,7 +91,8 @@ public class LabsController : ControllerBase
                 ownerUserId,
                 request.WorkingDays,
                 request.OpeningTime,
-                request.ClosingTime),
+                request.ClosingTime,
+                request.District),
             cancellationToken);
 
         if (result.IsFailure)
@@ -108,6 +109,7 @@ public class LabsController : ControllerBase
     /// transit time to Hub, and profile details. Lab starts in PENDING status until Admin approves.
     /// </summary>
     [HttpPost("self-register")]
+    [Authorize(Roles = $"{Roles.LabManager},{Roles.LabOperator}")]
     public async Task<IActionResult> SelfRegister([FromBody] SelfRegisterLabRequest request, CancellationToken cancellationToken)
     {
         var userId = User.GetCustomerId();
@@ -119,7 +121,8 @@ public class LabsController : ControllerBase
                 request.OperatingHours,
                 userId,
                 request.ContactPhone,
-                request.Address),
+                request.Address,
+                request.District),
             cancellationToken);
 
         if (result.IsFailure)
@@ -339,6 +342,51 @@ public class LabsController : ControllerBase
         return result.IsFailure ? ToErrorResult(result.Error) : Ok(result.Value);
     }
 
+    // ── Lab team (lab_staff) ────────────────────────────────────────────────
+    // OwnerUserId covers the manager; lab_staff covers operators and other team
+    // members so every lab-scoped query can resolve exactly one lab for the caller.
+
+    [HttpGet("{labId:guid}/staff")]
+    [Authorize(Roles = $"{Roles.LabManager},{Roles.OpsManager},{Roles.Admin}")]
+    public async Task<IActionResult> GetStaff(Guid labId, CancellationToken cancellationToken)
+    {
+        if (!await CallerManagesLabAsync(labId, cancellationToken)) return Forbid();
+        var result = await _sender.Send(new GetLabStaffQuery(labId), cancellationToken);
+        return result.IsFailure ? ToErrorResult(result.Error) : Ok(result.Value);
+    }
+
+    [HttpPost("{labId:guid}/staff")]
+    [Authorize(Roles = $"{Roles.LabManager},{Roles.OpsManager},{Roles.Admin}")]
+    public async Task<IActionResult> AddStaff(Guid labId, [FromBody] AddLabStaffRequest request, CancellationToken cancellationToken)
+    {
+        if (!await CallerManagesLabAsync(labId, cancellationToken)) return Forbid();
+        var result = await _sender.Send(new AddLabStaffCommand(labId, request.UserId), cancellationToken);
+        return result.IsFailure ? ToErrorResult(result.Error) : NoContent();
+    }
+
+    [HttpDelete("{labId:guid}/staff/{userId:guid}")]
+    [Authorize(Roles = $"{Roles.LabManager},{Roles.OpsManager},{Roles.Admin}")]
+    public async Task<IActionResult> RemoveStaff(Guid labId, Guid userId, CancellationToken cancellationToken)
+    {
+        if (!await CallerManagesLabAsync(labId, cancellationToken)) return Forbid();
+        var result = await _sender.Send(new RemoveLabStaffCommand(labId, userId), cancellationToken);
+        return result.IsFailure ? ToErrorResult(result.Error) : NoContent();
+    }
+
+    /// <summary>
+    /// A lab manager may edit only the team of the lab they own; Ops/Admin may edit any lab.
+    /// Deliberately ownership-based — membership must not grant team-management rights.
+    /// </summary>
+    private async Task<bool> CallerManagesLabAsync(Guid labId, CancellationToken cancellationToken)
+    {
+        if (IsAdminOrOps) return true;
+        var userId = User.GetCustomerId();
+        if (userId is null) return false;
+
+        var mine = await _sender.Send(new GetMyLabQuery(userId.Value, AllowUnclaimedFallback: false), cancellationToken);
+        return mine.IsSuccess && mine.Value is { } lab && lab.Id == labId;
+    }
+
     private IActionResult ToErrorResult(Error error)
     {
         var status = error.Code switch
@@ -383,7 +431,8 @@ public record RegisterLabRequest(
     int TransitDaysToHub,
     string WorkingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
     string OpeningTime = "08:00",
-    string ClosingTime = "17:00");
+    string ClosingTime = "17:00",
+    string? District = null);
 
 public record SelfRegisterLabRequest(
     string Name,
@@ -391,9 +440,12 @@ public record SelfRegisterLabRequest(
     int TransitDaysToHub,
     string OperatingHours,
     string? ContactPhone = null,
-    string? Address = null);
+    string? Address = null,
+    string? District = null);
 
 public record RejectLabRequest(string Reason);
+
+public record AddLabStaffRequest(Guid UserId);
 
 public record RegisterMachineRequest(
     string Name,

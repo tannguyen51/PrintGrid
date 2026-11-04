@@ -1,18 +1,22 @@
 import { Box } from '@mui/material'
+import { gradients, palette } from '../theme/tokens'
 
 /**
- * PrintGrid brand mark — the 2×2 checkerboard from the Figma design (#36:5):
+ * PrintGrid brand mark — the 2×2 checkerboard from the original identity:
  * two filled cells on the diagonal, two outlined cells between them.
- * Single source of truth for every logo placement: landing navbar, auth screens,
+ * Single source of truth for every logo placement: navbars, auth screens,
  * showcase panel, footer and the favicon.
+ *
+ * Defaults use the purple→gold brand gradient so the mark reads as premium on
+ * the light surfaces; callers can still override both tones.
  */
 export function BrandGlyph({
   size = 40,
-  color = '#F1F1F1',
-  mutedColor = '#909096',
+  color = gradients.brand,
+  mutedColor = palette.silver.metallic,
 }: {
   size?: number
-  /** Fill of the two solid cells. */
+  /** Fill of the two solid cells (accepts a colour or a gradient). */
   color?: string
   /** Stroke of the two outlined cells. */
   mutedColor?: string
@@ -31,10 +35,10 @@ export function BrandGlyph({
         flexShrink: 0,
       }}
     >
-      <Box sx={{ borderRadius: `${radius}px`, bgcolor: color }} />
+      <Box sx={{ borderRadius: `${radius}px`, background: color }} />
       <Box sx={{ borderRadius: `${radius}px`, border: `${border}px solid ${mutedColor}` }} />
       <Box sx={{ borderRadius: `${radius}px`, border: `${border}px solid ${mutedColor}` }} />
-      <Box sx={{ borderRadius: `${radius}px`, bgcolor: color }} />
+      <Box sx={{ borderRadius: `${radius}px`, background: color }} />
     </Box>
   )
 }

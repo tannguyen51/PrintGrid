@@ -6,7 +6,7 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Scheduling.Application.Queries;
 
-public record GetMyLabQuery(Guid UserId, bool AllowUnclaimedFallback = true) : IRequest<Result<LabDto?>>;
+public record GetMyLabQuery(Guid UserId, bool AllowUnclaimedFallback = false) : IRequest<Result<LabDto?>>;
 
 public class GetMyLabQueryHandler : IRequestHandler<GetMyLabQuery, Result<LabDto?>>
 {
@@ -19,6 +19,13 @@ public class GetMyLabQueryHandler : IRequestHandler<GetMyLabQuery, Result<LabDto
         var owned = await _labs.GetByOwnerUserIdAsync(query.UserId, cancellationToken);
         if (owned is not null)
             return Result.Success<LabDto?>(LabMappings.ToDto(owned));
+
+        // Operators (and any other team member) reach their lab through lab_staff.
+        // There is deliberately no "first unclaimed lab" fallback: that would hand a
+        // random lab to an account that was never assigned to it.
+        var member = await _labs.GetByStaffUserIdAsync(query.UserId, cancellationToken);
+        if (member is not null)
+            return Result.Success<LabDto?>(LabMappings.ToDto(member));
 
         if (query.AllowUnclaimedFallback)
         {

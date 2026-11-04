@@ -1,0 +1,303 @@
+﻿===== SHEET: Guideline =====
+R1: Guideline to make and understand Unit Test Case |  |  | 
+R2:  |  |  | 
+R3: 1. Overview |  |  | 
+R4:  - In the template, Unit test cases are based on functions. Each sheet presents test cases for one function. |  |  | 
+R5:  - Cover: General information of the project and Unit Test cases |  |  | 
+R6:  - FunctionList: The list of Classes and Functions in the document.  /      + To control that the number of Unit TC meets customer's requirement or the norm, user should fill value for   /      'Normal number of Test cases/KLOC'.  |  |  | 
+R7:      + Click on Function link to open the related Test cases of the function.   /      Note: You should create new Function sheet before creating the link |  |  | 
+R8:  - Test Report: provive the overview results of Functions Unit test: Test coverage, Test successful coverage  /     (Summary, for normal/abnormal/boundary cases) |  |  | 
+R9:      Note:  Should check the formula of "Sub Total" if you add more functions |  |  | 
+R10:  |  |  | 
+R11: 2. Content in Test function sheet |  |  | 
+R12: 2.1 Combination of test cases. |  |  | 
+R13:  - To verify that number of Unit TC meets customer's requirement or not. User has to fill number LOC of tested function and fill value of 'Normal number test cases/KLOC' item in FunctionList sheet, which is required by customer or normal value. The number of lacked TC is shown in 'Lack of test cases' item. |  |  | 
+R14:  - If the number of Unit TC does not meet the requirement, creator should explain the reasons. |  |  | 
+R15:  - If the number of  'Normal number test cases/KLOC' item in FunctionList sheet is not recorded, the number in 'Lack of test cases' is not calculated. |  |  | 
+R16:  |  |  | 
+R17:  2.2 Condition and confirmation of Test cases. |  |  | 
+R18:  Each test case is the combination of condition and confirmation. |  |  | 
+R19: a. Condition: |  |  | 
+R20:         - Condition is combination of precondition and values of inputs. |  |  | 
+R21:         - Precondition: it is setting condition that must exist before execution of the test case.  /                     Example: file A is precondition for the test case that needs to access file A. |  |  | 
+R22:         - Values of inputs: it includes 3 types of values: normal, boundary and abnormal. |  |  | 
+R23:                 . Normal values are values of inputs used mainly and usually to ensure the function works. |  |  | 
+R24:                 . Boundary values are limited values that contain upper and lower values. |  |  | 
+R25:                 . Abnormal values are non-expected values. And normally it processes exception cases.    |  |   |  
+R26:         - For examples: |  |  | 
+R27:             Input value belongs to 5<= input <=10. |  |  | 
+R28:                . 6,7,8,9 are normal values. |  |  | 
+R29:                . 5, 10 are boundary values. |  |  | 
+R30:                . -1, 11,... are abnormal values.    |  |   | 
+R31: b. Confirmation:  |  |  | 
+R32:         - It is combination of expected result to check output of each function.  /           If the results are the same with confirmation, the test case is passed, other case it is failed.  |  |  | 
+R33:         - Confirmation can include: |  |  | 
+R34:                 + Output result of the function. |  |  | 
+R35:                 + Output log messages in log file. |  |  | 
+R36:                 + Output screen message... |  |  | 
+R37: c. Type of test cases and result: |  |  | 
+R38:         - Type of test case: It includes normal, boundary and abnormal test cases. User selects the type based on the type of input data. |  |  | 
+R39:         - Test case result: the actual output results comparing with the Confirmation. /                  P for Passed and F for Failed cases. /           It can 'OK' or 'NG' (it depends on habit of the teams or customers) |  |  | 
+R40:  |  |  | 
+R41:  2.3. Other items: |  |  | 
+R42:  - Function Code: it is ID of the function and updated automatically according to FunctionList sheet. |  |  | 
+R43:  - Function Name: it is name  of the function and updated automatically according to FunctionList sheet. |  |  | 
+R44:  - Created By: Name of creator. |  |  | 
+R45:  - Executed By: Name of person who executes the unit test |  |  | 
+R46:  - Lines of code: Number of Code line of the function. |  |  | 
+R47:  - Test requirement: Brief description about requirements which are tested in this function, it is not mandatory. |  |  | 
+R48:           |  |  | 
+R49:  |  |  | 
+
+===== SHEET: Cover =====
+R2:  | UNIT TEST DOCUMENT |  |  |  | 
+R3:  |  |  |  |  | 
+R4: Project Name | <Project Name> |  |  | Creator | 
+R5: Project Code | <Project Code> |  |  | Issue Date | <Date when this test report is created>
+R6: Document Code | <Project Code>_XXX_vx.x |  |  | Version | 
+R7:  |  |  |  |  | 
+R8:  |  |  |  |  | 
+R9: Record of change |  |  |  |  | 
+R10: Effective Date | Version | Change Item | *A,D,M | Change description | Reference
+R11: <Date when these changes are effective> |  |  |  |  | <List of documents which are refered in this version.>
+R12:  |  |  |  |  | 
+R13:  |  |  |  |  | 
+R14:  |  |  |  |  | 
+R15:  |  |  |  |  | 
+R16:  |  |  |  |  | 
+R17:  |  |  |  |  | 
+
+===== SHEET: Functions =====
+R2:  |  |  |  | Function List |  |  | 
+R3:  |  |  |  |  |  |  | 
+R4: Project Name |  |  |  | <Project Name> |  |  | 
+R5: Project Code |  |  |  | <Project Code> |  |  | 
+R6: Normal number of Test cases/KLOC  |  |  |  | 100 |  |  | 
+R7: Test Environment Setup Description |  |  |  | <List enviroment requires in this system / 1. Server / 2. Database / 3. Web Browser / ... / > |  |  | 
+R8:  |  |  |  |  |  |  | 
+R9:  |  |  |  |  |  |  | 
+R10: No | Requirement / Name | Class Name | Function Name |  Function Code(Optional) | Sheet Name | Description | Pre-Condition
+R11: 1 |  | Class1 | Function A | Function1 | Function1 |  | 
+R12: 2 |  | Class2 | Function B | Function2 | Function2 |  | 
+R13: 3 |  | Class3 | Function C | Function3 | Function3 |  | 
+R14:  |  |  |  |  |  |  | 
+R15:  |  |  |  |  |  |  | 
+R16:  |  |  |  |  |  |  | 
+R17:  |  |  |  |  |  |  | 
+R18:  |  |  |  |  |  |  | 
+R19:  |  |  |  |  |  |  | 
+R20:  |  |  |  |  |  |  | 
+R21:  |  |  |  |  |  |  | 
+R22:  |  |  |  |  |  |  | 
+R23:  |  |  |  |  |  |  | 
+
+===== SHEET: Statistics =====
+R2: UNIT TEST REPORT |  |  |  |  |  |  |  | 
+R3:  |  |  |  |  |  |  |  | 
+R4: Project Name | <Project Name> |  | Creator |  |  |  |  | 
+R5: Project Code | <Project Code> |  | Reviewer/Approver |  |  |  |  | 
+R6: Document Code | <Project Code>_Test Report_vx.x |  | Issue Date |  | <Date when this test report is created> |  |  | 
+R7: Notes | <List modules included in this release> ex: Release 1 includes 2 modules: Module1 and Module2 |  |  |  |  |  |  | 
+R8:  |  |  |  |  |  |  |  | 
+R9:  |  |  |  |  |  |  |  | 
+R10:  |  |  |  |  |  |  |  | 
+R11: No | Function code | Passed | Failed | Untested | N | A | B | Total Test Cases
+R12: 1 | Function1 | 12 | 2 | 1 | 11 | 3 | 1 | 15
+R13: 2 | Function2 | 12 | 3 | 0 | 12 | 2 | 1 | 15
+R14: 3 | Function3 | 12 | 2 | 1 | 12 | 2 | 1 | 15
+R15:  |  |  |  |  |  |  |  | 
+R16:  |  |  |  |  |  |  |  | 
+R17:  | Sub total | 36 | 7 | 2 | 35 | 7 | 3 | 45
+R18:  |  |  |  |  |  |  |  | 
+R19:  | Test coverage |  | 95.56 | % |  |  |  | 
+R20:  | Test successful coverage |  | 80.00 | % |  |  |  | 
+R21:  | Normal case |  | 77.78 | % |  |  |  | 
+R22:  | Abnormal case |  | 15.56 | % |  |  |  | 
+R23:  | Boundary case |  | 6.67 | % |  |  |  | 
+
+===== SHEET: Function 1 =====
+R1:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R2: Function Code |  | Function1 |  |  | Function Name |  |  |  |  |  | Function A |  |  |  |  |  |  |  |  |  |  | 
+R3: Created By |  | <Developer Name> |  |  | Executed By |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R4: Lines  of code |  | 100 |  |  | Lack of test cases |  |  |  |  |  | -5 |  |  |  |  |  |  |  |  |  |  | 
+R5: Test requirement |  | <Brief description about requirements which are tested in this function> |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R6: Passed |  | Failed |  |  | Untested |  |  |  |  |  | N/A/B |  |  | Total Test Cases |  |  |  |  |  |  |  | 
+R7: 12 |  | 2 |  |  | 1 |  |  |  |  |  | 11 | 3 | 1 | 15 |  |  |  |  |  |  |  | 
+R8:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R9:  |  |  |  |  | UTCID01 | UTCID02 | UTCID03 | UTCID04 | UTCID05 | UTCID06 | UTCID07 | UTCID08 | UTCID09 | UTCID10 | UTCID11 | UTCID12 | UTCID13 | UTCID14 | UTCID15 |  |  | 
+R10: Condition | Precondition  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R11:  |  |  | Can connect with server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R12:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R13:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R14:  | Date |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R15:  |  |  | 29 |  | O | O |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R16:  |  |  | 30 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R17:  |  |  | 31 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R18:  | Month |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R19:  |  |  | 2 |  | O |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R20:  |  |  | 3 |  |  | O |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R21:  |  |  | 4 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R22:  | Year |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R23:  |  |  | 2000 |  | O |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R24:  |  |  | 2009 |  |  | O |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R25:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R26:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R27:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R28:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R29:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R30:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R31: Confirm | Return |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R32:  |  |  | T |  | O | O |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R33:  |  |  | F |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R34:  | Exception |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R35:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R36:  | Log message |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R37:  |  |  | "success" |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R38:  |  |  | "input1 is null" |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R39: Result | Type(N : Normal, A : Abnormal, B : Boundary) |  |  |  | A | N | N | N | N | B | A | N | N | N | N | N | A | N | N |  |  | 
+R40:  | Passed/Failed |  |  |  | P | P | P | P | P | F | F | P | P | P | P | P |  | P | P |  |  | 
+R41:  | Executed Date |  |  |  | 02/26 | 02/26 | 02/27 | 02/28 | 03/01 | 03/02 | 03/03 | 03/04 | 03/05 | 03/06 | 03/07 | 03/08 | 03/09 | 03/10 | 03/11 |  |  | 
+R42:  | Defect ID |  |  |  |  |  |  |  |  | DFID002 | DFID004 | DFID005 | DFID006 | DFID007 | DFID008 | DFID009 | DFID010 | DFID011 | DFID012 |  |  | 
+R43:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+
+===== SHEET: Function 2 =====
+R1:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R2: Function Code |  | Function2 |  |  | Function Name |  |  |  |  |  | Function B |  |  |  |  |  |  |  |  |  |  | 
+R3: Created By |  | <Developer Name> |  |  | Executed By |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R4: Lines  of code |  | 300 |  |  | Lack of test cases |  |  |  |  |  | 15 |  |  |  |  |  |  |  |  |  |  | 
+R5: Test requirement |  | <Brief description about requirements which are tested in this function> |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R6: Passed |  | Failed |  |  | Untested |  |  |  |  |  | N/A/B |  |  | Total Test Cases |  |  |  |  |  |  |  | 
+R7: 12 |  | 3 |  |  | 0 |  |  |  |  |  | 12 | 2 | 1 | 15 |  |  |  |  |  |  |  | 
+R8:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R9:  |  |  |  |  | UTCID01 | UTCID02 | UTCID03 | UTCID04 | UTCID05 | UTCID06 | UTCID07 | UTCID08 | UTCID09 | UTCID10 | UTCID11 | UTCID12 | UTCID13 | UTCID14 | UTCID15 |  |  | 
+R10: Condition | Precondition  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R11:  |  |  | Can connect with server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R12:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R13:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R14:  | Input1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R15:  |  |  | "1" |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R16:  |  |  | "" |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R17:  |  |  | null |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R18:  | Input2 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R19:  |  |  | >=5 & <= 10 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R20:  |  |  | 5 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R21:  |  |  | 10 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R22:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R23:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R24:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R25:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R26:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R27:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R28:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R29:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R30:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R31: Confirm | Return |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R32:  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R33:  |  |  | 2 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R34:  | Exception |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R35:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R36:  | Log message |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R37:  |  |  | "success" |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R38:  |  |  | "input1 is null" |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R39: Result | Type(N : Normal, A : Abnormal, B : Boundary) |  |  |  | N | N | N | N | N | B | A | N | N | N | N | N | A | N | N |  |  | 
+R40:  | Passed/Failed |  |  |  | P | P | P | P | P | F | F | P | P | P | P | P | F | P | P |  |  | 
+R41:  | Executed Date |  |  |  | 02/26 | 02/26 | 02/27 | 02/28 | 03/01 | 03/02 | 03/03 | 03/04 | 03/05 | 03/06 | 03/07 | 03/08 | 03/09 | 03/10 | 03/11 |  |  | 
+R42:  | Defect ID |  |  |  |  |  |  |  |  | DFID002 | DFID004 | DFID005 | DFID006 | DFID007 | DFID008 | DFID009 | DFID010 | DFID011 | DFID012 |  |  | 
+R43:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+
+===== SHEET: Function3 =====
+R1:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R2: Function Code |  | Function3 |  |  | Function Name |  |  |  |  |  | Function C |  |  |  |  |  |  |  |  |  |  | 
+R3: Created By |  | <Developer Name> |  |  | Executed By |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R4: Lines  of code |  | 300 |  |  | Lack of test cases |  |  |  |  |  | 15 |  |  |  |  |  |  |  |  |  |  | 
+R5: Test requirement |  | <Brief description about requirements which are tested in this function> |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R6: Passed |  | Failed |  |  | Untested |  |  |  |  |  | N/A/B |  |  | Total Test Cases |  |  |  |  |  |  |  | 
+R7: 12 |  | 2 |  |  | 1 |  |  |  |  |  | 12 | 2 | 1 | 15 |  |  |  |  |  |  |  | 
+R8:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R9:  |  |  |  |  | UTCID01 | UTCID02 | UTCID03 | UTCID04 | UTCID05 | UTCID06 | UTCID07 | UTCID08 | UTCID09 | UTCID10 | UTCID11 | UTCID12 | UTCID13 | UTCID14 | UTCID15 |  |  | 
+R10: Condition | Precondition  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R11:  |  |  | Can connect with server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R12:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R13:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R14:  | Input1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R15:  |  |  | "1" |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R16:  |  |  | "" |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R17:  |  |  | null |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R18:  | Input2 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R19:  |  |  | >=5 & <= 10 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R20:  |  |  | 5 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R21:  |  |  | 10 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R22:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R23:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R24:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R25:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R26:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R27:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R28:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R29:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R30:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R31: Confirm | Return |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R32:  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R33:  |  |  | 2 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R34:  | Exception |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R35:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R36:  | Log message |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R37:  |  |  | "success" |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R38:  |  |  | "input1 is null" |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R39: Result | Type(N : Normal, A : Abnormal, B : Boundary) |  |  |  | N | N | N | N | N | B | A | N | N | N | N | N | A | N | N |  |  | 
+R40:  | Passed/Failed |  |  |  | P | P | P | P | P | F | F | P | P | P | P | P |  | P | P |  |  | 
+R41:  | Executed Date |  |  |  | 02/26 | 02/26 | 02/27 | 02/28 | 03/01 | 03/02 | 03/03 | 03/04 | 03/05 | 03/06 | 03/07 | 03/08 | 03/09 | 03/10 | 03/11 |  |  | 
+R42:  | Defect ID |  |  |  |  |  |  |  |  | DFID002 | DFID004 | DFID005 | DFID006 | DFID007 | DFID008 | DFID009 | DFID010 | DFID011 | DFID012 |  |  | 
+R43:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+
+===== SHEET: Example =====
+R1:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R2: Function Code |  | Function1 |  |  | Function Name |  |  |  |  |  | Function A |  |  |  |  |  |  |  |  |  |  | 
+R3: Created By |  | <Developer Name> |  |  | Executed By |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R4: Lines  of code |  | 100 |  |  | Lack of test cases |  |  |  |  |  | -5 |  |  |  |  |  |  |  |  |  |  | 
+R5: Test requirement |  | <Brief description about requirements which are tested in this function> |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R6: Passed |  | Failed |  |  | Untested |  |  |  |  |  | N/A/B |  |  | Total Test Cases |  |  |  |  |  |  |  | 
+R7: 0 |  | 0 |  |  | 15 |  |  |  |  |  | 0 | 0 | 0 | 15 |  |  |  |  |  |  |  | 
+R8:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R9:  |  |  |  |  | UTCID01 | UTCID02 | UTCID02 | UTCID02 | UTCID02 | UTCID02 | UTCID07 | UTCID08 | UTCID09 | UTCID10 | UTCID11 | UTCID12 | UTCID13 | UTCID14 | UTCID15 |  |  | 
+R10: Condition | Precondition  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R11:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R12:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R13:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R14:  | a |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R15:  |  |  | -2 |  | O |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R16:  |  |  | -1 |  |  |  |  |  |  |  | O |  |  |  |  |  |  |  |  |  |  | 
+R17:  |  |  | 0 |  |  | O | O | O |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R18:  |  |  | 1 |  |  |  |  |  | O | O |  |  |  |  |  |  |  |  |  |  |  | 
+R19:  | b |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R20:  |  |  | 0 |  |  | O | O |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R21:  |  |  | -2 |  |  |  |  |  | O | O | O |  |  |  |  |  |  |  |  |  |  | 
+R22:  |  |  | 2 |  |  |  |  | O |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R23:  | c |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R24:  |  |  | 0 |  |  | O |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R25:  |  |  | 1 |  |  |  | O | O | O |  |  |  |  |  |  |  |  |  |  |  |  | 
+R26:  |  |  | 3 |  |  |  |  |  |  |  | O |  |  |  |  |  |  |  |  |  |  | 
+R27:  |  |  | 5 |  |  |  |  |  |  | O |  |  |  |  |  |  |  |  |  |  |  | 
+R28:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R29:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R30:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R31:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R32:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R33: Confirm | Return |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R34:  | list  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R35:  |  |  | null |  | O |  | O |  |  | O |  |  |  |  |  |  |  |  |  |  |  | 
+R36:  |  |  | size = 0 |  |  | O |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R37:  |  |  | {-1/2} |  |  |  |  | O |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R38:  |  |  | {1,1} |  |  |  |  |  | O |  |  |  |  |  |  |  |  |  |  |  |  | 
+R39:  |  |  | {1,-3} |  |  |  |  |  |  |  | O |  |  |  |  |  |  |  |  |  |  | 
+R40:  | Exception |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R41:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R42:  | Log message |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R43:  |  |  | "please input a>= -1" |  | O |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R44:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R45: Result | Type(N : Normal, A : Abnormal, B : Boundary) |  |  |  | A | N | N | N | N | N | B |  |  |  |  |  |  |  |  |  |  | 
+R46:  | Passed/Failed |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R47:  | Executed Date |  |  |  | 02/26 | 02/26 | 02/26 | 02/26 | 02/26 | 02/26 | 03/03 |  |  |  |  |  |  |  |  |  |  | 
+R48:  | Defect ID |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R49:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+

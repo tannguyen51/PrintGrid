@@ -43,6 +43,35 @@ public class ModelRepository : IModelRepository
         _context.Set<Domain.Entities.Model>()
             .FirstOrDefaultAsync(m => m.Id == modelId, cancellationToken);
 
+    public async Task<IReadOnlyList<Domain.Entities.Model>> GetForReviewAsync(
+        string? status,
+        string? search,
+        CancellationToken cancellationToken = default)
+    {
+        // Only models with a stored file can be reviewed; metadata-only rows are
+        // excluded and can never be approved (they cannot be printed either).
+        var query = _context.Set<Domain.Entities.Model>()
+            .Where(m => m.StorageKey != null);
+
+        if (!string.IsNullOrWhiteSpace(status) &&
+            Enum.TryParse<Domain.Enums.ModelReviewStatus>(status, ignoreCase: true, out var parsed))
+        {
+            query = query.Where(m => m.ReviewStatus == parsed);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLowerInvariant();
+            query = query.Where(m =>
+                m.Name.ToLower().Contains(term) ||
+                m.FileName.ToLower().Contains(term));
+        }
+
+        return await query
+            .OrderBy(m => m.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<(int ModelCount, long UsedBytes)> GetStorageUsageAsync(
         Guid customerId,
         CancellationToken cancellationToken = default)

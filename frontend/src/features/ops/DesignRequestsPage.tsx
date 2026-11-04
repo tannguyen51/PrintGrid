@@ -94,11 +94,11 @@ export default function DesignRequestsPage() {
         {isLoading ? (
           <CircularProgress sx={{ alignSelf: 'center' }} />
         ) : rows.length === 0 ? (
-          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed rgba(255,255,255,0.15)' }}>
+          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <Typography color="text.secondary">Không có yêu cầu thiết kế nào ở trạng thái này.</Typography>
           </Box>
         ) : (
-          <TableContainer sx={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'background.paper' }}>
+          <TableContainer sx={{ borderRadius: 2, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
             <Table size="small">
               <TableHead>
                 <TableRow>

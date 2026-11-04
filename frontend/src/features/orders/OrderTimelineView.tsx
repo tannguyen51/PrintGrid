@@ -50,7 +50,13 @@ export function OrderTimelineView({ orderId }: { orderId: string }) {
         </Typography>
       )}
 
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+      {timeline.contractNumber && (
+        <Typography variant="body2" color="text.secondary">
+          Số hợp đồng: <strong style={{ color: 'text.primary' }}>{timeline.contractNumber}</strong>
+        </Typography>
+      )}
+
+      <Divider sx={{ borderColor: 'divider' }} />
 
       <Stepper activeStep={activeStep === -1 ? timeline.stages.length : activeStep} orientation="vertical">
         {timeline.stages.map((stage) => (
@@ -76,7 +82,7 @@ export function OrderTimelineView({ orderId }: { orderId: string }) {
       </Stepper>
 
       {timeline.canConfirmReceipt && (
-        <Box sx={{ p: 2, borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'rgba(255,255,255,0.03)' }}>
+        <Box sx={{ p: 2, borderRadius: 2, border: '1px solid #E8EBF2', bgcolor: 'action.hover' }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             Hub đã giao hàng. Xác nhận bạn đã nhận đủ để bắt đầu tính thời hạn bảo hành 30 ngày.
           </Typography>
@@ -98,12 +104,12 @@ export function OrderTimelineView({ orderId }: { orderId: string }) {
         </Box>
       )}
 
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+      <Divider sx={{ borderColor: 'divider' }} />
 
       <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>Chi tiết từng món ({timeline.items.length})</Typography>
       <Stack spacing={1.5}>
         {timeline.items.map(item => (
-          <Box key={item.id} sx={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.08)', p: 1.5 }}>
+          <Box key={item.id} sx={{ borderRadius: 2, border: '1px solid #E8EBF2', p: 1.5 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
               <Box>
                 <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: 'text.primary' }}>

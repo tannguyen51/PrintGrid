@@ -1,7 +1,9 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using PrintGrid.Api.Authorization;
+using PrintGrid.Modules.Admin.Application.AuditLogs;
 using PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 using PrintGrid.Modules.Scheduling.Application.DTOs;
 using PrintGrid.Modules.Scheduling.Application.Queries;
@@ -23,19 +25,22 @@ public class JobsController : ControllerBase
     private readonly MinioOptions _minio;
     private readonly IOrderRepository _orders;
     private readonly IModelRepository _models;
+    private readonly IAuditLogWriter _audit;
 
     public JobsController(
         ISender sender,
         IFileStorage files,
         IOptions<MinioOptions> minio,
         IOrderRepository orders,
-        IModelRepository models)
+        IModelRepository models,
+        IAuditLogWriter audit)
     {
         _sender = sender;
         _files = files;
         _minio = minio.Value;
         _orders = orders;
         _models = models;
+        _audit = audit;
     }
 
     /// <summary>True for the two lab roles, which are scoped to one lab (BR-ACCESS-003/004).</summary>
@@ -116,9 +121,12 @@ public class JobsController : ControllerBase
         if (job.IsFailure)
             return NotFound(new { error = new { code = "not_found", message = job.Error.Message } });
 
-        // BR-ACCESS-001/003/004: a lab may only download the file of a job currently placed
-        // at its own lab, and only while the job is live (plus a 4h grace after completion).
-        if (CallerIsLab)
+        // BR-ACCESS-003/004: only the lab currently assigned to the job may read the source
+        // file, and only while the job is live (+4h grace after completion). Hub inspects the
+        // physical part, never the source CAD; Ops/Admin review models through the dedicated
+        // /api/v1/model-reviews endpoint, so they do not browse production job files.
+        if (!CallerIsLab) return Forbid();
+
         {
             var labId = await CallerLabIdAsync(cancellationToken);
             if (labId is null || job.Value.LabId != labId) return Forbid();
@@ -153,6 +161,20 @@ public class JobsController : ControllerBase
 
         var stream = await _files.DownloadAsync(
             storageKey[..separator], storageKey[(separator + 1)..], cancellationToken);
+
+        // BR-ACCESS-002: every lab model-file download is logged (who, when, job, lab, IP).
+        await _audit.WriteAsync(new AuditLogWriteRequest(
+            User.GetCustomerId(),
+            User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name ?? "unknown",
+            User.FindFirstValue(ClaimTypes.Role) ?? "unknown",
+            AuditActionClasses.ModelAccess,
+            "model.file_downloaded",
+            "Job",
+            jobId.ToString(),
+            Reason: $"Lab file access for job {jobId}",
+            IpAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+            TraceId: HttpContext.TraceIdentifier,
+            RequirementCodes: ["BR-ACCESS-001", "BR-ACCESS-002", "BR-ACCESS-004"]), cancellationToken);
 
         return File(stream, contentType, enableRangeProcessing: true);
     }

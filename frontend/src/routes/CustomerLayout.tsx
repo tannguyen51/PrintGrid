@@ -1,6 +1,7 @@
 import { Box } from '@mui/material'
 import { Outlet } from 'react-router-dom'
 import { CustomerNavbar } from '../features/home/components/CustomerNavbar'
+import { pageWash } from '../shared/theme/tokens'
 
 /**
  * Shared shell for signed-in customer pages: the customer navbar stays pinned above
@@ -8,7 +9,7 @@ import { CustomerNavbar } from '../features/home/components/CustomerNavbar'
  */
 export function CustomerLayout() {
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: '100vh', background: pageWash }}>
       <CustomerNavbar />
       <Box component="main">
         <Outlet />

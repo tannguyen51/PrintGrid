@@ -97,7 +97,7 @@ export default function SampleDetailPage() {
               borderRadius: `${landing.radius}px`,
               overflow: 'hidden',
               border: `1px solid ${landing.hairline}`,
-              bgcolor: '#050505',
+              bgcolor: '#F5F2FF',
             }}
           >
             <ModelViewer
@@ -105,7 +105,7 @@ export default function SampleDetailPage() {
               format={sample.fileFormat}
               fit
               height="100%"
-              background="#050505"
+              background="#F5F2FF"
             />
             <Box
               sx={{
@@ -115,10 +115,11 @@ export default function SampleDetailPage() {
                 px: 1.25,
                 py: '4px',
                 borderRadius: '8px',
-                bgcolor: 'rgba(0,0,0,0.6)',
+                bgcolor: 'rgba(255,255,255,0.9)',
+                backdropFilter: 'blur(6px)',
                 border: `1px solid ${landing.hairline}`,
                 fontSize: 11,
-                color: landing.textMuted,
+                color: landing.text,
               }}
             >
               Kéo để xoay · cuộn để phóng
@@ -188,11 +189,7 @@ export default function SampleDetailPage() {
                 onClick={handleOrder}
                 disabled={copy.isPending || (isAuthenticated && !canOrder)}
                 sx={{
-                  bgcolor: landing.text,
-                  color: '#0A0A0A',
-                  borderColor: landing.text,
                   fontWeight: 700,
-                  '&:hover': { bgcolor: '#FFFFFF', borderColor: '#FFFFFF' },
                 }}
               >
                 {copy.isPending

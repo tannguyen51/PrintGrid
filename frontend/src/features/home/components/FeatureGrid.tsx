@@ -31,11 +31,11 @@ export function FeatureGrid() {
         <Stack spacing={2} alignItems="center" textAlign="center" sx={{ mb: { xs: 5, md: 7 } }}>
           <Typography
             component="span"
-            sx={{ fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#A78BFA' }}
+            sx={{ fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4933B8' }}
           >
             Vì sao PrintGrid
           </Typography>
-          <Typography variant="h2" sx={{ fontSize: { xs: '1.7rem', md: '2.4rem' }, fontWeight: 800, color: 'common.white' }}>
+          <Typography variant="h2" sx={{ fontSize: { xs: '1.7rem', md: '2.4rem' }, fontWeight: 800, color: 'text.primary' }}>
             Sức mạnh của một mạng lưới,
             <Box component="span" display="block" sx={{ color: 'text.secondary', fontWeight: 600, mt: 0.5, fontSize: { xs: '1.2rem', md: '1.6rem' } }}>
               trải nghiệm của một dịch vụ duy nhất
@@ -51,10 +51,10 @@ export function FeatureGrid() {
                   height: '100%',
                   p: { xs: 3, md: 4 },
                   borderRadius: 3,
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid #E8EBF2',
                   bgcolor: 'background.paper',
                   transition: 'border-color .25s, transform .25s',
-                  '&:hover': { borderColor: 'rgba(139,92,246,0.45)', transform: 'translateY(-3px)' },
+                  '&:hover': { borderColor: 'rgba(111,85,255,0.45)', transform: 'translateY(-3px)' },
                 }}
               >
                 <Stack spacing={1.5}>
@@ -65,14 +65,14 @@ export function FeatureGrid() {
                       borderRadius: 2.5,
                       display: 'grid',
                       placeItems: 'center',
-                      bgcolor: 'rgba(139,92,246,0.12)',
-                      color: '#8B5CF6',
+                      bgcolor: 'rgba(111,85,255,0.12)',
+                      color: '#6F55FF',
                       fontSize: '1.5rem',
                     }}
                   >
                     {f.icon}
                   </Box>
-                  <Typography sx={{ fontSize: '1.15rem', fontWeight: 700, color: 'common.white' }}>{f.title}</Typography>
+                  <Typography sx={{ fontSize: '1.15rem', fontWeight: 700, color: 'text.primary' }}>{f.title}</Typography>
                   <Typography sx={{ fontSize: '0.92rem', color: 'text.secondary', lineHeight: 1.7 }}>{f.desc}</Typography>
                 </Stack>
               </Box>

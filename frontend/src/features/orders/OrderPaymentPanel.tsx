@@ -67,15 +67,15 @@ export function OrderPaymentPanel({ orderId }: { orderId: string }) {
             sx={{
               p: 2,
               borderRadius: 2,
-              border: '1px solid rgba(255,255,255,0.1)',
-              bgcolor: 'rgba(255,255,255,0.02)',
+              border: '1px solid #E8EBF2',
+              bgcolor: 'background.secondary',
             }}
           >
             <Stack spacing={1}>
               <AmountRow label="Tổng giá trị đơn" value={data.totalAmount} />
               <AmountRow label="Tiền cọc cần thanh toán" value={data.depositAmount} />
               <AmountRow label="Đã thanh toán" value={data.paidAmount} />
-              <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+              <Divider sx={{ borderColor: 'divider' }} />
               <AmountRow label="Còn lại" value={data.remaining} emphasis />
             </Stack>
           </Box>

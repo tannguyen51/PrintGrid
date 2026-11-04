@@ -9,7 +9,9 @@ public record OrderDto(
     DateOnly PromisedDeliveryDate,
     DateTime CreatedAt,
     DateTime? DeliveredAt,
-    IReadOnlyCollection<OrderItemDto> Items);
+    IReadOnlyCollection<OrderItemDto> Items,
+    string? ContractNumber = null,
+    DateTime? TermsAcceptedAtUtc = null);
 
 public record OrderItemDto(
     Guid Id,

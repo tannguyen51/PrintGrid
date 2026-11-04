@@ -14,7 +14,7 @@ export default function RegisterPage() {
         display: 'flex',
         minHeight: '100vh',
         flexDirection: { xs: 'column', md: 'row' },
-        bgcolor: 'background.default', // #050505 everywhere
+        background: 'transparent',
       }}
     >
       <RegisterForm />

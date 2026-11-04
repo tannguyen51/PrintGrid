@@ -133,7 +133,7 @@ export default function OrdersPage() {
             </Box>
           </Stack>
           <Stack direction="row" spacing={1.5}>
-            <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} onClick={() => navigate('/models')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+            <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} onClick={() => navigate('/models')} sx={{ color: 'text.primary', borderColor: 'divider' }}>
               Thư viện model
             </Button>
           </Stack>
@@ -142,7 +142,7 @@ export default function OrdersPage() {
         {isError ? (
           <Alert severity="error">Không tải được danh sách đơn hàng.</Alert>
         ) : (
-          <Box sx={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
+          <Box sx={{ border: '1px solid #E8EBF2', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
             <DataGrid
               rows={rows}
               columns={columns}
@@ -157,7 +157,7 @@ export default function OrdersPage() {
               ) }}
               sx={{
                 '&.MuiDataGrid-root': { border: 'none' },
-                '& .MuiDataGrid-columnHeaders': { bgcolor: 'rgba(255,255,255,0.03)' },
+                '& .MuiDataGrid-columnHeaders': { bgcolor: 'action.hover' },
               }}
             />
           </Box>
@@ -169,24 +169,24 @@ export default function OrdersPage() {
         anchor="right"
         open={selected !== null}
         onClose={() => setSelected(null)}
-        PaperProps={{ sx: { width: { xs: 320, sm: 420 }, bgcolor: '#0A0A0A', backgroundImage: 'none' } }}
+        PaperProps={{ sx: { width: { xs: 320, sm: 420 }, bgcolor: 'background.paper', backgroundImage: 'none' } }}
       >
         {selected && (
           <Stack sx={{ height: '100%' }}>
             <Box sx={{ p: 3, display: 'flex', justifyContent: 'flex-end' }}>
               <Button onClick={() => setSelected(null)} size="small" sx={{ color: 'text.secondary', minWidth: 0 }} aria-label="Đóng"><CloseRounded /></Button>
             </Box>
-            <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+            <Divider sx={{ borderColor: 'divider' }} />
             <Box sx={{ p: 3, flex: 1, overflowY: 'auto' }}>
               {selected.status === 'PaymentPending' && (
                 <>
                   <OrderPaymentPanel orderId={selected.id} />
-                  <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.08)' }} />
+                  <Divider sx={{ my: 3, borderColor: 'divider' }} />
                 </>
               )}
               <OrderTimelineView orderId={selected.id} />
 
-              <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.08)' }} />
+              <Divider sx={{ my: 3, borderColor: 'divider' }} />
               <ReprintRequestPanel order={selected} />
               
               <Box sx={{ mt: 4 }}>

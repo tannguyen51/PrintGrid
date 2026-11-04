@@ -7,8 +7,8 @@ import { useAuth } from '../../app/AuthContext'
 import { resolvePostLoginPath } from './postLoginRedirect'
 
 /**
- * Split-panel login page — unified dark theme.
- * Left: login card. Right: 3D statue showcase + PrintGrid brand.
+ * Split-panel login page — light premium theme.
+ * Left: login card on the page wash. Right: 3D showcase with lavender lighting.
  * Below md breakpoint: stack vertically, showcase compressed to a band.
  */
 export default function LoginPage() {
@@ -20,7 +20,7 @@ export default function LoginPage() {
     if (isAuthenticated && user) {
       // Same deep-link rule as the form: an already-signed-in visitor who lands on
       // /login still returns to the page they originally requested.
-      navigate(resolvePostLoginPath(location.state), { replace: true })
+      navigate(resolvePostLoginPath(location.state, user.roles), { replace: true })
     }
   }, [isAuthenticated, user, navigate, location.state])
   return (
@@ -29,7 +29,7 @@ export default function LoginPage() {
         display: 'flex',
         minHeight: '100vh',
         flexDirection: { xs: 'column', md: 'row' },
-        bgcolor: 'background.default', // #050505 everywhere
+        background: 'transparent',
       }}
     >
       <LoginForm />

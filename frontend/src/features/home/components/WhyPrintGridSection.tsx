@@ -15,7 +15,7 @@ export function WhyPrintGridSection() {
         <Grid container spacing={4}>
           {BENEFITS.map((item, idx) => (
             <Grid size={{ xs: 12, sm: 6 }} key={idx}>
-              <Paper sx={{ p: 4, height: '100%', bgcolor: 'background.paper', borderColor: 'rgba(255,255,255,0.08)' }} variant="outlined">
+              <Paper sx={{ p: 4, height: '100%', bgcolor: 'background.paper', borderColor: 'divider' }} variant="outlined">
                 <Typography variant="h6" fontWeight={600} mb={1}>{item.title}</Typography>
                 <Typography variant="body2" color="text.secondary">{item.desc}</Typography>
               </Paper>

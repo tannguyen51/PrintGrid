@@ -300,19 +300,19 @@ export default function LabQueuePage() {
             </Box>
           </Stack>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Button variant="outlined" color="inherit" onClick={() => navigate('/lab/register')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+            <Button variant="outlined" color="inherit" onClick={() => navigate('/lab/register')} sx={{ color: 'text.primary', borderColor: 'divider' }}>
               Hồ sơ xưởng
             </Button>
-            <Button variant="outlined" color="inherit" onClick={() => navigate('/lab/machines')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+            <Button variant="outlined" color="inherit" onClick={() => navigate('/lab/machines')} sx={{ color: 'text.primary', borderColor: 'divider' }}>
               Máy in
             </Button>
-            <Button variant="outlined" color="inherit" onClick={() => navigate('/lab/timeline')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+            <Button variant="outlined" color="inherit" onClick={() => navigate('/lab/timeline')} sx={{ color: 'text.primary', borderColor: 'divider' }}>
               Lịch máy & Điểm
             </Button>
-            <Button variant="outlined" color="inherit" startIcon={<LocalShippingRounded />} disabled={!labId} onClick={() => navigate(`/lab/${labId}/shipments`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+            <Button variant="outlined" color="inherit" startIcon={<LocalShippingRounded />} disabled={!labId} onClick={() => navigate(`/lab/${labId}/shipments`)} sx={{ color: 'text.primary', borderColor: 'divider' }}>
               Lô chuyển hub
             </Button>
-            <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} disabled={!jobs[0]?.j.labId} onClick={() => navigate(`/lab/${jobs[0]?.j.labId}/inventory`)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+            <Button variant="outlined" color="inherit" startIcon={<LibraryBooksRounded />} disabled={!jobs[0]?.j.labId} onClick={() => navigate(`/lab/${jobs[0]?.j.labId}/inventory`)} sx={{ color: 'text.primary', borderColor: 'divider' }}>
               Kho vật liệu
             </Button>
           </Stack>
@@ -325,14 +325,14 @@ export default function LabQueuePage() {
         {loading && jobs.length === 0 ? <CircularProgress sx={{ alignSelf: 'center' }} /> : null}
 
         {jobs.length === 0 && !loading ? (
-          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed rgba(255,255,255,0.15)' }}>
+          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <FactoryRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">Chưa có job nào trong hàng đợi.</Typography>
           </Box>
         ) : (
           <Stack spacing={2}>
             {jobs.map(({ j, action }) => (
-              <Box key={j.id} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'background.paper' }}>
+              <Box key={j.id} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={2}>
                   <Box>
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5, flexWrap: 'wrap', gap: 1 }}>
@@ -442,7 +442,7 @@ export default function LabQueuePage() {
         onClose={() => setDeclineTarget(null)}
         fullWidth
         maxWidth="xs"
-        PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' } }}
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}
       >
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>Từ chối nhận job</DialogTitle>
         <DialogContent>
@@ -499,7 +499,7 @@ export default function LabQueuePage() {
         onClose={() => setCompleteTarget(null)}
         fullWidth
         maxWidth="xs"
-        PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' } }}
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}
       >
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>Hoàn thành job</DialogTitle>
         <DialogContent>
@@ -565,7 +565,7 @@ export default function LabQueuePage() {
         onClose={() => setFailTarget(null)}
         fullWidth
         maxWidth="xs"
-        PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' } }}
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}
       >
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>Báo lỗi sản xuất</DialogTitle>
         <DialogContent>

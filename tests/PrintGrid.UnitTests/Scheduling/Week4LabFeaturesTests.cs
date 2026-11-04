@@ -48,6 +48,9 @@ public class Week4LabFeaturesTests
             0.15m,
             new[] { "PLA", "PETG" });
         capturedLab.AddMachine(machine);
+        // BR-OPS-006: approval also requires a material declaration, otherwise the lab would
+        // pass every capability check and then fail at reservation.
+        capturedLab.SetMaterialStock("PLA", "BLACK", 1_000m);
 
         var filter = new CapabilityFilter();
         var spec = JobSpecification.Create(

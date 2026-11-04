@@ -15,7 +15,8 @@ public record SelfRegisterLabCommand(
     string OperatingHours,
     Guid? OwnerUserId = null,
     string? ContactPhone = null,
-    string? Address = null) : IRequest<Result<LabDto>>;
+    string? Address = null,
+    string? District = null) : IRequest<Result<LabDto>>;
 
 public class SelfRegisterLabCommandHandler : IRequestHandler<SelfRegisterLabCommand, Result<LabDto>>
 {
@@ -50,7 +51,8 @@ public class SelfRegisterLabCommandHandler : IRequestHandler<SelfRegisterLabComm
                     command.TransitDaysToHub,
                     command.OperatingHours,
                     command.ContactPhone,
-                    command.Address);
+                    command.Address,
+                    command.District);
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
                 return Result.Success(LabMappings.ToDto(existing));
@@ -64,7 +66,8 @@ public class SelfRegisterLabCommandHandler : IRequestHandler<SelfRegisterLabComm
             command.OperatingHours,
             command.OwnerUserId,
             command.ContactPhone,
-            command.Address);
+            command.Address,
+            command.District);
 
         await _labs.AddAsync(lab, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

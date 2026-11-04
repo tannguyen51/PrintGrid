@@ -9,6 +9,7 @@ using PrintGrid.Api.BackgroundJobs;
 using PrintGrid.Api.Models;
 using PrintGrid.Infrastructure.Shared.FileStorage;
 using PrintGrid.Modules.Customer.Application.Models;
+using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.Modules.Scheduling.Application.Abstractions;
 using PrintGrid.Modules.Admin.Application.AuditLogs;
 
@@ -25,6 +26,7 @@ public class ModelsController : ControllerBase
     private readonly ModelUploadOptions _uploadOptions;
     private readonly ISlicingService _slicingService;
     private readonly IAuditLogWriter _audit;
+    private readonly IModelRepository _models;
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> UploadLocks = new();
 
     public ModelsController(
@@ -33,7 +35,8 @@ public class ModelsController : ControllerBase
         IOptions<MinioOptions> minio,
         IOptions<ModelUploadOptions> uploadOptions,
         ISlicingService slicingService,
-        IAuditLogWriter audit)
+        IAuditLogWriter audit,
+        IModelRepository models)
     {
         _sender = sender;
         _files = files;
@@ -41,6 +44,7 @@ public class ModelsController : ControllerBase
         _uploadOptions = uploadOptions.Value;
         _slicingService = slicingService;
         _audit = audit;
+        _models = models;
     }
 
     [HttpGet("quota")]
@@ -89,7 +93,9 @@ public class ModelsController : ControllerBase
         if (result.IsFailure)
             return NotFound(new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
-        var storageKey = result.Value.StorageKey;
+        // The storage key is deliberately not part of ModelDto; load it from the entity.
+        var model = await _models.GetByIdForCustomerAsync(customerId.Value, modelId, cancellationToken);
+        var storageKey = model?.StorageKey;
         if (string.IsNullOrWhiteSpace(storageKey))
             return NotFound(new { error = new { code = "file_not_stored", message = "Model này chưa có file lưu trữ." } });
 
@@ -109,7 +115,7 @@ public class ModelsController : ControllerBase
             "model.file_downloaded",
             "Model",
             modelId.ToString(),
-            NewValues: new { result.Value.FileName, result.Value.StorageKey },
+            NewValues: new { result.Value.FileName, HasFile = storageKey is not null },
             IpAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
             TraceId: HttpContext.TraceIdentifier,
             RequirementCodes: ["FR-ADMIN-004", "UC-025", "BR-ACCESS-002", "BR-CONFIG-004"]), cancellationToken);
@@ -187,13 +193,14 @@ public class ModelsController : ControllerBase
         if (result.IsFailure)
             return NotFound(new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
-        if (!string.IsNullOrWhiteSpace(existing.Value.StorageKey))
+        var stored = await _models.GetByIdForCustomerAsync(customerId.Value, modelId, cancellationToken);
+        if (stored?.StorageKey is { } storageKey)
         {
-            var separator = existing.Value.StorageKey.IndexOf('/');
-            if (separator > 0 && separator < existing.Value.StorageKey.Length - 1)
+            var separator = storageKey.IndexOf('/');
+            if (separator > 0 && separator < storageKey.Length - 1)
                 await _files.DeleteAsync(
-                    existing.Value.StorageKey[..separator],
-                    existing.Value.StorageKey[(separator + 1)..],
+                    storageKey[..separator],
+                    storageKey[(separator + 1)..],
                     cancellationToken);
         }
 

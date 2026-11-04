@@ -32,8 +32,8 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 3, bgcolor: 'background.default' }}>
-      <Box component="form" onSubmit={submit} sx={{ width: '100%', maxWidth: 460, p: { xs: 3, sm: 5 }, border: '1px solid rgba(255,255,255,.12)', borderRadius: 4, bgcolor: 'background.paper' }}>
+    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 3, background: 'transparent' }}>
+      <Box component="form" onSubmit={submit} sx={{ width: '100%', maxWidth: 460, p: { xs: 3, sm: 5 }, border: '1px solid', borderColor: 'divider', borderRadius: 3, bgcolor: 'background.paper', boxShadow: (t) => t.custom.loginCardShadow }}>
         <Stack spacing={2.5}>
           <Typography variant="h4" fontWeight={700}>Đặt lại mật khẩu</Typography>
           {!validLink && <Alert severity="error">Liên kết đặt lại mật khẩu không hợp lệ.</Alert>}

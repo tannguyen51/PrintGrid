@@ -1,0 +1,116 @@
+
+
+
+
+
+
+
+
+
+CAPSTONE PROJECT REPORT
+Report 4 - Software Design Document
+
+
+
+
+
+
+
+- Hanoi, August 2019 -
+
+
+Table of Contents
+I. Record of Changes	3
+II. Software Design Document	4
+1. System Design	4
+1.1 System Architecture	4
+1.2 Package Diagram	4
+2. Database Design	4
+3. Detailed Design	5
+3.1 <Feature/Function Name1>	5
+3.2 <Feature/Function Name2>	6
+
+
+
+I. Record of Changes
+DateA*
+M, DIn chargeChange Description*A - Added M - Modified D - Deleted
+
+
+II. Software Design Document
+1. System Design
+1.1 System Architecture
+1.2 Package Diagram
+
+Package Descriptions
+NoPackageDescription01PrintGrid.WebReact 18 + TypeScript SPA (Vite). Composition root of the client: app/ boots the app, holds AuthContext and the React Query client.02PrintGrid.Web.routesRoute table and guards: AppRoutes, ProtectedRoute, CustomerLayout, StaffLayout, AdminLayout. Maps URL ? feature screen and enforces role-based access.03PrintGrid.Web.featuresOne folder per business area (auth, home, models, orders, quotes, lab, hub, ops, admin, design, account, scheduling, qcProof). Owns screens, hooks and local types.04PrintGrid.Web.sharedCross-feature building blocks: typed API client, shared components, hooks, MUI theme, shared types. No business rules.05PrintGrid.ApiASP.NET Core host and composition root. Wires DI, auth, Hangfire, SignalR, Swagger, module registrations and the middleware pipeline.06PrintGrid.Api.ControllersREST endpoints grouped by area (Auth, Models, Quotes, Orders, Jobs, Labs, Hub, Ops, Admin, Refunds, SLA, Calibration). Thin: validate ? send MediatR ? map result.07PrintGrid.Api.Auth / .AuthorizationJWT issuing/validation (JwtTokenService), password hashing, role constants (Roles) and authorization policies (RequireCustomer, RequireLab, RequireHub, RequireOps, RequireAdmin, RequireQuoteReview, RequireProduction).08PrintGrid.Api.BackgroundJobsHangfire entry points: AnalyzeModelJob (on upload), EmailDeliveryJob (every minute), CalibrationNightlyJob (02:17 daily). Thin wrappers; rules live in Application handlers.09PrintGrid.Api.Hubs / .EventHandlersSignalR hubs (OrderHub, LabHub) and integration-event handlers that push timeline/offer updates to the right audience.10PrintGrid.Api.Middleware · .Bootstrap · .Configuration · .ExtensionsCross-cutting infrastructure: exception handling, correlation/trace id, module assembly registry, options binding, endpoint and DI extensions.11PrintGrid.SharedKernelFramework-free primitives shared by every module: Entity/AggregateRoot, Result/Error, value objects (Money), domain event contracts, repository/UoW interfaces, clock abstraction.12PrintGrid.Infrastructure.SharedTechnical implementations reused by module infrastructure: EF Core PrintGridDbContext, unit of work, migrations, email outbox, file storage, caching, time provider.13...Infrastructure.Shared.PersistencePrintGridDbContext, ModuleAssemblyRegistry, UnitOfWork and the entire migration history (single database, schema-per-module).14...Infrastructure.Shared.Outboxemail_outbox store and dispatcher contract - durable, retried email delivery decoupled from request latency.15PrintGrid.Modules.Customer.DomainCustomer aggregate, addresses, models, quotes, orders, reprint/refund/design requests; enums, value objects, domain events and repository contracts.16PrintGrid.Modules.Customer.ApplicationCQRS handlers for auth, models, quotes, orders, payments, addresses, design requests; FluentValidation validators; DTOs/mappings.17PrintGrid.Modules.Customer.InfrastructureEF configurations and repositories for the customer schema; external adapters (file storage, token generation).18PrintGrid.Modules.Scheduling.Domain ?Job, Lab, Machine, MaterialStock/Reservation/Transaction, AssignmentDecision, CalibrationSample, ShipmentBatch, DateChangeRequest, OpsEscalation, ScoringWeightConfiguration; scheduling/scoring domain services.19PrintGrid.Modules.Scheduling.Application ?Assignment, repair/reschedule, speculative placement, pricing freeze, calibration, lab registry, inventory, shipment batches, ops workflow, urgent reprint.20PrintGrid.Modules.Scheduling.InfrastructureEF configurations/repositories for the scheduling schema; PDF/CSV or scheduling-specific adapters if present.21PrintGrid.Modules.Lab.DomainLab-side domain model (lab profile, machines, inventory movements) and its repository contracts.22PrintGrid.Modules.Lab.ApplicationLab onboarding, machine registry, inventory commands/queries, job-lifecycle handlers used by the lab portal.23PrintGrid.Modules.Lab.InfrastructurePersistence configuration and adapters for the lab module.24PrintGrid.Modules.Hub.DomainHub receiving, inspection and fulfilment domain types.25PrintGrid.Modules.Hub.ApplicationBatch receipt/reconciliation, inspection recording, consolidation and shipping handlers.26PrintGrid.Modules.Hub.InfrastructurePersistence configuration and adapters for the hub module.27PrintGrid.Modules.Admin.DomainAdmin entities: AuditLog, SharedCatalogItem, CommercialConfigurationVersion, InspectionChecklistVersion, DefectTaxonomyItem, SampleModel.28PrintGrid.Modules.Admin.ApplicationConfiguration versioning, catalogue management, QC knowledge, audit-log queries, sample library; reuses Customer quoting contracts.29PrintGrid.Modules.Admin.InfrastructureEF configurations/repositories for the admin schema (including sample_models).30PrintGrid.Modules.Analytics.Domain · .Application · .InfrastructureAnalytics read-model packages. Hi?n là scaffold: ch? có AssemblyMarker, ValidationBehavior, ModuleRegistration; s? li?u giám sát/SLA dang du?c ph?c v? b?i OpsController / SlaController trong Api.31PrintGrid.SimulatorConsole harness for UC-027: order generator + fault injection driving the real Scheduling engines in simulation mode. Depends on Scheduling.Application and Scheduling.Domain.
+2. Database Design
+
+File / objectLocationDescriptionDatabase printgrid_dbPostgreSQL 16, single databaseHolds all business data. Kept as one database so cross-module operations remain ACID.Schema customer10 tablesIdentity, addresses, models, quotes, orders, reprints, refunds and design requests.Schema scheduling12 tablesLabs, machines, inventory, jobs, assignment decisions, calibration samples, shipment batches, escalations and scoring weights.Schema admin6 tablesAudit log, commercial configuration, shared catalogues, inspection checklists and defect taxonomy, sample library.Schema shared2 tablesemail_outbox (durable email queue) and __ef_migrations_history (EF Core internal table).Schema hangfireCreated by HangfireBackground-job storage. Not part of the business design, therefore excluded from the table descriptions.Migration filessrc/PrintGrid.Infrastructure.Shared/Persistence/Migrations/33 migrations plus PrintGridDbContextModelSnapshot.cs; the snapshot is the source of truth for the schema.DDL scriptdocumentation/capstone/reports/printgrid-schema.sqlGenerated with dotnet ef migrations script; used as Appendix A for verification.
+  
+Table Descriptions
+NoTableDescription01customer.customersSingle identity table for every account (customers and staff): email, password hash, Google subject, verification/reset token hashes, Roles, session version.
+Primary keys: Id
+Foreign keys: - (referenced by customer_addresses, design_requests, reprint_requests)02customer.customer_addressesDelivery addresses; exactly one default per customer (IsDefault).
+Primary keys: Id
+Foreign keys: CustomerId ? customer.customers(Id)03customer.modelsUploaded 3D file: storage key, SHA-256, size, format, geometry analysis (bbox, volume, watertight/manifold, printable) and estimate.
+Primary keys: Id
+Foreign keys: - (logical CustomerId ? customers)04customer.quotesPriced offer with frozen PricingVersion, engine vs promised date, placement basis, approval metadata and expiry.
+Primary keys: Id
+Foreign keys: - (logical CustomerId ? customers)05customer.quote_itemsOne configured item in a quote: quantity, bbox, material cost and machine-time cost.
+Primary keys: Id
+Foreign keys: QuoteId ? customer.quotes(Id); logical ModelId ? models06customer.ordersCommitted purchase: status, promised date, deposit/paid/refunded amounts, gateway transaction id, tracking number, delivery timestamps. Unique OrderNumber.
+Primary keys: Id
+Foreign keys: - (logical CustomerId ? customers, QuoteId ? quotes)07customer.order_itemsOrder line with its production status; each line becomes one or more jobs.
+Primary keys: Id
+Foreign keys: OrderId ? customer.orders(Id); logical ModelId ? models08customer.design_requestsBrief for a model that does not exist yet; links to the design quote and deliverable.
+Primary keys: Id
+Foreign keys: CustomerId ? customer.customers(Id); logical QuoteId ? quotes09customer.reprint_requestsPost-delivery complaint with reason, photos and resolution note.
+Primary keys: Id
+Foreign keys: CustomerId ? customer.customers(Id), OrderId ? customer.orders(Id)10customer.refund_requestsFull or per-item refund case with amount, reason and status. Unique DateChangeRequestId.
+Primary keys: Id
+Foreign keys: - (logical OrderId, OrderItemId, DateChangeRequestId)11scheduling.labsPartner print shop: location, calendar, transit days/zone, capacity cap, status, on-time rate, first-pass yield, standing.
+Primary keys: Id
+Foreign keys: - (logical OwnerUserId, ApprovedByUserId ? customers)12scheduling.machinesPrint capability (technology, tolerance, layer range), calibration factor/MAPE and maintenance window.
+Primary keys: Id
+Foreign keys: LabId ? scheduling.labs(Id)13scheduling.material_stocksStock per material/colour: available, reserved, reorder point. Unique (LabId,MaterialCode,ColorCode).
+Primary keys: Id
+Foreign keys: LabId ? scheduling.labs(Id)14scheduling.material_reservationsGrams reserved when a job is accepted. Unique JobId.
+Primary keys: Id
+Foreign keys: LabId ? scheduling.labs(Id); logical JobId ? jobs, MaterialStockId ? material_stocks15scheduling.stock_transactionsImmutable stock movement with transaction code and running total. Unique TransactionCode.
+Primary keys: Id
+Foreign keys: LabId ? scheduling.labs(Id); logical JobId, MaterialStockId16scheduling.jobsThe schedulable unit: queue dates, status, quantity, estimates vs actuals, QC-proof state, inspection result/defect, reprint index.
+Primary keys: Id
+Foreign keys: ShipmentBatchId ? shipment_batches(Id), InspectionChecklistVersionId ? admin.inspection_checklist_versions(Id), InspectionDefectCode ? admin.defect_taxonomy_items(Code); logical OrderItemId, LabId, MachineId, ModelId, FaultLabId, OriginalJobId, ParentJobId17scheduling.assignment_decisionsAppend-only decision log: trigger, candidates/ranking JSON, chosen pair, score, scoring-config version, elapsed time, outcome.
+Primary keys: Id
+Foreign keys: - (logical JobId, OrderItemId, ChosenLabId, ChosenMachineId)18scheduling.calibration_samplesOne (estimated, actual) pair per completed job. Unique JobId.
+Primary keys: Id
+Foreign keys: MachineId ? scheduling.machines(Id); logical JobId, ModelId19scheduling.date_change_requestsProposed delivery-date change with consent token and decision timestamp. Unique Token.
+Primary keys: Id
+Foreign keys: - (logical JobId, OrderItemId, DecidedByCustomerId)20scheduling.shipment_batchesLab?hub run: grouped jobs, weight/zone allowance, waybill, sealed/received timestamps. Unique WaybillNumber.
+Primary keys: Id
+Foreign keys: - (logical LabId ? labs)21scheduling.ops_escalationsHuman-intervention queue item (no feasible lab, reprint limit, SLA risk).
+Primary keys: Id
+Foreign keys: - (logical JobId, OrderItemId)22scheduling.scoring_weight_configurationsVersioned assignment weights with change reason and active flag. Unique Version, IsActive.
+Primary keys: Id
+Foreign keys: -23admin.audit_logsAppend-only audit record: actor/role, action class, before/after JSON, IP, trace id, requirement codes.
+Primary keys: Id
+Foreign keys: - (polymorphic EntityType + EntityId)24admin.commercial_configuration_versionsVersioned commercial parameters (ParametersJson), status and activation time. Unique VersionNumber, Status.
+Primary keys: Id
+Foreign keys: -25admin.inspection_checklist_versionsVersioned, grade-bound checklist (ItemsJson). Unique (QualityGradeCode,VersionNumber).
+Primary keys: Id
+Foreign keys: - (referenced by scheduling.jobs)26admin.defect_taxonomy_itemsDefect code, name, default fault attribution, deprecation flag. Unique Code.
+Primary keys: Id
+Foreign keys: - (referenced by scheduling.jobs.InspectionDefectCode)27admin.shared_catalog_itemsMaterials, colours, technologies, grades and post-processing options, revisioned. Unique (CatalogType,Code,Revision).
+Primary keys: Id
+Foreign keys: -28shared.email_outboxDurable outbound-email queue (ToEmail, subject, body, status, sent time) drained every minute.
+Primary keys: Id
+Foreign keys: -29admin.sample_modelsPlatform-owned sample library: slug, name, category, description, cover image, file metadata, bbox/volume/estimate, publish flag, sort order. Unique Slug.
+Primary keys: Id
+Foreign keys: - (logical CreatedBy ? customers)
+3. Detailed Design
+3.1 <Coreflow>
+3.1.1 Class Diagram
+
+3.1.2 <Sequence Diagram>
+

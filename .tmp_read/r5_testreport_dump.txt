@@ -1,0 +1,102 @@
+﻿===== SHEET: Cover =====
+R2:  | TEST REPORT DOCUMENT |  |  |  | 
+R3:  |  |  |  |  | 
+R4: Project Name | <Project Name> |  |  | Creator | 
+R5: Project Code | <Project Code> |  |  | Issue Date | <Date when this test report is created>
+R6: Document Code | <Project Code>_XXX_vx.x |  |  | Version | 
+R7:  |  |  |  |  | 
+R8:  |  |  |  |  | 
+R9: Record of change |  |  |  |  | 
+R10: Effective Date | Version | Change Item | *A,D,M | Change description | Reference
+R11: <Date when these changes are effective> |  |  |  |  | <List of documents which are refered in this version.>
+R12:  |  |  |  |  | 
+R13:  |  |  |  |  | 
+R14:  |  |  |  |  | 
+R15:  |  |  |  |  | 
+R16:  |  |  |  |  | 
+R17:  |  |  |  |  | 
+
+===== SHEET: Test Cases =====
+R1:  |  | TEST CASE LIST |  | 
+R2:  |  |  |  | 
+R3: Project Name |  | #REF! |  | 
+R4: Project Code |  | #REF! |  | 
+R5: Test Environment Setup Description |  | <List enviroment requires in this system / 1. Server / 2. Database / 3. Web Browser / ... / > |  | 
+R6:  |  |  |  | 
+R7:  |  |  |  | 
+R8: No | Function Name | Sheet Name | Description | Pre-Condition
+R9: 1 | Function A | Feature1 |  | 
+R10: 2 | Function B | Feature1 |  | 
+R11: 3 | Function C | Feature1 |  | 
+R12: 4 | Function D | Feature2 |  | 
+R13: 5 | Function E | Feature2 |  | 
+R14:  |  |  |  | 
+R15:  |  |  |  | 
+R16:  |  |  |  | 
+R17:  |  |  |  | 
+R18:  |  |  |  | 
+R19:  |  |  |  | 
+R20:  |  |  |  | 
+R21:  |  |  |  | 
+
+===== SHEET: Test Statistics =====
+R1:  | TEST STATISTICS |  |  |  |  |  | 
+R2:  |  |  |  |  |  |  | 
+R3:  | Project Name | <Project Name> |  | Creator |  |  | 
+R4:  | Project Code | <Project Code> |  | Reviewer/Approver |  |  | 
+R5:  | Document Code | <Project Code>_Test Report_vx.x |  | Issue Date |  |  | <Date when this test report is created>
+R6:  | Notes | <List modules included in this release> ex: Release 1 includes 2 modules: Module1 and Module2 |  |  |  |  | 
+R7:  |  |  |  |  |  |  | 
+R8:  |  |  |  |  |  |  | 
+R9:  |  |  |  |  |  |  | 
+R10:  | No | Module code | Passed | Failed | Pending | N/A | Number of  test cases
+R11:  | 1 | <Feature Name1> | 0 | 0 | 6 | 0 | 8
+R12:  | 2 | <Feature Name2> | 0 | 0 | 5 | 0 | 7
+R13:  |  |  |  |  |  |  | 
+R14:  |  | Sub total | 0 | 0 | 11 | 0 | 15
+R15:  |  |  |  |  |  |  | 
+R16:  |  | Test coverage |  | 0.00 | % |  | 
+R17:  |  | Test successful coverage |  | 0.00 | % |  | 
+R18:  |  |  |  |  |  |  | 
+
+===== SHEET: Feature 1 =====
+R1:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R2: Feature | <Feature Name1> |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Passed
+R3: Test requirement | <Brief description about requirements which are tested in this sheet> |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Failed
+R4: Number of TCs | 8 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Pending
+R5: Testing Round | Passed | Failed | Pending | N/A |  |  |  |  |  |  |  |  |  |  |  |  | N/A
+R6: Round 1 | 0 | 0 | 6 | 0 |  |  |  |  |  |  |  |  |  |  |  |  | 
+R7: Round 2 | 0 | 0 | 6 | 0 |  |  |  |  |  |  |  |  |  |  |  |  | 
+R8: Round 3 | 0 | 0 | 6 | 0 |  |  |  |  |  |  |  |  |  |  |  |  | 
+R9:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R10: Test Case ID | Test Case Description | Test Case Procedure | Expected Results | Pre-conditions | Round 1 | Test date | Tester | Round 2 | Test date | Tester | Round 3 | Test date | Tester | Note |  |  | 
+R11: Function A |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R12: <ID1> | <Brief description of this case: what is tested?> / Ex: Test viewing "Company" form. | <Describe steps to perform this case> / Ex: / 1. Login the system with Manager role. / 2. Click "Company" tab in the left menu. | <Describe results which meet customer's requirement> / Ex: / The "Company" view form is displayed with the folowing informations: / - Company name / - Company address / - Phone / - Fax | <List all test cases or conditions that must be done before performing this case> /  | Pending |  |  | Pending |  |  | Pending |  |  |  |  |  | 
+R13: <ID2> | <Test case 2> |  |  |  | Pending |  |  | Pending |  |  | Pending |  |  |  |  |  | 
+R14: <ID3> | <Test case 3> |  |  |  | Pending |  |  | Pending |  |  | Pending |  |  |  |  |  | 
+R15: Function B |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R16: <ID4> | <Test case 4> |  |  |  | Pending |  |  | Pending |  |  | Pending |  |  |  |  |  | 
+R17: <ID5> | <Test case 5> |  |  |  | Pending |  |  | Pending |  |  | Pending |  |  |  |  |  | 
+R18: Function C |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R19: <ID6> | <Test case 6> |  |  |  | Pending |  |  | Pending |  |  | Pending |  |  |  |  |  | 
+
+===== SHEET: Feature 2 =====
+R1:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R2: Feature | <Feature Name2> |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Passed
+R3: Test requirement | <Brief description about requirements which are tested in this sheet> |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Failed
+R4: Number of TCs | 7 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Pending
+R5: Testing Round | Passed | Failed | Pending | N/A |  |  |  |  |  |  |  |  |  |  |  |  | N/A
+R6: Round 1 | 0 | 0 | 5 | 0 |  |  |  |  |  |  |  |  |  |  |  |  | 
+R7: Round 2 | 0 | 0 | 5 | 0 |  |  |  |  |  |  |  |  |  |  |  |  | 
+R8: Round 3 | 0 | 0 | 5 | 0 |  |  |  |  |  |  |  |  |  |  |  |  | 
+R9:  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R10: Test Case ID | Test Case Description | Test Case Procedure | Expected Results | Pre-conditions | Round 1 | Test date | Tester | Round 2 | Test date | Tester | Round 3 | Test date | Tester | Note |  |  | 
+R11: Function D |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R12: <ID1> | <Brief description of this case: what is tested?> / Ex: Test viewing "Company" form. | <Describe steps to perform this case> / Ex: / 1. Login the system with Manager role. / 2. Click "Company" tab in the left menu. | <Describe results which meet customer's requirement> / Ex: / The "Company" view form is displayed with the folowing informations: / - Company name / - Company address / - Phone / - Fax | <List all test cases or conditions that must be done before performing this case> /  | Pending |  |  | Pending |  |  | Pending |  |  |  |  |  | 
+R13: <ID2> | <Test case 2> |  |  |  | Pending |  |  | Pending |  |  | Pending |  |  |  |  |  | 
+R14: <ID3> | <Test case 3> |  |  |  | Pending |  |  | Pending |  |  | Pending |  |  |  |  |  | 
+R15: Function E |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+R16: <ID4> | <Test case 4> |  |  |  | Pending |  |  | Pending |  |  | Pending |  |  |  |  |  | 
+R17: <ID5> | <Test case 5> |  |  |  | Pending |  |  | Pending |  |  | Pending |  |  |  |  |  | 
+R18: 6 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 
+

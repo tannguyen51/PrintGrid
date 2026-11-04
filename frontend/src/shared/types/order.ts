@@ -33,6 +33,9 @@ export interface Order {
    */
   depositAmount?: number
   refundedAmount?: number
+  /** Issued when the order is confirmed — one contract per order. */
+  contractNumber?: string | null
+  termsAcceptedAtUtc?: string | null
   items: OrderItem[]
 }
 

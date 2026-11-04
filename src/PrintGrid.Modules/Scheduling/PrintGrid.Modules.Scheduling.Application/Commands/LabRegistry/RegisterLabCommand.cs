@@ -11,4 +11,5 @@ public record RegisterLabCommand(
     Guid? OwnerUserId = null,
     string WorkingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
     string OpeningTime = "08:00",
-    string ClosingTime = "17:00") : IRequest<Result<LabDto>>;
+    string ClosingTime = "17:00",
+    string? District = null) : IRequest<Result<LabDto>>;

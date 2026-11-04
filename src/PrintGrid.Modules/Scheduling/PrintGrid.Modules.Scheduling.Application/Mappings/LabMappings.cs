@@ -43,5 +43,6 @@ public static class LabMappings
         lab.ContactPhone,
         lab.Address,
         lab.RejectionReason,
-        lab.IsDeclarationComplete);
+        lab.IsDeclarationComplete,
+        lab.District);
 }

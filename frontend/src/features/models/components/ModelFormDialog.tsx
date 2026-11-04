@@ -145,7 +145,7 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
 
   return (
     <Dialog open={open} onClose={submitting ? undefined : onClose} fullWidth maxWidth="sm"
-      PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' } }}>
+      PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}>
       <DialogTitle sx={{ color: 'text.primary', fontWeight: 700 }}>
         {editing ? 'Sửa model' : 'Thêm model mới'}
       </DialogTitle>
@@ -171,7 +171,7 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
                   color="inherit"
                   fullWidth
                   startIcon={<UploadFileRounded />}
-                  sx={{ py: 1.5, color: file ? 'text.primary' : 'text.secondary', borderColor: file ? 'rgba(255,120,80,0.5)' : 'rgba(255,255,255,0.2)', borderStyle: 'dashed' }}
+                  sx={{ py: 1.5, color: file ? 'text.primary' : 'text.secondary', borderColor: file ? 'rgba(255,120,80,0.5)' : 'divider', borderStyle: 'dashed' }}
                 >
                   {file ? `Đã chọn: ${file.name} (${(file.size / 1024).toFixed(1)} KB)` : 'Chọn file STL / OBJ / 3MF / GLB để tải lên'}
                 </Button>
@@ -185,7 +185,7 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
                       height: 260,
                       borderRadius: 3,
                       overflow: 'hidden',
-                      border: '1px solid rgba(255,255,255,0.12)',
+                      border: '1px solid #E8EBF2',
                     }}
                   >
                     <ModelViewer
@@ -193,7 +193,7 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
                       format={previewFormat}
                       fit
                       height={260}
-                      background="#050505"
+                      background="#F5F2FF"
                     />
                   </Box>
                 )}

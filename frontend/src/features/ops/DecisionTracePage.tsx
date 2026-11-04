@@ -110,7 +110,7 @@ function JsonPre({ value }: { value: unknown }) {
         borderRadius: 2,
         border: '1px solid',
         borderColor: 'divider',
-        bgcolor: 'rgba(255,255,255,0.04)',
+        bgcolor: 'action.hover',
         color: 'text.secondary',
         fontSize: '0.75rem',
         overflowX: 'auto',
@@ -263,7 +263,7 @@ function DecisionCard({ decision: d }: { decision: DecisionEntry }) {
                       .map(([k, v]) => `${CRITERION_LABELS[k] ?? k} ${Number(v).toFixed(2)}`)
                       .join(' · ')
                     return (
-                      <TableRow key={`${r.machineId}-${i}`} sx={i === 0 ? { bgcolor: 'rgba(255,255,255,0.04)' } : undefined}>
+                      <TableRow key={`${r.machineId}-${i}`} sx={i === 0 ? { bgcolor: 'action.hover' } : undefined}>
                         <TableCell align="right">{i + 1}</TableCell>
                         <TableCell>{nameFor(r.labId, r.machineId)}</TableCell>
                         <TableCell sx={cellNowrap}>{fmtDateTime(r.plannedStartUtc)}</TableCell>
@@ -377,14 +377,14 @@ export default function DecisionTracePage() {
         {log.isFetching && !log.isError ? <CircularProgress sx={{ alignSelf: 'center' }} /> : null}
 
         {!activeJobId && !log.isFetching ? (
-          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed rgba(255,255,255,0.15)' }}>
+          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <FactCheckRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">Nhập mã job để xem vì sao engine xếp lịch như vậy.</Typography>
           </Box>
         ) : null}
 
         {log.data && log.data.decisions.length === 0 ? (
-          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed rgba(255,255,255,0.15)' }}>
+          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <FactCheckRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">Chưa có quyết định nào được ghi cho job {shortId(log.data.jobId)}.</Typography>
           </Box>

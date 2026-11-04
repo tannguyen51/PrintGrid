@@ -55,7 +55,8 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
   const isCustomer = roles.includes('Customer')
   const isLab = roles.some((r) => r === 'LabManager' || r === 'LabOperator')
   const isHub = roles.some((r) => r === 'HubQC' || r === 'HubFulfillment')
-  const isOps = roles.some((r) => r === 'OpsManager' || r === 'Admin')
+  const isOps = roles.some((r) => r === 'OpsManager')
+  const isAdmin = roles.includes('Admin')
 
   const go = (href: string) => {
     setDrawerOpen(false)
@@ -83,7 +84,7 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
         bgcolor: 'rgba(5,5,5,0.82)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid',
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: 'divider',
       }}
     >
       <Container maxWidth="lg" sx={{ py: 1.5 }}>
@@ -92,10 +93,10 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
           <Button component={RouterLink} to="/" onClick={() => setDrawerOpen(false)} sx={{ p: 0, textTransform: 'none', minWidth: 0 }} disableRipple>
             <BrandGlyph size={34} />
             <Box textAlign="left" sx={{ ml: 1.25 }}>
-              <Typography sx={{ fontSize: '1.05rem', fontWeight: 700, color: 'common.white', lineHeight: 1.15 }}>
+              <Typography sx={{ fontSize: '1.05rem', fontWeight: 700, color: 'text.primary', lineHeight: 1.15 }}>
                 PrintGrid
               </Typography>
-              <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.14em', textTransform: 'uppercase', lineHeight: 1 }}>
+              <Typography sx={{ fontSize: '0.55rem', color: 'text.secondary', letterSpacing: '0.14em', textTransform: 'uppercase', lineHeight: 1 }}>
                 Mạng lưới in 3D thông minh
               </Typography>
             </Box>
@@ -115,7 +116,7 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                   px: 1.5,
                   py: 0.75,
                   borderRadius: 2,
-                  '&:hover': { color: 'text.primary', bgcolor: 'rgba(255,255,255,0.05)' },
+                  '&:hover': { color: 'text.primary', bgcolor: 'action.hover' },
                 }}
               >
                 {item.label}
@@ -176,8 +177,21 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                     </Button>
                   </>
                 )}
-                <Button variant="contained" color="primary" onClick={() => go(isCustomer ? '/models' : isOps ? '/scheduling' : isHub ? '/hub/qc' : '/lab/queue')} sx={{ px: 2.5, py: 0.9, fontSize: '0.9rem' }}>
-                  {isCustomer ? 'Bắt đầu in' : isOps ? 'Điều phối' : 'Vào việc'}
+                {isAdmin && (
+                  <>
+                    <Button onClick={() => go('/admin')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                      Quản trị
+                    </Button>
+                    <Button onClick={() => go('/admin/users')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                      Người dùng
+                    </Button>
+                    <Button onClick={() => go('/admin/labs')} color="inherit" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem', px: 1.2, py: 0.75 }}>
+                      Duyệt xưởng
+                    </Button>
+                  </>
+                )}
+                <Button variant="contained" color="primary" onClick={() => go(isAdmin ? '/admin' : isCustomer ? '/models' : isOps ? '/scheduling' : isHub ? '/hub/qc' : '/lab/queue')} sx={{ px: 2.5, py: 0.9, fontSize: '0.9rem' }}>
+                  {isAdmin ? 'Quản trị' : isCustomer ? 'Bắt đầu in' : isOps ? 'Điều phối' : 'Vào việc'}
                 </Button>
                 <Button
                   onClick={handleLogout}
@@ -221,7 +235,7 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
       </Container>
 
       {/* ── Mobile drawer ── */}
-      <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{ sx: { width: 280, bgcolor: '#0A0A0A' } }}>
+      <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{ sx: { width: 280, bgcolor: 'background.paper' } }}>
         <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end' }}>
           <IconButton onClick={() => setDrawerOpen(false)} sx={{ color: 'text.primary' }} aria-label="Đóng menu">
             <CloseRounded />
@@ -247,7 +261,7 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                       <Button fullWidth variant="contained" color="primary" onClick={() => go('/models')}>
                         Bắt đầu in
                       </Button>
-                      <Button fullWidth variant="outlined" color="inherit" onClick={() => { setDrawerOpen(false); go('/orders') }} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+                      <Button fullWidth variant="outlined" color="inherit" onClick={() => { setDrawerOpen(false); go('/orders') }} sx={{ color: 'text.primary', borderColor: 'divider' }}>
                         Đơn hàng
                       </Button>
                     </>
@@ -262,8 +276,21 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                       <Button fullWidth variant="contained" color="primary" onClick={() => go('/hub/qc')}>
                         Kiểm tra chất lượng
                       </Button>
-                      <Button fullWidth variant="outlined" color="inherit" onClick={() => { setDrawerOpen(false); go('/hub/shipments') }} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+                      <Button fullWidth variant="outlined" color="inherit" onClick={() => { setDrawerOpen(false); go('/hub/shipments') }} sx={{ color: 'text.primary', borderColor: 'divider' }}>
                         Giao hàng
+                      </Button>
+                    </>
+                  )}
+                  {isAdmin && (
+                    <>
+                      <Button fullWidth variant="contained" color="primary" onClick={() => go('/admin')}>
+                        Tổng quan quản trị
+                      </Button>
+                      <Button fullWidth variant="outlined" color="inherit" onClick={() => go('/admin/users')} sx={{ color: 'text.primary', borderColor: 'divider' }}>
+                        Người dùng &amp; phân quyền
+                      </Button>
+                      <Button fullWidth variant="outlined" color="inherit" onClick={() => go('/admin/labs')} sx={{ color: 'text.primary', borderColor: 'divider' }}>
+                        Duyệt xưởng
                       </Button>
                     </>
                   )}
@@ -272,10 +299,10 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                       <Button fullWidth variant="contained" color="primary" onClick={() => go('/scheduling')}>
                         Bảng điều phối
                       </Button>
-                      <Button fullWidth variant="outlined" color="inherit" onClick={() => go('/ops/escalations')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+                      <Button fullWidth variant="outlined" color="inherit" onClick={() => go('/ops/escalations')} sx={{ color: 'text.primary', borderColor: 'divider' }}>
                         Hàng đợi cảnh báo
                       </Button>
-                      <Button fullWidth variant="outlined" color="inherit" onClick={() => go('/ops/decisions')} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+                      <Button fullWidth variant="outlined" color="inherit" onClick={() => go('/ops/decisions')} sx={{ color: 'text.primary', borderColor: 'divider' }}>
                         Vết quyết định
                       </Button>
                     </>
@@ -286,7 +313,7 @@ export function HomeHeader({ onLogin, onRegister }: HomeHeaderProps) {
                 </Stack>
               ) : (
                 <Stack spacing={1.25}>
-                  <Button fullWidth variant="outlined" color="inherit" onClick={() => { setDrawerOpen(false); onLogin() }} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+                  <Button fullWidth variant="outlined" color="inherit" onClick={() => { setDrawerOpen(false); onLogin() }} sx={{ color: 'text.primary', borderColor: 'divider' }}>
                     Đăng nhập
                   </Button>
                   <Button fullWidth variant="contained" color="primary" onClick={() => { setDrawerOpen(false); onRegister() }}>

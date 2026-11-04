@@ -20,13 +20,12 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth, type Role } from '../../../app/AuthContext'
 import { MenuRounded, CloseRounded, LogoutRounded, PersonOutlineRounded } from '@mui/icons-material'
 import { BrandGlyph } from '../../../shared/components/BrandGlyph'
-import { landing } from '../../../shared/theme/landing'
+import { palette } from '../../../shared/theme/tokens'
 
 /**
- * Navbar for staff roles on the shared homepage (08/10). Same landing token system as
- * CustomerNavbar so every role sees one consistent site; only the links change.
- * Two primary links per role on the bar, the rest in the avatar menu — a console link
- * list long enough to wrap is worse than one extra click.
+ * Navbar for staff roles. Same light metallic shell as CustomerNavbar so every
+ * role sees one consistent site; only the links change. Two primary links per
+ * role on the bar, the rest in the avatar menu.
  */
 
 interface NavLink {
@@ -58,9 +57,8 @@ const PRIMARY: Partial<Record<Role, NavLink[]>> = {
   ],
   Admin: [
     { label: 'Tổng quan quản trị', href: '/admin' },
-    { label: 'Bảng điều phối', href: '/scheduling' },
-    // Same wording as the OpsManager link above but a different console; keep the labels
-    // distinct so an account holding BOTH roles doesn't render the same text twice.
+    // Admin and Operations are separate consoles: the admin bar never links into /ops,
+    // /scheduling, /quote-reviews or /model-reviews.
     { label: 'Duyệt xưởng (quản trị)', href: '/admin/labs' },
   ],
 }
@@ -75,6 +73,7 @@ const MORE: Partial<Record<Role, NavLink[]>> = {
   ],
   OpsManager: [
     { label: 'Duyệt báo giá', href: '/quote-reviews' },
+    { label: 'Kiểm duyệt model', href: '/model-reviews' },
     { label: 'Nghiệm thu QC', href: '/staff/qc-proofs' },
     { label: 'Cảnh báo', href: '/ops/escalations' },
     { label: 'Nhật ký quyết định', href: '/ops/decisions' },
@@ -84,14 +83,6 @@ const MORE: Partial<Record<Role, NavLink[]>> = {
     { label: 'Yêu cầu thiết kế', href: '/ops/design-requests' },
   ],
   Admin: [
-    { label: 'Duyệt báo giá', href: '/quote-reviews' },
-    { label: 'Nghiệm thu QC', href: '/staff/qc-proofs' },
-    { label: 'Cảnh báo', href: '/ops/escalations' },
-    { label: 'Nhật ký quyết định', href: '/ops/decisions' },
-    { label: 'Báo cáo SLA', href: '/ops/sla' },
-    { label: 'Thanh toán', href: '/ops/payments' },
-    { label: 'Hoàn tiền', href: '/ops/refunds' },
-    { label: 'Yêu cầu thiết kế', href: '/ops/design-requests' },
     { label: 'Người dùng & phân quyền', href: '/admin/users' },
     { label: 'Kho tri thức QC', href: '/admin/qc-knowledge' },
     { label: 'Cấu hình thương mại', href: '/admin/commercial-configurations' },
@@ -102,13 +93,14 @@ const MORE: Partial<Record<Role, NavLink[]>> = {
 }
 
 const linkSx = {
-  color: landing.textMuted,
+  color: palette.text.secondary,
   fontWeight: 500,
   fontSize: '0.9rem',
   px: 1.5,
   py: 0.75,
-  borderRadius: `${landing.radius}px`,
-  '&:hover': { color: landing.text, bgcolor: 'rgba(255,255,255,0.05)' },
+  borderRadius: '10px',
+  transition: 'background-color 160ms ease, color 160ms ease',
+  '&:hover': { color: palette.text.primary, bgcolor: palette.purple.soft },
 } as const
 
 /**
@@ -166,27 +158,28 @@ export function StaffNavbar() {
         position: 'sticky',
         top: 0,
         zIndex: 1200,
-        bgcolor: 'rgba(0,0,0,0.72)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: `1px solid ${landing.hairline}`,
+        bgcolor: 'rgba(255,255,255,0.84)',
+        backdropFilter: 'blur(16px)',
+        borderBottom: `1px solid ${palette.border.hairline}`,
+        boxShadow: '0 1px 0 rgba(37,38,58,0.02)',
       }}
     >
-      <Container maxWidth="lg" sx={{ py: 1.5 }}>
+      <Container maxWidth="lg" sx={{ py: 1.25 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
           <Button
             component={RouterLink}
             to="/"
             onClick={() => setDrawerOpen(false)}
             aria-label="PrintGrid — về trang chủ"
-            sx={{ p: 0, textTransform: 'none', minWidth: 0, '&:hover': { bgcolor: 'transparent' } }}
+            sx={{ p: 0, textTransform: 'none', minWidth: 0, '&:hover': { bgcolor: 'transparent', boxShadow: 'none' } }}
             disableRipple
           >
-            <BrandGlyph size={34} color={landing.text} mutedColor={landing.textMuted} />
+            <BrandGlyph size={32} />
             <Box textAlign="left" sx={{ ml: 1.25 }}>
-              <Typography sx={{ fontSize: '1.05rem', fontWeight: 700, color: landing.text, lineHeight: 1.15 }}>
+              <Typography sx={{ fontSize: '1.05rem', fontWeight: 800, color: palette.text.primary, lineHeight: 1.15, letterSpacing: '-0.02em' }}>
                 PrintGrid
               </Typography>
-              <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.14em', textTransform: 'uppercase', lineHeight: 1 }}>
+              <Typography sx={{ fontSize: '0.56rem', color: 'text.muted', letterSpacing: '0.14em', textTransform: 'uppercase', lineHeight: 1.4, fontWeight: 600 }}>
                 {roles[0] ?? 'Staff'}
               </Typography>
             </Box>
@@ -200,9 +193,11 @@ export function StaffNavbar() {
                 sx={{
                   ...linkSx,
                   textTransform: 'none',
-                  color: isActive(link.href) ? landing.text : landing.textMuted,
+                  color: isActive(link.href) ? palette.purple.deep : palette.text.secondary,
                   fontWeight: isActive(link.href) ? 700 : 500,
-                  bgcolor: isActive(link.href) ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  bgcolor: isActive(link.href) ? palette.purple.soft : 'transparent',
+                  boxShadow: isActive(link.href) ? 'inset 0 0 0 1px rgba(111,85,255,0.18)' : 'none',
+                  '&:hover': { bgcolor: palette.purple.soft, boxShadow: 'none' },
                 }}
               >
                 {link.label}
@@ -212,7 +207,7 @@ export function StaffNavbar() {
 
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0.5 }} aria-label="Menu tài khoản">
-              <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 15 }}>
+              <Avatar sx={{ width: 34, height: 34, fontSize: 14 }}>
                 {user?.email?.charAt(0).toUpperCase() || 'S'}
               </Avatar>
             </IconButton>
@@ -220,23 +215,15 @@ export function StaffNavbar() {
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
               onClose={() => setAnchorEl(null)}
-              PaperProps={{
-                sx: {
-                  mt: 1,
-                  minWidth: 220,
-                  bgcolor: landing.card,
-                  border: `1px solid ${landing.hairline}`,
-                  borderRadius: `${landing.radius}px`,
-                },
-              }}
               transformOrigin={{ horizontal: 'right', vertical: 'top' }}
               anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              slotProps={{ paper: { sx: { minWidth: 240, maxHeight: 420 } } }}
             >
               <MenuItem disabled sx={{ opacity: '1 !important' }}>
-                <PersonOutlineRounded fontSize="small" sx={{ mr: 1.25, color: landing.textMuted }} />
-                <Typography sx={{ fontSize: '0.85rem', color: landing.textMuted }}>{user?.email}</Typography>
+                <PersonOutlineRounded fontSize="small" sx={{ mr: 1.25 }} />
+                <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>{user?.email}</Typography>
               </MenuItem>
-              <Divider sx={{ borderColor: landing.hairlineSoft }} />
+              <Divider sx={{ my: 0.5 }} />
               {more.map((link) => (
                 <MenuItem
                   key={link.href}
@@ -247,7 +234,7 @@ export function StaffNavbar() {
                   {link.label}
                 </MenuItem>
               ))}
-              {more.length > 0 && <Divider sx={{ borderColor: landing.hairlineSoft }} />}
+              {more.length > 0 && <Divider sx={{ my: 0.5 }} />}
               <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
                 <LogoutRounded fontSize="small" sx={{ mr: 1.25 }} />
                 Đăng xuất
@@ -255,34 +242,31 @@ export function StaffNavbar() {
             </Menu>
           </Stack>
 
-          <IconButton onClick={() => setDrawerOpen(true)} sx={{ display: { md: 'none' }, color: landing.text }} aria-label="Mở menu">
+          <IconButton onClick={() => setDrawerOpen(true)} sx={{ display: { md: 'none' }, color: 'text.primary' }} aria-label="Mở menu">
             <MenuRounded />
           </IconButton>
         </Stack>
       </Container>
 
-      <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{ sx: { width: 280, bgcolor: landing.card } }}>
+      <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)} slotProps={{ paper: { sx: { width: 300 } } }}>
         <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end' }}>
-          <IconButton onClick={() => setDrawerOpen(false)} sx={{ color: landing.text }} aria-label="Đóng menu">
+          <IconButton onClick={() => setDrawerOpen(false)} aria-label="Đóng menu">
             <CloseRounded />
           </IconButton>
         </Box>
-        <List>
+        <List sx={{ px: 1 }}>
           {[...primary, ...more].map((link) => (
             <ListItem key={link.href} disablePadding>
-              <ListItemButton onClick={() => go(link.href)} selected={isActive(link.href)}>
+              <ListItemButton onClick={() => go(link.href)} selected={isActive(link.href)} sx={{ mb: 0.25 }}>
                 <ListItemText
                   primary={link.label}
-                  sx={{
-                    color: isActive(link.href) ? 'primary.main' : landing.text,
-                    '& .MuiListItemText-primary': { fontWeight: isActive(link.href) ? 700 : 500 },
-                  }}
+                  slotProps={{ primary: { fontWeight: isActive(link.href) ? 700 : 500, fontSize: '0.9rem' } }}
                 />
               </ListItemButton>
             </ListItem>
           ))}
           <ListItem disablePadding sx={{ mt: 2 }}>
-            <Box sx={{ px: 2, width: '100%' }}>
+            <Box sx={{ px: 1, width: '100%' }}>
               <Button fullWidth variant="outlined" color="error" onClick={handleLogout}>
                 Đăng xuất
               </Button>

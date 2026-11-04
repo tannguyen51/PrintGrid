@@ -24,6 +24,10 @@ public class ModelConfiguration : IEntityTypeConfiguration<Model>
         builder.Property(m => m.UpdatedAt).IsRequired();
 
         builder.Property(m => m.GeometryStatus).HasConversion<string>().HasMaxLength(16).IsRequired();
+        builder.Property(m => m.ReviewStatus).HasConversion<string>().HasMaxLength(16).IsRequired();
+        builder.Property(m => m.ReviewReason).HasMaxLength(500);
+        builder.Property(m => m.ReviewedSha256).HasMaxLength(64);
+        builder.HasIndex(m => new { m.ReviewStatus, m.CreatedAt });
         builder.Property(m => m.BoundingWidthMm).HasPrecision(8, 2);
         builder.Property(m => m.BoundingDepthMm).HasPrecision(8, 2);
         builder.Property(m => m.BoundingHeightMm).HasPrecision(8, 2);

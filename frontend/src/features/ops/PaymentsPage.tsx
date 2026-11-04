@@ -151,12 +151,12 @@ export default function PaymentsPage() {
         {isLoading ? (
           <CircularProgress sx={{ alignSelf: 'center' }} />
         ) : rows.length === 0 ? (
-          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed rgba(255,255,255,0.15)' }}>
+          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <PaymentsRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">Không có đơn nào đang chờ thanh toán cọc.</Typography>
           </Box>
         ) : (
-          <TableContainer sx={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'background.paper' }}>
+          <TableContainer sx={{ borderRadius: 2, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -201,13 +201,13 @@ export default function PaymentsPage() {
           {target && (
             <Stack spacing={2} sx={{ pt: 1 }}>
               <Typography variant="body2" color="text.secondary">
-                Đơn <strong style={{ color: '#fff' }}>{target.orderNumber}</strong> · Khách{' '}
-                <strong style={{ color: '#fff' }}>{customerOf(target)}</strong>
+                Đơn <strong style={{ color: '#25263A' }}>{target.orderNumber}</strong> · Khách{' '}
+                <strong style={{ color: '#25263A' }}>{customerOf(target)}</strong>
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Tổng {fmtVnd(target.totalPrice)} · Cọc {fmtVnd(target.depositAmount)} · Đã trả{' '}
                 {fmtVnd(target.paidAmount)} · Còn lại{' '}
-                <strong style={{ color: '#fff' }}>{fmtVnd(target.remaining)}</strong>
+                <strong style={{ color: '#25263A' }}>{fmtVnd(target.remaining)}</strong>
               </Typography>
 
               <TextField

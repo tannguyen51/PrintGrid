@@ -55,6 +55,7 @@ export interface Lab {
   operatingHours: string
   contactPhone: string | null
   address: string | null
+  district: string | null
   rejectionReason: string | null
   isDeclarationComplete: boolean
 }
@@ -66,6 +67,7 @@ export interface RegisterLabInput {
   workingDays?: string
   openingTime?: string
   closingTime?: string
+  district?: string
 }
 
 export interface SelfRegisterLabInput {
@@ -75,6 +77,7 @@ export interface SelfRegisterLabInput {
   operatingHours: string
   contactPhone?: string
   address?: string
+  district?: string
 }
 
 export interface RegisterMachineInput {

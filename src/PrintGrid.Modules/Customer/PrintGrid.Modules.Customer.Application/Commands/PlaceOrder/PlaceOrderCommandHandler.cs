@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.Extensions.Configuration;
 using PrintGrid.Modules.Customer.Application.DTOs;
 using PrintGrid.Modules.Customer.Domain.Entities;
+using PrintGrid.Modules.Customer.Domain.Enums;
 using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.SharedKernel.Interfaces;
 using PrintGrid.SharedKernel.Results;
@@ -14,6 +15,7 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
 {
     private readonly IQuoteRepository _quotes;
     private readonly IOrderRepository _orders;
+    private readonly IModelRepository _models;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _clock;
     private readonly IConfiguration _configuration;
@@ -21,12 +23,14 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
     public PlaceOrderCommandHandler(
         IQuoteRepository quotes,
         IOrderRepository orders,
+        IModelRepository models,
         IUnitOfWork unitOfWork,
         IDateTimeProvider clock,
         IConfiguration configuration)
     {
         _quotes = quotes;
         _orders = orders;
+        _models = models;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _configuration = configuration;
@@ -40,6 +44,16 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
         if (quote.CustomerId != command.CustomerId)
             return Result.Failure<OrderDto>(Error.Forbidden("Quote belongs to another customer"));
 
+        // Moderation gate: a model can be rejected after the quote was published, so the
+        // approval is re-checked at conversion time, before the quote is consumed.
+        foreach (var modelId in quote.Items.Select(i => i.ModelId).Distinct())
+        {
+            var model = await _models.GetByIdAsync(modelId, cancellationToken);
+            if (model is null || model.ReviewStatus != ModelReviewStatus.Approved)
+                return Result.Failure<OrderDto>(Error.Conflict(
+                    "Một model trong báo giá chưa được duyệt nội dung hoặc đã bị từ chối."));
+        }
+
         var conversion = quote.MarkConverted(_clock.UtcNow);
         if (conversion.IsFailure)
             return Result.Failure<OrderDto>(conversion.Error);
@@ -50,7 +64,9 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
         var sequence = await _orders.CountAsync(cancellationToken) + 1;
         var orderNumber = $"PG-{_clock.Today:yyyyMMdd}-{sequence:D5}";
 
-        var order = Order.CreateFromQuote(quote, address, orderNumber, DepositPercent());
+        var order = Order.CreateFromQuote(
+            quote, address, orderNumber, DepositPercent(),
+            termsAccepted: command.AcceptTerms, termsAcceptedAtUtc: _clock.UtcNow);
 
         // Demo flow: record the full payment up front. ApplyPayment also raises
         // OrderConfirmedEvent (jobs are created immediately) and sets PaidAmount, so the
@@ -101,5 +117,7 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
             i.Configuration.ColorCode,
             i.Configuration.LayerHeightMm,
             i.Configuration.InfillPercent,
-            i.UnitPrice.Amount)).ToList());
+            i.UnitPrice.Amount)).ToList(),
+        order.ContractNumber,
+        order.TermsAcceptedAtUtc);
 }

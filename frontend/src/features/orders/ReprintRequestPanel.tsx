@@ -62,7 +62,7 @@ export function ReprintRequestPanel({ order }: { order: Order }) {
     <Stack spacing={2}>
       <Typography sx={{ fontWeight: 700 }}>Xin in lại / khiếu nại</Typography>
       {isLoading ? <CircularProgress size={24} /> : data.map(request => (
-        <Box key={request.requestId} sx={{ p: 1.5, border: '1px solid rgba(255,255,255,.1)', borderRadius: 2 }}>
+        <Box key={request.requestId} sx={{ p: 1.5, border: '1px solid #E8EBF2', borderRadius: 2 }}>
           <Stack direction="row" justifyContent="space-between" gap={1}>
             <Typography variant="body2">{reasons.find(x => x[0] === request.reason)?.[1] ?? request.reason}</Typography>
             <Chip size="small" label={statusLabels[request.status] ?? request.status} color={request.status === 'denied' ? 'error' : request.status === 'approved' ? 'success' : 'warning'} />

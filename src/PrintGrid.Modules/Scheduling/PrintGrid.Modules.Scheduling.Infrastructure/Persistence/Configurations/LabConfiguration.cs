@@ -17,6 +17,7 @@ public class LabConfiguration : IEntityTypeConfiguration<Lab>
         builder.Property(l => l.OperatingHours).HasMaxLength(120).IsRequired();
         builder.Property(l => l.ContactPhone).HasMaxLength(32);
         builder.Property(l => l.Address).HasMaxLength(300);
+        builder.Property(l => l.District).HasMaxLength(100);
         builder.Property(l => l.RejectionReason).HasMaxLength(500);
         builder.Property(l => l.OnTimeDeliveryRate).HasPrecision(5, 4).IsRequired();
         builder.Property(l => l.FirstPassYield).HasPrecision(5, 4).IsRequired();
@@ -30,12 +31,19 @@ public class LabConfiguration : IEntityTypeConfiguration<Lab>
 
         builder.HasIndex(l => l.IsActive);
         builder.HasIndex(l => l.Status);
-        builder.HasIndex(l => l.OwnerUserId);
+        // MVP: one LabManager owns exactly one lab (multi-lab chain is post-MVP,
+        // 06-System-Scope §2.2). Partial index so unclaimed legacy labs stay allowed.
+        builder.HasIndex(l => l.OwnerUserId).IsUnique().HasFilter("\"OwnerUserId\" IS NOT NULL");
         builder.Ignore(l => l.IsDeclarationComplete);
 
         builder.HasMany(l => l.Machines)
             .WithOne()
             .HasForeignKey(m => m.LabId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(l => l.Staff)
+            .WithOne()
+            .HasForeignKey(s => s.LabId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(l => l.Machines).UsePropertyAccessMode(PropertyAccessMode.Field);

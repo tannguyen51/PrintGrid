@@ -31,7 +31,7 @@ function formatDate(iso: string): string {
 export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, onPreview }: ModelDetailDrawerProps) {
   const format = (model?.fileFormat ?? '').toUpperCase()
   const previewable = PREVIEWABLE_FORMATS.includes(format)
-  const { url, failed } = useModelFileUrl(model?.id ?? null, Boolean(model) && previewable)
+  const { url, failed } = useModelFileUrl(model?.id ?? null, Boolean(model) && Boolean(model?.hasFile) && previewable)
 
   // Diagnostic trace: shows exactly which branch the drawer takes for the 3D preview.
   useEffect(() => {
@@ -39,18 +39,18 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
       modelId: model?.id ?? null,
       format,
       previewable,
-      storageKey: model?.storageKey ?? null,
+      hasFile: model?.hasFile ?? null,
       urlReady: Boolean(url),
       failed,
     })
-  }, [model?.id, model?.storageKey, format, previewable, url, failed])
+  }, [model?.id, model?.hasFile, format, previewable, url, failed])
 
   return (
     <Drawer
       anchor="right"
       open={model !== null}
       onClose={onClose}
-      PaperProps={{ sx: { width: { xs: 320, sm: 400 }, bgcolor: '#0A0A0A', backgroundImage: 'none' } }}
+      PaperProps={{ sx: { width: { xs: 320, sm: 400 }, bgcolor: 'background.paper', backgroundImage: 'none' } }}
     >
       {model && (
         <Stack sx={{ height: '100%' }}>
@@ -66,13 +66,13 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
             </Button>
           </Box>
 
-          <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+          <Divider sx={{ borderColor: 'divider' }} />
 
           <Box sx={{ p: 3, flex: 1, overflowY: 'auto' }}>
             <Stack spacing={3}>
               {/* ── 3D preview of the actual uploaded file ── */}
               <Box>
-                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1 }}>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1 }}>
                   Xem trước 3D
                 </Typography>
                 {!previewable ? (
@@ -84,18 +84,18 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
                     Không tải được file để xem trước.
                   </Typography>
                 ) : url ? (
-                  <Box sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)' }}>
-                    <ModelViewer url={url} format={format} fit height={240} background="#050505" />
+                  <Box sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid #E8EBF2' }}>
+                    <ModelViewer url={url} format={format} fit height={240} background="#F5F2FF" />
                   </Box>
                 ) : (
-                  <Box sx={{ height: 240, display: 'grid', placeItems: 'center', borderRadius: 3, border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <Box sx={{ height: 240, display: 'grid', placeItems: 'center', borderRadius: 3, border: '1px solid #E8EBF2' }}>
                     <CircularProgress size={32} />
                   </Box>
                 )}
               </Box>
 
               <Box>
-                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   File
                 </Typography>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.75 }}>
@@ -117,7 +117,7 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
               </Box>
 
               <Box>
-                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Mô tả
                 </Typography>
                 <Typography color="text.secondary" sx={{ mt: 0.75, whiteSpace: 'pre-wrap' }}>
@@ -126,13 +126,13 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
               </Box>
 
               <Box>
-                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Tags
                 </Typography>
                 {model.tags.length > 0 ? (
                   <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 0.75 }}>
                     {model.tags.map((tag) => (
-                      <Chip key={tag} label={tag} size="small" sx={{ bgcolor: 'rgba(139,92,246,0.12)', color: '#A78BFA' }} />
+                      <Chip key={tag} label={tag} size="small" sx={{ bgcolor: 'rgba(111,85,255,0.10)', color: '#4933B8' }} />
                     ))}
                   </Stack>
                 ) : (
@@ -141,7 +141,7 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
               </Box>
 
               <Box>
-                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Phân tích hình học
                 </Typography>
                 {model.geometryStatus === 'Pending' && (
@@ -188,7 +188,7 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
               </Box>
 
               <Box>
-                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Thông tin khác
                 </Typography>
                 <Typography color="text.secondary" sx={{ mt: 0.75 }}>
@@ -198,7 +198,7 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
             </Stack>
           </Box>
 
-          <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+          <Divider sx={{ borderColor: 'divider' }} />
           <Stack direction="row" spacing={1.5} sx={{ p: 3 }}>
             <Button
               variant="contained"
@@ -206,11 +206,11 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
               fullWidth
               startIcon={<LocalShippingOutlined />}
               onClick={() => onOrder(model)}
-              disabled={model.geometryStatus !== 'Ready' || model.isPrintable === false}
+              disabled={model.geometryStatus !== 'Ready' || model.isPrintable === false || model.reviewStatus !== 'Approved'}
             >
               Đặt in
             </Button>
-            <Button variant="outlined" color="inherit" fullWidth startIcon={<EditRounded />} onClick={() => onEdit(model)} sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}>
+            <Button variant="outlined" color="inherit" fullWidth startIcon={<EditRounded />} onClick={() => onEdit(model)} sx={{ color: 'text.primary', borderColor: 'divider' }}>
               Sửa
             </Button>
             <Button
@@ -220,7 +220,7 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
               startIcon={<ViewInArRounded />}
               onClick={() => onPreview(model)}
               disabled={!PREVIEWABLE_FORMATS.includes(model.fileFormat.toUpperCase())}
-              sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}
+              sx={{ color: 'text.primary', borderColor: 'divider' }}
             >
               Xem 3D
             </Button>

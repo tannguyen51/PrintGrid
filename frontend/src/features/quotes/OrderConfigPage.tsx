@@ -169,7 +169,7 @@ export default function OrderConfigPage() {
         {configError && <Alert severity="error">{configError}</Alert>}
 
         {/* ── Step 1: config ── */}
-        <Box sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'background.paper' }}>
+        <Box sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 3, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
           <Stack spacing={3}>
             <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '1.05rem' }}>Cấu hình in</Typography>
 
@@ -252,7 +252,7 @@ export default function OrderConfigPage() {
 
         {/* ── Step 2: quote result + address ── */}
         {quote && (
-          <Box sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 3, border: '1px solid rgba(139,92,246,0.35)', bgcolor: 'background.paper' }}>
+          <Box sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 3, border: '1px solid rgba(111,85,255,0.32)', bgcolor: 'background.paper' }}>
             <Stack spacing={3}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: 'text.primary' }}>
@@ -279,9 +279,9 @@ export default function OrderConfigPage() {
                 </Box>
               ))}
 
-              <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+              <Divider sx={{ borderColor: 'divider' }} />
 
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" sx={{ bgcolor: 'rgba(139,92,246,0.08)', borderRadius: 2, p: 2 }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" sx={{ bgcolor: 'rgba(111,85,255,0.07)', borderRadius: 2, p: 2 }}>
                 <Box>
                   <Typography variant="caption" color="text.disabled">TỔNG</Typography>
                   <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>
@@ -294,7 +294,7 @@ export default function OrderConfigPage() {
                     {new Date(quote.promisedDeliveryDate + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {quote.placementBasis ?? 'tính theo lịch máy thật của mạng lưới'}
+                    {quote.customerPlacementSummary ?? 'tính theo lịch máy thật của mạng lưới'}
                   </Typography>
                   <Typography variant="caption" color="text.disabled">
                     {' '}· kỳ giá {quote.pricingVersion}

@@ -37,7 +37,7 @@ export function Hero({ onLogin, onRegister }: HeroProps) {
           inset: 0,
           pointerEvents: 'none',
           background:
-            'radial-gradient(1100px 620px at 75% -10%, rgba(139,92,246,0.16), transparent 55%), radial-gradient(900px 520px at 10% 115%, rgba(10,132,255,0.12), transparent 55%)',
+            'radial-gradient(1100px 620px at 75% -10%, rgba(111,85,255,0.16), transparent 55%), radial-gradient(900px 520px at 10% 115%, rgba(10,132,255,0.12), transparent 55%)',
         }}
       />
 
@@ -52,15 +52,15 @@ export function Hero({ onLogin, onRegister }: HeroProps) {
               px: 2,
               py: 0.75,
               borderRadius: 999,
-              border: '1px solid rgba(139,92,246,0.35)',
-              bgcolor: 'rgba(139,92,246,0.08)',
-              color: '#A78BFA',
+              border: '1px solid rgba(111,85,255,0.35)',
+              bgcolor: 'rgba(111,85,255,0.08)',
+              color: '#4933B8',
               fontSize: '0.82rem',
               fontWeight: 600,
               letterSpacing: '0.03em',
             }}
           >
-            <Box sx={{ width: 7, height: 7, borderRadius: 999, bgcolor: '#8B5CF6', boxShadow: '0 0 10px #8B5CF6' }} />
+            <Box sx={{ width: 7, height: 7, borderRadius: 999, bgcolor: '#6F55FF', boxShadow: '0 0 10px #6F55FF' }} />
             Nền tảng in 3D phân tán — một điểm đến, mạng lưới lab toàn quốc
           </Typography>
 
@@ -73,15 +73,15 @@ export function Hero({ onLogin, onRegister }: HeroProps) {
               lineHeight: 1.12,
               letterSpacing: '-0.02em',
               maxWidth: 860,
-              color: 'common.white',
+              color: 'text.primary',
             }}
           >
             Đặt in 3D{' '}
-            <Box component="span" sx={{ color: '#8B5CF6' }}>
+            <Box component="span" sx={{ color: '#6F55FF' }}>
               thông minh
             </Box>
             , giao đúng hẹn theo{' '}
-            <Box component="span" sx={{ color: '#8B5CF6' }}>
+            <Box component="span" sx={{ color: '#6F55FF' }}>
               năng lực thực tế
             </Box>
           </Typography>
@@ -111,7 +111,7 @@ export function Hero({ onLogin, onRegister }: HeroProps) {
               variant="outlined"
               color="inherit"
               size="large"
-              sx={{ px: 4, py: 1.6, fontSize: '1rem', borderColor: 'rgba(255,255,255,0.25)', color: 'text.primary' }}
+              sx={{ px: 4, py: 1.6, fontSize: '1rem', borderColor: 'divider', color: 'text.primary' }}
             >
               Đăng nhập
             </Button>
@@ -124,14 +124,14 @@ export function Hero({ onLogin, onRegister }: HeroProps) {
             justifyContent="center"
             flexWrap="wrap"
             useFlexGap
-            sx={{ mt: { xs: 2, md: 4 }, pt: { xs: 2, md: 3 }, borderTop: '1px solid rgba(255,255,255,0.08)', width: '100%' }}
+            sx={{ mt: { xs: 2, md: 4 }, pt: { xs: 2, md: 3 }, borderTop: '1px solid #E8EBF2', width: '100%' }}
           >
             {stats.map((s) => (
               <Stack key={s.label} alignItems="center" spacing={0.25}>
-                <Typography sx={{ fontSize: { xs: '1.6rem', md: '2rem' }, fontWeight: 800, color: 'common.white' }}>
+                <Typography sx={{ fontSize: { xs: '1.6rem', md: '2rem' }, fontWeight: 800, color: 'text.primary' }}>
                   {s.value}
                 </Typography>
-                <Typography sx={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)' }}>{s.label}</Typography>
+                <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>{s.label}</Typography>
               </Stack>
             ))}
           </Stack>

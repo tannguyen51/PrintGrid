@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { apiClient } from '../shared/api/apiClient'
 import { clearTokens, getAccessToken, setTokens } from '../shared/api/tokenStore'
 import { queryClient } from './queryClient'
@@ -39,6 +39,12 @@ interface AuthContextValue {
   refreshUser: () => Promise<void>
   /** False trong lúc phiên đang được đồng bộ lại từ server ngay sau khi mở app. */
   sessionReady: boolean
+  /**
+   * True trong khoảng khắc vừa đăng xuất, trước khi trang chủ khách kịp render.
+   * ProtectedRoute dùng cờ này để về "/" thay vì bật màn hình đăng nhập — nếu không,
+   * route staff đang mở sẽ kịp chặn với state.from và lần đăng nhập sau quay lại đó.
+   */
+  justLoggedOut: boolean
   logout: () => void
 }
 
@@ -93,16 +99,19 @@ function userFromAccessToken(token: string): AuthUser | null {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   // Khôi phục phiên ngay từ state khởi tạo khi có access token.
   const [user, setUser] = useState<AuthUser | null>(() => {
     const token = getAccessToken()
     return token ? userFromAccessToken(token) : null
   })
+  const [justLoggedOut, setJustLoggedOut] = useState(false)
 
   const login = useCallback(async (email: string, password: string, remember = false): Promise<AuthUser> => {
     const { data } = await apiClient.post<LoginResponse>('/auth/login', { email, password })
     const user: AuthUser = { ...data.user, roles: normalizeRoles(data.user.roles ?? []) }
     setTokens(data.accessToken, data.refreshToken, remember)
+    setJustLoggedOut(false)
     setUser(user)
     return user
   }, [])
@@ -111,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await apiClient.post<LoginResponse | null>('/auth/register', input)
     if (data) {
       setTokens(data.accessToken, data.refreshToken, false)
+      setJustLoggedOut(false)
       setUser({ ...data.user, roles: normalizeRoles(data.user.roles ?? []) })
     }
   }, [])
@@ -119,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await apiClient.post<LoginResponse>('/auth/google', { credential })
     const user: AuthUser = { ...data.user, roles: normalizeRoles(data.user.roles ?? []) }
     setTokens(data.accessToken, data.refreshToken, remember)
+    setJustLoggedOut(false)
     setUser(user)
     return user
   }, [])
@@ -154,6 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * to sign in on this tab would briefly see the previous user's queued data.
    */
   const logout = useCallback(() => {
+    // Set the flag BEFORE clearing the session: setUser(null) is an urgent update while
+    // navigate() is a transition, so React renders once with the old URL and no user.
+    // Without this, ProtectedRoute redirects that render to /login with state.from and
+    // the next sign-in lands back on the staff console.
+    setJustLoggedOut(true)
     clearTokens()
     setUser(null)
     queryClient.clear()
@@ -161,9 +177,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     navigate('/', { replace: true })
   }, [navigate])
 
+  // The flag only has to survive until the guest homepage is actually on screen.
+  useEffect(() => {
+    if (justLoggedOut && pathname === '/') setJustLoggedOut(false)
+  }, [justLoggedOut, pathname])
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isAuthenticated: user !== null && getAccessToken() !== null, login, googleLogin, register, refreshUser, sessionReady, logout }),
-    [user, login, googleLogin, register, refreshUser, sessionReady, logout],
+    () => ({ user, isAuthenticated: user !== null && getAccessToken() !== null, login, googleLogin, register, refreshUser, sessionReady, justLoggedOut, logout }),
+    [user, login, googleLogin, register, refreshUser, sessionReady, justLoggedOut, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

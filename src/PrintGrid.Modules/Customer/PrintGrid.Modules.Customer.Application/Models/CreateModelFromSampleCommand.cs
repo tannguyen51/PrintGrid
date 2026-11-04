@@ -64,6 +64,9 @@ public class CreateModelFromSampleCommandHandler : IRequestHandler<CreateModelFr
             isManifold: true,
             isPrintable: true);
 
+        // Platform-owned samples are trusted content: they skip the moderation queue.
+        model.Approve(reviewerId: null, atUtc: DateTime.UtcNow, note: "Platform sample");
+
         await _models.AddAsync(model, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

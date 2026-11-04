@@ -25,7 +25,7 @@ const rateColor = (value: number) =>
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <Box sx={{ p: 2, borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'background.paper' }}>
+    <Box sx={{ p: 2, borderRadius: 2, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
       <Typography variant="caption" color="text.secondary">{label}</Typography>
       <Typography sx={{ fontSize: '1.5rem', fontWeight: 800, color: 'text.primary' }}>{value}</Typography>
       {hint && <Typography variant="caption" color="text.disabled">{hint}</Typography>}
@@ -116,13 +116,13 @@ export default function SlaReportPage() {
             </Box>
 
             {labs.length === 0 ? (
-              <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed rgba(255,255,255,0.15)' }}>
+              <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
                 <Typography color="text.secondary">
                   Không có xưởng nào trong mạng lưới — tệp CSV sẽ ghi “no data”.
                 </Typography>
               </Box>
             ) : (
-              <TableContainer sx={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'background.paper' }}>
+              <TableContainer sx={{ borderRadius: 2, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -140,7 +140,7 @@ export default function SlaReportPage() {
                     {labs.map((row) => (
                       <LabRow key={row.labId ?? row.labName} row={row} />
                     ))}
-                    <TableRow sx={{ bgcolor: 'rgba(139,92,246,0.08)' }}>
+                    <TableRow sx={{ bgcolor: 'rgba(111,85,255,0.08)' }}>
                       <TableCell sx={{ fontWeight: 800 }}>
                         {data.network.labName}
                         <Typography component="span" variant="caption" color="text.disabled" sx={{ ml: 1 }}>

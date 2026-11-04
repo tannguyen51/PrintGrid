@@ -60,7 +60,8 @@ public class GetOrderTimelineQueryHandler : IRequestHandler<GetOrderTimelineQuer
             itemDtos,
             order.TrackingNumber,
             order.DeliveredAt,
-            CanConfirmReceipt: handedOver
+            CanConfirmReceipt: handedOver,
+            ContractNumber: order.ContractNumber
         );
 
         return Result.Success(dto);

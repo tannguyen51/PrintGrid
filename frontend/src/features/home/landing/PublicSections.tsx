@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Box } from '@mui/material'
 import { landing, useReveal } from './landingTheme'
+import { alpha, gradients, palette, shadows } from '../../../shared/theme/tokens'
 import './landing.css'
 
 /* ─────────────────────────────── section shell ─────────────────────────────── */
@@ -13,7 +14,7 @@ interface LandingSectionProps {
   children?: ReactNode
 }
 
-/** Content section — Figma #36:44 pattern: padding 96/104, column, gap 32, heading block gap 16. */
+/** Content section with a purple eyebrow, display heading and one-line intro. */
 function LandingSection({ id, label, heading, body, children }: LandingSectionProps) {
   const { ref, className } = useReveal<HTMLDivElement>()
   return (
@@ -24,29 +25,32 @@ function LandingSection({ id, label, heading, body, children }: LandingSectionPr
       className={className}
       sx={{
         px: { xs: '20px', md: '40px', lg: '104px' },
-        py: { xs: '56px', lg: '96px' },
+        py: { xs: '64px', lg: '104px' },
         display: 'flex',
         flexDirection: 'column',
         gap: '32px',
+        borderBottom: `1px solid ${landing.hairlineSoft}`,
       }}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <Box component="p" sx={{ m: 0, fontSize: 18, lineHeight: 1.55, color: landing.textMuted, maxWidth: 760 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <Box sx={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'primary.main' }}>
           {label}
         </Box>
         <Box
           component="h2"
           sx={{
             m: 0,
-            fontWeight: 600,
-            fontSize: { xs: 'clamp(30px, 5vw, 40px)', lg: 56 },
-            lineHeight: 1.2,
+            fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
+            fontWeight: 800,
+            fontSize: { xs: 'clamp(30px, 5vw, 38px)', lg: 50 },
+            lineHeight: 1.12,
+            letterSpacing: '-0.03em',
             color: landing.text,
           }}
         >
           {heading}
         </Box>
-        <Box component="p" sx={{ m: 0, fontSize: 18, lineHeight: 1.55, color: landing.textMuted, maxWidth: 760 }}>
+        <Box component="p" sx={{ m: 0, fontSize: 17, lineHeight: 1.65, color: landing.textMuted, maxWidth: 720 }}>
           {body}
         </Box>
       </Box>
@@ -55,33 +59,48 @@ function LandingSection({ id, label, heading, body, children }: LandingSectionPr
   )
 }
 
-// Content boxes sit flush on the pure-black page: no border, no fill — only
-// internal hairline dividers structure them, so nothing reads as a framed panel.
+// White metallic cards floating on the page wash — consistent with every
+// dashboard surface in the app.
 const cardSx = {
   p: { xs: 2.5, md: 4 },
+  bgcolor: landing.card,
+  backgroundImage: gradients.metal,
+  border: `1px solid ${landing.hairline}`,
+  borderRadius: '18px',
+  boxShadow: shadows.card,
 } as const
 
-const labelSx = { fontSize: 14, color: landing.textMuted } as const
-const valueSx = { fontSize: 14, fontWeight: 500, color: landing.text } as const
+const labelSx = { fontSize: 13.5, color: landing.textMuted } as const
+const valueSx = { fontSize: 14, fontWeight: 600, color: landing.text } as const
 
 /* ─────────────────────── 01 · mock: uploaded file being analyzed ─────────────────────── */
 
 /** Stylized low-poly preview of an uploaded model (SVG, no assets). */
 function ModelPreview() {
   return (
-    <Box sx={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', flex: { md: 1 }, minWidth: 240 }}>
+    <Box
+      sx={{
+        position: 'relative',
+        overflow: 'hidden',
+        borderRadius: '14px',
+        flex: { md: 1 },
+        minWidth: 240,
+        background: gradients.lavender,
+        border: `1px solid ${landing.hairline}`,
+      }}
+    >
       <Box component="svg" viewBox="0 0 300 220" sx={{ display: 'block', width: '100%' }}>
         <g transform="translate(150 110)">
           {[-1, 1].map((dir) => (
             <g key={dir} transform={`skewX(${dir * 18})`}>
-              <rect x={-55} y={-78} width={110} height={96} fill="none" stroke="#333338" strokeWidth={1} transform="rotate(8)" />
-              <rect x={-38} y={-54} width={76} height={66} fill="none" stroke="#2a2a2f" strokeWidth={1} transform="rotate(8)" />
+              <rect x={-55} y={-78} width={110} height={96} fill="none" stroke={palette.silver.dark} strokeWidth={1} transform="rotate(8)" />
+              <rect x={-38} y={-54} width={76} height={66} fill="none" stroke={palette.silver.metallic} strokeWidth={1} transform="rotate(8)" />
             </g>
           ))}
-          <circle cx={-70} cy={-84} r={2.5} fill="#909096" />
-          <circle cx={70} cy={-68} r={2.5} fill="#909096" />
-          <circle cx={0} cy={36} r={2.5} fill="#909096" />
-          <path d="M -70 -84 L 70 -68 L 0 36 Z" fill="none" stroke="#2c2c31" strokeDasharray="3 5" strokeWidth={1} />
+          <circle cx={-70} cy={-84} r={3} fill={palette.gold.main} />
+          <circle cx={70} cy={-68} r={3} fill={palette.purple.main} />
+          <circle cx={0} cy={36} r={3} fill={palette.purple.light} />
+          <path d="M -70 -84 L 70 -68 L 0 36 Z" fill="none" stroke={palette.purple.main} strokeDasharray="3 5" strokeWidth={1.2} opacity={0.55} />
         </g>
       </Box>
       {/* mesh scan line, animates top→bottom */}
@@ -93,10 +112,10 @@ function ModelPreview() {
 function ModelScanCard() {
   return (
     <Box sx={{ ...cardSx }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 2.5, borderBottom: `1px solid ${landing.hairlineSoft}` }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 2.5, borderBottom: `1px solid ${landing.hairlineSoft}`, flexWrap: 'wrap' }}>
         <Box component="svg" width={20} height={20} viewBox="0 0 20 20" sx={{ flexShrink: 0 }}>
-          <path d="M10 2 L17 6 L17 14 L10 18 L3 14 L3 6 Z" fill="none" stroke={landing.textMuted} strokeWidth={1.3} />
-          <path d="M10 2 L10 10 M3 6 L10 10 L17 6" fill="none" stroke="#3a3a3e" strokeWidth={1.1} />
+          <path d="M10 2 L17 6 L17 14 L10 18 L3 14 L3 6 Z" fill="none" stroke={palette.purple.main} strokeWidth={1.4} />
+          <path d="M10 2 L10 10 M3 6 L10 10 L17 6" fill="none" stroke={palette.silver.metallic} strokeWidth={1.2} />
         </Box>
         <Box sx={{ ...valueSx }}>gear_assembly_v3.stl</Box>
         <Box sx={{ ...labelSx, ml: 'auto' }}>42 MB · manifold ✓</Box>
@@ -150,9 +169,12 @@ function PrinterRow({ name, tech, volume, slot, match, hot = false }: {
         gap: { xs: 1, md: 2 },
         alignItems: 'center',
         py: 1.75,
+        px: 1,
+        mx: -1,
+        borderRadius: '10px',
         borderBottom: `1px solid ${landing.hairlineSoft}`,
         transition: 'background-color .15s ease',
-        '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
+        '&:hover': { bgcolor: alpha(palette.purple.main, 0.035) },
       }}
     >
       <Box>
@@ -160,8 +182,8 @@ function PrinterRow({ name, tech, volume, slot, match, hot = false }: {
         <Box sx={{ ...labelSx, display: { xs: 'none', md: 'block' } }}>{tech}</Box>
       </Box>
       <Box sx={{ ...labelSx, display: { xs: 'none', md: 'block' } }}>{volume}</Box>
-      <Box sx={{ ...labelSx, display: { xs: 'none', md: 'block' }, color: hot ? '#C8C8CC' : landing.textMuted }}>{slot}</Box>
-      <Box sx={{ ...valueSx, justifySelf: 'end', color: hot ? landing.text : landing.textMuted }}>{match}</Box>
+      <Box sx={{ ...labelSx, display: { xs: 'none', md: 'block' }, color: hot ? palette.purple.deep : landing.textMuted }}>{slot}</Box>
+      <Box sx={{ ...valueSx, justifySelf: 'end', color: hot ? palette.purple.main : landing.textMuted }}>{match}</Box>
     </Box>
   )
 }
@@ -177,10 +199,11 @@ function PrinterMatchList() {
               px: '14px',
               py: '8px',
               borderRadius: '10px',
-              bgcolor: landing.surface,
-              border: `1px solid ${landing.hairline}`,
+              bgcolor: palette.purple.soft,
+              border: `1px solid ${alpha(palette.purple.main, 0.18)}`,
               fontSize: 13,
-              color: landing.text,
+              fontWeight: 600,
+              color: palette.purple.deep,
             }}
           >
             {chip}
@@ -210,8 +233,8 @@ function NetworkDiagram() {
     <Box sx={{ ...cardSx, p: { xs: 2, md: 4 } }}>
       <Box component="svg" viewBox="0 0 1200 380" sx={{ display: 'block', width: '100%', height: 'auto' }}>
         {/* order node */}
-        <rect x={24} y={160} width={180} height={60} rx={14} fill={landing.surface} stroke={landing.hairline} />
-        <text x={114} y={185} textAnchor="middle" fill={landing.text} fontSize={14} fontWeight={600}>
+        <rect x={24} y={160} width={180} height={60} rx={14} fill={palette.purple.soft} stroke={alpha(palette.purple.main, 0.25)} />
+        <text x={114} y={185} textAnchor="middle" fill={palette.purple.deep} fontSize={14} fontWeight={700}>
           1 đơn hàng
         </text>
         <text x={114} y={205} textAnchor="middle" fill={landing.textMuted} fontSize={12}>
@@ -226,16 +249,24 @@ function NetworkDiagram() {
           return (
             <g key={lane.y}>
               <path d={d} className={lane.selected ? 'pg-edge pg-edge-live' : 'pg-edge'} />
-              <rect x={470} y={lane.y} width={180} height={52} rx={12} fill="#0E0E11" stroke={lane.selected ? '#3A3A3E' : landing.hairline} />
-              <text x={560} y={cy + 4} textAnchor="middle" fill={lane.selected ? landing.text : landing.textMuted} fontSize={13}>
+              <rect
+                x={470}
+                y={lane.y}
+                width={180}
+                height={52}
+                rx={12}
+                fill={lane.selected ? palette.purple.soft : palette.background.secondary}
+                stroke={lane.selected ? alpha(palette.purple.main, 0.35) : landing.hairline}
+              />
+              <text x={560} y={cy + 4} textAnchor="middle" fill={lane.selected ? palette.purple.deep : landing.textMuted} fontSize={13} fontWeight={lane.selected ? 600 : 400}>
                 {labels[i]}
               </text>
               <path d={`M 650 ${cy} L 680 ${cy}`} className={lane.selected ? 'pg-edge pg-edge-live' : 'pg-edge'} />
               {/* schedule lane */}
-              <rect x={680} y={cy - 5} width={480} height={10} rx={5} fill={landing.surface} />
+              <rect x={680} y={cy - 5} width={480} height={10} rx={5} fill={palette.background.secondary} />
               {lane.selected && (
                 <g>
-                  <rect x={lane.barX} y={cy - 6} width={lane.barW} height={12} rx={6} fill="rgba(241,241,241,0.85)" />
+                  <rect x={lane.barX} y={cy - 6} width={lane.barW} height={12} rx={6} fill="url(#pgScheduleGradient)" />
                   <text x={lane.barX + lane.barW + 10} y={cy + 4} fill={landing.textMuted} fontSize={12}>
                     {lane.barLabel}
                   </text>
@@ -245,17 +276,26 @@ function NetworkDiagram() {
           )
         })}
 
+        {/* gradient used by the schedule bars */}
+        <defs>
+          <linearGradient id="pgScheduleGradient" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor={palette.purple.main} />
+            <stop offset="70%" stopColor={palette.purple.light} />
+            <stop offset="100%" stopColor={palette.gold.main} />
+          </linearGradient>
+        </defs>
+
         {/* time axis */}
         <path d="M 680 340 L 1160 340" stroke={landing.hairline} strokeWidth={1} />
         {['T3', 'T4', 'T5', 'T6'].map((t, i) => (
           <g key={t}>
-            <circle cx={680 + i * 160} cy={340} r={2.5} fill="#3A3A3E" />
+            <circle cx={680 + i * 160} cy={340} r={3} fill={palette.silver.metallic} />
             <text x={680 + i * 160} y={362} textAnchor="middle" fill={landing.textMuted} fontSize={12}>
               {t}
             </text>
           </g>
         ))}
-        <text x={920} y={18} textAnchor="middle" fill={landing.textMuted} fontSize={12}>
+        <text x={920} y={18} textAnchor="middle" fill={landing.textMuted} fontSize={12} fontWeight={600}>
           Lịch máy · cửa giao hàng
         </text>
       </Box>
@@ -265,11 +305,6 @@ function NetworkDiagram() {
 
 /* ─────────────────────────────── assembled sections ─────────────────────────────── */
 
-/**
- * The three content sections the Figma API returned in full (#36:44, #36:109, #36:166).
- * Section 02's heading text was blank in the design export — filled with "…" matching the
- * established sentence pattern; replace it when the design becomes readable again.
- */
 export function PublicSections() {
   return (
     <>

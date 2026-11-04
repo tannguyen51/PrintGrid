@@ -17,12 +17,12 @@ export function CTABand({ onLogin, onRegister }: CTABandProps) {
             borderRadius: 4,
             p: { xs: 5, md: 8 },
             textAlign: 'center',
-            border: '1px solid rgba(139,92,246,0.3)',
+            border: '1px solid rgba(111,85,255,0.3)',
             background:
-              'radial-gradient(800px 400px at 50% 0%, rgba(139,92,246,0.18), transparent 60%), #0A0A0A',
+              'radial-gradient(800px 400px at 50% 0%, rgba(111,85,255,0.14), transparent 60%), linear-gradient(135deg, #FFFFFF 0%, #F4F2FF 55%, #FFF8EB 100%)',
           }}
         >
-          <Typography sx={{ fontSize: { xs: '1.6rem', md: '2.2rem' }, fontWeight: 800, color: 'common.white' }}>
+          <Typography sx={{ fontSize: { xs: '1.6rem', md: '2.2rem' }, fontWeight: 800, color: 'text.primary' }}>
             Sẵn sàng in ý tưởng đầu tiên của bạn chưa?
           </Typography>
           <Typography sx={{ mt: 1.5, mb: 4, color: 'text.secondary', fontSize: { xs: '1rem', md: '1.1rem' } }}>
@@ -44,7 +44,7 @@ export function CTABand({ onLogin, onRegister }: CTABandProps) {
               variant="outlined"
               color="inherit"
               size="large"
-              sx={{ px: 4.5, py: 1.6, borderColor: 'rgba(255,255,255,0.25)', color: 'text.primary' }}
+              sx={{ px: 4.5, py: 1.6, borderColor: 'divider', color: 'text.primary' }}
             >
               Đăng nhập
             </Button>

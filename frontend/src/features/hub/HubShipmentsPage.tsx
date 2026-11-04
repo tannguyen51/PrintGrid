@@ -312,7 +312,7 @@ export default function HubShipmentsPage() {
                       p: 2,
                       borderRadius: 2,
                       bgcolor: 'background.paper',
-                      border: '1px solid rgba(255,255,255,0.12)',
+                      border: '1px solid #E8EBF2',
                     }}
                   >
                     <Stack
@@ -358,7 +358,7 @@ export default function HubShipmentsPage() {
         {queue.isLoading ? <CircularProgress sx={{ alignSelf: 'center' }} /> : null}
 
         {!queue.isLoading && orders.length === 0 ? (
-          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed rgba(255,255,255,0.15)' }}>
+          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <InventoryRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">Chưa có đơn nào chờ ghi vận đơn hoặc xác nhận giao.</Typography>
           </Box>
@@ -375,7 +375,7 @@ export default function HubShipmentsPage() {
                   sx={{
                     p: { xs: 2, md: 3 },
                     borderRadius: 3,
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid #E8EBF2',
                     bgcolor: 'background.paper',
                   }}
                 >
@@ -501,7 +501,7 @@ export default function HubShipmentsPage() {
         onClose={() => {
           if (!ship.isPending) setShipTarget(null)
         }}
-        PaperProps={{ sx: { bgcolor: '#121212', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.15)' } }}
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}
       >
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 800 }}>
           Ghi vận đơn cho đơn {shipTarget?.orderNumber}
@@ -521,7 +521,7 @@ export default function HubShipmentsPage() {
             inputProps={{ maxLength: 128 }}
           />
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, borderTop: '1px solid #E8EBF2' }}>
           <Button onClick={() => setShipTarget(null)} color="inherit" disabled={ship.isPending} sx={{ color: 'text.secondary' }}>
             Hủy
           </Button>
@@ -545,7 +545,7 @@ export default function HubShipmentsPage() {
         }}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { bgcolor: '#121212', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.15)' } }}
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}
       >
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 800 }}>
           Đóng gói gộp nhiều đơn cùng khách (1 kiện · 1 vận đơn)
@@ -555,7 +555,7 @@ export default function HubShipmentsPage() {
             <Typography variant="body2" color="text.secondary">
               Địa chỉ nhận chung: <strong>{consolidateCluster?.deliveryAddressSummary}</strong>
             </Typography>
-            <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+            <Divider sx={{ borderColor: 'divider' }} />
             <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
               Chọn các đơn đưa vào kiện gộp (tối thiểu 2 đơn):
             </Typography>
@@ -584,7 +584,7 @@ export default function HubShipmentsPage() {
             />
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, borderTop: '1px solid #E8EBF2' }}>
           <Button
             onClick={() => setConsolidateCluster(null)}
             color="inherit"
@@ -613,7 +613,7 @@ export default function HubShipmentsPage() {
         }}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { bgcolor: '#121212', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.15)' } }}
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}
       >
         <DialogTitle sx={{ color: 'text.primary', fontWeight: 800 }}>
           Hoàn tiền theo phạm vi đơn gốc — {refundTarget?.orderNumber}
@@ -650,7 +650,7 @@ export default function HubShipmentsPage() {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, borderTop: '1px solid #E8EBF2' }}>
           <Button
             onClick={() => setRefundTarget(null)}
             color="inherit"

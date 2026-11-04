@@ -31,6 +31,18 @@ public class Order : AggregateRoot<Guid>
     /// <summary>Carrier tracking number captured by the hub when it ships the order (FR-HUB / BR: required).</summary>
     public string? TrackingNumber { get; private set; }
 
+    /// <summary>
+    /// Contract number signed with the customer. Generated exactly once when the order is
+    /// confirmed, one per order (derived from the immutable id, so it is race-free).
+    /// </summary>
+    public string? ContractNumber { get; private set; }
+
+    /// <summary>True when the customer accepted the terms at placement (FR-CUST-007 evidence).</summary>
+    public bool TermsAccepted { get; private set; }
+
+    /// <summary>Timestamp of the terms acceptance recorded with the order.</summary>
+    public DateTime? TermsAcceptedAtUtc { get; private set; }
+
     /// <summary>The customer who confirmed receipt — pairs with <see cref="DeliveredAt"/> (who/when).</summary>
     public Guid? ReceiptConfirmedBy { get; private set; }
 
@@ -84,7 +96,9 @@ public class Order : AggregateRoot<Guid>
         Quote quote,
         Address deliveryAddress,
         string orderNumber,
-        decimal depositPercent = 0m)
+        decimal depositPercent = 0m,
+        bool termsAccepted = true,
+        DateTime? termsAcceptedAtUtc = null)
     {
         var depositPercentSafe = Math.Clamp(depositPercent, 0m, 100m);
         var order = new Order
@@ -99,6 +113,8 @@ public class Order : AggregateRoot<Guid>
             DeliveryAddress = deliveryAddress,
             CreatedAt = DateTime.UtcNow,
             IsDelayed = false,
+            TermsAccepted = termsAccepted,
+            TermsAcceptedAtUtc = termsAccepted ? (termsAcceptedAtUtc ?? DateTime.UtcNow) : null,
             DepositAmount = decimal.Round(
                 quote.TotalPrice.Amount * depositPercentSafe / 100m,
                 2,
@@ -112,6 +128,14 @@ public class Order : AggregateRoot<Guid>
 
         return order;
     }
+
+    /// <summary>
+    /// Deterministic, race-free contract number: derived from the immutable order id and the
+    /// confirmation date, so two concurrent confirmations cannot collide. The unique filtered
+    /// index on ContractNumber is the database backstop.
+    /// </summary>
+    public static string BuildContractNumber(Guid orderId, DateTime confirmedAtUtc) =>
+        $"PG-CT-{confirmedAtUtc:yyyyMMdd}-{orderId.ToString("N")[..12].ToUpperInvariant()}";
 
     /// <summary>
     /// Records a customer payment (FR-CUST-012 / BR-PAY-007/008). The first payment that covers the
@@ -161,6 +185,7 @@ public class Order : AggregateRoot<Guid>
         Status = OrderStatus.Confirmed;
         PaymentTransactionId = paymentTransactionId;
         ConfirmedAt = DateTime.UtcNow;
+        ContractNumber ??= BuildContractNumber(Id, ConfirmedAt.Value);
 
         AddDomainEvent(new OrderConfirmedEvent(
             Id,

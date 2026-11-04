@@ -1,0 +1,113 @@
+FPT UNIVERSITY
+CAPSTONE PROJECT REPORT
+Report 5
+Software Test Documentation
+PrintGrid - Distributed 3D Printing Fulfillment & Scheduling Platform
+Course: SEP490   |   Project Code: FA26SE249
+Team: TanNXSE181599 � TuanDNBSE185029 � MinhNQSE181684 � NhatTQSE181682
+Supervisor: Nguyen Tan Phuc
+Hanoi, November 2026
+Table of Contents
+I. Record of Changes	2
+II. Testing Documentation	2
+1. Scope of Testing	2
+2. Test Strategy	3
+2.1 Testing Types	3
+2.2 Test Levels	4
+2.3 Supporting Tools	5
+3. Test Plan	5
+3.1 Human Resources	5
+3.2 Test Environment	6
+3.3 Test Milestones	6
+4. Test Cases	7
+5. Test Reports	9
+5.1 Unit Test Results	9
+5.2 Integration and System Test Results	10
+5.3 Defect Statistics	11
+5.4 Analysis and Conclusion	12
+
+I. Record of Changes
+DateA/M/DIn chargeChange Description02/11/2026ATanNXSE181599Initial creation of the Test Documentation.02/11/2026MTanNXSE181599Filled test results, coverage statistics, defect statistics and the final test report.A = Added � M = Modified � D = Deleted
+II. Testing Documentation
+1. Scope of Testing
+Target of test: the PrintGrid platform - a distributed 3D printing fulfillment and scheduling system. The scope covers the features implemented in the MVP and the extended scope, verified at unit, integration and system level.
+In scope:
+* Customer module: registration and authentication (FR-CUST-001), 3D model upload and validation (FR-CUST-002/004), in-browser 3D preview (FR-CUST-003), print configuration (FR-CUST-005), quoting and order placement (FR-CUST-006/007), staged payment and refunds (FR-CUST-008/012), personal model library (FR-CUST-010).
+* Scheduling and assignment (core): geometry analysis and slicing (FR-SCHED-001/002), capability filtering (FR-SCHED-003), multi-criteria scoring (FR-SCHED-004), quote-time speculative scheduling (FR-SCHED-005), job placement (FR-SCHED-006), event-driven rescheduling (FR-SCHED-007), calibration (FR-SCHED-008) and the assignment decision log (FR-SCHED-009).
+* Lab module: registration and approval (FR-LAB-001), machine registry (FR-LAB-002), material inventory (FR-LAB-003), job accept/decline (FR-LAB-004) and the production workflow including QC proof and handover (FR-LAB-005).
+* Hub module: batch receipt (FR-HUB-001), quality inspection (FR-HUB-002), reprint management (FR-HUB-003), order consolidation (FR-HUB-004) and shipping with delivery confirmation (FR-HUB-005).
+* Admin: accounts and RBAC (FR-ADMIN-001), runtime configuration (FR-ADMIN-002) and shared catalogues (FR-ADMIN-003).
+Non-functional scope: quote generation under 60 s (NFR-PERF-001), rescheduling under 30 s (NFR-PERF-002), API median latency under 500 ms (NFR-PERF-003), 100 concurrent users (NFR-PERF-005), correctness and determinism of the scheduling computation, and ownership isolation between customers.
+Out of scope: automated UI testing (Selenium/Cypress), load testing beyond 100 concurrent users, penetration testing and security audit, accessibility certification, and browser coverage beyond Chrome, Firefox and Edge. Payment is exercised against the SEPay sandbox/bridge only; no real money moves during testing.
+Testing levels applied:
+LevelIn-chargeInput / TimeFocusAcceptance criteriaUnitDeveloper (D) + reviewer (R)Each commit / PR; minutes per caseDomain logic, validators, scheduling math, Result/Error handlingAll unit cases green; core domain line coverage = 80%IntegrationBackend developer; QA reviewEach sprint; per API endpoint and cross-module flowAPI contract, EF Core mapping, CQRS pipeline, auth/authorizationAll issued flows create/read/update correctly; 401/403 enforcedSystemQA lead (TanNXSE181599)Each sprint review + full regression before demoEnd-to-end user journeys, security checks, demo scriptAll executed system cases pass; 0 critical defectsAcceptanceWhole team + supervisorFinal demo (2 rounds)Each acceptance criterion in 13-Acceptance-Criteria.md100% of must-have criteria metConstraints and assumptions:
+* Tests run in a local Docker environment (PostgreSQL 16 + Redis), not on the production Railway instance.
+* Payment, SMS and the real-lab trial are exercised in mock/bridge mode only.
+* The network between local services is assumed stable; scheduling tests use simulated lab data.
+2. Test Strategy
+2.1 Testing Types
+1. Unit Testing
+* Objective: verify a single unit (domain entity, command handler, validator, algorithm function) in isolation.
+* Technique: xUnit + NSubstitute (mock repositories and unit of work) + FluentAssertions; Arrange-Act-Assert.
+* Completion criteria: 100% of unit cases pass; core domain line coverage = 80%.
+2. Integration Testing
+* Objective: verify that modules work together - Web API endpoint ? MediatR handler ? EF Core ? PostgreSQL, including JWT authentication and authorization.
+* Technique: WebApplicationFactory against a real PostgreSQL test database; seed data is created through EF; every flow is exercised through the real pipeline.
+* Completion criteria: all integration flows create/read/update correctly; cross-tenant access returns 404; unauthenticated access returns 401.
+3. System Testing (end-to-end)
+* Objective: verify complete user journeys across the running frontend, backend and database against the demo script.
+* Technique: manual and scripted flows through the live application; API-level regression through Swagger/Postman.
+* Completion criteria: the demo script (register ? login ? upload ? configure ? quote ? order ? track ? logout) passes with 0 critical defects.
+4. Security Testing (targeted)
+* Objective: confirm ownership isolation and authentication enforcement.
+* Technique: cross-user API calls (user B cannot read, update or delete user A's models or orders), unauthenticated calls, invalid or rotated refresh tokens, role checks on admin endpoints.
+* Completion criteria: cross-tenant access returns 404, unauthenticated access returns 401, forbidden roles return 403.
+5. Performance and Timing Testing (targeted)
+* Objective: verify the scheduling and API timing targets in scope.
+* Technique: benchmark scheduling runs at network sizes of 10, 25 and 50 labs; measure API latency under a basic load.
+* Completion criteria: quote under 60 s; reschedule under 30 s (average under 15 s); API median under 500 ms.
+6. Regression Testing
+* Objective: ensure new changes do not break existing behaviour.
+* Technique: rerun the full unit and integration suites plus the end-to-end demo script before each sprint review and before the feature freeze.
+* Completion criteria: no critical or high defect reopened; 0 regression in the core scheduling paths.
+2.2 Test Levels
+Type of TestsUnitIntegrationSystemAcceptanceUnit TestingXXIntegration TestingXXSystem Testing (E2E)XXSecurity Testing (targeted)XXPerformance / TimingXXRegression TestingXXXX2.3 Supporting Tools
+PurposeToolVendor / In-houseVersionUnit test frameworkxUnitCommunity (xunit.net)2.xMockingNSubstituteOpen source5.xAssertionsFluentAssertionsOpen source6.xIntegration hostWebApplicationFactory (ASP.NET Core)Microsoft.NET 9API testing / regressionSwagger UI, PostmanSmartBear, Postman Inc.LatestTest data accessEF Core InMemory, PostgreSQL test DBMicrosoft, PostgreSQL9.x, 16Real-time testingSignalR test hostMicrosoft9.xTest environmentDocker + docker composeDocker Inc.4.xCoverage reportingCoverlet (Cobertura)Open source6.xTask / defect trackingGitLab IssuesIn-house, self-hostedLatest3. Test Plan
+3.1 Human Resources
+Worker / DoerRoleSpecific Responsibilities / CommentsTanNXSE181599QA lead / PM (D; R)Design test cases; execute system and regression rounds; collect statistics; write the Test Report and Report 5.TuanDNBSE185029Algorithm author (D)Unit and performance tests of the scheduling engine; simulation baseline runs.MinhNQSE181684Backend developer (D; R)Unit and integration tests for the API and domain; review other members' cases.NhatTQSE181682Frontend developer (D; S)System-test the UI flows; assist with the end-to-end script.3.2 Test Environment
+PurposeToolProviderVersionOperating systemWindows 11, Ubuntu (WSL)Microsoft, Canonical11, 22.04 LTSDatabasePostgreSQLPostgreSQL Global Development Group16CacheRedisRedis Ltd.7.xObject storageMinIOMinIO Inc.LatestBackend runtime.NET SDKMicrosoft9.xFrontendNode.js + ViteNode.js Foundation, Vite20.x, 5.xWeb browsersChrome, Firefox, EdgeGoogle, Mozilla, MicrosoftLatest stableLocal stackDocker / docker composeDocker Inc.4.xAPI documentationSwagger UISmartBearOpenAPI 3.0Test runnerdotnet test, CoverletMicrosoft, open source.NET 9, 6.x3.3 Test Milestones
+Milestone TaskStart DateEnd DateTest plan and test case design (W1)01/09/202605/09/2026Unit test harness and domain tests (W1-W2)07/09/202618/09/2026Integration tests for API and cross-module flows (W2-W4)21/09/202609/10/2026System test of the MVP demo script (W4)12/10/202616/10/2026Security test round (W4)14/10/202616/10/2026Simulation and performance runs (W5)19/10/202623/10/2026Full regression and acceptance round (W5)26/10/202630/10/2026Test documentation and final review01/11/202602/11/20264. Test Cases
+Test cases are prepared in the two attached workbooks:
+* Unit Test Cases ? Report5_Unit Test.xls: one sheet per tested function, with preconditions, inputs, expected outputs, case type (N/A/B), result (P/F), execution date and defect ID.
+* Integration, System and Acceptance Test Cases ? Report5_Test Report.xlsx: one sheet per module, with Test Case ID, description, procedure, expected results, preconditions and the result of each testing round. A Defects sheet records every defect found.
+Test case inventory:
+LevelDocumentCasesExecutedPassedFailedPendingUnit (automated)Report5_Unit Test.xls25325325300Integration (automated)Report5_Test Report.xlsx11111100Simulator (automated)Report5_Test Report.xlsx55500System / AcceptanceReport5_Test Report.xlsx68636305The Unit Test workbook documents 117 cases for the 11 core functions; the remaining 136 automated unit cases belong to 26 additional test classes and are executed by the same dotnet test run, whose log is attached as evidence.
+Examples of unit test cases (Authentication):
+Test Case IDTest DescriptionExpected ResultUTCID01Register creates a customer and returns a sessionSuccess; access and refresh tokens present; roles contain Customer; one customer row added.UTCID02Register rejects a duplicate emailFailure with code email_exists; no customer added.UTCID03Login returns a session for valid credentialsSuccess; user id matches the stored customer.UTCID04Login rejects a known email with a wrong passwordFailure with code unauthorized.UTCID05Login does not reveal whether an email existsUnknown email returns the same unauthorized error.UTCID06Google login creates a verified customerCustomer linked to the Google subject; session returned.UTCID07Forgot password does not reveal an unknown emailSame success result; no email is sent.UTCID08Reset password consumes a valid tokenPassword hash changes; token and expiry are cleared.Examples of integration and system test cases:
+Test Case IDTest DescriptionProcedure (summary)Expected ResultTC-AUTH-01Register a new customerPOST /auth/register with a valid body201; access and refresh tokens; role Customer.TC-AUTH-06Refresh token rotationPOST /auth/refresh, then retry with the old token200 with a new pair; the old refresh token is rejected.TC-MOD-09Cross-user isolation on modelsUser A creates a model; user B calls PUT/DELETE404 for every foreign call; no mutation.TC-ORD-06Order and quote created in one transactionPlace an order; force a failure in the second writeBoth rows exist, or neither does.TC-SCH-08Concurrent placement does not double-bookPlace two jobs on one machine in parallelExactly one placement commits; the loser retries.TC-SCH-11Decision log is written with the placementAssign a job; read the decision logOne log row with candidates, scores, config version and budget.TC-LAB-03Admin cannot approve an incomplete labApprove a lab with no machine or no stock409 Conflict; the lab stays Pending.TC-HUB-08Customer confirmation starts the guarantee clockHub delivers; the customer confirms receiptThe 30-day window starts from the customer confirmation.5. Test Reports
+5.1 Unit Test Results
+The full unit suite was executed on 02/11/2026 with dotnet test. All 253 cases pass across 37 test classes.
+AreaTest classesCasesPassedFailedCustomer (auth, models, orders, payment)1789890Scheduling, lab and hub domain161461460Admin and shared catalogues418180Total372532530Code coverage (Coverlet, unit suite):
+PackageLine coverageBranch coveragePrintGrid.Modules.Customer.Domain83.93%57.74%PrintGrid.Modules.Scheduling.Domain80.94%58.01%PrintGrid.SharedKernel72.44%54.54%PrintGrid.Modules.Admin.Domain53.21%28.40%PrintGrid.Modules.Scheduling.Application47.55%36.08%PrintGrid.Modules.Scheduling.Infrastructure46.19%53.69%PrintGrid.Modules.Customer.Application44.94%32.12%PrintGrid.Modules.Admin.Application21.99%16.02%The solution-wide line rate is 7.82% because generated EF Core migrations and shared infrastructure contribute over 100,000 executable lines that are not unit-tested by design. The core domain layers, which carry the business rules and the scheduling algorithm, are covered at 80.94%-83.93% line and 57.74%-58.01% branch.
+5.2 Integration and System Test Results
+AreaCasesPassedFailedNotesIntegration flows (order ? jobs, reschedule ? reprint, shipment receipt, SignalR timeline)11110Real PostgreSQL pipeline; EXCLUDE constraint verified.Simulation and performance baseline550Network sizes 10 / 25 / 50 labs.System and acceptance rounds686305 cases pending: 4 manual UI checks and 1 SEPay sandbox check.System test results by module:
+ModuleTest casesPassedPendingAuthentication & Account12120Model Upload & Personal Library1091Print Configuration, Quote & Order1082Scheduling & Assignment Engine12120Lab Registration & Production Workflow880Hub Inspection, Reprint & Shipping880Administration & RBAC862Total686355.3 Defect Statistics
+SeverityFoundFixedOpenCritical000High330Medium440Low110Total880Defect log (see the Defects sheet in Report5_Test Report.xlsx):
+IDModuleSeverityDescriptionStatusDF-001AuthHighRefresh returned 401 for a valid token because inbound JWT claims were mapped to ClaimTypes and the token-type check failed.FixedDF-002ModelHighIReadOnlyCollection<string> tags were not supported by the EF primitive-collection migration.FixedDF-003AuthMediumSurrounding whitespace in email and password caused a false credential mismatch.FixedDF-004HubHighAuto-paid orders did not record PaidAmount, so hub shipping was blocked.FixedDF-005ModelMediumThe /models route was shadowed by the static asset folder.FixedDF-006OrderMediumAuto-confirmed orders and inventory role errors broke the confirmation flow.FixedDF-007LabMediumUnit test FR_LAB_001_AC01 failed after BR-OPS-006 required a material declaration before approval; the fixture did not add stock.FixedDF-008AuthLowLogout redirected to /orders instead of the home page.Fixed5.4 Analysis and Conclusion
+The core scheduling and assignment engine is the strongest verified area: capability filtering, weighted scoring, quote-time placement, event-driven rescheduling and the decision log are covered by dedicated unit tests and by an integration flow that exercises the real PostgreSQL pipeline, including the EXCLUDE constraint that prevents double-booking.
+Authentication and ownership isolation are the second strongest area. Cross-tenant reads, updates and deletes return 404, unauthenticated calls return 401 and admin endpoints enforce RBAC. This is both a demo-critical and a security-critical property.
+No critical or high defect remains open. The eight defects found during the project are fixed and closed, and each fix is covered by a regression case. The five pending system cases are manual UI checks (3D preview, print configuration, admin screens) and one SEPay sandbox check; they are scheduled for the final acceptance round and are not blockers for the demo.
+Residual risk is concentrated in the out-of-scope areas: real payment settlement, real lab hardware and load beyond 100 concurrent users. Within the declared scope, the system is ready for the acceptance demo against 13-Acceptance-Criteria.md.
+Report prepared by the PrintGrid team � Capstone SEP490 � Supervisor: Nguyen Tan Phuc � September 2026 - November 2026
+
+
+
+
+
+
+12
+
+
+
+
+

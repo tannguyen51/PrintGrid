@@ -80,6 +80,14 @@ public class PlacedOrderConfirmationTests
         var quotes = Substitute.For<IQuoteRepository>();
         quotes.GetByIdAsync(quote.Id, Arg.Any<CancellationToken>()).Returns(quote);
 
+        // Moderation gate: the quote's models must be approved with a stored file.
+        var models = Substitute.For<IModelRepository>();
+        var approvedModel = Model.Create(
+            customerId, "m", null, "m.stl", "STL", 1, null,
+            "printgrid-models/customer/m.stl", "SHA256");
+        approvedModel.Approve(null, DateTime.UtcNow);
+        models.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(approvedModel);
+
         orders ??= Substitute.For<IOrderRepository>();
         Order? placed = null;
         _ = orders.AddAsync(Arg.Do<Order>(o => placed = o), Arg.Any<CancellationToken>());
@@ -95,7 +103,7 @@ public class PlacedOrderConfirmationTests
         // These tests pin the deposit-gated flow, so auto-confirm-on-place must be explicitly disabled.
         configuration["Payment:AutoConfirmOnPlace"].Returns("false");
 
-        var handler = new PlaceOrderCommandHandler(quotes, orders, uow, clock, configuration);
+        var handler = new PlaceOrderCommandHandler(quotes, orders, models, uow, clock, configuration);
 
         // (CustomerId, QuoteId, ...) — not QuoteId first; see class comment, trap 1.
         var result = await handler.Handle(

@@ -4,6 +4,13 @@ namespace PrintGrid.Modules.Customer.Application.Quotes;
 
 public static class QuoteMappings
 {
+    /// <summary>
+    /// Customer projection: the internal placement basis (lab + machine identity) is
+    /// deliberately blanked. The customer only sees district/city via CustomerPlacementSummary.
+    /// </summary>
+    public static QuoteDto ToCustomerDto(Domain.Entities.Quote quote) =>
+        ToDto(quote) with { PlacementBasis = null };
+
     public static QuoteDto ToDto(Domain.Entities.Quote quote) => new(
         quote.Id,
         quote.CustomerId,
@@ -16,6 +23,7 @@ public static class QuoteMappings
         quote.FailureReason,
         quote.PricingVersion,
         quote.PlacementBasis,
+        quote.CustomerPlacementSummary,
         quote.ApprovedAt,
         quote.ReviewedBy,
         quote.AutoApproved,

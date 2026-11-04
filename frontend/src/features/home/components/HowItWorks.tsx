@@ -25,22 +25,22 @@ export function HowItWorks() {
         <Stack spacing={2} alignItems="center" textAlign="center" sx={{ mb: { xs: 5, md: 7 } }}>
           <Typography
             component="span"
-            sx={{ fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#A78BFA' }}
+            sx={{ fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4933B8' }}
           >
             Cách hoạt động
           </Typography>
-          <Typography variant="h2" sx={{ fontSize: { xs: '1.7rem', md: '2.4rem' }, fontWeight: 800, color: 'common.white' }}>
+          <Typography variant="h2" sx={{ fontSize: { xs: '1.7rem', md: '2.4rem' }, fontWeight: 800, color: 'text.primary' }}>
             Từ ý tưởng đến thành phẩm trong 3 bước
           </Typography>
         </Stack>
 
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems="stretch">
           {steps.map((s, i) => (
-            <Box key={s.step} sx={{ flex: 1, position: 'relative', p: { xs: 3, md: 4 }, borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)' }}>
-              <Typography sx={{ fontSize: '2.4rem', fontWeight: 800, color: 'rgba(139,92,246,0.35)', lineHeight: 1 }}>
+            <Box key={s.step} sx={{ flex: 1, position: 'relative', p: { xs: 3, md: 4 }, borderRadius: 3, border: '1px solid #E8EBF2' }}>
+              <Typography sx={{ fontSize: '2.4rem', fontWeight: 800, color: 'rgba(111,85,255,0.35)', lineHeight: 1 }}>
                 {s.step}
               </Typography>
-              <Typography sx={{ mt: 2, fontSize: '1.1rem', fontWeight: 700, color: 'common.white' }}>{s.title}</Typography>
+              <Typography sx={{ mt: 2, fontSize: '1.1rem', fontWeight: 700, color: 'text.primary' }}>{s.title}</Typography>
               <Typography sx={{ mt: 1, fontSize: '0.9rem', color: 'text.secondary', lineHeight: 1.7 }}>{s.desc}</Typography>
               {/* connector */}
               {i < steps.length - 1 && (
@@ -52,7 +52,7 @@ export function HowItWorks() {
                     top: '50%',
                     width: '1.25rem',
                     height: 2,
-                    bgcolor: 'rgba(139,92,246,0.4)',
+                    bgcolor: 'rgba(111,85,255,0.4)',
                   }}
                 />
               )}

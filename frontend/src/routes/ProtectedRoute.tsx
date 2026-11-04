@@ -9,10 +9,15 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, isAuthenticated, sessionReady } = useAuth()
+  const { user, isAuthenticated, sessionReady, justLoggedOut } = useAuth()
   const location = useLocation()
 
   if (!isAuthenticated) {
+    // A deliberate sign-out must land on the guest homepage, never the login screen.
+    // This also stops the outgoing URL being remembered as state.from: otherwise the
+    // next person to sign in (say a Customer) is thrown back into the staff console.
+    if (justLoggedOut) return <Navigate to="/" replace />
+
     return <Navigate to="/login" state={{ from: location.pathname }} replace />
   }
 

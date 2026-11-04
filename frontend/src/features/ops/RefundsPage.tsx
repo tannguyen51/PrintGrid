@@ -113,11 +113,11 @@ export default function RefundsPage() {
         {isLoading ? (
           <CircularProgress sx={{ alignSelf: 'center' }} />
         ) : rows.length === 0 ? (
-          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed rgba(255,255,255,0.15)' }}>
+          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <Typography color="text.secondary">Không có yêu cầu hoàn tiền nào ở trạng thái này.</Typography>
           </Box>
         ) : (
-          <TableContainer sx={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'background.paper' }}>
+          <TableContainer sx={{ borderRadius: 2, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -170,8 +170,8 @@ export default function RefundsPage() {
           {target && (
             <Stack spacing={2} sx={{ pt: 1 }}>
               <Typography variant="body2" color="text.secondary">
-                Số tiền: <strong style={{ color: '#fff' }}>{fmtVnd(target.amount)}</strong> · Đơn gốc:{' '}
-                <strong style={{ color: '#fff' }}>{target.orderId}</strong>
+                Số tiền: <strong style={{ color: '#25263A' }}>{fmtVnd(target.amount)}</strong> · Đơn gốc:{' '}
+                <strong style={{ color: '#25263A' }}>{target.orderId}</strong>
               </Typography>
               <Typography variant="body2" color="text.secondary">{target.reason}</Typography>
               <TextField

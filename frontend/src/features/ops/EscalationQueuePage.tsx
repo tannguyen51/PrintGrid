@@ -59,7 +59,7 @@ export default function EscalationQueuePage() {
         {escalations.isLoading ? <CircularProgress sx={{ alignSelf: 'center' }} /> : null}
 
         {!escalations.isLoading && !escalations.isError && rows.length === 0 ? (
-          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed rgba(255,255,255,0.15)' }}>
+          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <WarningRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">Không có cảnh báo nào đang mở. Hệ thống tự xử lý được hết.</Typography>
           </Box>

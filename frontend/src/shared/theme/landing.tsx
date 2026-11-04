@@ -1,47 +1,86 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, type ButtonProps } from '@mui/material'
+import { gradients, palette, radii, shadows } from './tokens'
 
 /**
- * Design tokens extracted from Figma "PrintGrid homepage" (file ZrutUZ4MuMQwrY92DtBgcc).
- * White-on-black system: #F1F1F1 text, #909096 muted, #131315 surfaces, #232326 hairlines.
+ * Public-surface design tokens.
  *
- * Landed in shared/ (07/10) so logged-in customer pages use the same visual
- * language as the homepage. features/home/landing/landingTheme.tsx re-exports
- * these for existing imports.
+ * History: these were the Figma homepage's white-on-black tokens. The brand
+ * moved to a light metallic + purple + gold system, so the same token names now
+ * carry the light values — every existing consumer (public pages, customer
+ * navbars, landing sections) inherits the new look without a rename.
  */
 export const landing = {
-  pageBg: '#000000',
-  heroGradient: 'linear-gradient(221deg, rgba(22,22,22,1) 0%, rgba(5,5,5,1) 52%, rgba(0,0,0,1) 80%)',
-  text: '#F1F1F1',
-  textMuted: '#909096',
-  surface: '#131315',
-  card: '#0B0B0D',
-  hairline: '#232326',
-  hairlineSoft: '#1B1B1E',
-  radius: 14,
+  pageBg: palette.background.main,
+  heroGradient: gradients.page,
+  text: palette.text.primary,
+  textMuted: palette.text.secondary,
+  surface: palette.background.secondary,
+  card: palette.background.card,
+  hairline: palette.border.hairline,
+  hairlineSoft: palette.border.soft,
+  radius: radii.lg,
 } as const
 
-/** Pill button per Figma #36:30 / #36:42 — h48, px22, bg #131315, 1px #232326, r14. */
+/**
+ * Primary call-to-action: the purple → violet → copper-gold gradient pill.
+ * Kept as `PillButton` because every public page already imports it.
+ */
 export function PillButton({ children, sx, ...rest }: ButtonProps) {
   return (
     <Button
-      disableRipple
+      variant="contained"
+      color="primary"
+      disableElevation
+      sx={{
+        height: 48,
+        px: '24px',
+        borderRadius: `${radii.md}px`,
+        background: gradients.primary,
+        color: palette.text.inverse,
+        fontSize: 15,
+        fontWeight: 600,
+        letterSpacing: '0.01em',
+        textTransform: 'none',
+        boxShadow: shadows.button,
+        transition: 'background 200ms ease, box-shadow 200ms ease, transform 140ms ease',
+        '&:hover': {
+          background: gradients.primaryHover,
+          boxShadow: shadows.buttonHover,
+        },
+        '&:active': { transform: 'translateY(1px)' },
+        ...sx,
+      }}
+      {...rest}
+    >
+      {children}
+    </Button>
+  )
+}
+
+/** Secondary CTA: white surface, metallic hairline, purple hover. */
+export function GhostButton({ children, sx, ...rest }: ButtonProps) {
+  return (
+    <Button
+      variant="outlined"
+      disableElevation
       sx={{
         height: 48,
         px: '22px',
-        borderRadius: `${landing.radius}px`,
-        bgcolor: landing.surface,
-        border: `1px solid ${landing.hairline}`,
-        color: landing.text,
+        borderRadius: `${radii.md}px`,
+        backgroundColor: palette.background.card,
+        border: `1px solid ${palette.silver.metallic}`,
+        color: palette.text.primary,
         fontSize: 15,
-        fontWeight: 500,
+        fontWeight: 600,
         textTransform: 'none',
-        boxShadow: 'none',
-        transition: 'background-color .18s ease, border-color .18s ease',
+        boxShadow: shadows.xs,
+        transition: 'border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease',
         '&:hover': {
-          bgcolor: '#1B1B1F',
-          borderColor: '#303036',
-          boxShadow: 'none',
+          borderColor: palette.purple.main,
+          backgroundColor: palette.purple.soft,
+          color: palette.purple.deep,
+          boxShadow: shadows.card,
         },
         ...sx,
       }}
@@ -66,6 +105,9 @@ export function useReveal<T extends HTMLElement>() {
   useEffect(() => {
     const node = ref.current
     if (!node) return
+    // Safety net: never leave content hidden if the observer is unavailable,
+    // disabled, or the section is already in view before observation starts.
+    const fallback = window.setTimeout(() => setVisible(true), 1200)
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -78,7 +120,10 @@ export function useReveal<T extends HTMLElement>() {
       { threshold: 0.18 },
     )
     observer.observe(node)
-    return () => observer.disconnect()
+    return () => {
+      window.clearTimeout(fallback)
+      observer.disconnect()
+    }
   }, [])
 
   return { ref, className: `pg-reveal${visible ? ' pg-visible' : ''}` }

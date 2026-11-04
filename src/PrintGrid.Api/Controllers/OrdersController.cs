@@ -84,7 +84,12 @@ public class OrdersController : ControllerBase
             cancellationToken);
 
         if (result.IsFailure)
-            return BadRequest(new { error = new { code = result.Error.Code, message = result.Error.Message } });
+        {
+            var status = result.Error.Code == "conflict"
+                ? StatusCodes.Status409Conflict
+                : StatusCodes.Status400BadRequest;
+            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
+        }
 
         return CreatedAtAction(nameof(PlaceOrder), new { id = result.Value.Id }, result.Value);
     }

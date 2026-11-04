@@ -266,14 +266,14 @@ export default function HubQCPage() {
         {awaiting.isLoading ? <CircularProgress sx={{ alignSelf: 'center' }} /> : null}
 
         {!awaiting.isLoading && jobs.length === 0 ? (
-          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed rgba(255,255,255,0.15)' }}>
+          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <FactoryRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">Chưa có job nào chờ kiểm tra chất lượng.</Typography>
           </Box>
         ) : (
           <Stack spacing={2}>
             {jobs.map((j) => (
-              <Box key={j.id} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'background.paper' }}>
+              <Box key={j.id} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={2}>
                   <Box>
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
@@ -309,9 +309,9 @@ export default function HubQCPage() {
         }}
         fullWidth
         maxWidth="md"
-        PaperProps={{ sx: { bgcolor: '#121212', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.15)' } }}
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}
       >
-        <DialogTitle sx={{ color: 'text.primary', fontWeight: 800, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <DialogTitle sx={{ color: 'text.primary', fontWeight: 800, borderBottom: '1px solid #E8EBF2' }}>
           Biên bản kiểm tra chất lượng sản phẩm
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
@@ -325,7 +325,7 @@ export default function HubQCPage() {
           {qcKnowledge.isError && <Alert severity="error" sx={{ mb: 2 }}>Không tải được bộ kiểm đang hoạt động. Liên hệ quản trị viên để cấu hình bộ kiểm.</Alert>}
 
           {activeJob && (
-            <Box sx={{ mb: 3, p: 2, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: 2 }}>
+            <Box sx={{ mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
               <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 0.5 }}>
                 Thông tin sản phẩm:
               </Typography>
@@ -346,8 +346,8 @@ export default function HubQCPage() {
                 sx={{
                   p: 1.5,
                   borderRadius: 1.5,
-                  bgcolor: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  bgcolor: 'background.secondary',
+                  border: '1px solid #EFF1F6',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -389,7 +389,7 @@ export default function HubQCPage() {
             ))}
           </Stack>
 
-          <Divider sx={{ my: 2.5, borderColor: 'rgba(255,255,255,0.08)' }} />
+          <Divider sx={{ my: 2.5, borderColor: 'divider' }} />
 
           {/* Section 2: Photo Evidence */}
           <Typography variant="h6" sx={{ fontSize: '1.05rem', fontWeight: 700, color: 'text.primary', mb: 1 }}>
@@ -440,7 +440,7 @@ export default function HubQCPage() {
                       objectFit: 'cover',
                       display: 'block',
                       borderRadius: 1.5,
-                      border: '1px solid rgba(255,255,255,0.15)',
+                      border: '1px solid #E8EBF2',
                     }}
                   />
                   <Tooltip title="Bỏ ảnh này">
@@ -479,7 +479,7 @@ export default function HubQCPage() {
             </Stack>
           )}
 
-          <Divider sx={{ my: 2.5, borderColor: 'rgba(255,255,255,0.08)' }} />
+          <Divider sx={{ my: 2.5, borderColor: 'divider' }} />
 
           {/* Section 3: Fault Attribution & Decision */}
           <Typography variant="h6" sx={{ fontSize: '1.05rem', fontWeight: 700, color: 'text.primary', mb: 1.5 }}>
@@ -551,7 +551,7 @@ export default function HubQCPage() {
           />
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2.5, borderTop: '1px solid rgba(255,255,255,0.08)', pt: 2 }}>
+        <DialogActions sx={{ px: 3, pb: 2.5, borderTop: '1px solid #E8EBF2', pt: 2 }}>
           <Button onClick={() => setModalMode(null)} color="inherit" disabled={isSubmitting} sx={{ color: 'text.secondary' }}>
             Đóng
           </Button>

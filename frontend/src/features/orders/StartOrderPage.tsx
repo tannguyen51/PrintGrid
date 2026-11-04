@@ -39,7 +39,7 @@ function ModelPickCard({ model, onPick }: { model: ThreeDModel; onPick: (m: Thre
   const ready = model.geometryStatus === 'Ready'
   const summary = geometrySummary(model)
   return (
-    <Box sx={{ ...landingCardSx, p: 2, height: '100%', display: 'flex', flexDirection: 'column', gap: 1.25, transition: 'border-color .18s ease', '&:hover': { borderColor: '#303036' } }}>
+    <Box sx={{ ...landingCardSx, p: 2, height: '100%', display: 'flex', flexDirection: 'column', gap: 1.25, transition: 'border-color .18s ease', '&:hover': { borderColor: '#6F55FF' } }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} sx={{ minWidth: 0 }}>
         <Typography sx={{ fontWeight: 600, color: landing.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {model.name}

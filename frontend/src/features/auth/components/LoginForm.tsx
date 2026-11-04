@@ -60,14 +60,15 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
     setSubmitting(true)
     setServerError(null)
     try {
-      await login(values.email, values.password, remember)
+      const signedIn = await login(values.email, values.password, remember)
       if (onSuccess) {
         // A dialog (homepage auth modal) closes itself; it must not steal the current page.
         onSuccess()
         return
       }
       // ProtectedRoute stored the page the visitor wanted before bouncing to /login.
-      navigate(resolvePostLoginPath(location.state), { replace: true })
+      // Roles are checked so a stale staff URL can never trap a Customer in /forbidden.
+      navigate(resolvePostLoginPath(location.state, signedIn.roles), { replace: true })
     } catch (error) {
       // In nguyên nhân thật ra console để debug, còn UI hiển thị câu diễn giải
       // từ API (sai mật khẩu, 403, 500, server chưa chạy…) thay vì một câu cứng.
@@ -86,7 +87,7 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: 'background.default', // #050505
+        bgcolor: 'transparent',
         p: { xs: 4, md: 6 },
       }}
     >
@@ -96,11 +97,11 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
         noValidate
         sx={{
           width: '100%',
-          maxWidth: 420,
-          bgcolor: 'background.paper', // #0A0A0A
+          maxWidth: 430,
+          bgcolor: 'background.paper',
           border: '1px solid',
-          borderColor: 'rgba(255,255,255,0.12)',
-          borderRadius: 4,
+          borderColor: 'divider',
+          borderRadius: 3,
           boxShadow: (t) => t.custom.loginCardShadow,
           px: { xs: 4, sm: 5 },
           py: { xs: 5, sm: 6 },
@@ -108,7 +109,7 @@ export function LoginForm({ onSwitchToRegister, onSuccess }: LoginFormProps = {}
       >
         <Stack spacing={2}>
           {/* ── Heading ── */}
-          <Typography sx={{ fontWeight: 700, fontSize: '1.75rem', color: 'text.primary' }}>
+          <Typography sx={{ fontFamily: '"Plus Jakarta Sans", Inter, sans-serif', fontWeight: 800, fontSize: '1.9rem', letterSpacing: '-0.03em', color: 'text.primary' }}>
             Đăng nhập
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 1 }}>

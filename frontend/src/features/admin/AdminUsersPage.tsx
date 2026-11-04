@@ -100,7 +100,7 @@ export default function AdminUsersPage() {
                 key={role}
                 size="small"
                 label={ROLE_LABELS[role as Role] ?? role}
-                sx={{ bgcolor: 'rgba(139,92,246,0.12)', color: '#A78BFA' }}
+                sx={{ bgcolor: 'rgba(111,85,255,0.10)', color: '#4933B8' }}
               />
             ))
           )}
@@ -196,7 +196,7 @@ export default function AdminUsersPage() {
         {assignRole.isError ? <Alert severity="error">{getApiErrorMessage(assignRole.error, 'Không đổi được role.')}</Alert> : null}
         {deactivate.isError ? <Alert severity="error">{getApiErrorMessage(deactivate.error, 'Không ngưng được tài khoản.')}</Alert> : null}
 
-        <Box sx={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
+        <Box sx={{ border: '1px solid #E8EBF2', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
           <DataGrid
             rows={rows}
             columns={columns}
@@ -220,7 +220,7 @@ export default function AdminUsersPage() {
             }}
             sx={{
               '&.MuiDataGrid-root': { border: 'none' },
-              '& .MuiDataGrid-columnHeaders': { bgcolor: 'rgba(255,255,255,0.03)' },
+              '& .MuiDataGrid-columnHeaders': { bgcolor: 'action.hover' },
               '& .MuiDataGrid-row': { alignItems: 'center' },
             }}
           />
@@ -233,7 +233,7 @@ export default function AdminUsersPage() {
       </Stack>
 
       <Dialog open={formOpen} onClose={() => setFormOpen(false)} fullWidth maxWidth="sm"
-        PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' } }}>
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}>
         <DialogTitle sx={{ fontWeight: 700 }}>Tạo tài khoản mới</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>

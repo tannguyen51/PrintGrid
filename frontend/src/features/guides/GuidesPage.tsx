@@ -189,7 +189,7 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
           gap: 2,
           p: 2.25,
           cursor: 'pointer',
-          '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
+          '&:hover': { bgcolor: 'background.secondary' },
         }}
       >
         <Typography sx={{ color: landing.text, fontWeight: 600, fontSize: '0.95rem' }}>{question}</Typography>

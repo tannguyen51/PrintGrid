@@ -16,7 +16,7 @@ public class GetQuotesQueryHandler : IRequestHandler<GetQuotesQuery, Result<IRea
         var quotes = await _quotes.GetByCustomerAsync(query.CustomerId, cancellationToken);
         var dtos = quotes
             .OrderByDescending(q => q.CreatedAt)
-            .Select(QuoteMappings.ToDto)
+            .Select(QuoteMappings.ToCustomerDto)
             .ToList();
         return Result.Success<IReadOnlyList<QuoteDto>>(dtos);
     }

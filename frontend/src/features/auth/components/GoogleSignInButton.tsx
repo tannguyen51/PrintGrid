@@ -42,14 +42,14 @@ export function GoogleSignInButton({ onSuccess, text = 'continue_with' }: Google
           setError(null)
           setLoading(true)
           try {
-            await googleLogin(credential, true)
+            const signedIn = await googleLogin(credential, true)
             if (onSuccess) {
               // Homepage dialog: close itself and leave the visitor on the current page.
               onSuccess()
               return
             }
             // Same deep-link restore as the password form (ProtectedRoute stored it in state).
-            navigate(resolvePostLoginPath(location.state), { replace: true })
+            navigate(resolvePostLoginPath(location.state, signedIn.roles), { replace: true })
           } catch (reason) {
             setError(getApiErrorMessage(reason, 'Không thể đăng nhập bằng Google.'))
           } finally {

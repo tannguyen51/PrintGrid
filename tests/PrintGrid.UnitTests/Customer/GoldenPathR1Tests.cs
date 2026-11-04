@@ -68,7 +68,9 @@ public class GoldenPathR1Tests
         var promised = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(9));
         result.Value.PromisedDeliveryDate.Should().Be(promised, "the probe's trial date must win over any constant");
         result.Value.PricingVersion.Should().Be(PricingParameterSet.Active.Version);
-        result.Value.PlacementBasis.Should().NotBeNullOrWhiteSpace();
+        // The customer projection deliberately hides the internal lab/machine basis.
+        result.Value.PlacementBasis.Should().BeNull();
+        result.Value.CustomerPlacementSummary.Should().NotBeNullOrWhiteSpace();
         var item = result.Value.Items.Single();
         item.MaterialCostAmount.Should().BeGreaterThan(0);
         item.MachineTimeCostAmount.Should().BeGreaterThan(0);
@@ -122,8 +124,11 @@ public class GoldenPathR1Tests
         IQuoteRepository quotes, Guid customerId, bool feasible)
     {
         var models = Substitute.For<IModelRepository>();
-        var model = Model.Create(customerId, "bracket", null, "bracket.stl", "STL", 1_048_576, null);
+        var model = Model.Create(
+            customerId, "bracket", null, "bracket.stl", "STL", 1_048_576, null,
+            storageKey: "printgrid-models/customer/bracket.stl", sha256: "SHA256");
         model.ApplyGeometry(60m, 60m, 40m, 20m, 60, 12m, true, true, true);
+        model.Approve(null, DateTime.UtcNow);
         models.GetByIdForCustomerAsync(customerId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<Model?>(model));
 
@@ -138,7 +143,9 @@ public class GoldenPathR1Tests
                 Arg.Any<IReadOnlyList<TrialPlacementLine>>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(feasible
                 ? Task.FromResult<TrialPlacementResult?>(
-                    new TrialPlacementResult(promised, Guid.NewGuid(), Guid.NewGuid(), "lab A · machine M1 (trial)"))
+                    new TrialPlacementResult(
+                        promised, Guid.NewGuid(), Guid.NewGuid(), "lab A · machine M1 (trial)",
+                        "In tại Quận 1, TP. Hồ Chí Minh — hoàn tất dự kiến; cộng 1 ngày vận chuyển"))
                 : Task.FromResult<TrialPlacementResult?>(null));
 
         return new CreateQuoteCommandHandler(models, quotes, uow, clock, probe);

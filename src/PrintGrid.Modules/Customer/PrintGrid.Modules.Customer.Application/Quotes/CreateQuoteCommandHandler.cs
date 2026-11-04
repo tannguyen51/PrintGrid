@@ -59,6 +59,18 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
             return Result.Failure<QuoteDto>(Error.Validation(
                 model.GeometryMessage ?? "Model không thể in trên bất kỳ máy nào trong mạng lưới"));
 
+        // Content moderation gate (blocking): a model enters quoting only after Ops approval.
+        // Metadata-only models have no file to review and can never be approved.
+        if (model.StorageKey is null)
+            return Result.Failure<QuoteDto>(Error.Conflict(
+                "Model chưa có file trên hệ thống — hãy tải file trước khi báo giá."));
+
+        if (model.ReviewStatus != Domain.Enums.ModelReviewStatus.Approved)
+            return Result.Failure<QuoteDto>(Error.Conflict(
+                model.ReviewStatus == Domain.Enums.ModelReviewStatus.Rejected
+                    ? $"Model đã bị từ chối nội dung: {model.ReviewReason ?? "không rõ lý do"}"
+                    : "Model đang chờ duyệt nội dung — chưa thể báo giá."));
+
         // Volume & reference print time come from the async geometry analysis; fall back to
         // a deterministic envelope if analysis hasn't run yet.
         var volumeCm3 = model.VolumeCm3!.Value;
@@ -117,7 +129,7 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
                 "Mạng lưới hiện không nhận được cấu hình này — hãy đổi vật liệu/kích thước hoặc thử lại sau"));
         }
 
-        var markResult = quote.MarkDraft(trial.PromisedDeliveryDate, set.Version, trial.Basis);
+        var markResult = quote.MarkDraft(trial.PromisedDeliveryDate, set.Version, trial.Basis, trial.CustomerBasis);
         if (markResult.IsFailure)
             return Result.Failure<QuoteDto>(markResult.Error);
 
@@ -137,6 +149,6 @@ public class CreateQuoteCommandHandler : IRequestHandler<CreateQuoteCommand, Res
         await _quotes.AddAsync(quote, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result.Success(QuoteMappings.ToDto(quote));
+        return Result.Success(QuoteMappings.ToCustomerDto(quote));
     }
 }

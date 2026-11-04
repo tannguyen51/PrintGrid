@@ -252,7 +252,7 @@ export default function LabMachinesPage() {
               color="inherit"
               startIcon={<FactoryRounded />}
               onClick={() => navigate('/lab/register')}
-              sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}
+              sx={{ color: 'text.primary', borderColor: 'divider' }}
             >
               Hồ sơ xưởng
             </Button>
@@ -261,7 +261,7 @@ export default function LabMachinesPage() {
               color="inherit"
               startIcon={<ScheduleRounded />}
               onClick={() => navigate('/lab/timeline')}
-              sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}
+              sx={{ color: 'text.primary', borderColor: 'divider' }}
             >
               Lịch máy &amp; Điểm
             </Button>
@@ -293,7 +293,7 @@ export default function LabMachinesPage() {
               p: 6,
               textAlign: 'center',
               borderRadius: 3,
-              border: '1px dashed rgba(255,255,255,0.18)',
+              border: '1px dashed #DCE0EA',
               bgcolor: 'background.paper',
             }}
           >
@@ -311,7 +311,7 @@ export default function LabMachinesPage() {
             sx={{
               p: { xs: 2, md: 3 },
               borderRadius: 3,
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid #E8EBF2',
               bgcolor: 'background.paper',
             }}
           >
@@ -354,7 +354,7 @@ export default function LabMachinesPage() {
               </Button>
             </Stack>
 
-            <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.08)' }} />
+            <Divider sx={{ my: 2, borderColor: 'divider' }} />
 
             {myLab.machines.length === 0 ? (
               <Box sx={{ py: 5, textAlign: 'center' }}>
@@ -376,8 +376,8 @@ export default function LabMachinesPage() {
                       sx={{
                         p: 2,
                         borderRadius: 2.5,
-                        border: '1px solid rgba(255,255,255,0.09)',
-                        bgcolor: 'rgba(255,255,255,0.015)',
+                        border: '1px solid #E8EBF2',
+                        bgcolor: 'background.secondary',
                       }}
                     >
                       <Stack
@@ -431,7 +431,7 @@ export default function LabMachinesPage() {
                                   key={mat}
                                   size="small"
                                   label={mat}
-                                  sx={{ bgcolor: 'rgba(139,92,246,0.14)', color: '#A78BFA', height: 22 }}
+                                  sx={{ bgcolor: 'rgba(111,85,255,0.10)', color: '#4933B8', height: 22 }}
                                 />
                               ))}
                             </Stack>
@@ -466,7 +466,7 @@ export default function LabMachinesPage() {
                             color="inherit"
                             startIcon={<EditRounded fontSize="small" />}
                             onClick={() => openEditDialog(machine)}
-                            sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.2)' }}
+                            sx={{ color: 'text.primary', borderColor: 'divider' }}
                           >
                             Sửa
                           </Button>
@@ -498,7 +498,7 @@ export default function LabMachinesPage() {
         fullWidth
         maxWidth="sm"
         PaperProps={{
-          sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' },
+          sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' },
         }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>
@@ -627,7 +627,7 @@ export default function LabMachinesPage() {
         fullWidth
         maxWidth="sm"
         PaperProps={{
-          sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' },
+          sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' },
         }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>Khai lịch bảo trì — {maintTarget?.name}</DialogTitle>

@@ -20,6 +20,10 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.IsDelayed).IsRequired().HasDefaultValue(false);
         builder.Property(o => o.DeliveredAt);
         builder.Property(o => o.TrackingNumber).HasMaxLength(128);
+        builder.Property(o => o.ContractNumber).HasMaxLength(64);
+        builder.HasIndex(o => o.ContractNumber).IsUnique().HasFilter("\"ContractNumber\" IS NOT NULL");
+        builder.Property(o => o.TermsAccepted).IsRequired().HasDefaultValue(false);
+        builder.Property(o => o.TermsAcceptedAtUtc);
         builder.Property(o => o.ReceiptConfirmedBy);
         builder.Property(o => o.ReadyForPackingAtUtc);
         builder.Property(o => o.ConsolidatedShipmentId);

@@ -8,6 +8,7 @@ import { CustomerNavbar } from '../home/components/CustomerNavbar'
 import { StaffNavbar } from '../home/components/StaffNavbar'
 import { PublicNavbar } from '../home/landing/PublicNavbar'
 import { landing } from '../../shared/theme/landing'
+import { pageWash } from '../../shared/theme/tokens'
 
 /**
  * Shell for the public screens behind the guest navbar (samples, pricing, network,
@@ -29,7 +30,7 @@ export function PublicLayout() {
   const showStaffNavbar = isAuthenticated && !isCustomer
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: landing.pageBg, display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ minHeight: '100vh', background: pageWash, display: 'flex', flexDirection: 'column' }}>
       {showCustomerNavbar ? (
         <CustomerNavbar />
       ) : showStaffNavbar ? (
@@ -93,17 +94,18 @@ export function PageHeading({
       }}
     >
       <Box sx={{ maxWidth: 760 }}>
-        <Box sx={{ fontSize: 13, letterSpacing: '0.14em', textTransform: 'uppercase', color: landing.textMuted, mb: 1.5 }}>
+        <Box sx={{ fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'primary.main', mb: 1.5, fontWeight: 700 }}>
           {eyebrow}
         </Box>
         <Box
           component="h1"
           sx={{
             m: 0,
-            fontFamily: '"Domine", serif',
-            fontSize: { xs: 'clamp(30px, 5vw, 40px)', lg: 52 },
-            lineHeight: 1.15,
-            fontWeight: 500,
+            fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
+            fontSize: { xs: 'clamp(30px, 5vw, 40px)', lg: 50 },
+            lineHeight: 1.12,
+            fontWeight: 800,
+            letterSpacing: '-0.03em',
             color: landing.text,
           }}
         >

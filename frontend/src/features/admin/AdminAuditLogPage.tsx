@@ -39,7 +39,7 @@ function JsonBlock({ title, value }: { title: string; value?: string | null }) {
   return (
     <Box>
       <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 700 }}>{title}</Typography>
-      <Box component="pre" sx={{ m: 0, mt: 0.75, p: 1.5, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.04)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: '0.78rem' }}>
+      <Box component="pre" sx={{ m: 0, mt: 0.75, p: 1.5, borderRadius: 2, bgcolor: 'action.hover', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: '0.78rem' }}>
         {display}
       </Box>
     </Box>
@@ -117,7 +117,7 @@ export default function AdminAuditLogPage() {
           <Button color="inherit" onClick={() => setFilters({ actor: '', actionClass: '', fromUtc: '', toUtc: '', page: 0, pageSize: filters.pageSize })}>Xóa lọc</Button>
         </Stack>
 
-        <Box sx={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
+        <Box sx={{ border: '1px solid #E8EBF2', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
           <DataGrid
             rows={rows}
             columns={columns}
@@ -130,12 +130,12 @@ export default function AdminAuditLogPage() {
             disableRowSelectionOnClick
             autoHeight
             getRowHeight={() => 'auto'}
-            sx={{ border: 'none', '& .MuiDataGrid-cell': { py: 0.5 }, '& .MuiDataGrid-columnHeaders': { bgcolor: 'rgba(255,255,255,0.03)' } }}
+            sx={{ border: 'none', '& .MuiDataGrid-cell': { py: 0.5 }, '& .MuiDataGrid-columnHeaders': { bgcolor: 'action.hover' } }}
           />
         </Box>
       </Stack>
 
-      <Dialog open={selected !== null} onClose={() => setSelected(null)} fullWidth maxWidth="md" PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none' } }}>
+      <Dialog open={selected !== null} onClose={() => setSelected(null)} fullWidth maxWidth="md" PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none' } }}>
         <DialogTitle>Chi tiết bản ghi bất biến</DialogTitle>
         <DialogContent>
           {selected && <Stack spacing={2.5} sx={{ pt: 1 }}>

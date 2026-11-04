@@ -83,7 +83,7 @@ export default function ForbiddenPage() {
               color="inherit"
               size="large"
               onClick={logout}
-              sx={{ borderColor: 'rgba(255,255,255,0.2)' }}
+              sx={{ borderColor: 'divider' }}
             >
               Đăng xuất
             </Button>

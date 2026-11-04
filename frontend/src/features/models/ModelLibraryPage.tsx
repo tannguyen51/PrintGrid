@@ -72,7 +72,7 @@ export default function ModelLibraryPage() {
           {params.row.tags.length === 0
             ? <Typography variant="caption" color="text.disabled">—</Typography>
             : params.row.tags.slice(0, 3).map((t) => (
-              <Typography key={t} component="span" sx={{ px: 0.75, py: 0.2, borderRadius: 1, fontSize: '0.72rem', bgcolor: 'rgba(139,92,246,0.12)', color: '#A78BFA' }}>
+              <Typography key={t} component="span" sx={{ px: 0.75, py: 0.2, borderRadius: 1, fontSize: '0.72rem', bgcolor: 'rgba(111,85,255,0.10)', color: '#4933B8' }}>
                 {t}
               </Typography>
             ))}
@@ -87,6 +87,17 @@ export default function ModelLibraryPage() {
         const s = params.row.geometryStatus
         const color = s === 'Ready' ? '#34c759' : s === 'Failed' ? '#ff453a' : '#f5a623'
         const label = s === 'Ready' ? 'Đã phân tích' : s === 'Failed' ? 'Lỗi' : 'Đang phân tích…'
+        return <Chip size="small" label={label} sx={{ bgcolor: `${color}22`, color, fontWeight: 600 }} />
+      },
+    },
+    {
+      field: 'reviewStatus',
+      headerName: 'Kiểm duyệt',
+      width: 140,
+      renderCell: (params) => {
+        const s = params.row.reviewStatus
+        const color = s === 'Approved' ? '#34c759' : s === 'Rejected' ? '#ff453a' : '#f5a623'
+        const label = s === 'Approved' ? 'Đã duyệt' : s === 'Rejected' ? 'Bị từ chối' : 'Chờ duyệt'
         return <Chip size="small" label={label} sx={{ bgcolor: `${color}22`, color, fontWeight: 600 }} />
       },
     },
@@ -173,7 +184,7 @@ export default function ModelLibraryPage() {
           name: uploaded.name,
           fileFormat: uploaded.fileFormat,
           fileName: uploaded.fileName,
-          storageKey: uploaded.storageKey,
+          hasFile: uploaded.hasFile,
           geometryStatus: uploaded.geometryStatus,
         })
         setDetail(uploaded)
@@ -250,7 +261,7 @@ export default function ModelLibraryPage() {
         {isError ? (
           <Alert severity="error">Không tải được danh sách model.</Alert>
         ) : (
-          <Box sx={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
+          <Box sx={{ border: '1px solid #E8EBF2', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
             <DataGrid
               rows={rows}
               columns={columns}
@@ -266,7 +277,7 @@ export default function ModelLibraryPage() {
               ) }}
               sx={{
                 '&.MuiDataGrid-root': { border: 'none' },
-                '& .MuiDataGrid-columnHeaders': { bgcolor: 'rgba(255,255,255,0.03)' },
+                '& .MuiDataGrid-columnHeaders': { bgcolor: 'action.hover' },
               }}
             />
           </Box>

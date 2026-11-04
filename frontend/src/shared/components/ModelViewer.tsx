@@ -202,7 +202,7 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback?: ReactNod
       return (
         this.props.fallback ?? (
           <Stack sx={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center', p: 4 }}>
-            <Typography color="rgba(255,255,255,0.55)" align="center">
+            <Typography color="text.secondary" align="center">
               Không thể hiển thị cảnh 3D.
             </Typography>
           </Stack>
@@ -245,7 +245,7 @@ export function ModelViewer({
   height = '100%',
   autoRotate = true,
   cameraPosition = [6, 4.2, 8],
-  background = '#000000',
+  background = '#F5F2FF',
   sx,
 }: ModelViewerProps) {
   // WebGL can lose its GPU context (driver reset, GPU memory, too many 3D tabs).
@@ -289,12 +289,24 @@ export function ModelViewer({
             zIndex: 3,
             display: 'grid',
             placeItems: 'center',
-            bgcolor: 'rgba(0,0,0,0.72)',
+            bgcolor: 'rgba(37, 38, 58, 0.28)',
+            backdropFilter: 'blur(6px)',
             p: 3,
             textAlign: 'center',
           }}
         >
-          <Stack spacing={1.5} alignItems="center">
+          <Stack
+            spacing={1.5}
+            alignItems="center"
+            sx={{
+              p: 3,
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 3,
+              boxShadow: (t) => t.shadows[8],
+            }}
+          >
             <Typography color="text.primary" sx={{ fontWeight: 700 }}>
               GPU đã mất kết nối WebGL
             </Typography>
@@ -304,8 +316,6 @@ export function ModelViewer({
             <Button
               size="small"
               variant="outlined"
-              color="inherit"
-              sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}
               onClick={() => {
                 setContextLost(false)
                 setCanvasKey((k) => k + 1)

@@ -10,9 +10,12 @@ public class Lab : AggregateRoot<Guid>
     private readonly List<MaterialStock> _materialStocks = new();
     private readonly List<StockTransaction> _stockTransactions = new();
     private readonly List<MaterialReservation> _materialReservations = new();
+    private readonly List<LabStaff> _staff = new();
 
     public string Name { get; private set; } = string.Empty;
     public string City { get; private set; } = string.Empty;
+    /// <summary>District/ward only — the granularity customers are allowed to see (never the street).</summary>
+    public string? District { get; private set; }
     public Guid? OwnerUserId { get; private set; }
     public bool IsActive { get; private set; }
     public LabStatus Status { get; private set; } = LabStatus.Active;
@@ -45,6 +48,7 @@ public class Lab : AggregateRoot<Guid>
     public IReadOnlyCollection<MaterialStock> MaterialStocks => _materialStocks.AsReadOnly();
     public IReadOnlyCollection<StockTransaction> StockTransactions => _stockTransactions.AsReadOnly();
     public IReadOnlyCollection<MaterialReservation> MaterialReservations => _materialReservations.AsReadOnly();
+    public IReadOnlyCollection<LabStaff> Staff => _staff.AsReadOnly();
 
     private Lab() { }
 
@@ -58,7 +62,8 @@ public class Lab : AggregateRoot<Guid>
         string closingTime = "17:00",
         string? operatingHours = null,
         string transportZone = "LOCAL",
-        string transferDaysOfWeek = "Monday,Wednesday,Friday")
+        string transferDaysOfWeek = "Monday,Wednesday,Friday",
+        string? district = null)
     {
         if (transitDaysToHub < 0 || (ownerUserId.HasValue && transitDaysToHub == 0))
             throw new ArgumentOutOfRangeException(nameof(transitDaysToHub), "Transit days must be positive");
@@ -72,6 +77,7 @@ public class Lab : AggregateRoot<Guid>
             Id = Guid.NewGuid(),
             Name = name.Trim(),
             City = city.Trim(),
+            District = string.IsNullOrWhiteSpace(district) ? null : district.Trim(),
             OwnerUserId = ownerUserId,
             TransitDaysToHub = transitDaysToHub,
             OperatingHours = string.IsNullOrWhiteSpace(operatingHours) ? $"{workingDays} {opening:HH:mm}-{closing:HH:mm}".Trim() : operatingHours.Trim(),
@@ -99,7 +105,8 @@ public class Lab : AggregateRoot<Guid>
         string operatingHours,
         Guid? ownerUserId = null,
         string? contactPhone = null,
-        string? address = null)
+        string? address = null,
+        string? district = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Lab name is required", nameof(name));
@@ -115,6 +122,7 @@ public class Lab : AggregateRoot<Guid>
             Id = Guid.NewGuid(),
             Name = name.Trim(),
             City = city.Trim(),
+            District = string.IsNullOrWhiteSpace(district) ? null : district.Trim(),
             TransitDaysToHub = transitDaysToHub,
             OperatingHours = operatingHours.Trim(),
             OwnerUserId = ownerUserId,
@@ -132,13 +140,15 @@ public class Lab : AggregateRoot<Guid>
         int transitDaysToHub,
         string operatingHours,
         string? contactPhone = null,
-        string? address = null)
+        string? address = null,
+        string? district = null)
     {
         if (transitDaysToHub < 0)
             throw new ArgumentOutOfRangeException(nameof(transitDaysToHub), "Transit days cannot be negative");
 
         Name = name.Trim();
         City = city.Trim();
+        District = string.IsNullOrWhiteSpace(district) ? null : district.Trim();
         TransitDaysToHub = transitDaysToHub;
         OperatingHours = operatingHours.Trim();
         ContactPhone = string.IsNullOrWhiteSpace(contactPhone) ? null : contactPhone.Trim();
@@ -165,6 +175,11 @@ public class Lab : AggregateRoot<Guid>
         if (_machines.Count == 0)
             return Result.Failure(Error.Conflict("Không thể duyệt xưởng khi chưa khai báo ít nhất 1 máy in."));
 
+        // BR-OPS-006: activation requires a complete declaration — machines AND materials.
+        // A lab with no stock would pass every capability check and then fail at reservation.
+        if (_materialStocks.Count == 0)
+            return Result.Failure(Error.Conflict("Không thể duyệt xưởng khi chưa khai báo ít nhất 1 vật liệu trong kho."));
+
         Status = LabStatus.Active;
         IsActive = true;
         RejectionReason = null;
@@ -190,6 +205,29 @@ public class Lab : AggregateRoot<Guid>
     {
         var machine = _machines.SingleOrDefault(x => x.Id == machineId);
         return machine is not null && _machines.Remove(machine);
+    }
+
+    /// <summary>
+    /// Adds a staff account to this lab's team. A person belongs to one lab in the MVP
+    /// (multi-lab chains are post-MVP), and the owner is already covered by OwnerUserId.
+    /// </summary>
+    public Result AddStaff(Guid userId)
+    {
+        if (userId == Guid.Empty)
+            return Result.Failure(Error.Validation("A staff account is required."));
+        if (OwnerUserId == userId)
+            return Result.Failure(Error.Conflict("The lab owner is already a member of this lab."));
+        if (_staff.Any(s => s.UserId == userId))
+            return Result.Failure(Error.Conflict("This account is already a member of the lab."));
+
+        _staff.Add(LabStaff.Create(Id, userId));
+        return Result.Success();
+    }
+
+    public bool RemoveStaff(Guid userId)
+    {
+        var member = _staff.SingleOrDefault(s => s.UserId == userId);
+        return member is not null && _staff.Remove(member);
     }
 
     public void Deactivate()

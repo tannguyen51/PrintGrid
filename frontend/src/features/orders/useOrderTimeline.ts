@@ -28,6 +28,7 @@ export interface CustomerTimelineDto {
   trackingNumber: string | null
   deliveredAt: string | null
   canConfirmReceipt: boolean
+  contractNumber?: string | null
 }
 
 export function useOrderTimeline(orderId: string | null) {

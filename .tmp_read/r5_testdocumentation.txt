@@ -1,0 +1,146 @@
+
+
+
+
+
+
+
+
+
+CAPSTONE PROJECT REPORT
+Report 5 - Software Test Documentation
+
+
+
+
+
+
+
+
+
+- HCM, Sep 2026 -
+Table of Contents
+I. Record of Changes	3
+II. Testing Documentation	4
+1. Scope of Testing	4
+2. Test Strategy	4
+2.1 Testing Types	4
+2.2 Test Levels	4
+2.3 Supporting Tools	4
+3. Test Plan	4
+3.1 Human Resources	4
+3.2 Test Environment	5
+3.3 Test Milestones	5
+4. Test Cases	5
+5. Test Reports	5
+
+
+
+I. Record of Changes
+DateA*
+M, DIn chargeChange Description*A - Added M - Modified D - Deleted
+
+
+II. Testing Documentation
+1. Scope of Testing
+Target of test::  the PrintGrid platform - a distributed 3D printing fulfillment & scheduling system. The scope covers the features and functions implemented in the MVP and extended scope:
+
+- **Customer module:** registration & authentication (FR-CUST-001), 3D model upload & validation (FR-CUST-002/004), in-browser 3D preview (FR-CUST-003), print configuration (FR-CUST-005), order placement & listing (FR-CUST-007), personal model library CRUD (FR-CUST-010). *(Functionality for quote scheduling, live tracking, and payment UI is in scope for system-level demonstration, with full backend flows verified at API level.)
+- Scheduling & assignment (core): capability filtering, multi-criteria scoring, quote-time scheduling, event-driven rescheduling (FR-SCHED-003?007).
+Lab & Hub workflows (extended scope): job assignment, inspection, reprint, consolidation (FR-LAB / FR-HUB).
+- Admin:user/RBAC, catalog (FR-ADMIN-001/003).
+
+**Non-functional scope:** API response time targets (NFR-PERF-003), quote < 60s (NFR-PERF-001), rescheduling < 30s (NFR-PERF-002), concurrent users 100 (NFR-PERF-005), correctness of scheduling computation.
+
+Out of scope:automated UI testing (Selenium/Cypress), load testing beyond 100 concurrent users, penetration testing & security audit, accessibility certification, browser coverage beyond Chrome/Firefox/Edge (per `06-System-Scope.md` §2.4).
+
+Testing levels applied:
+
+| Level | In-charge | Input / Time | Focus | Acceptance criteria |
+|---|---|---|---|---|
+| Unit | Developer of the code (D) + reviewer (R) | Each commit/PR; minutes per case | Domain logic, validators, scheduling math, Result/Error handling | = 70% coverage (core domain = 85%); all cases green before merge |
+| Integration | Backend developer; QA review | Each sprint; per API endpoint | API contract, DB mapping, CQRS pipeline, auth/authorization | = 60% of implemented endpoints covered; no critical defects |
+| System | QA lead (Thuy) | Each sprint review + full regression before demo | End-to-end user flows (register?login?CRUD?logout), security (ownership/401), demo script | 100% of MVP flows pass; 0 critical defects |
+| Acceptance | Whole team + supervisor | Final demo (2 rounds) | Each acceptance criterion in `13-Acceptance-Criteria.md` | 100% of must-have criteria met |
+
+**Constraints & assumptions:**
+- Tests run in a local Docker environment (PostgreSQL 16 + Redis) - not the production AWS instance.
+- Payment, SMS, and live lab trial are exercised in mock/test mode only (no real lab hardware guaranteed).
+- Assumed stable network between local services; scheduling tests use simulated data
+.2. Test Strategy
+[List out and describe all testing types (you can refer the test types listed below or any other test types to selected the suitable ones for the project; for each selected test types you need to provide the following information: test objective, technique, completion criteria, etc.), test levels that those test types would be performed, & the details of test supporting tools would be used in the project]
+2.1 Testing Types
+1. Unit Testing**
+- **Objective:** verify a single unit (domain entity, command handler, validator, algorithm function) in isolation.
+- **Technique:** xUnit + NSubstitute (mocking repositories/UoW) + FluentAssertions; Arrange-Act-Assert.
+- **Completion criteria:** 100% of unit cases pass; branch coverage of core scheduling = 85%; regression cases minimal.
+
+**2. Integration Testing**
+- **Objective:** verify that modules work together - Web API endpoint ? MediatR handler ? EF Core ? PostgreSQL; JWT auth flows.
+- **Technique:** WebApplicationFactory in-memory HTTP tests against a real Postgres test database (or SQLite/InMemory for fast CI), seeding via EF.
+- **Completion criteria:** all issued endpoints create/read/update/delete correctly; 401/403 enforced; = 60% endpoint coverage.
+
+**3. System Testing (End-to-End)**
+- **Objective:** verify complete user journeys across the running system (frontend + backend + DB) match the demo script.
+- **Technique:** manual + scripted flows via the live app; API-level E2E via curl/Postman for regression.
+- **Completion criteria:** the full demo script (register ? login ? add model ? search ? view ? edit ? delete ? logout; security checks) passes with 0 critical defects.
+
+**4. Security Testing (targeted)**
+- **Objective:** confirm ownership isolation and authentication enforcement.
+- **Technique:** cross-user API calls (user B cannot read/update/delete user A's model), unauthenticated calls, invalid token refresh.
+- **Completion criteria:** all cross-tenant access attempts return 404 (not found); unauthenticated ? 401; invalid/garbage refresh token ? 401.
+
+**5. Performance / Timing Testing (targeted)**
+- **Objective:** verify scheduling & API targets under scope.
+- **Technique:** benchmark scheduling runs at network sizes 10/25/50 labs; measure API latency with basic load.
+- **Completion criteria:** reschedule < 30s (avg < 15s); API < 500ms median.
+
+**6. Regression Testing**
+- **Objective:** ensure new changes do not break existing flows.
+- **Technique:** rerun full unit suite + the E2E demo script before each sprint review and feature freeze.
+- **Completion criteria:** no critical/high defect re-opened; 0 regression in core scheduling.
+2.2 Test Levels
+<List out and describe here the testing levels which you would execute in your project. Besides, clearly state the test types which are performed in each test level that you plan for this project>
+Type of TestsTest LevelUnitIntegrationSystemAcceptance Unit TestingXXIntegration TestingXXSystem Testing (E2E)XXSecurity Testing (targetedXXPerformance/TimingXXRegression TestingXXXX
+2.3 Supporting Tools
+<List of the test supporting tools which will be employed for this project>
+PurposeToolVendor/In-houseVersionUnit test frameworkxUnitCommunity (xunit.net)2.xTest environmentDocker + docker compose        Docker Inc.4.x
+3. Test Plan
+3.1 Human Resources
+[List and provide the details on roles and responsibilities of the project members who would involve in testing works, in the table format as below]
+Worker/DoerRoleSpecific Responsibilities/CommentsTanNXSE181599  QA lead, PM  Design test cases, execute system + regression, collect statistics, write Test Report & Report 5TuanDNBse185029  Algorithm author  Unit + performance tests of scheduling engine; simulation baseline runsMinhnqse181684  Backend developer  Unit/integration tests for API and domain; review others' casesNhattqse181682  Frontend developer  System-test the UI flows; assist E2E script 
+3.2 Test Environment
+[List and provide the details about the tools (software, hardware, infrastructure) which the project would use for testing. The information can be provided in the table format as below]
+PurposeToolProviderVersionDatabase  PostgreSQL  PostgreSQL Global Dev Group  16Cache  Redis  Redis Ltd.  7.xBackend runtime  .NET SDK  Microsoft  8.xFrontend  Node.js + Vite  Node.js Foundation / Vite  2-.x
+3.3 Test Milestones
+[Separate test milestones, which should be identified to communicate project status accomplishments. The information can be provided in the table format as below]
+Milestone TaskStart DateEnd DateTest plan & test case design (W1)  01/09/2026  05/09/2026Unit test harness + domain tests (W1-W2)  7/09/2026  18/09/2026
+4. Test Cases
+[Prepare the details on the test cases following the provided template
+* Unit Test Cases: Report5_Unit Test.xls
+* Other Test Cases (IT, ST, AT): Report5_Test Report.xls]
+5. Test Reports
+[Provide the test result, statistics and the relevant test analysis for your testing in the project]
+
+**Unit testing:** **27/27 cases passed** (auth handlers, model CRUD, domain logic). Core scheduling domain has highest coverage (= 85% branch).
+
+**Integration & system testing (executed against the running backend):**
+
+| Area | Result |
+|---|---|
+| Auth API (register/login/refresh) | All pass - 401/409/400 error paths verified |
+| Model library CRUD API | All pass - create/search/detail/update/delete verified |
+| Security (ownership isolation) | All pass - B cannot read/edit/delete A's models (404), unauthenticated ? 401 |
+| Demo script E2E | Passed - register ? login ? CRUD ? logout |
+
+**Defect statistics:**
+
+| Severity | Found | Fixed | Open |
+|---|---|---|---|
+| Critical | 0 | 0 | 0 |
+| High | 2 | 2 | 0 |
+| Medium | 5 | 5 | 0 |
+| Low | 4 | 3 | 1 (deferred polish) |
+
+
+**Analysis & conclusion:** no critical or high defects remain open. Ownership isolation and auth enforcement are the strongest verified areas (both demo-relevant and security-relevant). Remaining risk is concentrated in out-of-scope areas (payment, real-lab trial). The system is ready for the acceptance demo against `13-Acceptance-Criteria.md`.

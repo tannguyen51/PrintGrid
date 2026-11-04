@@ -20,7 +20,9 @@ public sealed record TrialPlacementResult(
     DateOnly PromisedDeliveryDate,
     Guid LabId,
     Guid MachineId,
-    string Basis);
+    string Basis,
+    /// <summary>Customer-safe summary: district/city only, never lab or machine identity.</summary>
+    string? CustomerBasis = null);
 
 /// <summary>
 /// Cross-module seam (FR-SCHED-005): the Scheduling module answers what the Customer

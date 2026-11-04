@@ -24,6 +24,12 @@ public class Quote : AggregateRoot<Guid>
 
     /// <summary>Human-readable basis of the promised date — which lab/machine timeline the trial used (FR-SCHED-005).</summary>
     public string? PlacementBasis { get; private set; }
+
+    /// <summary>
+    /// Customer-safe version of the placement basis: district/city only, never lab or machine
+    /// identity. This is the only placement text sent to the customer.
+    /// </summary>
+    public string? CustomerPlacementSummary { get; private set; }
     public DateTime? ApprovedAt { get; private set; }
     public Guid? ReviewedBy { get; private set; }
     public bool AutoApproved { get; private set; }
@@ -69,7 +75,7 @@ public class Quote : AggregateRoot<Guid>
         return item;
     }
 
-    public Result MarkDraft(DateOnly promisedDeliveryDate, string pricingVersion, string? placementBasis = null)
+    public Result MarkDraft(DateOnly promisedDeliveryDate, string pricingVersion, string? placementBasis = null, string? customerPlacementSummary = null)
     {
         if (Status != QuoteStatus.Pending)
             return Result.Failure(Error.Conflict("Only a pending quote can be marked ready"));
@@ -80,6 +86,7 @@ public class Quote : AggregateRoot<Guid>
         PromisedDeliveryDate = promisedDeliveryDate;
         PricingVersion = pricingVersion;
         PlacementBasis = placementBasis;
+        CustomerPlacementSummary = customerPlacementSummary;
         TotalPrice = _items.Aggregate(
             Money.Zero(_items[0].UnitPrice.Currency),
             (sum, item) => sum.Add(item.UnitPrice.Multiply(item.Quantity)));

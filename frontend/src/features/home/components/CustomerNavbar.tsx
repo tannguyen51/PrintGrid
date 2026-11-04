@@ -20,15 +20,14 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AuthContext'
 import { MenuRounded, CloseRounded, NotificationsOutlined, PersonOutlineRounded } from '@mui/icons-material'
 import { BrandGlyph } from '../../../shared/components/BrandGlyph'
-import { landing } from '../../../shared/theme/landing'
+import { palette, shadows } from '../../../shared/theme/tokens'
 
 /**
- * Navbar for a logged-in customer (07/10, trimmed 08/10).
+ * Navbar for a logged-in customer.
  *   Logo (→ homepage) · Đặt in · Thư viện model · Đơn hàng · 🔔 · avatar ▾
  *
- * No "Trang chủ" item — the logo is the way home. No login/register buttons
- * either: visitors get PublicNavbar, so this component is logged-in only.
- * The bell is inert until the notifications REST contract lands (plan §A4).
+ * Light metallic shell: translucent white bar, silver hairline, purple active
+ * pill. No "Trang chủ" item — the logo is the way home.
  */
 
 interface NavItem {
@@ -44,13 +43,14 @@ const CUSTOMER_NAV: NavItem[] = [
 ]
 
 const linkSx = {
-  color: landing.textMuted,
+  color: palette.text.secondary,
   fontWeight: 500,
   fontSize: '0.9rem',
   px: 1.5,
   py: 0.75,
-  borderRadius: `${landing.radius}px`,
-  '&:hover': { color: landing.text, bgcolor: 'rgba(255,255,255,0.05)' },
+  borderRadius: '10px',
+  transition: 'background-color 160ms ease, color 160ms ease',
+  '&:hover': { color: palette.text.primary, bgcolor: palette.purple.soft },
 } as const
 
 export function CustomerNavbar() {
@@ -83,12 +83,13 @@ export function CustomerNavbar() {
         position: 'sticky',
         top: 0,
         zIndex: 1200,
-        bgcolor: 'rgba(0,0,0,0.72)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: `1px solid ${landing.hairline}`,
+        bgcolor: 'rgba(255,255,255,0.84)',
+        backdropFilter: 'blur(16px)',
+        borderBottom: `1px solid ${palette.border.hairline}`,
+        boxShadow: '0 1px 0 rgba(37,38,58,0.02)',
       }}
     >
-      <Container maxWidth="lg" sx={{ py: 1.5 }}>
+      <Container maxWidth="lg" sx={{ py: 1.25 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
           {/* Brand — the logo is the only route back to the homepage */}
           <Button
@@ -96,12 +97,12 @@ export function CustomerNavbar() {
             to="/"
             onClick={() => setDrawerOpen(false)}
             aria-label="PrintGrid — về trang chủ"
-            sx={{ p: 0, textTransform: 'none', minWidth: 0, '&:hover': { bgcolor: 'transparent' } }}
+            sx={{ p: 0, textTransform: 'none', minWidth: 0, '&:hover': { bgcolor: 'transparent', boxShadow: 'none' } }}
             disableRipple
           >
-            <BrandGlyph size={34} color={landing.text} mutedColor={landing.textMuted} />
+            <BrandGlyph size={32} />
             <Box textAlign="left" sx={{ ml: 1.25 }}>
-              <Typography sx={{ fontSize: '1.05rem', fontWeight: 700, color: landing.text, lineHeight: 1.15 }}>
+              <Typography sx={{ fontSize: '1.05rem', fontWeight: 800, color: palette.text.primary, lineHeight: 1.15, letterSpacing: '-0.02em' }}>
                 PrintGrid
               </Typography>
             </Box>
@@ -116,9 +117,11 @@ export function CustomerNavbar() {
                 sx={{
                   ...linkSx,
                   textTransform: 'none',
-                  color: isActive(item.href) ? landing.text : landing.textMuted,
+                  color: isActive(item.href) ? palette.purple.deep : palette.text.secondary,
                   fontWeight: isActive(item.href) ? 700 : 500,
-                  bgcolor: isActive(item.href) ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  bgcolor: isActive(item.href) ? palette.purple.soft : 'transparent',
+                  boxShadow: isActive(item.href) ? 'inset 0 0 0 1px rgba(111,85,255,0.18)' : 'none',
+                  '&:hover': { bgcolor: palette.purple.soft, boxShadow: 'none' },
                 }}
               >
                 {item.label}
@@ -127,16 +130,20 @@ export function CustomerNavbar() {
           </Stack>
 
           {/* Account actions */}
-          <Stack direction="row" spacing={1.25} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
             <IconButton
-              sx={{ color: landing.textMuted, '&:hover': { color: landing.text } }}
               aria-label="Thông báo (sắp có)"
               onClick={() => go('/account')}
+              sx={{
+                border: `1px solid ${palette.border.hairline}`,
+                bgcolor: '#FFFFFF',
+                boxShadow: shadows.xs,
+              }}
             >
-              <NotificationsOutlined />
+              <NotificationsOutlined fontSize="small" />
             </IconButton>
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0.5 }} aria-label="Menu tài khoản">
-              <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 15 }}>
+              <Avatar sx={{ width: 34, height: 34, fontSize: 14 }}>
                 {user?.email?.charAt(0).toUpperCase() || 'U'}
               </Avatar>
             </IconButton>
@@ -144,23 +151,14 @@ export function CustomerNavbar() {
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
               onClose={() => setAnchorEl(null)}
-              PaperProps={{
-                sx: {
-                  mt: 1,
-                  minWidth: 200,
-                  bgcolor: landing.card,
-                  border: `1px solid ${landing.hairline}`,
-                  borderRadius: `${landing.radius}px`,
-                },
-              }}
               transformOrigin={{ horizontal: 'right', vertical: 'top' }}
               anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
             >
               <MenuItem onClick={() => { setAnchorEl(null); go('/account') }}>
-                <PersonOutlineRounded fontSize="small" sx={{ mr: 1.25, color: landing.textMuted }} />
+                <PersonOutlineRounded fontSize="small" sx={{ mr: 1.25, color: 'text.secondary' }} />
                 Hồ sơ &amp; địa chỉ
               </MenuItem>
-              <Divider sx={{ borderColor: landing.hairlineSoft }} />
+              <Divider sx={{ my: 0.5 }} />
               <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
                 Đăng xuất
               </MenuItem>
@@ -168,40 +166,37 @@ export function CustomerNavbar() {
           </Stack>
 
           {/* Mobile hamburger */}
-          <IconButton onClick={() => setDrawerOpen(true)} sx={{ display: { md: 'none' }, color: landing.text }} aria-label="Mở menu">
+          <IconButton onClick={() => setDrawerOpen(true)} sx={{ display: { md: 'none' }, color: 'text.primary' }} aria-label="Mở menu">
             <MenuRounded />
           </IconButton>
         </Stack>
       </Container>
 
       {/* Mobile drawer */}
-      <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{ sx: { width: 280, bgcolor: landing.card } }}>
+      <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)} slotProps={{ paper: { sx: { width: 290 } } }}>
         <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end' }}>
-          <IconButton onClick={() => setDrawerOpen(false)} sx={{ color: landing.text }} aria-label="Đóng menu">
+          <IconButton onClick={() => setDrawerOpen(false)} aria-label="Đóng menu">
             <CloseRounded />
           </IconButton>
         </Box>
-        <List>
+        <List sx={{ px: 1 }}>
           {CUSTOMER_NAV.map((item) => (
             <ListItem key={item.href} disablePadding>
-              <ListItemButton onClick={() => go(item.href)} selected={isActive(item.href)}>
+              <ListItemButton onClick={() => go(item.href)} selected={isActive(item.href)} sx={{ mb: 0.25 }}>
                 <ListItemText
                   primary={item.label}
-                  sx={{
-                    color: isActive(item.href) ? 'primary.main' : landing.text,
-                    '& .MuiListItemText-primary': { fontWeight: isActive(item.href) ? 700 : 500 },
-                  }}
+                  slotProps={{ primary: { fontWeight: isActive(item.href) ? 700 : 500, fontSize: '0.92rem' } }}
                 />
               </ListItemButton>
             </ListItem>
           ))}
           <ListItem disablePadding>
-            <ListItemButton onClick={() => go('/account')}>
-              <ListItemText primary="Hồ sơ & địa chỉ" sx={{ color: landing.text, '& .MuiListItemText-primary': { fontWeight: 500 } }} />
+            <ListItemButton onClick={() => go('/account')} sx={{ mb: 0.25 }}>
+              <ListItemText primary="Hồ sơ & địa chỉ" slotProps={{ primary: { fontWeight: 500, fontSize: '0.92rem' } }} />
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding sx={{ mt: 2 }}>
-            <Box sx={{ px: 2, width: '100%' }}>
+            <Box sx={{ px: 1, width: '100%' }}>
               <Button fullWidth variant="outlined" color="error" onClick={handleLogout}>
                 Đăng xuất
               </Button>

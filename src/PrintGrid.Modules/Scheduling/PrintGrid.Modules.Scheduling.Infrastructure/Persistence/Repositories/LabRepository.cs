@@ -18,7 +18,17 @@ public class LabRepository : ILabRepository
             .Include(l => l.MaterialStocks)
             .Include(l => l.StockTransactions)
             .Include(l => l.MaterialReservations)
+            .Include(l => l.Staff)
             .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
+
+    public Task<Lab?> GetByStaffUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        _context.Set<Lab>()
+            .Include(l => l.Machines)
+            .Include(l => l.MaterialStocks)
+            .Include(l => l.StockTransactions)
+            .Include(l => l.MaterialReservations)
+            .Include(l => l.Staff)
+            .FirstOrDefaultAsync(l => l.Staff.Any(s => s.UserId == userId), cancellationToken);
 
     public Task<Lab?> GetByOwnerUserIdAsync(Guid ownerUserId, CancellationToken cancellationToken = default) =>
         _context.Set<Lab>()
@@ -26,6 +36,7 @@ public class LabRepository : ILabRepository
             .Include(l => l.MaterialStocks)
             .Include(l => l.StockTransactions)
             .Include(l => l.MaterialReservations)
+            .Include(l => l.Staff)
             .FirstOrDefaultAsync(l => l.OwnerUserId == ownerUserId, cancellationToken);
 
     public async Task<IReadOnlyList<Lab>> GetActiveWithMachinesAsync(CancellationToken cancellationToken = default) =>

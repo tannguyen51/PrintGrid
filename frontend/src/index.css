@@ -1,12 +1,59 @@
 :root {
+  /* ── PrintGrid design tokens (mirrored in ts by shared/theme/tokens.ts) ── */
+  --pg-silver: #c0c6d4;
+  --pg-silver-light: #e8ebf2;
+  --pg-silver-surface: #f1f3f8;
+  --pg-silver-dark: #8992a5;
+
+  --pg-purple: #6f55ff;
+  --pg-purple-light: #a78bfa;
+  --pg-purple-soft: #f0ecff;
+  --pg-purple-deep: #4933b8;
+
+  --pg-gold: #ffb347;
+  --pg-gold-light: #ffd58a;
+  --pg-gold-soft: #fff2d9;
+  --pg-gold-deep: #d99528;
+
+  --pg-bg: #f8f9fc;
+  --pg-bg-secondary: #f1f3f8;
+  --pg-card: #ffffff;
+  --pg-border: #e8ebf2;
+  --pg-border-soft: #eff1f6;
+  --pg-input-border: #dce0ea;
+
+  --pg-text: #25263a;
+  --pg-text-secondary: #68708a;
+  --pg-text-muted: #9299aa;
+  --pg-inverse: #ffffff;
+
+  --pg-radius-sm: 10px;
+  --pg-radius: 12px;
+  --pg-radius-lg: 16px;
+  --pg-radius-xl: 20px;
+
+  --pg-shadow-card: 0 1px 2px rgba(37, 38, 58, 0.04), 0 10px 28px rgba(37, 38, 58, 0.05);
+  --pg-shadow-hover: 0 2px 6px rgba(111, 85, 255, 0.08), 0 20px 48px rgba(111, 85, 255, 0.14);
+  --pg-shadow-button: 0 6px 16px rgba(111, 85, 255, 0.24), 0 2px 4px rgba(73, 51, 184, 0.16);
+
+  --pg-gradient-primary: linear-gradient(100deg, #6f55ff 0%, #a16bee 50%, #ffb347 100%);
+  --pg-gradient-page: linear-gradient(135deg, #ffffff 0%, #f4f2ff 55%, #fff8eb 100%);
+  --pg-gradient-lavender: linear-gradient(145deg, #f7f4ff 0%, #f0ecff 55%, #fff8eb 100%);
+  --pg-gradient-metal: linear-gradient(145deg, #ffffff 0%, #f5f7fb 45%, #e9edf5 100%);
+
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
 }
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 html,
@@ -14,4 +61,23 @@ body,
 #root {
   margin: 0;
   min-height: 100%;
+}
+
+body {
+  background-color: var(--pg-bg);
+  background-image: var(--pg-gradient-page);
+  background-attachment: fixed;
+  color: var(--pg-text);
+}
+
+/* R3F canvases should never trigger page-level drag/select artifacts. */
+canvas {
+  display: block;
+  outline: none;
+}
+
+/* Focus visibility on non-MUI interactive elements. */
+:where(a, button, [role='button']):focus-visible {
+  outline: 2px solid var(--pg-purple);
+  outline-offset: 2px;
 }

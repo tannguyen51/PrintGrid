@@ -106,7 +106,7 @@ export default function SampleLibraryPage() {
         <Grid container spacing={2.5}>
           {Array.from({ length: 6 }).map((_, index) => (
             <Grid key={index} size={{ xs: 12, sm: 6, lg: 4 }}>
-              <Skeleton variant="rounded" height={320} sx={{ bgcolor: '#111114', borderRadius: `${landing.radius}px` }} />
+              <Skeleton variant="rounded" height={320} sx={{ bgcolor: 'background.secondary', borderRadius: `${landing.radius}px` }} />
             </Grid>
           ))}
         </Grid>
@@ -147,11 +147,11 @@ export default function SampleLibraryPage() {
 
 function chipSx(active: boolean) {
   return {
-    bgcolor: active ? landing.text : landing.card,
-    color: active ? '#0A0A0A' : landing.textMuted,
-    border: `1px solid ${active ? landing.text : landing.hairline}`,
+    bgcolor: active ? '#6F55FF' : landing.card,
+    color: active ? '#FFFFFF' : landing.textMuted,
+    border: `1px solid ${active ? '#6F55FF' : landing.hairline}`,
     borderRadius: '999px',
     fontWeight: active ? 700 : 500,
-    '&:hover': { bgcolor: active ? landing.text : '#16161A' },
+    '&:hover': { bgcolor: active ? '#4933B8' : '#F0ECFF' },
   } as const
 }

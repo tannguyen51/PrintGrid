@@ -9,6 +9,7 @@ import { StaffNavbar, staffPrimaryLink } from './components/StaffNavbar'
 import { PublicNavbar } from './landing/PublicNavbar'
 import { PublicHero } from './landing/PublicHero'
 import { PublicSections } from './landing/PublicSections'
+import { pageWash } from '../../shared/theme/tokens'
 
 /**
  * The Figma landing is the homepage for EVERYONE (08/10): visitors, customers and staff.
@@ -31,7 +32,7 @@ export default function HomePage() {
   const staffLink = showStaffNavbar ? staffPrimaryLink(user?.roles ?? []) : null
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#000000' }}>
+    <Box sx={{ minHeight: '100vh', background: pageWash }}>
       {showCustomerNavbar ? (
         <CustomerNavbar />
       ) : showStaffNavbar ? (

@@ -25,9 +25,9 @@ const CELL_SIZE = 0.8 // nearly flush — reads as one solid Rubik block
 const CELL_SPACING = 0.82
 // Polished silver cells with a faint self-glow — chrome catches the studio
 // environment so bright reflections sweep across the faces as the block rolls.
-const CORE_COLOR = '#C9CDD5'
-const CORE_EMISSIVE = '#9FA7B8'
-const EDGE_COLOR = '#E8EBF0'
+const CORE_COLOR = '#DCE2EC'
+const CORE_EMISSIVE = '#8F7BFF'
+const EDGE_COLOR = '#FFFFFF'
 
 type Axis = 'x' | 'y' | 'z'
 
@@ -123,9 +123,10 @@ function RubikCube() {
       }
     })
 
-    // whole block rolls top→bottom (primary X spin) with a gentle yaw sway
-    root.current.rotation.x = t * 0.95
-    root.current.rotation.y = Math.sin(t * 0.24) * 0.32
+    // whole block rolls top→bottom (primary X spin) with a gentle yaw sway.
+    // Start already tilted so the first frame reads as a 3D block, never a flat grid.
+    root.current.rotation.x = 0.42 + t * 0.95
+    root.current.rotation.y = -0.35 + Math.sin(t * 0.24) * 0.32
   })
 
   return (
@@ -185,7 +186,7 @@ class CanvasBoundary extends Component<{ children: ReactNode }, { error: boolean
   render() {
     return this.state.error ? (
       <Stack sx={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }}>
-        <Typography color="rgba(241,241,241,0.4)" sx={{ fontSize: 14 }}>
+        <Typography color="text.secondary" sx={{ fontSize: 14 }}>
           (WebGL không khả dụng — đã bỏ qua hình 3D)
         </Typography>
       </Stack>
@@ -198,11 +199,11 @@ class CanvasBoundary extends Component<{ children: ReactNode }, { error: boolean
 const prefersReducedMotion =
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-export function GeometricNetwork() {
+export function GeometricNetwork({ cameraDistance = 6.4 }: { cameraDistance?: number } = {}) {
   return (
     <CanvasBoundary>
       <Canvas
-        camera={{ position: [0, 0.4, 6.4], fov: 40 }}
+        camera={{ position: [0, 0.4, cameraDistance], fov: 40 }}
         dpr={[1, 1.75]}
         // alpha canvas, no <color> background → the hero gradient shows straight
         // through the scene and there is no visible panel edge.
@@ -215,16 +216,15 @@ export function GeometricNetwork() {
         style={{ background: 'transparent' }}
         frameloop={prefersReducedMotion ? 'demand' : 'always'}
       >
-        {/* ── Studio lighting: key + cool rim + low fill, reflections from a
-               procedural environment (baked once — no external HDR fetch) ── */}
-        <ambientLight intensity={0.25} />
-        <directionalLight position={[5, 7, 4]} intensity={2.3} color="#ffffff" />
-        <directionalLight position={[-4, 3, -6]} intensity={1.9} color="#DCE3FF" />
-        <directionalLight position={[-6, -1, 3]} intensity={0.55} color="#9A9AA2" />
+        {/* ── Studio lighting: key + purple rim + warm gold fill ── */}
+        <ambientLight intensity={0.5} />
+        <directionalLight position={[5, 7, 4]} intensity={2.6} color="#ffffff" />
+        <directionalLight position={[-4, 3, -6]} intensity={3.1} color="#A78BFA" />
+        <directionalLight position={[-6, -1, 3]} intensity={1.8} color="#FFCF7A" />
         <Environment resolution={128} frames={1}>
           <Lightformer intensity={4} position={[0, 4, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[6, 6, 1]} color="#ffffff" />
-          <Lightformer intensity={2.4} position={[-4, 1, 2]} rotation={[0, Math.PI / 2, 0]} scale={[3, 4, 1]} color="#CFD6EE" />
-          <Lightformer intensity={2.6} position={[4, -1, -2]} rotation={[0, -Math.PI / 2, 0]} scale={[3, 4, 1]} color="#ffffff" />
+          <Lightformer intensity={2.6} position={[-4, 1, 2]} rotation={[0, Math.PI / 2, 0]} scale={[3, 4, 1]} color="#A78BFA" />
+          <Lightformer intensity={2.8} position={[4, -1, -2]} rotation={[0, -Math.PI / 2, 0]} scale={[3, 4, 1]} color="#FFD58A" />
         </Environment>
         <Suspense fallback={null}>
           <RubikScene />

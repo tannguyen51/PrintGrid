@@ -27,8 +27,10 @@ export interface Quote {
   failureReason?: string | null
   /** Pricing parameter-set version frozen onto this quote (FR-SCHED-010). */
   pricingVersion: string
-  /** Why this delivery date — real machine timeline + buffers (FR-SCHED-005). */
+  /** Why this delivery date — real machine timeline + buffers (FR-SCHED-005). Staff only. */
   placementBasis?: string | null
+  /** Customer-safe placement summary: district/city only, never lab or machine identity. */
+  customerPlacementSummary?: string | null
   approvedAt?: string | null
   reviewedBy?: string | null
   autoApproved: boolean

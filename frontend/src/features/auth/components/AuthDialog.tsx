@@ -31,7 +31,7 @@ export function AuthDialog({ open, mode, onClose, onSwitchMode }: AuthDialogProp
         sx: {
           overflow: 'hidden',
           borderRadius: { xs: 3, md: 5 },
-          bgcolor: 'background.default',
+          bgcolor: 'background.paper',
           backgroundImage: 'none',
           // The dialog frame belongs to the mode: login keeps the wide split panel,
           // register hugs its own form so the login frame never appears around it.

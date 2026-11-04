@@ -149,7 +149,7 @@ export default function LabTimelineScorePage() {
               color="inherit"
               startIcon={<ViewListRounded />}
               onClick={() => navigate('/lab/queue')}
-              sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}
+              sx={{ color: 'text.primary', borderColor: 'divider' }}
             >
               Hàng đợi Job
             </Button>
@@ -158,7 +158,7 @@ export default function LabTimelineScorePage() {
               color="inherit"
               startIcon={<PrecisionManufacturingRounded />}
               onClick={() => navigate('/lab/machines')}
-              sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}
+              sx={{ color: 'text.primary', borderColor: 'divider' }}
             >
               Khai máy
             </Button>
@@ -184,7 +184,7 @@ export default function LabTimelineScorePage() {
               p: 6,
               textAlign: 'center',
               borderRadius: 3,
-              border: '1px dashed rgba(255,255,255,0.18)',
+              border: '1px dashed #DCE0EA',
               bgcolor: 'background.paper',
             }}
           >
@@ -201,7 +201,7 @@ export default function LabTimelineScorePage() {
               sx={{
                 p: { xs: 2.5, md: 3 },
                 borderRadius: 3,
-                border: '1px solid rgba(255,255,255,0.12)',
+                border: '1px solid #E8EBF2',
                 bgcolor: 'background.paper',
               }}
             >
@@ -242,15 +242,15 @@ export default function LabTimelineScorePage() {
                       px: 2.5,
                       py: 1.5,
                       borderRadius: 2.5,
-                      border: '1px solid rgba(139,92,246,0.35)',
-                      bgcolor: 'rgba(139,92,246,0.08)',
+                      border: '1px solid rgba(111,85,255,0.35)',
+                      bgcolor: 'rgba(111,85,255,0.08)',
                       textAlign: 'center',
                     }}
                   >
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                       Điểm xưởng / TB mạng lưới ẩn danh
                     </Typography>
-                    <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: '#A78BFA' }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: '#4933B8' }}>
                       {pct(perf.standingScore)}{' '}
                       <Typography component="span" variant="body2" color="text.secondary">
                         vs {pct(perf.networkAverageStandingScore)}
@@ -303,8 +303,8 @@ export default function LabTimelineScorePage() {
                           sx={{
                             p: 2,
                             borderRadius: 2.5,
-                            border: '1px solid rgba(255,255,255,0.09)',
-                            bgcolor: 'rgba(255,255,255,0.02)',
+                            border: '1px solid #E8EBF2',
+                            bgcolor: 'background.secondary',
                             height: '100%',
                           }}
                         >
@@ -346,7 +346,7 @@ export default function LabTimelineScorePage() {
               sx={{
                 p: { xs: 2.5, md: 3 },
                 borderRadius: 3,
-                border: '1px solid rgba(255,255,255,0.12)',
+                border: '1px solid #E8EBF2',
                 bgcolor: 'background.paper',
               }}
             >
@@ -406,7 +406,7 @@ export default function LabTimelineScorePage() {
                 </Stack>
               </Stack>
 
-              <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.08)' }} />
+              <Divider sx={{ my: 2, borderColor: 'divider' }} />
 
               {timelineQuery.isLoading ? (
                 <CircularProgress size={28} />
@@ -433,8 +433,8 @@ export default function LabTimelineScorePage() {
                       sx={{
                         p: 2,
                         borderRadius: 2.5,
-                        border: '1px solid rgba(255,255,255,0.09)',
-                        bgcolor: 'rgba(255,255,255,0.015)',
+                        border: '1px solid #E8EBF2',
+                        bgcolor: 'background.secondary',
                       }}
                     >
                       <Stack
@@ -475,8 +475,8 @@ export default function LabTimelineScorePage() {
                           position: 'relative',
                           height: 46,
                           borderRadius: 2,
-                          bgcolor: 'rgba(255,255,255,0.04)',
-                          border: '1px solid rgba(255,255,255,0.08)',
+                          bgcolor: 'action.hover',
+                          border: '1px solid #E8EBF2',
                           overflow: 'hidden',
                         }}
                       >
@@ -519,7 +519,7 @@ export default function LabTimelineScorePage() {
                           const bg = isReprint
                             ? 'linear-gradient(90deg, #DC2626, #EA580C)'
                             : slot.status === 'InProgress'
-                              ? 'linear-gradient(90deg, #7C3AED, #6366F1)'
+                              ? 'linear-gradient(90deg, #6F55FF, #A78BFA)'
                               : slot.status === 'Accepted'
                                 ? 'linear-gradient(90deg, #0284C7, #2563EB)'
                                 : 'linear-gradient(90deg, #D97706, #F59E0B)'
@@ -545,7 +545,7 @@ export default function LabTimelineScorePage() {
                                   cursor: 'pointer',
                                   overflow: 'hidden',
                                   whiteSpace: 'nowrap',
-                                  boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
+                                  boxShadow: '0 2px 8px rgba(37,38,58,0.18)',
                                 }}
                               >
                                 <Typography variant="caption" sx={{ color: '#fff', fontWeight: 700 }}>
@@ -582,9 +582,9 @@ export default function LabTimelineScorePage() {
                                 px: 1.5,
                                 py: 0.75,
                                 borderRadius: 1.5,
-                                bgcolor: 'rgba(255,255,255,0.025)',
+                                bgcolor: 'action.hover',
                                 cursor: 'pointer',
-                                '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
+                                '&:hover': { bgcolor: 'action.hover' },
                               }}
                             >
                               <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -639,7 +639,7 @@ export default function LabTimelineScorePage() {
         maxWidth="xs"
         fullWidth
         PaperProps={{
-          sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' },
+          sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' },
         }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>

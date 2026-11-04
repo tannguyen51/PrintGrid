@@ -44,6 +44,15 @@ public class Model : AggregateRoot<Guid>
     public bool? IsPrintable { get; private set; }
     public string? GeometryMessage { get; private set; }
 
+    // ── Content moderation ────────────────────────────────────────────
+    // Ops reviews the file before it can enter quoting/production. Approval is tied to the
+    // SHA-256 of the reviewed bytes, so replacing the file invalidates the approval.
+    public ModelReviewStatus ReviewStatus { get; private set; } = ModelReviewStatus.Pending;
+    public string? ReviewReason { get; private set; }
+    public Guid? ReviewedBy { get; private set; }
+    public DateTime? ReviewedAtUtc { get; private set; }
+    public string? ReviewedSha256 { get; private set; }
+
     /// <summary>
     /// Mutable list for EF Core's primitive collection mapping; expose read-only
     /// through code. EF requires a writable collection type (List&lt;T&gt;), not
@@ -109,10 +118,18 @@ public class Model : AggregateRoot<Guid>
         long sizeBytes,
         IEnumerable<string>? tags)
     {
+        var normalizedFormat = (fileFormat ?? string.Empty).Trim().ToUpperInvariant();
+        // Only a change in file identity (name/format/size of a stored blob) invalidates the
+        // review. Renaming, description and tags do not.
+        var fileIdentityChanged = StorageKey is not null &&
+            (!string.Equals(FileName, fileName.Trim(), StringComparison.Ordinal) ||
+             !string.Equals(FileFormat, normalizedFormat, StringComparison.Ordinal) ||
+             SizeBytes != sizeBytes);
+
         Name = name.Trim();
         Description = description?.Trim();
         FileName = fileName.Trim();
-        FileFormat = (fileFormat ?? string.Empty).Trim().ToUpperInvariant();
+        FileFormat = normalizedFormat;
         SizeBytes = sizeBytes;
         UpdatedAt = DateTime.UtcNow;
 
@@ -121,6 +138,44 @@ public class Model : AggregateRoot<Guid>
         {
             _tags.AddRange(tags.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct());
         }
+
+        if (fileIdentityChanged)
+            ResetReview();
+    }
+
+    /// <summary>Ops approved the model for quoting/production.</summary>
+    public void Approve(Guid? reviewerId, DateTime atUtc, string? note = null)
+    {
+        ReviewStatus = ModelReviewStatus.Approved;
+        ReviewReason = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        ReviewedBy = reviewerId;
+        ReviewedAtUtc = atUtc;
+        ReviewedSha256 = Sha256;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Ops rejected the model; a written reason is mandatory.</summary>
+    public void Reject(Guid reviewerId, DateTime atUtc, string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("A rejection reason is required", nameof(reason));
+
+        ReviewStatus = ModelReviewStatus.Rejected;
+        ReviewReason = reason.Trim();
+        ReviewedBy = reviewerId;
+        ReviewedAtUtc = atUtc;
+        ReviewedSha256 = null;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Puts the model back into the queue (new file bytes, or an explicit reset).</summary>
+    public void ResetReview()
+    {
+        ReviewStatus = ModelReviewStatus.Pending;
+        ReviewReason = null;
+        ReviewedBy = null;
+        ReviewedAtUtc = null;
+        ReviewedSha256 = null;
     }
 
     /// <summary>

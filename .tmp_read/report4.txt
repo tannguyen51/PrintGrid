@@ -1,0 +1,134 @@
+﻿
+
+Capstone Project Report
+Report 4 – Software Design Document
+
+
+
+
+
+
+
+– Hanoi, August 2019 –
+
+
+Table of Contents
+	 TOC \o "1-3" \h \z \u I. Record of Changes	 PAGEREF _Toc83349083 \h 3
+	II. Software Design Document	 PAGEREF _Toc83349084 \h 4
+	1. System Design	 PAGEREF _Toc83349085 \h 4
+	1.1 System Architecture	 PAGEREF _Toc83349086 \h 4
+	1.2 Package Diagram	 PAGEREF _Toc83349087 \h 4
+	2. Database Design	 PAGEREF _Toc83349088 \h 4
+	3. Detailed Design	 PAGEREF _Toc83349089 \h 5
+	3.1 <Feature/Function Name1>	 PAGEREF _Toc83349090 \h 5
+	3.2 <Feature/Function Name2>	 PAGEREF _Toc83349091 \h 6
+
+
+
+I. Record of Changes
+Date
+ | A*
+M, D
+ | In charge
+ | Change Description
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | 
+ | *A - Added M - Modified D - Deleted
+
+
+II. Software Design Document
+1. System Design
+1.1 System Architecture
+[The content of this section includes the overall diagram which includes the sub-systems, the external systems, and the relationship/connection among them. You need also provide the explanation for each of the diagram components (modules, sub-systems, external systems, etc.)].
+1.2 Package Diagram
+[Provide the package diagram for each sub-system. The content of this section includes overall package diagram(s) and the explanation for each package (or namespace). Please see the sample and description table format below]
+
+Package Descriptions
+No
+ | Package
+ | Description
+ | 01
+ | <Package name>
+ | <Description of the package>
+ | 02
+ | 
+ | 
+ | 2. Database Design
+[Provide the files description, database table relationship & table descriptions like example below]
+
+Table Descriptions
+No
+ | Table
+ | Description
+ | 01
+ | <Table name>
+ | <Description of the table>
+- Primary keys: <<list of primary key fields>>
+- Foreign keys: <<list of foreign key fields>>
+ | 02
+ | <Table name2>
+ | …
+ | 3. Detailed Design
+3.1 <Feature/Function Name1>
+[Provide the detailed design for the feature <Feature Name1>. It includes Class Diagram, Class Specifications, and Sequence Diagram(s); For the features/functions with the same structure of class & sequence diagrams, you need to provide the diagrams once for one feature/function and refer to those diagrams from other features/functions]
+3.1.1 Class Diagram
+[This part presents the class diagram for the relevant feature]
+
+3.1.2 <Sequence Diagram Name1>
+[Provide the sequence diagram(s) for the feature, see the sample below]
+
+3.1.3 <Sequence Diagram Name2>
+3.1.4 …
+3.2 <Feature/Function Name2>
+…
+

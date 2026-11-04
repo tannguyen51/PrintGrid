@@ -25,6 +25,7 @@ const HubShipmentsPage = lazy(() => import('../features/hub/HubShipmentsPage'))
 const SchedulingBoardPage = lazy(() => import('../features/scheduling/SchedulingBoardPage'))
 const QcProofReviewPage = lazy(() => import('../features/qcProof/QcProofReviewPage'))
 const QuoteReviewPage = lazy(() => import('../features/quotes/QuoteReviewPage'))
+const ModelReviewQueuePage = lazy(() => import('../features/moderation/ModelReviewQueuePage').then((m) => ({ default: m.ModelReviewQueuePage })))
 const EscalationQueuePage = lazy(() => import('../features/ops/EscalationQueuePage'))
 const DecisionTracePage = lazy(() => import('../features/ops/DecisionTracePage'))
 const OpsLabsPage = lazy(() => import('../features/ops/OpsLabsPage'))
@@ -251,7 +252,7 @@ export function AppRoutes() {
         <Route
           path="/staff/qc-proofs"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OpsManager']}>
               <QcProofReviewPage />
             </ProtectedRoute>
           }
@@ -259,15 +260,23 @@ export function AppRoutes() {
         <Route
           path="/quote-reviews"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OpsManager']}>
               <QuoteReviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/model-reviews"
+          element={
+            <ProtectedRoute allowedRoles={['OpsManager']}>
+              <ModelReviewQueuePage />
             </ProtectedRoute>
           }
         />
         <Route
           path="/scheduling"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OpsManager']}>
               <SchedulingBoardPage />
             </ProtectedRoute>
           }
@@ -275,7 +284,7 @@ export function AppRoutes() {
         <Route
           path="/ops/escalations"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OpsManager']}>
               <EscalationQueuePage />
             </ProtectedRoute>
           }
@@ -283,7 +292,7 @@ export function AppRoutes() {
         <Route
           path="/ops/decisions"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OpsManager']}>
               <DecisionTracePage />
             </ProtectedRoute>
           }
@@ -291,7 +300,7 @@ export function AppRoutes() {
         <Route
           path="/ops/labs"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OpsManager']}>
               <OpsLabsPage />
             </ProtectedRoute>
           }
@@ -299,7 +308,7 @@ export function AppRoutes() {
         <Route
           path="/ops/sla"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OpsManager']}>
               <SlaReportPage />
             </ProtectedRoute>
           }
@@ -307,7 +316,7 @@ export function AppRoutes() {
         <Route
           path="/ops/refunds"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OpsManager']}>
               <RefundsPage />
             </ProtectedRoute>
           }
@@ -315,7 +324,7 @@ export function AppRoutes() {
         <Route
           path="/ops/payments"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OpsManager']}>
               <PaymentsPage />
             </ProtectedRoute>
           }
@@ -323,7 +332,7 @@ export function AppRoutes() {
         <Route
           path="/ops/design-requests"
           element={
-            <ProtectedRoute allowedRoles={['OpsManager', 'Admin']}>
+            <ProtectedRoute allowedRoles={['OpsManager']}>
               <DesignRequestsPage />
             </ProtectedRoute>
           }

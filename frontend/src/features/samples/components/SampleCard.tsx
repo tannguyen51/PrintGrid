@@ -9,7 +9,7 @@ import { formatDims, formatPrintTime, formatVnd, type SampleSummary } from '../s
 function SampleGlyph() {
   return (
     <Box component="svg" viewBox="0 0 200 160" sx={{ width: '100%', height: '100%', opacity: 0.55 }}>
-      <g transform="translate(100 82)" fill="none" stroke="#4A4A52" strokeWidth={1.2}>
+      <g transform="translate(100 82)" fill="none" stroke="#C0C6D4" strokeWidth={1.2}>
         <path d="M0 -46 L46 -20 L46 26 L0 52 L-46 26 L-46 -20 Z" />
         <path d="M0 -46 L0 52 M-46 -20 L0 6 L46 -20" />
         <path d="M-30 -34 L16 -8" strokeDasharray="3 5" />
@@ -32,14 +32,14 @@ export function SampleCard({ sample }: { sample: SampleSummary }) {
         display: 'flex',
         flexDirection: 'column',
         transition: 'border-color .18s ease, transform .18s ease',
-        '&:hover': { borderColor: '#3A3A42', transform: 'translateY(-2px)' },
+        '&:hover': { borderColor: '#6F55FF', transform: 'translateY(-2px)' },
       }}
     >
       <Box
         sx={{
           position: 'relative',
           aspectRatio: '4 / 3',
-          bgcolor: '#08080A',
+          bgcolor: 'background.secondary',
           borderBottom: `1px solid ${landing.hairlineSoft}`,
           display: 'grid',
           placeItems: 'center',
@@ -67,11 +67,12 @@ export function SampleCard({ sample }: { sample: SampleSummary }) {
             px: 1.25,
             py: '3px',
             borderRadius: '999px',
-            bgcolor: 'rgba(0,0,0,0.62)',
+            bgcolor: 'rgba(255,255,255,0.9)',
+            backdropFilter: 'blur(6px)',
             border: `1px solid ${landing.hairline}`,
             fontSize: 11,
             letterSpacing: '0.04em',
-            color: landing.textMuted,
+            color: landing.text,
           }}
         >
           {sample.category}

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Report 5 - Software Test Documentation</title>
+<style>
+@page { size: A4; margin: 2.2cm 2cm 2cm 2cm; }
+body { font-family: "Times New Roman", serif; font-size: 12pt; line-height: 1.35; color: #000; }
+p { margin: 4pt 0 6pt 0; text-align: justify; }
+h1 { font-family: "Times New Roman", serif; font-size: 16pt; font-weight: bold; color: #000; margin: 18pt 0 8pt 0; }
+h2 { font-family: "Times New Roman", serif; font-size: 13.5pt; font-weight: bold; color: #000; margin: 14pt 0 6pt 0; }
+h3 { font-family: "Times New Roman", serif; font-size: 12pt; font-weight: bold; color: #000; margin: 10pt 0 4pt 0; }
+table { border-collapse: collapse; width: 100%; margin: 6pt 0 10pt 0; }
+th, td { border: 1px solid #000; padding: 4pt 6pt; vertical-align: top; font-size: 10.5pt; }
+th { background: #E7E6E6; font-weight: bold; }
+ul, ol { margin: 4pt 0 8pt 18pt; }
+li { margin: 2pt 0; }
+.cover { text-align: center; }
+.cover .org { font-size: 13pt; font-weight: bold; margin-top: 0; }
+.cover .title { font-size: 20pt; font-weight: bold; margin-top: 48pt; }
+.cover .subtitle { font-size: 15pt; font-weight: bold; margin-top: 6pt; }
+.cover .project { font-size: 13pt; font-style: italic; margin-top: 24pt; }
+.cover .meta { font-size: 12pt; margin-top: 36pt; }
+.cover .place { font-size: 12pt; font-style: italic; margin-top: 60pt; }
+.small { font-size: 10pt; }
+.center { text-align: center; }
+.toc-title { font-size: 16pt; font-weight: bold; text-align: center; margin: 0 0 14pt 0; }
+.note { font-size: 10.5pt; font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <p class="org">FPT UNIVERSITY</p>
+  <p class="org">CAPSTONE PROJECT REPORT</p>
+  <p class="title">Report 5</p>
+  <p class="subtitle">Software Test Documentation</p>
+  <p class="project">PrintGrid &mdash; Distributed 3D Printing Fulfillment &amp; Scheduling Platform</p>
+  <p class="meta">Course: SEP490 &nbsp;&nbsp;|&nbsp;&nbsp; Project Code: FA26SE249</p>
+  <p class="meta">Team: TanNXSE181599 &middot; TuanDNBSE185029 &middot; MinhNQSE181684 &middot; NhatTQSE181682</p>
+  <p class="meta">Supervisor: Nguyen Tan Phuc</p>
+  <p class="place">Hanoi, November 2026</p>
+</div>
+
+<div style="page-break-before: always;"></div>
+
+<p class="toc-title">Table of Contents</p>
+<p>[[TOC]]</p>
+
+<div style="page-break-before: always;"></div>
+
+<h1>I. Record of Changes</h1>
+<table>
+  <tr><th style="width:16%">Date</th><th style="width:10%">A/M/D</th><th style="width:22%">In charge</th><th>Change Description</th></tr>
+  <tr><td>02/11/2026</td><td>A</td><td>TanNXSE181599</td><td>Initial creation of the Test Documentation.</td></tr>
+  <tr><td>02/11/2026</td><td>M</td><td>TanNXSE181599</td><td>Filled test results, coverage statistics, defect statistics and the final test report.</td></tr>
+</table>
+<p class="note">A = Added &middot; M = Modified &middot; D = Deleted</p>
+
+<h1>II. Testing Documentation</h1>
+
+<h2>1. Scope of Testing</h2>
+
+<p><b>Target of test:</b> the PrintGrid platform &mdash; a distributed 3D printing fulfillment and scheduling system. The scope covers the features implemented in the MVP and the extended scope, verified at unit, integration and system level.</p>
+
+<p><b>In scope:</b></p>
+<ul>
+  <li><b>Customer module:</b> registration and authentication (FR-CUST-001), 3D model upload and validation (FR-CUST-002/004), in-browser 3D preview (FR-CUST-003), print configuration (FR-CUST-005), quoting and order placement (FR-CUST-006/007), staged payment and refunds (FR-CUST-008/012), personal model library (FR-CUST-010).</li>
+  <li><b>Scheduling and assignment (core):</b> geometry analysis and slicing (FR-SCHED-001/002), capability filtering (FR-SCHED-003), multi-criteria scoring (FR-SCHED-004), quote-time speculative scheduling (FR-SCHED-005), job placement (FR-SCHED-006), event-driven rescheduling (FR-SCHED-007), calibration (FR-SCHED-008) and the assignment decision log (FR-SCHED-009).</li>
+  <li><b>Lab module:</b> registration and approval (FR-LAB-001), machine registry (FR-LAB-002), material inventory (FR-LAB-003), job accept/decline (FR-LAB-004) and the production workflow including QC proof and handover (FR-LAB-005).</li>
+  <li><b>Hub module:</b> batch receipt (FR-HUB-001), quality inspection (FR-HUB-002), reprint management (FR-HUB-003), order consolidation (FR-HUB-004) and shipping with delivery confirmation (FR-HUB-005).</li>
+  <li><b>Admin:</b> accounts and RBAC (FR-ADMIN-001), runtime configuration (FR-ADMIN-002) and shared catalogues (FR-ADMIN-003).</li>
+</ul>
+
+<p><b>Non-functional scope:</b> quote generation under 60 s (NFR-PERF-001), rescheduling under 30 s (NFR-PERF-002), API median latency under 500 ms (NFR-PERF-003), 100 concurrent users (NFR-PERF-005), correctness and determinism of the scheduling computation, and ownership isolation between customers.</p>
+
+<p><b>Out of scope:</b> automated UI testing (Selenium/Cypress), load testing beyond 100 concurrent users, penetration testing and security audit, accessibility certification, and browser coverage beyond Chrome, Firefox and Edge. Payment is exercised against the SEPay sandbox/bridge only; no real money moves during testing.</p>
+
+<p><b>Testing levels applied:</b></p>
+<table>
+  <tr><th style="width:12%">Level</th><th style="width:20%">In-charge</th><th style="width:20%">Input / Time</th><th style="width:26%">Focus</th><th>Acceptance criteria</th></tr>
+  <tr><td>Unit</td><td>Developer (D) + reviewer (R)</td><td>Each commit / PR; minutes per case</td><td>Domain logic, validators, scheduling math, Result/Error handling</td><td>All unit cases green; core domain line coverage &ge; 80%</td></tr>
+  <tr><td>Integration</td><td>Backend developer; QA review</td><td>Each sprint; per API endpoint and cross-module flow</td><td>API contract, EF Core mapping, CQRS pipeline, auth/authorization</td><td>All issued flows create/read/update correctly; 401/403 enforced</td></tr>
+  <tr><td>System</td><td>QA lead (TanNXSE181599)</td><td>Each sprint review + full regression before demo</td><td>End-to-end user journeys, security checks, demo script</td><td>All executed system cases pass; 0 critical defects</td></tr>
+  <tr><td>Acceptance</td><td>Whole team + supervisor</td><td>Final demo (2 rounds)</td><td>Each acceptance criterion in <i>13-Acceptance-Criteria.md</i></td><td>100% of must-have criteria met</td></tr>
+</table>
+
+<p><b>Constraints and assumptions:</b></p>
+<ul>
+  <li>Tests run in a local Docker environment (PostgreSQL 16 + Redis), not on the production Railway instance.</li>
+  <li>Payment, SMS and the real-lab trial are exercised in mock/bridge mode only.</li>
+  <li>The network between local services is assumed stable; scheduling tests use simulated lab data.</li>
+
+
+</ul>
+
+<h2>2. Test Strategy</h2>
+
+<h3>2.1 Testing Types</h3>
+
+<p><b>1. Unit Testing</b></p>
+<ul>
+  <li><b>Objective:</b> verify a single unit (domain entity, command handler, validator, algorithm function) in isolation.</li>
+  <li><b>Technique:</b> xUnit + NSubstitute (mock repositories and unit of work) + FluentAssertions; Arrange&ndash;Act&ndash;Assert.</li>
+  <li><b>Completion criteria:</b> 100% of unit cases pass; core domain line coverage &ge; 80%.</li>
+</ul>
+
+<p><b>2. Integration Testing</b></p>
+<ul>
+  <li><b>Objective:</b> verify that modules work together &mdash; Web API endpoint &rarr; MediatR handler &rarr; EF Core &rarr; PostgreSQL, including JWT authentication and authorization.</li>
+  <li><b>Technique:</b> WebApplicationFactory against a real PostgreSQL test database; seed data is created through EF; every flow is exercised through the real pipeline.</li>
+  <li><b>Completion criteria:</b> all integration flows create/read/update correctly; cross-tenant access returns 404; unauthenticated access returns 401.</li>
+</ul>
+
+<p><b>3. System Testing (end-to-end)</b></p>
+<ul>
+  <li><b>Objective:</b> verify complete user journeys across the running frontend, backend and database against the demo script.</li>
+  <li><b>Technique:</b> manual and scripted flows through the live application; API-level regression through Swagger/Postman.</li>
+  <li><b>Completion criteria:</b> the demo script (register &rarr; login &rarr; upload &rarr; configure &rarr; quote &rarr; order &rarr; track &rarr; logout) passes with 0 critical defects.</li>
+</ul>
+
+<p><b>4. Security Testing (targeted)</b></p>
+<ul>
+  <li><b>Objective:</b> confirm ownership isolation and authentication enforcement.</li>
+  <li><b>Technique:</b> cross-user API calls (user B cannot read, update or delete user A&rsquo;s models or orders), unauthenticated calls, invalid or rotated refresh tokens, role checks on admin endpoints.</li>
+  <li><b>Completion criteria:</b> cross-tenant access returns 404, unauthenticated access returns 401, forbidden roles return 403.</li>
+</ul>
+
+<p><b>5. Performance and Timing Testing (targeted)</b></p>
+<ul>
+  <li><b>Objective:</b> verify the scheduling and API timing targets in scope.</li>
+  <li><b>Technique:</b> benchmark scheduling runs at network sizes of 10, 25 and 50 labs; measure API latency under a basic load.</li>
+  <li><b>Completion criteria:</b> quote under 60 s; reschedule under 30 s (average under 15 s); API median under 500 ms.</li>
+</ul>
+
+<p><b>6. Regression Testing</b></p>
+<ul>
+  <li><b>Objective:</b> ensure new changes do not break existing behaviour.</li>
+  <li><b>Technique:</b> rerun the full unit and integration suites plus the end-to-end demo script before each sprint review and before the feature freeze.</li>
+  <li><b>Completion criteria:</b> no critical or high defect reopened; 0 regression in the core scheduling paths.</li>
+</ul>
+
+<h3>2.2 Test Levels</h3>
+<table>
+  <tr><th style="width:34%">Type of Tests</th><th>Unit</th><th>Integration</th><th>System</th><th>Acceptance</th></tr>
+  <tr><td>Unit Testing</td><td class="center">X</td><td class="center">X</td><td></td><td></td></tr>
+  <tr><td>Integration Testing</td><td></td><td class="center">X</td><td class="center">X</td><td></td></tr>
+  <tr><td>System Testing (E2E)</td><td></td><td></td><td class="center">X</td><td class="center">X</td></tr>
+  <tr><td>Security Testing (targeted)</td><td></td><td class="center">X</td><td class="center">X</td><td></td></tr>
+  <tr><td>Performance / Timing</td><td class="center">X</td><td></td><td class="center">X</td><td></td></tr>
+  <tr><td>Regression Testing</td><td class="center">X</td><td class="center">X</td><td class="center">X</td><td class="center">X</td></tr>
+</table>
+
+<h3>2.3 Supporting Tools</h3>
+<table>
+  <tr><th style="width:26%">Purpose</th><th style="width:32%">Tool</th><th style="width:24%">Vendor / In-house</th><th>Version</th></tr>
+  <tr><td>Unit test framework</td><td>xUnit</td><td>Community (xunit.net)</td><td>2.x</td></tr>
+  <tr><td>Mocking</td><td>NSubstitute</td><td>Open source</td><td>5.x</td></tr>
+  <tr><td>Assertions</td><td>FluentAssertions</td><td>Open source</td><td>6.x</td></tr>
+  <tr><td>Integration host</td><td>WebApplicationFactory (ASP.NET Core)</td><td>Microsoft</td><td>.NET 9</td></tr>
+  <tr><td>API testing / regression</td><td>Swagger UI, Postman</td><td>SmartBear, Postman Inc.</td><td>Latest</td></tr>
+  <tr><td>Test data access</td><td>EF Core InMemory, PostgreSQL test DB</td><td>Microsoft, PostgreSQL</td><td>9.x, 16</td></tr>
+  <tr><td>Real-time testing</td><td>SignalR test host</td><td>Microsoft</td><td>9.x</td></tr>
+  <tr><td>Test environment</td><td>Docker + docker compose</td><td>Docker Inc.</td><td>4.x</td></tr>
+  <tr><td>Coverage reporting</td><td>Coverlet (Cobertura)</td><td>Open source</td><td>6.x</td></tr>
+  <tr><td>Task / defect tracking</td><td>GitLab Issues</td><td>In-house, self-hosted</td><td>Latest</td></tr>
+</table>
+
+<h2>3. Test Plan</h2>
+
+<h3>3.1 Human Resources</h3>
+<table>
+  <tr><th style="width:22%">Worker / Doer</th><th style="width:24%">Role</th><th>Specific Responsibilities / Comments</th></tr>
+  <tr><td>TanNXSE181599</td><td>QA lead / PM (D; R)</td><td>Design test cases; execute system and regression rounds; collect statistics; write the Test Report and Report 5.</td></tr>
+  <tr><td>TuanDNBSE185029</td><td>Algorithm author (D)</td><td>Unit and performance tests of the scheduling engine; simulation baseline runs.</td></tr>
+  <tr><td>MinhNQSE181684</td><td>Backend developer (D; R)</td><td>Unit and integration tests for the API and domain; review other members&rsquo; cases.</td></tr>
+  <tr><td>NhatTQSE181682</td><td>Frontend developer (D; S)</td><td>System-test the UI flows; assist with the end-to-end script.</td></tr>
+</table>
+
+<h3>3.2 Test Environment</h3>
+<table>
+  <tr><th style="width:26%">Purpose</th><th style="width:38%">Tool</th><th style="width:22%">Provider</th><th>Version</th></tr>
+  <tr><td>Operating system</td><td>Windows 11, Ubuntu (WSL)</td><td>Microsoft, Canonical</td><td>11, 22.04 LTS</td></tr>
+  <tr><td>Database</td><td>PostgreSQL</td><td>PostgreSQL Global Development Group</td><td>16</td></tr>
+  <tr><td>Cache</td><td>Redis</td><td>Redis Ltd.</td><td>7.x</td></tr>
+  <tr><td>Object storage</td><td>MinIO</td><td>MinIO Inc.</td><td>Latest</td></tr>
+  <tr><td>Backend runtime</td><td>.NET SDK</td><td>Microsoft</td><td>9.x</td></tr>
+  <tr><td>Frontend</td><td>Node.js + Vite</td><td>Node.js Foundation, Vite</td><td>20.x, 5.x</td></tr>
+  <tr><td>Web browsers</td><td>Chrome, Firefox, Edge</td><td>Google, Mozilla, Microsoft</td><td>Latest stable</td></tr>
+  <tr><td>Local stack</td><td>Docker / docker compose</td><td>Docker Inc.</td><td>4.x</td></tr>
+  <tr><td>API documentation</td><td>Swagger UI</td><td>SmartBear</td><td>OpenAPI 3.0</td></tr>
+  <tr><td>Test runner</td><td>dotnet test, Coverlet</td><td>Microsoft, open source</td><td>.NET 9, 6.x</td></tr>
+</table>
+
+<h3>3.3 Test Milestones</h3>
+<table>
+  <tr><th style="width:52%">Milestone Task</th><th style="width:24%">Start Date</th><th>End Date</th></tr>
+  <tr><td>Test plan and test case design (W1)</td><td>01/09/2026</td><td>05/09/2026</td></tr>
+  <tr><td>Unit test harness and domain tests (W1&ndash;W2)</td><td>07/09/2026</td><td>18/09/2026</td></tr>
+  <tr><td>Integration tests for API and cross-module flows (W2&ndash;W4)</td><td>21/09/2026</td><td>09/10/2026</td></tr>
+  <tr><td>System test of the MVP demo script (W4)</td><td>12/10/2026</td><td>16/10/2026</td></tr>
+  <tr><td>Security test round (W4)</td><td>14/10/2026</td><td>16/10/2026</td></tr>
+  <tr><td>Simulation and performance runs (W5)</td><td>19/10/2026</td><td>23/10/2026</td></tr>
+  <tr><td>Full regression and acceptance round (W5)</td><td>26/10/2026</td><td>30/10/2026</td></tr>
+  <tr><td>Test documentation and final review</td><td>01/11/2026</td><td>02/11/2026</td></tr>
+</table>
+
+<h2>4. Test Cases</h2>
+
+<p>Test cases are prepared in the two attached workbooks:</p>
+<ul>
+  <li><b>Unit Test Cases</b> &rarr; <i>Report5_Unit Test.xls</i>: one sheet per tested function, with preconditions, inputs, expected outputs, case type (N/A/B), result (P/F), execution date and defect ID.</li>
+  <li><b>Integration, System and Acceptance Test Cases</b> &rarr; <i>Report5_Test Report.xlsx</i>: one sheet per module, with Test Case ID, description, procedure, expected results, preconditions and the result of each testing round. A <i>Defects</i> sheet records every defect found.</li>
+</ul>
+
+<p><b>Test case inventory:</b></p>
+<table>
+  <tr><th style="width:18%">Level</th><th style="width:26%">Document</th><th>Cases</th><th>Executed</th><th>Passed</th><th>Failed</th><th>Pending</th></tr>
+  <tr><td>Unit (automated)</td><td>Report5_Unit Test.xls</td><td>253</td><td>253</td><td>253</td><td>0</td><td>0</td></tr>
+  <tr><td>Integration (automated)</td><td>Report5_Test Report.xlsx</td><td>11</td><td>11</td><td>11</td><td>0</td><td>0</td></tr>
+  <tr><td>Simulator (automated)</td><td>Report5_Test Report.xlsx</td><td>5</td><td>5</td><td>5</td><td>0</td><td>0</td></tr>
+  <tr><td>System / Acceptance</td><td>Report5_Test Report.xlsx</td><td>68</td><td>63</td><td>63</td><td>0</td><td>5</td></tr>
+</table>
+<p class="note">The Unit Test workbook documents 117 cases for the 11 core functions; the remaining 136 automated unit cases belong to 26 additional test classes and are executed by the same dotnet test run, whose log is attached as evidence.</p>
+
+<p><b>Examples of unit test cases (Authentication):</b></p>
+<table>
+  <tr><th style="width:14%">Test Case ID</th><th style="width:44%">Test Description</th><th>Expected Result</th></tr>
+  <tr><td>UTCID01</td><td>Register creates a customer and returns a session</td><td>Success; access and refresh tokens present; roles contain Customer; one customer row added.</td></tr>
+  <tr><td>UTCID02</td><td>Register rejects a duplicate email</td><td>Failure with code email_exists; no customer added.</td></tr>
+  <tr><td>UTCID03</td><td>Login returns a session for valid credentials</td><td>Success; user id matches the stored customer.</td></tr>
+  <tr><td>UTCID04</td><td>Login rejects a known email with a wrong password</td><td>Failure with code unauthorized.</td></tr>
+  <tr><td>UTCID05</td><td>Login does not reveal whether an email exists</td><td>Unknown email returns the same unauthorized error.</td></tr>
+  <tr><td>UTCID06</td><td>Google login creates a verified customer</td><td>Customer linked to the Google subject; session returned.</td></tr>
+  <tr><td>UTCID07</td><td>Forgot password does not reveal an unknown email</td><td>Same success result; no email is sent.</td></tr>
+  <tr><td>UTCID08</td><td>Reset password consumes a valid token</td><td>Password hash changes; token and expiry are cleared.</td></tr>
+</table>
+
+<p><b>Examples of integration and system test cases:</b></p>
+<table>
+  <tr><th style="width:13%">Test Case ID</th><th style="width:34%">Test Description</th><th style="width:30%">Procedure (summary)</th><th>Expected Result</th></tr>
+  <tr><td>TC-AUTH-01</td><td>Register a new customer</td><td>POST /auth/register with a valid body</td><td>201; access and refresh tokens; role Customer.</td></tr>
+  <tr><td>TC-AUTH-06</td><td>Refresh token rotation</td><td>POST /auth/refresh, then retry with the old token</td><td>200 with a new pair; the old refresh token is rejected.</td></tr>
+  <tr><td>TC-MOD-09</td><td>Cross-user isolation on models</td><td>User A creates a model; user B calls PUT/DELETE</td><td>404 for every foreign call; no mutation.</td></tr>
+  <tr><td>TC-ORD-06</td><td>Order and quote created in one transaction</td><td>Place an order; force a failure in the second write</td><td>Both rows exist, or neither does.</td></tr>
+  <tr><td>TC-SCH-08</td><td>Concurrent placement does not double-book</td><td>Place two jobs on one machine in parallel</td><td>Exactly one placement commits; the loser retries.</td></tr>
+  <tr><td>TC-SCH-11</td><td>Decision log is written with the placement</td><td>Assign a job; read the decision log</td><td>One log row with candidates, scores, config version and budget.</td></tr>
+  <tr><td>TC-LAB-03</td><td>Admin cannot approve an incomplete lab</td><td>Approve a lab with no machine or no stock</td><td>409 Conflict; the lab stays Pending.</td></tr>
+  <tr><td>TC-HUB-08</td><td>Customer confirmation starts the guarantee clock</td><td>Hub delivers; the customer confirms receipt</td><td>The 30-day window starts from the customer confirmation.</td></tr>
+</table>
+
+<h2>5. Test Reports</h2>
+
+<h3>5.1 Unit Test Results</h3>
+<p>The full unit suite was executed on 02/11/2026 with <i>dotnet test</i>. All 253 cases pass across 37 test classes.</p>
+<table>
+  <tr><th style="width:34%">Area</th><th>Test classes</th><th>Cases</th><th>Passed</th><th>Failed</th></tr>
+  <tr><td>Customer (auth, models, orders, payment)</td><td>17</td><td>89</td><td>89</td><td>0</td></tr>
+  <tr><td>Scheduling, lab and hub domain</td><td>16</td><td>146</td><td>146</td><td>0</td></tr>
+  <tr><td>Admin and shared catalogues</td><td>4</td><td>18</td><td>18</td><td>0</td></tr>
+  <tr><td><b>Total</b></td><td><b>37</b></td><td><b>253</b></td><td><b>253</b></td><td><b>0</b></td></tr>
+</table>
+
+<p><b>Code coverage (Coverlet, unit suite):</b></p>
+<table>
+  <tr><th style="width:46%">Package</th><th>Line coverage</th><th>Branch coverage</th></tr>
+  <tr><td>PrintGrid.Modules.Customer.Domain</td><td>83.93%</td><td>57.74%</td></tr>
+  <tr><td>PrintGrid.Modules.Scheduling.Domain</td><td>80.94%</td><td>58.01%</td></tr>
+  <tr><td>PrintGrid.SharedKernel</td><td>72.44%</td><td>54.54%</td></tr>
+  <tr><td>PrintGrid.Modules.Admin.Domain</td><td>53.21%</td><td>28.40%</td></tr>
+  <tr><td>PrintGrid.Modules.Scheduling.Application</td><td>47.55%</td><td>36.08%</td></tr>
+  <tr><td>PrintGrid.Modules.Scheduling.Infrastructure</td><td>46.19%</td><td>53.69%</td></tr>
+  <tr><td>PrintGrid.Modules.Customer.Application</td><td>44.94%</td><td>32.12%</td></tr>
+  <tr><td>PrintGrid.Modules.Admin.Application</td><td>21.99%</td><td>16.02%</td></tr>
+</table>
+<p class="note">The solution-wide line rate is 7.82% because generated EF Core migrations and shared infrastructure contribute over 100,000 executable lines that are not unit-tested by design. The core domain layers, which carry the business rules and the scheduling algorithm, are covered at 80.94%&ndash;83.93% line and 57.74%&ndash;58.01% branch.</p>
+
+<h3>5.2 Integration and System Test Results</h3>
+<table>
+  <tr><th style="width:34%">Area</th><th>Cases</th><th>Passed</th><th>Failed</th><th>Notes</th></tr>
+  <tr><td>Integration flows (order &rarr; jobs, reschedule &rarr; reprint, shipment receipt, SignalR timeline)</td><td>11</td><td>11</td><td>0</td><td>Real PostgreSQL pipeline; EXCLUDE constraint verified.</td></tr>
+  <tr><td>Simulation and performance baseline</td><td>5</td><td>5</td><td>0</td><td>Network sizes 10 / 25 / 50 labs.</td></tr>
+  <tr><td>System and acceptance rounds</td><td>68</td><td>63</td><td>0</td><td>5 cases pending: 4 manual UI checks and 1 SEPay sandbox check.</td></tr>
+</table>
+
+<p><b>System test results by module:</b></p>
+<table>
+  <tr><th style="width:40%">Module</th><th>Test cases</th><th>Passed</th><th>Pending</th></tr>
+  <tr><td>Authentication &amp; Account</td><td>12</td><td>12</td><td>0</td></tr>
+  <tr><td>Model Upload &amp; Personal Library</td><td>10</td><td>9</td><td>1</td></tr>
+  <tr><td>Print Configuration, Quote &amp; Order</td><td>10</td><td>8</td><td>2</td></tr>
+  <tr><td>Scheduling &amp; Assignment Engine</td><td>12</td><td>12</td><td>0</td></tr>
+  <tr><td>Lab Registration &amp; Production Workflow</td><td>8</td><td>8</td><td>0</td></tr>
+  <tr><td>Hub Inspection, Reprint &amp; Shipping</td><td>8</td><td>8</td><td>0</td></tr>
+  <tr><td>Administration &amp; RBAC</td><td>8</td><td>6</td><td>2</td></tr>
+  <tr><td><b>Total</b></td><td><b>68</b></td><td><b>63</b></td><td><b>5</b></td></tr>
+</table>
+
+<h3>5.3 Defect Statistics</h3>
+<table>
+  <tr><th style="width:24%">Severity</th><th>Found</th><th>Fixed</th><th>Open</th></tr>
+  <tr><td>Critical</td><td>0</td><td>0</td><td>0</td></tr>
+  <tr><td>High</td><td>3</td><td>3</td><td>0</td></tr>
+  <tr><td>Medium</td><td>4</td><td>4</td><td>0</td></tr>
+  <tr><td>Low</td><td>1</td><td>1</td><td>0</td></tr>
+  <tr><td><b>Total</b></td><td><b>8</b></td><td><b>8</b></td><td><b>0</b></td></tr>
+</table>
+
+<p><b>Defect log (see the Defects sheet in Report5_Test Report.xlsx):</b></p>
+<table>
+  <tr><th style="width:9%">ID</th><th style="width:9%">Module</th><th style="width:12%">Severity</th><th style="width:52%">Description</th><th>Status</th></tr>
+  <tr><td>DF-001</td><td>Auth</td><td>High</td><td>Refresh returned 401 for a valid token because inbound JWT claims were mapped to ClaimTypes and the token-type check failed.</td><td>Fixed</td></tr>
+  <tr><td>DF-002</td><td>Model</td><td>High</td><td>IReadOnlyCollection&lt;string&gt; tags were not supported by the EF primitive-collection migration.</td><td>Fixed</td></tr>
+  <tr><td>DF-003</td><td>Auth</td><td>Medium</td><td>Surrounding whitespace in email and password caused a false credential mismatch.</td><td>Fixed</td></tr>
+  <tr><td>DF-004</td><td>Hub</td><td>High</td><td>Auto-paid orders did not record PaidAmount, so hub shipping was blocked.</td><td>Fixed</td></tr>
+  <tr><td>DF-005</td><td>Model</td><td>Medium</td><td>The /models route was shadowed by the static asset folder.</td><td>Fixed</td></tr>
+  <tr><td>DF-006</td><td>Order</td><td>Medium</td><td>Auto-confirmed orders and inventory role errors broke the confirmation flow.</td><td>Fixed</td></tr>
+  <tr><td>DF-007</td><td>Lab</td><td>Medium</td><td>Unit test FR_LAB_001_AC01 failed after BR-OPS-006 required a material declaration before approval; the fixture did not add stock.</td><td>Fixed</td></tr>
+  <tr><td>DF-008</td><td>Auth</td><td>Low</td><td>Logout redirected to /orders instead of the home page.</td><td>Fixed</td></tr>
+</table>
+
+<h3>5.4 Analysis and Conclusion</h3>
+<p>The core scheduling and assignment engine is the strongest verified area: capability filtering, weighted scoring, quote-time placement, event-driven rescheduling and the decision log are covered by dedicated unit tests and by an integration flow that exercises the real PostgreSQL pipeline, including the EXCLUDE constraint that prevents double-booking.</p>
+<p>Authentication and ownership isolation are the second strongest area. Cross-tenant reads, updates and deletes return 404, unauthenticated calls return 401 and admin endpoints enforce RBAC. This is both a demo-critical and a security-critical property.</p>
+<p>No critical or high defect remains open. The eight defects found during the project are fixed and closed, and each fix is covered by a regression case. The five pending system cases are manual UI checks (3D preview, print configuration, admin screens) and one SEPay sandbox check; they are scheduled for the final acceptance round and are not blockers for the demo.</p>
+<p>Residual risk is concentrated in the out-of-scope areas: real payment settlement, real lab hardware and load beyond 100 concurrent users. Within the declared scope, the system is ready for the acceptance demo against <i>13-Acceptance-Criteria.md</i>.</p>
+
+<p class="note">Report prepared by the PrintGrid team &middot; Capstone SEP490 &middot; Supervisor: Nguyen Tan Phuc &middot; September 2026 &ndash; November 2026</p>
+
+</body>
+</html>

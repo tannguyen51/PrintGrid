@@ -21,6 +21,6 @@ public class GetQuoteByIdQueryHandler : IRequestHandler<GetQuoteByIdQuery, Resul
         if (quote.CustomerId != query.CustomerId)
             return Result.Failure<QuoteDto>(Error.Forbidden("Quote belongs to another customer"));
 
-        return Result.Success(QuoteMappings.ToDto(quote));
+        return Result.Success(QuoteMappings.ToCustomerDto(quote));
     }
 }

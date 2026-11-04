@@ -21,8 +21,11 @@ public record ModelDto(
     bool? IsManifold,
     bool? IsPrintable,
     string? GeometryMessage,
-    string? StorageKey,
-    string? Sha256);
+    bool HasFile,
+    string? Sha256,
+    string ReviewStatus,
+    string? ReviewReason,
+    DateTime? ReviewedAtUtc);
 
 public record AuthUserDto(
     Guid Id,
@@ -43,6 +46,7 @@ public record QuoteDto(
     string? FailureReason,
     string PricingVersion,
     string? PlacementBasis,
+    string? CustomerPlacementSummary,
     DateTime? ApprovedAt,
     Guid? ReviewedBy,
     bool AutoApproved,

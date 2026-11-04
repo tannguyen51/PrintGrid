@@ -65,6 +65,7 @@ import {
 const emptyLab = {
   name: '',
   city: '',
+  district: '',
   transitDaysToHub: 1,
   workingDays: 'Thứ 2, Thứ 3, Thứ 4, Thứ 5, Thứ 6',
   openingTime: '08:00',
@@ -134,6 +135,7 @@ export default function OpsLabsPage() {
       await createLab.mutateAsync({
         name: labForm.name.trim(),
         city: labForm.city.trim(),
+        district: labForm.district.trim() || undefined,
         transitDaysToHub: Number(labForm.transitDaysToHub) || 0,
         workingDays: labForm.workingDays.trim(),
         openingTime: labForm.openingTime,
@@ -267,7 +269,7 @@ export default function OpsLabsPage() {
         {isLoading ? (
           <CircularProgress sx={{ alignSelf: 'center' }} />
         ) : labs.length === 0 ? (
-          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed rgba(255,255,255,0.15)' }}>
+          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <FactoryRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">
               Chưa có xưởng nào. Không có xưởng thì mọi yêu cầu báo giá sẽ bị từ chối vì không có máy khả thi.
@@ -279,7 +281,7 @@ export default function OpsLabsPage() {
               const statusChip = labStatusChip(lab)
               const missingMachines = lab.machines.length === 0
               return (
-                <Box key={lab.id} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)', bgcolor: 'background.paper' }}>
+                <Box key={lab.id} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
                   <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1.5}>
                     <Box>
                       <Stack direction="row" spacing={1.25} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -290,7 +292,7 @@ export default function OpsLabsPage() {
                         {missingMachines && <Chip size="small" variant="outlined" color="error" label="Chưa có máy in — cần 1 máy để duyệt" />}
                       </Stack>
                       <Typography variant="body2" color="text.secondary">
-                        {lab.city}{lab.address ? ` (${lab.address})` : ''}{lab.contactPhone ? ` · SĐT: ${lab.contactPhone}` : ''} · {lab.machines.length} máy · lịch {lab.workingDays || 'chưa khai'} {lab.openingTime}–{lab.closingTime} · vận chuyển về hub {lab.transitDaysToHub} ngày · đúng hạn {Math.round(lab.onTimeDeliveryRate * 100)}% · đạt lần đầu {Math.round(lab.firstPassYield * 100)}%
+                        {lab.city}{lab.district ? ` · ${lab.district}` : ''}{lab.address ? ` (${lab.address})` : ''}{lab.contactPhone ? ` · SĐT: ${lab.contactPhone}` : ''} · {lab.machines.length} máy · lịch {lab.workingDays || 'chưa khai'} {lab.openingTime}–{lab.closingTime} · vận chuyển về hub {lab.transitDaysToHub} ngày · đúng hạn {Math.round(lab.onTimeDeliveryRate * 100)}% · đạt lần đầu {Math.round(lab.firstPassYield * 100)}%
                       </Typography>
                       {lab.rejectionReason && (
                         <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
@@ -357,7 +359,7 @@ export default function OpsLabsPage() {
                             size="small"
                             variant="outlined"
                             color="inherit"
-                            sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}
+                            sx={{ color: 'text.primary', borderColor: 'divider' }}
                             onClick={() => handleToggleActive(lab)}
                             disabled={setActive.isPending}
                           >
@@ -388,7 +390,7 @@ export default function OpsLabsPage() {
                     </Stack>
                   )}
 
-                  <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.08)' }} />
+                  <Divider sx={{ my: 2, borderColor: 'divider' }} />
 
                   {lab.machines.length === 0 ? (
                     <Typography variant="body2" color="text.disabled">
@@ -436,7 +438,7 @@ export default function OpsLabsPage() {
 
       {/* ── Reject Lab Dialog ── */}
       <Dialog open={rejectTarget !== null} onClose={() => setRejectTarget(null)} fullWidth maxWidth="xs"
-        PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' } }}>
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}>
         <DialogTitle sx={{ fontWeight: 700 }}>Từ chối duyệt xưởng — {rejectTarget?.name}</DialogTitle>
         <DialogContent>
           <TextField
@@ -461,13 +463,14 @@ export default function OpsLabsPage() {
 
       {/* ── Register lab ── */}
       <Dialog open={labOpen} onClose={() => setLabOpen(false)} fullWidth maxWidth="sm"
-        PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' } }}>
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}>
         <DialogTitle sx={{ fontWeight: 700 }}>Thêm xưởng vào mạng lưới</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {labError && <Alert severity="error">{labError}</Alert>}
             <TextField label="Tên xưởng" value={labForm.name} onChange={(e) => setLabForm((f) => ({ ...f, name: e.target.value }))} required fullWidth />
             <TextField label="Thành phố" value={labForm.city} onChange={(e) => setLabForm((f) => ({ ...f, city: e.target.value }))} required fullWidth />
+            <TextField label="Quận / Huyện" value={labForm.district} onChange={(e) => setLabForm((f) => ({ ...f, district: e.target.value }))} fullWidth helperText="Khách hàng chỉ thấy quận/huyện và thành phố." />
             <TextField
               label="Số ngày vận chuyển về hub"
               type="number"
@@ -493,7 +496,7 @@ export default function OpsLabsPage() {
 
       {/* ── Register / update machine ── */}
       <Dialog open={machineLab !== null} onClose={() => { setMachineLab(null); setEditingMachine(null) }} fullWidth maxWidth="sm"
-        PaperProps={{ sx: { bgcolor: '#0A0A0A', backgroundImage: 'none', border: '1px solid rgba(255,255,255,0.12)' } }}>
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}>
         <DialogTitle sx={{ fontWeight: 700 }}>{editingMachine ? 'Cập nhật máy' : 'Thêm máy'} — {machineLab?.name}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -583,7 +586,7 @@ function MachineRow({ machine, editable, onChangeStatus, onEdit, onDelete }: { m
       justifyContent="space-between"
       alignItems={{ xs: 'flex-start', sm: 'center' }}
       spacing={1.5}
-      sx={{ p: 1.5, borderRadius: 2, border: '1px solid rgba(255,255,255,0.08)' }}
+      sx={{ p: 1.5, borderRadius: 2, border: '1px solid #E8EBF2' }}
     >
       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
         <PrecisionManufacturingRounded sx={{ color: offline ? 'error.main' : 'text.secondary' }} />
@@ -596,7 +599,7 @@ function MachineRow({ machine, editable, onChangeStatus, onEdit, onDelete }: { m
           </Typography>
           <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
             {machine.supportedMaterials.map((material) => (
-              <Chip key={material} size="small" label={material} sx={{ bgcolor: 'rgba(139,92,246,0.12)', color: '#A78BFA', height: 20 }} />
+              <Chip key={material} size="small" label={material} sx={{ bgcolor: 'rgba(111,85,255,0.10)', color: '#4933B8', height: 20 }} />
             ))}
           </Stack>
         </Box>

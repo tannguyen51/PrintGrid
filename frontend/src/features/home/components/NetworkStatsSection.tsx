@@ -15,7 +15,7 @@ export function NetworkStatsSection() {
   if (isError) return null;
 
   return (
-    <Box sx={{ py: 6, bgcolor: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+    <Box sx={{ py: 6, bgcolor: 'background.secondary', borderTop: '1px solid #E8EBF2', borderBottom: '1px solid #E8EBF2' }}>
       <Container maxWidth="lg">
         <Grid container spacing={4} textAlign="center">
           <Grid size={{ xs: 12, md: 4 }}>

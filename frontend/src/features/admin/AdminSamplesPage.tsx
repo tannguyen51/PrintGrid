@@ -165,7 +165,7 @@ export default function AdminSamplesPage() {
                         flexShrink: 0,
                         borderRadius: 2,
                         overflow: 'hidden',
-                        bgcolor: '#08080A',
+                        bgcolor: 'background.secondary',
                         border: `1px solid ${landing.hairline}`,
                         display: 'grid',
                         placeItems: 'center',

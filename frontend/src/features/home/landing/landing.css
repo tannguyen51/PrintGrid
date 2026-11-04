@@ -1,7 +1,6 @@
-/* Landing (public homepage) — animations for the Figma #36:4 / #36:32 design.
-   The hero artwork is the R3F RubikCube scene (transparent canvas — it blends
-   into the hero gradient, so the old Figma edge fades are no longer needed).
-   This file only covers DOM-level effects. */
+/* Landing (public homepage) — DOM-level effects for the light design system.
+   The hero artwork is the R3F cube scene (transparent canvas), so this file
+   only covers the scan line, network edges and reveal-on-scroll. */
 
 /* ── Section 01: mesh scan line over the model preview ── */
 .pg-scanline {
@@ -9,8 +8,8 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, rgba(241, 241, 241, 0) 0%, rgba(241, 241, 241, 0.85) 50%, rgba(241, 241, 241, 0) 100%);
-  box-shadow: 0 0 14px rgba(241, 241, 241, 0.28);
+  background: linear-gradient(90deg, rgba(111, 85, 255, 0) 0%, rgba(111, 85, 255, 0.75) 50%, rgba(255, 179, 71, 0) 100%);
+  box-shadow: 0 0 16px rgba(111, 85, 255, 0.28);
   animation: pgScan 3.4s ease-in-out infinite alternate;
 }
 
@@ -21,13 +20,13 @@
 
 /* ── Section 03: flowing edges in the network diagram ── */
 .pg-edge {
-  stroke: #2e2e33;
+  stroke: #dce0ea;
   stroke-width: 1.2;
   fill: none;
 }
 
 .pg-edge-live {
-  stroke: #909096;
+  stroke: #6f55ff;
   stroke-dasharray: 5 8;
   animation: pgDash 1.4s linear infinite;
 }
@@ -52,5 +51,10 @@
   .pg-scanline,
   .pg-edge-live {
     animation: none;
+  }
+  .pg-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
 }

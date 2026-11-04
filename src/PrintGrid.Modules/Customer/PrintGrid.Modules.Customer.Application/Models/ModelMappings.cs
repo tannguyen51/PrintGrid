@@ -25,6 +25,9 @@ public static class ModelMappings
         model.IsManifold,
         model.IsPrintable,
         model.GeometryMessage,
-        model.StorageKey,
-        model.Sha256);
+        model.StorageKey is not null,
+        model.Sha256,
+        model.ReviewStatus.ToString(),
+        model.ReviewReason,
+        model.ReviewedAtUtc);
 }

@@ -36,6 +36,7 @@ export default function LabRegisterPage() {
 
   const [name, setName] = useState('')
   const [city, setCity] = useState('')
+  const [district, setDistrict] = useState('')
   const [address, setAddress] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [operatingHours, setOperatingHours] = useState('T2-T7 08:00-18:00')
@@ -47,6 +48,7 @@ export default function LabRegisterPage() {
     if (!myLab) return
     setName(myLab.name)
     setCity(myLab.city)
+    setDistrict(myLab.district ?? '')
     setAddress(myLab.address ?? '')
     setContactPhone(myLab.contactPhone ?? '')
     setOperatingHours(myLab.operatingHours ?? 'T2-T7 08:00-18:00')
@@ -61,6 +63,7 @@ export default function LabRegisterPage() {
       const saved = await selfRegister.mutateAsync({
         name: name.trim(),
         city: city.trim(),
+        district: district.trim() || undefined,
         transitDaysToHub: Number(transitDaysToHub),
         operatingHours: operatingHours.trim(),
         contactPhone: contactPhone.trim() || undefined,
@@ -114,7 +117,7 @@ export default function LabRegisterPage() {
               color="inherit"
               startIcon={<ScheduleRounded />}
               onClick={() => navigate('/lab/timeline')}
-              sx={{ color: 'text.primary', borderColor: 'rgba(255,255,255,0.25)' }}
+              sx={{ color: 'text.primary', borderColor: 'divider' }}
             >
               Lịch máy &amp; Điểm xưởng
             </Button>
@@ -130,7 +133,7 @@ export default function LabRegisterPage() {
               sx={{
                 p: 3,
                 borderRadius: 3,
-                border: '1px solid rgba(255,255,255,0.12)',
+                border: '1px solid #E8EBF2',
                 bgcolor: 'background.paper',
               }}
             >
@@ -171,7 +174,7 @@ export default function LabRegisterPage() {
                 </Box>
               </Stack>
 
-              <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.08)' }} />
+              <Divider sx={{ my: 2, borderColor: 'divider' }} />
 
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, md: 4 }}>
@@ -231,7 +234,7 @@ export default function LabRegisterPage() {
               sx={{
                 p: { xs: 2.5, md: 3.5 },
                 borderRadius: 3,
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: '1px solid #E8EBF2',
                 bgcolor: 'background.paper',
               }}
             >
@@ -261,6 +264,16 @@ export default function LabRegisterPage() {
                     required
                     fullWidth
                     placeholder="VD: TP. Hồ Chí Minh"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    label="Quận / Huyện"
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    fullWidth
+                    placeholder="VD: Quận Tân Bình"
+                    helperText="Khách hàng chỉ thấy quận/huyện và thành phố."
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 7 }}>

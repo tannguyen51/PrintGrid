@@ -14,6 +14,12 @@ public interface IModelRepository
 
     Task<Entities.Model?> GetByIdAsync(Guid modelId, CancellationToken cancellationToken = default);
 
+    /// <summary>Moderation queue: models that have a stored file, optionally filtered by review status.</summary>
+    Task<IReadOnlyList<Entities.Model>> GetForReviewAsync(
+        string? status,
+        string? search,
+        CancellationToken cancellationToken = default);
+
     Task<(int ModelCount, long UsedBytes)> GetStorageUsageAsync(
         Guid customerId,
         CancellationToken cancellationToken = default);

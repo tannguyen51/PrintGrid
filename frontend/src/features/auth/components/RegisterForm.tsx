@@ -110,7 +110,7 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
   if (isRegistered) {
     return (
       <Box sx={{ flex: { xs: '1 1 auto', md: fullBleed ? '1 1 100%' : '1 1 48%' }, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', p: { xs: 4, md: 6 } }}>
-        <Box sx={{ width: '100%', maxWidth: 440, bgcolor: fullBleed ? 'transparent' : 'background.paper', border: fullBleed ? 'none' : '1px solid', borderColor: 'rgba(255,255,255,0.12)', borderRadius: fullBleed ? 0 : 4, p: 5, textAlign: 'center' }}>
+        <Box sx={{ width: '100%', maxWidth: 440, bgcolor: fullBleed ? 'transparent' : 'background.paper', border: fullBleed ? 'none' : '1px solid', borderColor: 'divider', borderRadius: fullBleed ? 0 : 3, p: 5, textAlign: 'center' }}>
           <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>Đăng ký thành công</Typography>
           <Alert severity="success" sx={{ mb: 4, textAlign: 'left' }}>
             Vui lòng kiểm tra email của bạn để xác thực tài khoản trước khi tiếp tục.
@@ -134,7 +134,7 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: 'background.default', // #050505
+        bgcolor: 'transparent',
         p: { xs: 4, md: 6 },
       }}
     >
@@ -147,10 +147,10 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
           maxWidth: 440,
           // Inside the AuthDialog (fullBleed) the dialog paper IS the frame — drawing a
           // second card here made the register view look like it sat in the login frame.
-          bgcolor: fullBleed ? 'transparent' : 'background.paper', // #0A0A0A
+          bgcolor: fullBleed ? 'transparent' : 'background.paper',
           border: fullBleed ? 'none' : '1px solid',
-          borderColor: 'rgba(255,255,255,0.12)',
-          borderRadius: fullBleed ? 0 : 4,
+          borderColor: 'divider',
+          borderRadius: fullBleed ? 0 : 3,
           boxShadow: (t) => (fullBleed ? 'none' : t.custom.loginCardShadow),
           px: { xs: 4, sm: 5 },
           py: { xs: 5, sm: 6 },
@@ -158,7 +158,7 @@ export function RegisterForm({ onSwitchToLogin, fullBleed, onSuccess }: Register
       >
         <Stack spacing={2}>
           {/* ── Heading ── */}
-          <Typography sx={{ fontWeight: 700, fontSize: '1.75rem', color: 'text.primary' }}>
+          <Typography sx={{ fontFamily: '"Plus Jakarta Sans", Inter, sans-serif', fontWeight: 800, fontSize: '1.9rem', letterSpacing: '-0.03em', color: 'text.primary' }}>
             Tạo tài khoản
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 1 }}>

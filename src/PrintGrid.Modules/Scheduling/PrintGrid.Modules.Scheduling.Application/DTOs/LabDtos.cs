@@ -41,7 +41,8 @@ public record LabDto(
     string? ContactPhone = null,
     string? Address = null,
     string? RejectionReason = null,
-    bool IsDeclarationComplete = true);
+    bool IsDeclarationComplete = true,
+    string? District = null);
 
 public record MachineTimelineSlotDto(
     Guid JobId,

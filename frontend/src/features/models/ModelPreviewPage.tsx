@@ -53,11 +53,14 @@ export default function ModelPreviewPage() {
 
   const format = (model?.fileFormat ?? '').toUpperCase()
   const previewable = PREVIEWABLE_FORMATS.includes(format)
-  // A model row with no storage key has no mesh on the server yet — analysis still running.
-  const hasMesh = Boolean(model?.storageKey)
+  // A model row with no stored file has no mesh on the server yet — analysis still running.
+  const hasMesh = Boolean(model?.hasFile)
   const { url, failed } = useModelFileUrl(model?.id ?? null, Boolean(model) && hasMesh && previewable)
 
-  const canOrder = model?.geometryStatus === 'Ready' && model.isPrintable !== false
+  const canOrder =
+    model?.geometryStatus === 'Ready' &&
+    model.isPrintable !== false &&
+    model.reviewStatus === 'Approved'
   const dimensions = model ? formatDimensions(model) : '—'
 
   useEffect(() => {
@@ -146,7 +149,7 @@ export default function ModelPreviewPage() {
             borderRadius: 3,
             overflow: 'hidden',
             border: `1px solid ${landing.hairline}`,
-            bgcolor: '#050505',
+            bgcolor: '#F5F2FF',
           }}
         >
           {!hasMesh ? (
@@ -170,7 +173,7 @@ export default function ModelPreviewPage() {
               </Typography>
             </Stack>
           ) : url ? (
-            <ModelViewer url={url} format={format} fit height="100%" background="#050505" sx={{ bgcolor: '#050505' }} />
+            <ModelViewer url={url} format={format} fit height="100%" background="#F5F2FF" sx={{ bgcolor: '#F5F2FF' }} />
           ) : (
             <Stack sx={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }} spacing={2}>
               <CircularProgress size={36} />
@@ -214,7 +217,7 @@ export default function ModelPreviewPage() {
           }}
         >
           <Box sx={{ p: 3 }}>
-            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Phân tích hình học
             </Typography>
 
@@ -272,7 +275,7 @@ export default function ModelPreviewPage() {
 
             {model.description?.trim() && (
               <>
-                <Divider sx={{ my: 2.5, borderColor: 'rgba(255,255,255,0.08)' }} />
+                <Divider sx={{ my: 2.5, borderColor: 'divider' }} />
                 <Typography variant="caption" color="text.disabled">Mô tả</Typography>
                 <Typography color="text.secondary" sx={{ mt: 0.5, whiteSpace: 'pre-wrap', fontSize: '0.9rem' }}>
                   {model.description}
@@ -296,6 +299,13 @@ export default function ModelPreviewPage() {
             {!canOrder && model.geometryStatus === 'Ready' && model.isPrintable === false && (
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
                 Model cần được sửa để có thể in.
+              </Typography>
+            )}
+            {!canOrder && model.geometryStatus === 'Ready' && model.isPrintable !== false && model.reviewStatus !== 'Approved' && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
+                {model.reviewStatus === 'Rejected'
+                  ? `Model bị từ chối nội dung${model.reviewReason ? `: ${model.reviewReason}` : '.'}`
+                  : 'Model đang chờ duyệt nội dung.'}
               </Typography>
             )}
           </Box>

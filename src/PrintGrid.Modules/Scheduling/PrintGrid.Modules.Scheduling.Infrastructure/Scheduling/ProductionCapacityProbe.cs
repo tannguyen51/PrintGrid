@@ -125,12 +125,26 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
 
             if (best is null || promised < best.PromisedDeliveryDate)
             {
+                // Internal basis keeps the lab/machine identity for Ops and the decision log.
+                var internalBasis =
+                    $"In xong ước tính {cursor:dd/MM HH:mm} UTC tại {lab.Name} · máy {machine.Name}, " +
+                    $"cộng {lab.TransitDaysToHub} ngày vận chuyển về hub + {HubProcessingDays} ngày hub xử lý";
+
+                // Customer-facing summary: district/city only — never the lab name, machine
+                // name or street address (the customer must not be able to identify the shop).
+                var location = string.IsNullOrWhiteSpace(lab.District)
+                    ? lab.City
+                    : $"{lab.District}, {lab.City}";
+                var customerBasis =
+                    $"In tại {location} — hoàn tất dự kiến {cursor:dd/MM HH:mm} UTC; " +
+                    $"cộng {lab.TransitDaysToHub} ngày vận chuyển về hub";
+
                 best = new TrialPlacementResult(
                     promised,
                     lab.Id,
                     machine.Id,
-                    $"In xong ước tính {cursor:dd/MM HH:mm} UTC tại {lab.Name} · máy {machine.Name}, " +
-                    $"cộng {lab.TransitDaysToHub} ngày vận chuyển về hub + {HubProcessingDays} ngày hub xử lý");
+                    internalBasis,
+                    customerBasis);
             }
         }
 

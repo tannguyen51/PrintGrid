@@ -1,4 +1,5 @@
 export type GeometryStatus = 'Pending' | 'Ready' | 'Failed'
+export type ModelReviewStatus = 'Pending' | 'Approved' | 'Rejected'
 
 export interface ThreeDModel {
   id: string
@@ -21,7 +22,12 @@ export interface ThreeDModel {
   isManifold?: boolean | null
   isPrintable?: boolean | null
   geometryMessage?: string | null
-  storageKey?: string | null
+  /** The storage key is intentionally no longer exposed; only this flag is returned. */
+  hasFile: boolean
+  sha256?: string | null
+  reviewStatus: ModelReviewStatus
+  reviewReason?: string | null
+  reviewedAtUtc?: string | null
 }
 
 export interface ModelInput {
