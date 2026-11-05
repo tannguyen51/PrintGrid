@@ -50,6 +50,10 @@ export interface Job {
   orderNumber?: string | null
   modelFileName?: string | null
   sha256?: string | null
+  productionQuote?: {
+    SizeCode: string; WidthMm: number; DepthMm: number; HeightMm: number; Quantity: number
+    Colors: { ColorCode: string; Grams: number }[]; PolishingPerUnit: number
+  } | null
 }
 
 export interface QcProofQueueItem {

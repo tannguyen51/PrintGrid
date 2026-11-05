@@ -13,17 +13,10 @@ public class CustomerTimelineDtoTests
             Guid.NewGuid(),
             "ORD-123",
             "Printing",
-            new DateOnly(2026, 10, 01),
+            new DateOnly(2026, 10, 1),
             false,
-            new List<OrderStageDto>
-            {
-                new("Printing", DateTime.UtcNow, true)
-            },
-            new List<CustomerOrderItemDto>
-            {
-                new(Guid.NewGuid(), "Model", 2, "Printing")
-            }
-        );
+            [new OrderStageDto("Printing", DateTime.UtcNow, true)],
+            [new CustomerOrderItemDto(Guid.NewGuid(), "Model", 2, "Printing")]);
 
         // Act
         var json = JsonSerializer.Serialize(dto, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });

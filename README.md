@@ -4,6 +4,11 @@ Distributed 3D printing fulfillment and scheduling platform. Capstone project FA
 
 Full specification lives in [documentation/](documentation/) — start with [documentation/README.md](documentation/README.md).
 
+Automatic file quotations (size, per-color material, machine hours, failure allowance and polishing):
+[CuraEngine quotation setup](documentation/project/design/18-Slicer-Quotation.md).
+Configure the engine and lab-validated machine/material profiles and apply `AddSlicedQuotation`
+before using the new quote flow. Missing configuration returns a clear error, never a fabricated slicer result.
+
 ## Stack
 
 | Layer | Technology |

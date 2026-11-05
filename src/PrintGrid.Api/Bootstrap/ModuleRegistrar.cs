@@ -10,21 +10,21 @@ namespace PrintGrid.Api.Bootstrap;
 
 public static class ModuleRegistrar
 {
-    private static readonly IModule[] Modules =
-    {
+    private static readonly IModule[] _modules =
+    [
         new CustomerModule(),
         new SchedulingModule(),
         new LabModule(),
         new HubModule(),
         new AnalyticsModule(),
         new AdminModule()
-    };
+    ];
 
     public static IServiceCollection AddApplicationModules(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        foreach (var module in Modules)
+        foreach (var module in _modules)
         {
             module.RegisterServices(services, configuration);
         }

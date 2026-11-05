@@ -32,6 +32,7 @@ const SECTIONS: AdminSection[] = [
   { label: 'Tổng quan', href: '/admin', icon: <DashboardRounded fontSize="small" /> },
   { label: 'Người dùng & phân quyền', href: '/admin/users', icon: <PeopleRounded fontSize="small" /> },
   { label: 'Duyệt xưởng', href: '/admin/labs', icon: <StorefrontRounded fontSize="small" /> },
+  { label: 'Profile & duyệt máy', href: '/admin/cura-profiles', icon: <TuneRounded fontSize="small" /> },
   { label: 'Kho tri thức QC', href: '/admin/qc-knowledge', icon: <FactCheckRounded fontSize="small" /> },
   { label: 'Cấu hình thương mại', href: '/admin/commercial-configurations', icon: <TuneRounded fontSize="small" /> },
   { label: 'Catalogue dùng chung', href: '/admin/catalogs', icon: <CategoryRounded fontSize="small" /> },

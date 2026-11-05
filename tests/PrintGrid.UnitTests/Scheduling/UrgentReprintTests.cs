@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PrintGrid.Modules.Scheduling.Application.Abstractions;
@@ -48,19 +47,17 @@ public class UrgentReprintTests
         job.AssignTo(labId ?? Guid.NewGuid(), Guid.NewGuid(), start, start.AddHours(1), 0.9m);
         job.Accept(DateTime.UtcNow);
         job.Start(DateTime.UtcNow);
-        job.Complete(DateTime.UtcNow, 55, "Layer adhesion OK", new[] { "lab-qc/photo-1.jpg" });
+        job.Complete(DateTime.UtcNow, 55, "Layer adhesion OK", ["lab-qc/photo-1.jpg"]);
         job.Fail("layer shift");
         return job;
     }
 
-    private static AssignmentOutcome Assigned(Guid jobId)
+    private static AssignmentOutcome Assigned()
     {
         var start = DateTime.UtcNow.AddHours(2);
         return new AssignmentOutcome(
             true,
-            new AssignmentResultDto(
-                jobId, Guid.NewGuid(), Guid.NewGuid(), start, start.AddHours(1), 0.87m,
-                new Dictionary<string, decimal> { ["due_date_slack"] = 0.9m }),
+            new AssignmentResultDto(Guid.NewGuid(), start, start.AddHours(1), 0.87m),
             AssignmentOutcomes.Assigned, null, [], [], 80, false, null);
     }
 
@@ -83,10 +80,10 @@ public class UrgentReprintTests
                 Arg.Do<Job>(j => placed = j),
                 Arg.Do<AssignmentRequest>(r => capturedRequest = r),
                 Arg.Any<CancellationToken>())
-            .Returns(ci => Assigned(ci.Arg<Job>().Id));
+            .Returns(_ => Assigned());
 
         var result = await Handler().Handle(
-            new CreateUrgentReprintCommand(original.Id, "layer shift"), default);
+            new CreateUrgentReprintCommand(original.Id, "layer shift"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         created.Should().NotBeNull();
@@ -107,7 +104,7 @@ public class UrgentReprintTests
         capturedRequest.ExcludeLabId.Should().Be(printedBy,
             "the lab at fault must not be handed the reprint (same rule as a refusal)");
         created.DomainEvents.Should().ContainSingle(e => e is JobReprintCreatedEvent);
-        result.Value!.ReprintJobId.Should().Be(created.Id);
+        result.Value.ReprintJobId.Should().Be(created.Id);
         result.Value.EscalatedToOps.Should().BeFalse();
     }
 
@@ -119,18 +116,18 @@ public class UrgentReprintTests
         firstReprint.Fail("warped");
         _jobs.GetByIdAsync(firstReprint.Id, Arg.Any<CancellationToken>()).Returns(firstReprint);
         _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
-            .Returns(ci => Assigned(ci.Arg<Job>().Id));
+            .Returns(_ => Assigned());
 
         Job? created = null;
         await _jobs.AddAsync(Arg.Do<Job>(j => created = j), Arg.Any<CancellationToken>());
 
-        var result = await Handler().Handle(new CreateUrgentReprintCommand(firstReprint.Id, "warped"), default);
+        var result = await Handler().Handle(new CreateUrgentReprintCommand(firstReprint.Id, "warped"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.EscalatedToOps.Should().BeFalse();
+        result.Value.EscalatedToOps.Should().BeFalse();
         created!.ReprintIndex.Should().Be(2, "the cap allows exactly two automatic reprints (B14)");
         created.OriginalJobId.Should().Be(original.Id, "the chain always points back to the original job");
-        await _escalations.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _escalations.DidNotReceiveWithAnyArgs().AddAsync(null!);
     }
 
     [Fact]
@@ -145,18 +142,18 @@ public class UrgentReprintTests
         OpsEscalation? escalation = null;
         await _escalations.AddAsync(Arg.Do<OpsEscalation>(e => escalation = e), Arg.Any<CancellationToken>());
 
-        var result = await Handler().Handle(new CreateUrgentReprintCommand(lastAllowed.Id, "third failure"), default);
+        var result = await Handler().Handle(new CreateUrgentReprintCommand(lastAllowed.Id, "third failure"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.EscalatedToOps.Should().BeTrue();
+        result.Value.EscalatedToOps.Should().BeTrue();
         result.Value.ReprintJobId.Should().BeNull();
 
         escalation.Should().NotBeNull();
         escalation!.Kind.Should().Be(OpsEscalationKind.ReprintLimitExceeded);
         escalation.Status.Should().Be(OpsEscalationStatus.Open);
 
-        await _jobs.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
-        await _engine.DidNotReceiveWithAnyArgs().AssignAsync(default!, default!, default);
+        await _jobs.DidNotReceiveWithAnyArgs().AddAsync(null!);
+        await _engine.DidNotReceiveWithAnyArgs().AssignAsync(null!, null!);
     }
 
     [Fact]
@@ -170,7 +167,7 @@ public class UrgentReprintTests
         _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
             .Returns(NotAssigned(AssignmentOutcomes.NoFeasibleSlot, "No capable machine has capacity"));
 
-        await Handler().Handle(new CreateUrgentReprintCommand(original.Id, "layer shift"), default);
+        await Handler().Handle(new CreateUrgentReprintCommand(original.Id, "layer shift"), CancellationToken.None);
 
         await _shortfall.Received(1).HandleAsync(
             Arg.Is<Job>(j => j.Id == created!.Id),
@@ -186,11 +183,11 @@ public class UrgentReprintTests
         _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
             .Returns(NotAssigned(AssignmentOutcomes.PlacementRace, "boom"));
 
-        var result = await Handler().Handle(new CreateUrgentReprintCommand(original.Id, "layer shift"), default);
+        var result = await Handler().Handle(new CreateUrgentReprintCommand(original.Id, "layer shift"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.PlannedStartUtc.Should().BeNull();
-        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!, default);
+        result.Value.PlannedStartUtc.Should().BeNull();
+        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(null!, null!);
     }
 
     [Fact]
@@ -205,10 +202,10 @@ public class UrgentReprintTests
 
         AssignmentRequest? captured = null;
         _engine.AssignAsync(Arg.Any<Job>(), Arg.Do<AssignmentRequest>(r => captured = r), Arg.Any<CancellationToken>())
-            .Returns(ci => Assigned(ci.Arg<Job>().Id));
+            .Returns(_ => Assigned());
 
         var result = await Handler().Handle(
-            new CreateUrgentReprintCommand(original.Id, "hub cracked it", Fault: FaultAttribution.Hub), default);
+            new CreateUrgentReprintCommand(original.Id, "hub cracked it", Fault: FaultAttribution.Hub), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         created!.CostBearer.Should().Be(CostBearer.System,
@@ -226,10 +223,10 @@ public class UrgentReprintTests
 
         AssignmentRequest? captured = null;
         _engine.AssignAsync(Arg.Any<Job>(), Arg.Do<AssignmentRequest>(r => captured = r), Arg.Any<CancellationToken>())
-            .Returns(ci => Assigned(ci.Arg<Job>().Id));
+            .Returns(_ => Assigned());
 
         await Handler().Handle(
-            new CreateUrgentReprintCommand(original.Id, "layer shift", Fault: FaultAttribution.Lab), default);
+            new CreateUrgentReprintCommand(original.Id, "layer shift", Fault: FaultAttribution.Lab), CancellationToken.None);
 
         captured!.ExcludeLabId.Should().Be(printedBy,
             "the lab at fault must not be handed the reprint");
@@ -246,9 +243,9 @@ public class UrgentReprintTests
             DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3)));
         _jobs.GetByIdAsync(pending.Id, Arg.Any<CancellationToken>()).Returns(pending);
 
-        var result = await Handler().Handle(new CreateUrgentReprintCommand(pending.Id, "no reason"), default);
+        var result = await Handler().Handle(new CreateUrgentReprintCommand(pending.Id, "no reason"), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        await _jobs.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _jobs.DidNotReceiveWithAnyArgs().AddAsync(null!);
     }
 }

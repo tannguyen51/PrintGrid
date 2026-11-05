@@ -8,18 +8,14 @@ namespace PrintGrid.Modules.Customer.Application.Commands.DesignRequests;
 public sealed record GetMyDesignRequestsQuery(Guid CustomerId)
     : IRequest<Result<IReadOnlyList<DesignRequestDto>>>;
 
-public sealed class GetMyDesignRequestsQueryHandler
+public sealed class GetMyDesignRequestsQueryHandler(IDesignRequestRepository requests)
     : IRequestHandler<GetMyDesignRequestsQuery, Result<IReadOnlyList<DesignRequestDto>>>
 {
-    private readonly IDesignRequestRepository _requests;
-
-    public GetMyDesignRequestsQueryHandler(IDesignRequestRepository requests) => _requests = requests;
-
     public async Task<Result<IReadOnlyList<DesignRequestDto>>> Handle(
         GetMyDesignRequestsQuery request,
         CancellationToken cancellationToken)
     {
-        var rows = await _requests.GetByCustomerAsync(request.CustomerId, cancellationToken);
+        var rows = await requests.GetByCustomerAsync(request.CustomerId, cancellationToken);
         return Result.Success<IReadOnlyList<DesignRequestDto>>(rows.Select(DesignRequestMapping.ToDto).ToList());
     }
 }
@@ -28,18 +24,14 @@ public sealed class GetMyDesignRequestsQueryHandler
 public sealed record GetDesignRequestsQuery(string? Status = null)
     : IRequest<Result<IReadOnlyList<DesignRequestDto>>>;
 
-public sealed class GetDesignRequestsQueryHandler
+public sealed class GetDesignRequestsQueryHandler(IDesignRequestRepository requests)
     : IRequestHandler<GetDesignRequestsQuery, Result<IReadOnlyList<DesignRequestDto>>>
 {
-    private readonly IDesignRequestRepository _requests;
-
-    public GetDesignRequestsQueryHandler(IDesignRequestRepository requests) => _requests = requests;
-
     public async Task<Result<IReadOnlyList<DesignRequestDto>>> Handle(
         GetDesignRequestsQuery request,
         CancellationToken cancellationToken)
     {
-        var rows = await _requests.GetAllAsync(request.Status, cancellationToken);
+        var rows = await requests.GetAllAsync(request.Status, cancellationToken);
         return Result.Success<IReadOnlyList<DesignRequestDto>>(rows.Select(DesignRequestMapping.ToDto).ToList());
     }
 }

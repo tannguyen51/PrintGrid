@@ -33,6 +33,7 @@ import {
 import { Link as RouterLink } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
+import { defaultPrinterConfiguration, PrinterConfigurationFields } from '../lab/PrinterConfigurationFields'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import {
   useAddMachine,
@@ -81,6 +82,7 @@ const emptyMachine = {
   minLayerHeightMm: 0.1,
   achievableToleranceMm: 0.2,
   materials: 'PLA, PETG',
+  printerConfiguration: defaultPrinterConfiguration,
 }
 
 const labStatusChip = (lab: Lab) =>
@@ -162,6 +164,7 @@ export default function OpsLabsPage() {
         buildHeightMm: Number(machineForm.buildHeightMm),
         minLayerHeightMm: Number(machineForm.minLayerHeightMm),
         achievableToleranceMm: Number(machineForm.achievableToleranceMm),
+        printerConfiguration: machineForm.printerConfiguration,
         supportedMaterials: machineForm.materials
           .split(',')
           .map((m) => m.trim().toUpperCase())
@@ -414,6 +417,7 @@ export default function OpsLabsPage() {
                               buildHeightMm: machine.buildHeightMm, minLayerHeightMm: machine.minLayerHeightMm,
                               achievableToleranceMm: machine.achievableToleranceMm,
                               materials: machine.supportedMaterials.join(', '),
+                              printerConfiguration: machine.printerConfiguration ?? defaultPrinterConfiguration,
                             })
                           }}
                           onDelete={async () => {
@@ -541,6 +545,8 @@ export default function OpsLabsPage() {
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField label="Dung sai đạt được (mm)" type="number" value={machineForm.achievableToleranceMm} onChange={(e) => setMachineForm((f) => ({ ...f, achievableToleranceMm: Number(e.target.value) }))} fullWidth />
               </Grid>
+              <PrinterConfigurationFields value={machineForm.printerConfiguration}
+                onChange={printerConfiguration => setMachineForm(f => ({ ...f, printerConfiguration }))} />
             </Grid>
             <Typography variant="caption" color="text.disabled">
               Khổ in, layer height và dung sai là ba điều kiện lọc cứng của engine — nhập sai thì máy sẽ bị loại khỏi mọi job.

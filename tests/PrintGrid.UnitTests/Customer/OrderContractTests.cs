@@ -1,5 +1,4 @@
 using PrintGrid.Modules.Customer.Domain.Entities;
-using PrintGrid.Modules.Customer.Domain.Enums;
 using PrintGrid.Modules.Customer.Domain.ValueObjects;
 using PrintGrid.SharedKernel.ValueObjects;
 

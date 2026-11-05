@@ -10,20 +10,12 @@ namespace PrintGrid.Modules.Customer.Application.Models;
 /// "we received file X at time T, size S, hash H". Written to the durable email
 /// outbox inside the same save path as the upload itself.
 /// </summary>
-public class ModelUploadedEmailHandler : INotificationHandler<ModelUploadedEvent>
+public class ModelUploadedEmailHandler(ICustomerRepository customers, IEmailOutbox outbox)
+    : INotificationHandler<ModelUploadedEvent>
 {
-    private readonly ICustomerRepository _customers;
-    private readonly IEmailOutbox _outbox;
-
-    public ModelUploadedEmailHandler(ICustomerRepository customers, IEmailOutbox outbox)
-    {
-        _customers = customers;
-        _outbox = outbox;
-    }
-
     public async Task Handle(ModelUploadedEvent notification, CancellationToken cancellationToken)
     {
-        var customer = await _customers.GetByIdAsync(notification.CustomerId, cancellationToken);
+        var customer = await customers.GetByIdAsync(notification.CustomerId, cancellationToken);
         if (customer is null) return;
 
         var body =
@@ -34,6 +26,6 @@ public class ModelUploadedEmailHandler : INotificationHandler<ModelUploadedEvent
             "Bản ghi này là bằng chứng điện tử về việc bàn giao file. " +
             "File thuộc quyền sở hữu của bạn; nền tảng và các xưởng in không được phép sử dụng lại.";
 
-        await _outbox.QueueAsync(customer.Email, "[PrintGrid] Xác nhận đã nhận file 3D", body, cancellationToken);
+        await outbox.QueueAsync(customer.Email, "[PrintGrid] Xác nhận đã nhận file 3D", body, cancellationToken);
     }
 }

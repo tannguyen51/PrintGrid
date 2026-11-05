@@ -33,7 +33,9 @@ public sealed class GetScoringConfigurationsQueryHandler(IScoringWeightConfigura
 
     internal static ScoringConfigurationDto Map(ScoringWeightConfiguration x) => new(
         x.Id, x.Version, x.DueDateSlack, x.LabReliability, x.LoadBalance,
-        x.Cost, x.Transit, x.ToWeights().Total, x.IsActive, x.Reason, x.ChangedBy, x.CreatedAtUtc);
+        x.Cost, x.Transit,
+        x.DueDateSlack + x.LabReliability + x.LoadBalance + x.Cost + x.Transit,
+        x.IsActive, x.Reason, x.ChangedBy, x.CreatedAtUtc);
 
     private static ScoringConfigurationDto Map(ScoringParameterSet x) => new(
         null, x.Version, x.Weights.DueDateSlack, x.Weights.LabReliability,
@@ -49,7 +51,7 @@ public sealed class ActivateScoringConfigurationCommandHandler(
 {
     public async Task<Result<ScoringConfigurationDto>> Handle(ActivateScoringConfigurationCommand command, CancellationToken ct)
     {
-        var version = command.Version?.Trim() ?? string.Empty;
+        var version = command.Version.Trim();
         if (await repository.VersionExistsAsync(version, ct))
             return Result.Failure<ScoringConfigurationDto>(Error.Conflict($"Scoring configuration version '{version}' already exists"));
 

@@ -6,25 +6,15 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Customer.Application.Commands.Auth.VerifyEmail;
 
-public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Result>
+public class VerifyEmailCommandHandler(
+    ICustomerRepository customers,
+    IUnitOfWork unitOfWork,
+    IPasswordHasher passwordHasher)
+    : IRequestHandler<VerifyEmailCommand, Result>
 {
-    private readonly ICustomerRepository _customers;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IPasswordHasher _passwordHasher;
-
-    public VerifyEmailCommandHandler(
-        ICustomerRepository customers,
-        IUnitOfWork unitOfWork,
-        IPasswordHasher passwordHasher)
-    {
-        _customers = customers;
-        _unitOfWork = unitOfWork;
-        _passwordHasher = passwordHasher;
-    }
-
     public async Task<Result> Handle(VerifyEmailCommand command, CancellationToken cancellationToken)
     {
-        var customer = await _customers.GetByEmailAsync(command.Email, cancellationToken);
+        var customer = await customers.GetByEmailAsync(command.Email, cancellationToken);
         if (customer is null)
             return Result.Failure(new Error("invalid_token", "Invalid token or email"));
 
@@ -34,11 +24,11 @@ public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Res
         if (customer.VerificationTokenExpiresAt < DateTime.UtcNow)
             return Result.Failure(new Error("token_expired", "Token has expired"));
 
-        if (customer.VerificationTokenHash is null || !_passwordHasher.Verify(command.Token, customer.VerificationTokenHash))
+        if (customer.VerificationTokenHash is null || !passwordHasher.Verify(command.Token, customer.VerificationTokenHash))
             return Result.Failure(new Error("invalid_token", "Invalid token"));
 
         customer.VerifyEmail();
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

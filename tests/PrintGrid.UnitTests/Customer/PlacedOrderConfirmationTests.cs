@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using NSubstitute;
 using PrintGrid.Modules.Customer.Application.Commands.PlaceOrder;

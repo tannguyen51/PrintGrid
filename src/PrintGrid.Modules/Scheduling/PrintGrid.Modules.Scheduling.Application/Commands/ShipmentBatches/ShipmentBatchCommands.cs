@@ -59,9 +59,18 @@ public sealed class GetShipmentPlannerQueryHandler(
         var eligible = await jobs.GetProofApprovedForShipmentAsync(request.LabId, ct);
         var recent = await batches.GetByLabAsync(request.LabId, ct);
         return Result.Success(new ShipmentPlannerDto(
-            lab.Id, lab.Name, lab.TransportZone, lab.TransferDaysOfWeek, lab.NextTransferDate(clock.Today),
-            eligible.Select(job => new ShipmentJobDto(job.Id, job.InternalDueDate, ShipmentWeight.Of(job), job.Quantity, job.Specification.MaterialCode, job.QcReviewedAtUtc)).ToList(),
-            recent.Take(10).Select(batch => new ShipmentBatchDto(batch.Id, batch.ScheduledTransferDate, batch.WaybillNumber, batch.Status.ToString(), batch.JobCount, batch.TotalWeightGrams, batch.TransportAllowance, batch.Currency, batch.SealedAtUtc)).ToList()));
+            lab.Id,
+            lab.Name,
+            lab.TransportZone,
+            lab.TransferDaysOfWeek,
+            lab.NextTransferDate(clock.Today),
+            eligible.Select(job => new ShipmentJobDto(
+                job.Id, job.InternalDueDate, ShipmentWeight.Of(job), job.Quantity,
+                job.Specification.MaterialCode, job.QcReviewedAtUtc)).ToList(),
+            recent.Take(10).Select(batch => new ShipmentBatchDto(
+                batch.Id, batch.ScheduledTransferDate, batch.WaybillNumber, batch.Status.ToString(),
+                batch.JobCount, batch.TotalWeightGrams, batch.TransportAllowance, batch.Currency,
+                batch.SealedAtUtc)).ToList()));
     }
 }
 
@@ -111,6 +120,9 @@ public sealed class SealShipmentBatchCommandHandler(
         }
         await batches.AddAsync(batch, ct);
         await unitOfWork.SaveChangesAsync(ct);
-        return Result.Success(new ShipmentBatchDto(batch.Id, batch.ScheduledTransferDate, batch.WaybillNumber, batch.Status.ToString(), selected.Count, batch.TotalWeightGrams, batch.TransportAllowance, batch.Currency, batch.SealedAtUtc));
+        return Result.Success(new ShipmentBatchDto(
+            batch.Id, batch.ScheduledTransferDate, batch.WaybillNumber, batch.Status.ToString(),
+            selected.Count, batch.TotalWeightGrams, batch.TransportAllowance, batch.Currency,
+            batch.SealedAtUtc));
     }
 }

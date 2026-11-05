@@ -1,4 +1,3 @@
-using FluentAssertions;
 using MediatR;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -15,7 +14,6 @@ using PrintGrid.Modules.Customer.Domain.ValueObjects;
 using PrintGrid.Modules.Scheduling.Application.EventHandlers;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
-using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
 using PrintGrid.SharedKernel.ValueObjects;
 using Testcontainers.PostgreSql;
 
@@ -124,7 +122,7 @@ public class PlaceOrderToJobsFlowTests : IAsyncLifetime
                 AcceptTerms: true));
 
             result.IsSuccess.Should().BeTrue(result.Error.Message);
-            result.Value.Status.Should().Be(OrderStatus.PaymentPending.ToString());
+            result.Value.Status.Should().Be(nameof(OrderStatus.PaymentPending));
 
             var db = sp.GetRequiredService<PrintGridDbContext>();
             return await db.Set<Order>()

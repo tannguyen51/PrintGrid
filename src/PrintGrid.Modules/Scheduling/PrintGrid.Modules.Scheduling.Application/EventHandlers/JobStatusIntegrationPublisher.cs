@@ -13,44 +13,34 @@ namespace PrintGrid.Modules.Scheduling.Application.EventHandlers;
 /// Completed — a split order item (BR-SCHED-010) stays in production until all of its child
 /// batches have passed hub inspection.
 /// </summary>
-public class JobStatusIntegrationPublisher :
-    INotificationHandler<JobStartedEvent>,
-    INotificationHandler<JobCompletedEvent>,
-    INotificationHandler<JobFailedEvent>,
-    INotificationHandler<JobInspectionPassedEvent>
+public class JobStatusIntegrationPublisher(
+    IPublisher publisher,
+    IJobRepository jobs,
+    ILogger<JobStatusIntegrationPublisher> logger)
+    :
+        INotificationHandler<JobStartedEvent>,
+        INotificationHandler<JobCompletedEvent>,
+        INotificationHandler<JobFailedEvent>,
+        INotificationHandler<JobInspectionPassedEvent>
 {
-    private readonly IPublisher _publisher;
-    private readonly IJobRepository _jobs;
-    private readonly ILogger<JobStatusIntegrationPublisher> _logger;
-
-    public JobStatusIntegrationPublisher(
-        IPublisher publisher,
-        IJobRepository jobs,
-        ILogger<JobStatusIntegrationPublisher> logger)
-    {
-        _publisher = publisher;
-        _jobs = jobs;
-        _logger = logger;
-    }
-
     public Task Handle(JobStartedEvent notification, CancellationToken cancellationToken)
     {
-        return _publisher.Publish(
+        return publisher.Publish(
             new ProductionStatusChangedIntegrationEvent(notification.OrderItemId, "Printing"),
             cancellationToken);
     }
 
     public Task Handle(JobCompletedEvent notification, CancellationToken cancellationToken)
     {
-        return _publisher.Publish(
+        return publisher.Publish(
             new ProductionStatusChangedIntegrationEvent(notification.OrderItemId, "QualityCheck"),
             cancellationToken);
     }
 
     public Task Handle(JobFailedEvent notification, CancellationToken cancellationToken)
     {
-        return _publisher.Publish(
-            new ProductionStatusChangedIntegrationEvent(notification.OrderItemId, "Failed", notification.Reason),
+        return publisher.Publish(
+            new ProductionStatusChangedIntegrationEvent(notification.OrderItemId, "Failed"),
             cancellationToken);
     }
 
@@ -62,29 +52,20 @@ public class JobStatusIntegrationPublisher :
     /// </summary>
     public async Task Handle(JobInspectionPassedEvent notification, CancellationToken cancellationToken)
     {
-        var job = await _jobs.GetByIdAsync(notification.JobId, cancellationToken);
+        var job = await jobs.GetByIdAsync(notification.JobId, cancellationToken);
         if (job is null)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Inspection-passed event for unknown job {JobId}; no production status published",
                 notification.JobId);
             return;
         }
 
-        var siblings = await _jobs.GetByOrderItemIdAsync(job.OrderItemId, cancellationToken);
+        var siblings = await jobs.GetByOrderItemIdAsync(job.OrderItemId, cancellationToken);
 
-        // A cancelled job can never become Completed: it is the superseded original of a split
+        // A canceled job can never become Completed: it is the superseded original of a split
         // (BR-SCHED-010) and counting it would keep the item open forever.
         var liveJobs = siblings.Where(candidate => candidate.Status != JobStatus.Cancelled).ToList();
-
-        // A failed job blocks the item only until a later reprint of the same chain exists
-        // (FR-HUB-003). The failed original keeps the same OrderItemId, so without this an
-        // item could never complete after a reprint passed.
-        bool Superseded(Guid id, Guid? originalJobId, int reprintIndex) =>
-            liveJobs.Any(other =>
-                other.Id != id &&
-                other.ReprintIndex > reprintIndex &&
-                (other.OriginalJobId ?? other.Id) == (originalJobId ?? id));
 
         var openJobs = liveJobs
             .Where(candidate => candidate.Status is not (JobStatus.Completed or JobStatus.Failed))
@@ -100,14 +81,24 @@ public class JobStatusIntegrationPublisher :
         if (!anyCompleted || openJobs.Count > 0 || unresolvedFailures.Count > 0)
         {
             var blockers = openJobs.Concat(unresolvedFailures).ToList();
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Order item {OrderItemId} is not complete yet after job {JobId} passed inspection: {OpenCount}/{TotalCount} job(s) still open ({OpenJobs})",
                 job.OrderItemId, job.Id, blockers.Count, liveJobs.Count, string.Join(", ", blockers));
             return;
         }
 
-        await _publisher.Publish(
+        await publisher.Publish(
             new ProductionStatusChangedIntegrationEvent(job.OrderItemId, "Completed"),
             cancellationToken);
+        return;
+
+        // A failed job blocks the item only until a later reprint of the same chain exists
+        // (FR-HUB-003). The failed original keeps the same OrderItemId, so without this an
+        // item could never complete after a reprint passed.
+        bool Superseded(Guid id, Guid? originalJobId, int reprintIndex) =>
+            liveJobs.Any(other =>
+                other.Id != id &&
+                other.ReprintIndex > reprintIndex &&
+                (other.OriginalJobId ?? other.Id) == (originalJobId ?? id));
     }
 }

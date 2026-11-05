@@ -11,14 +11,14 @@ public class CustomerModule : IModule
 {
     public string Name => "Customer";
 
-    public static Assembly ApplicationAssembly => typeof(AssemblyMarker).Assembly;
-
-    public static Assembly InfrastructureAssembly => typeof(CustomerModule).Assembly;
+    private static Assembly InfrastructureAssembly => typeof(CustomerModule).Assembly;
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         ModuleAssemblyRegistry.Register(InfrastructureAssembly);
         services.AddCustomerApplication();
         CustomerModuleRegistration.AddRepositories(services);
+        services.Configure<Slicing.CuraQuoteOptions>(configuration.GetSection("QuoteSlicer"));
+        services.AddScoped<Application.Quotes.IQuoteSlicer, Slicing.CuraQuoteSlicer>();
     }
 }

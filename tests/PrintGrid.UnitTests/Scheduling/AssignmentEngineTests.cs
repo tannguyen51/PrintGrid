@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PrintGrid.Modules.Scheduling.Application.Abstractions;
@@ -51,7 +50,7 @@ public class AssignmentEngineTests
         capped.SetCapacityLimit(1);
         var available = Lab.Onboard("Available lab", "HCM", 1);
         available.AddMachine(MachineBuilder.Default(available.Id));
-        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns(new[] { capped, available });
+        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns([capped, available]);
         _jobs.GetActiveCountsByLabAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, int> { [capped.Id] = 1 });
 
@@ -73,18 +72,18 @@ public class AssignmentEngineTests
         _clock,
         NullLogger<AssignmentEngine>.Instance);
 
-    private static Job PendingJob(int dueInDays = 5) => Job.Create(
+    private Job PendingJob(int dueInDays = 5) => Job.Create(
         Guid.NewGuid(),
         Guid.NewGuid(),
         SpecBuilder.Default(),
         estimatedPrintMinutes: 60,
-        internalDueDate: DateOnly.FromDateTime(DateTime.UtcNow.AddDays(dueInDays)));
+        internalDueDate: DateOnly.FromDateTime(_now.AddDays(dueInDays)));
 
     private void OneCapableLab()
     {
         var lab = Lab.Onboard("Lab A", "HCM", transitDaysToHub: 1);
         lab.AddMachine(MachineBuilder.Default(lab.Id));
-        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns(new[] { lab });
+        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns([lab]);
     }
 
     private (Lab First, Lab Second) TwoCapableLabs()
@@ -93,7 +92,7 @@ public class AssignmentEngineTests
         first.AddMachine(MachineBuilder.Default(first.Id));
         var second = Lab.Onboard("Lab B", "HCM", 1);
         second.AddMachine(MachineBuilder.Default(second.Id));
-        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns(new[] { first, second });
+        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns([first, second]);
         return (first, second);
     }
 
@@ -190,7 +189,7 @@ public class AssignmentEngineTests
         var lab = Lab.Onboard("Lab A", "HCM", 1);
         lab.AddMachine(MachineBuilder.Default(lab.Id));
         lab.AddMachine(MachineBuilder.Default(lab.Id));
-        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns(new[] { lab });
+        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns([lab]);
 
         var job = PendingJob();
         // The real UnitOfWork detaches every tracked change when a save loses a constraint
@@ -231,7 +230,7 @@ public class AssignmentEngineTests
         var lab = Lab.Onboard("Lab A", "HCM", 1);
         lab.AddMachine(MachineBuilder.Default(lab.Id));
         lab.AddMachine(MachineBuilder.Default(lab.Id));
-        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns(new[] { lab });
+        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns([lab]);
 
         var job = PendingJob();
         _jobs.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(_ => PendingJob());
@@ -277,8 +276,8 @@ public class AssignmentEngineTests
     public async Task Assign_logs_a_rejection_when_no_lab_can_print_the_specification()
     {
         var lab = Lab.Onboard("Resin only", "HCM", 1);
-        lab.AddMachine(MachineBuilder.Default(lab.Id, materials: new[] { "RESIN" }, technology: PrintTechnology.Sla));
-        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns(new[] { lab });
+        lab.AddMachine(MachineBuilder.Default(lab.Id, materials: ["RESIN"], technology: PrintTechnology.Sla));
+        _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns([lab]);
 
         var job = PendingJob();
 
@@ -312,8 +311,8 @@ public class AssignmentEngineTests
         outcome.EarliestFeasibleEndUtc.Should().NotBeNull();
         job.Status.Should().Be(JobStatus.Pending,
             "a probe must never place work past a committed date behind the customer's back");
-        await _decisions.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
-        await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+        await _decisions.DidNotReceiveWithAnyArgs().AddAsync(null!);
+        await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync();
     }
 
     [Fact]
@@ -321,8 +320,7 @@ public class AssignmentEngineTests
     {
         OneCapableLab();
         var job = PendingJob();
-        var start = _now;
-        job.AssignTo(Guid.NewGuid(), Guid.NewGuid(), start, start.AddHours(1), 0.9m);
+        job.AssignTo(Guid.NewGuid(), Guid.NewGuid(), _now, _now.AddHours(1), 0.9m);
         job.Accept(_now);
         job.Start(_now);
 

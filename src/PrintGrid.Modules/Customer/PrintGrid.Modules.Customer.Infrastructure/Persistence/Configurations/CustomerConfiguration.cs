@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using PrintGrid.Modules.Customer.Domain.Entities;
 
 namespace PrintGrid.Modules.Customer.Infrastructure.Persistence.Configurations;
 
@@ -19,7 +18,7 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Domain.Entities.Cu
         builder.Property(c => c.PasswordResetTokenHash).HasMaxLength(256);
         builder.Property(c => c.SessionVersion).IsRequired().HasDefaultValue(0);
         builder.Property(c => c.CreatedAt).IsRequired();
-        
+
         builder.Property(c => c.IsActive).IsRequired().HasDefaultValue(true);
         builder.Property(c => c.Roles).HasColumnType("text[]").IsRequired();
 

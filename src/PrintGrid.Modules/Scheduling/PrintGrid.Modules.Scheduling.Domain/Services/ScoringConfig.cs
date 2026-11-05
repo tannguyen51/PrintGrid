@@ -10,17 +10,17 @@ namespace PrintGrid.Modules.Scheduling.Domain.Services;
 public sealed record ScoringParameterSet(string Version, ScoringWeights Weights)
 {
     /// <summary>Weights the engine shipped with, kept as the first named version.</summary>
-    public static readonly ScoringParameterSet V2026_09 = new("2026.09", ScoringWeights.Default);
+    private static readonly ScoringParameterSet _v202609 = new("2026.09", ScoringWeights.Default);
 
     /// <summary>
     /// First version carried through the config register. The numbers deliberately match
     /// 2026.09 — this release only introduces the freeze/versioning mechanism; retuning the
     /// weights becomes a forward-only config change (FR-ADMIN-002) that new decisions pick up.
     /// </summary>
-    public static readonly ScoringParameterSet V2026_10 = new("2026.10", ScoringWeights.Default);
+    private static readonly ScoringParameterSet _v202610 = new("2026.10", ScoringWeights.Default);
 
     /// <summary>Append-only history; the newest entry is what new decisions use.</summary>
-    public static IReadOnlyList<ScoringParameterSet> All { get; } = [V2026_09, V2026_10];
+    private static IReadOnlyList<ScoringParameterSet> All { get; } = [_v202609, _v202610];
 
     public static ScoringParameterSet Active => All[^1];
 

@@ -3,20 +3,16 @@ using PrintGrid.SharedKernel.Interfaces;
 
 namespace PrintGrid.Infrastructure.Shared.Persistence;
 
-public class UnitOfWork : IUnitOfWork
+public class UnitOfWork(PrintGridDbContext context) : IUnitOfWork
 {
-    private readonly PrintGridDbContext _context;
-
-    public UnitOfWork(PrintGridDbContext context) => _context = context;
-
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
-        _context.SaveChangesAsync(cancellationToken);
+        context.SaveChangesAsync(cancellationToken);
 
     public async Task<bool> TrySaveChangesSafeAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            await _context.SaveChangesAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
             return true;
         }
         catch (DbUpdateException)
@@ -30,17 +26,14 @@ public class UnitOfWork : IUnitOfWork
 
     private void DiscardPendingChanges()
     {
-        foreach (var entry in _context.ChangeTracker.Entries().ToList())
+        foreach (var entry in context.ChangeTracker.Entries().ToList())
         {
-            switch (entry.State)
+            entry.State = entry.State switch
             {
-                case EntityState.Added:
-                    entry.State = EntityState.Detached;
-                    break;
-                case EntityState.Modified or EntityState.Deleted:
-                    entry.State = EntityState.Detached;
-                    break; // detached → re-reads come from DB on next load
-            }
+                EntityState.Added => EntityState.Detached,
+                EntityState.Modified or EntityState.Deleted => EntityState.Detached,
+                _ => entry.State
+            };
         }
     }
 }

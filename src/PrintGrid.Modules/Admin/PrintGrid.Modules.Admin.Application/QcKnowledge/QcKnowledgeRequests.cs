@@ -8,7 +8,7 @@ using PrintGrid.Modules.Admin.Domain.Repositories;
 namespace PrintGrid.Modules.Admin.Application.QcKnowledge;
 
 public sealed record InspectionChecklistItemDto(
-    string Code, string Name, string PassCriteria, bool IsMandatory, int DisplayOrder);
+    string Code, string Name, string PassCriteria, int DisplayOrder, bool IsMandatory = true);
 public sealed record InspectionChecklistVersionDto(
     Guid Id, string QualityGradeCode, int VersionNumber,
     IReadOnlyList<InspectionChecklistItemDto> Items, bool IsActive,
@@ -62,14 +62,14 @@ public sealed class CreateInspectionChecklistVersionValidator : AbstractValidato
 
 public sealed class SaveDefectTaxonomyItemValidator : AbstractValidator<SaveDefectTaxonomyItemCommand>
 {
-    private static readonly string[] Faults = ["Lab", "Hub", "Customer"];
+    private static readonly string[] _faults = ["Lab", "Hub", "Customer"];
     public SaveDefectTaxonomyItemValidator()
     {
         RuleFor(x => x.Code).NotEmpty().MaximumLength(32).Matches("^[A-Za-z0-9_-]+$");
         RuleFor(x => x.Name).NotEmpty().MaximumLength(160);
         RuleFor(x => x.Description).MaximumLength(1000);
         RuleFor(x => x.ActorId).NotEmpty();
-        RuleFor(x => x.DefaultFaultAttribution).Must(x => string.IsNullOrWhiteSpace(x) || Faults.Contains(x, StringComparer.OrdinalIgnoreCase))
+        RuleFor(x => x.DefaultFaultAttribution).Must(x => string.IsNullOrWhiteSpace(x) || _faults.Contains(x, StringComparer.OrdinalIgnoreCase))
             .WithMessage("Quy trách nhiệm mặc định phải là Lab, Hub hoặc Customer.");
     }
 }
@@ -82,7 +82,7 @@ public sealed class QcKnowledgeHandlers(IQcKnowledgeRepository repository) :
     IRequestHandler<DeleteDefectTaxonomyItemCommand, MutationResult<bool>>,
     IRequestHandler<GetQcKnowledgeQuery, MutationResult<QcKnowledgeDto>>
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<IReadOnlyList<InspectionChecklistVersionDto>> Handle(GetInspectionChecklistsQuery request, CancellationToken cancellationToken) =>
         (await repository.GetChecklistVersionsAsync(NormalizeOptional(request.QualityGradeCode), cancellationToken)).Select(Map).ToList();
@@ -97,7 +97,7 @@ public sealed class QcKnowledgeHandlers(IQcKnowledgeRepository repository) :
         var normalizedItems = request.Items.OrderBy(x => x.DisplayOrder)
             .Select(x => x with { Code = x.Code.Trim().ToUpperInvariant(), Name = x.Name.Trim(), PassCriteria = x.PassCriteria.Trim() }).ToList();
         var version = InspectionChecklistVersion.Create(grade, versionNumber,
-            JsonSerializer.Serialize(normalizedItems, JsonOptions), request.ActorId);
+            JsonSerializer.Serialize(normalizedItems, _jsonOptions), request.ActorId);
         await repository.AddChecklistVersionAsync(version, previous, cancellationToken);
         return MutationResult<InspectionChecklistVersionDto>.Success(Map(version));
     }
@@ -150,7 +150,7 @@ public sealed class QcKnowledgeHandlers(IQcKnowledgeRepository repository) :
         ? null : char.ToUpperInvariant(value.Trim()[0]) + value.Trim()[1..].ToLowerInvariant();
     private static InspectionChecklistVersionDto Map(InspectionChecklistVersion x) => new(
         x.Id, x.QualityGradeCode, x.VersionNumber,
-        JsonSerializer.Deserialize<List<InspectionChecklistItemDto>>(x.ItemsJson, JsonOptions) ?? [],
+        JsonSerializer.Deserialize<List<InspectionChecklistItemDto>>(x.ItemsJson, _jsonOptions) ?? [],
         x.IsActive, x.CreatedBy, x.CreatedAtUtc);
     private static DefectTaxonomyItemDto Map(DefectTaxonomyItem x) => new(
         x.Id, x.Code, x.Name, x.Description, x.DefaultFaultAttribution, x.IsDeprecated,

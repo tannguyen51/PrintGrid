@@ -6,16 +6,9 @@ using PrintGrid.SharedKernel.Common;
 
 namespace PrintGrid.Infrastructure.Shared.Persistence;
 
-public class PrintGridDbContext : DbContext
+public class PrintGridDbContext(DbContextOptions<PrintGridDbContext> options, IPublisher? publisher = null)
+    : DbContext(options)
 {
-    private readonly IPublisher? _publisher;
-
-    public PrintGridDbContext(DbContextOptions<PrintGridDbContext> options, IPublisher? publisher = null)
-        : base(options)
-    {
-        _publisher = publisher;
-    }
-
     /// <summary>Durable email outbox (shared infra holds no module of its own — BR-IP-002).</summary>
     public DbSet<EmailOutboxItem> EmailOutbox => Set<EmailOutboxItem>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
@@ -57,12 +50,10 @@ public class PrintGridDbContext : DbContext
         var events = CollectDomainEvents();
         var affected = await base.SaveChangesAsync(cancellationToken);
 
-        if (_publisher is not null)
+        if (publisher is null) return affected;
+        foreach (var domainEvent in events)
         {
-            foreach (var domainEvent in events)
-            {
-                await _publisher.Publish(domainEvent, cancellationToken);
-            }
+            await publisher.Publish(domainEvent, cancellationToken);
         }
 
         return affected;

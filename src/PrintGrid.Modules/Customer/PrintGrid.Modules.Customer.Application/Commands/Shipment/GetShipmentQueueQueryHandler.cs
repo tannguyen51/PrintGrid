@@ -5,7 +5,8 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Customer.Application.Commands.Shipment;
 
-public class GetShipmentQueueQueryHandler : IRequestHandler<GetShipmentQueueQuery, Result<IReadOnlyList<ShipmentOrderDto>>>
+public class GetShipmentQueueQueryHandler(IOrderRepository orders)
+    : IRequestHandler<GetShipmentQueueQuery, Result<IReadOnlyList<ShipmentOrderDto>>>
 {
     // The hub only acts on the tail of the chain: quality-checked (ready to ship), shipped, delivered.
     private static readonly OrderStatus[] _queueStatuses =
@@ -15,19 +16,15 @@ public class GetShipmentQueueQueryHandler : IRequestHandler<GetShipmentQueueQuer
         OrderStatus.Delivered
     ];
 
-    private readonly IOrderRepository _orders;
-
-    public GetShipmentQueueQueryHandler(IOrderRepository orders) => _orders = orders;
-
     public async Task<Result<IReadOnlyList<ShipmentOrderDto>>> Handle(
         GetShipmentQueueQuery request,
         CancellationToken cancellationToken)
     {
-        var orders = await _orders.GetByStatusAsync(_queueStatuses, cancellationToken);
+        var orders1 = await orders.GetByStatusAsync(_queueStatuses, cancellationToken);
 
         // AC01 (FR-HUB-006 / BR-LOG-001): Group QualityCheck orders by same CustomerId + same DeliveryAddress
         // where ready timestamps are within <= 24 hours.
-        var readyOrders = orders.Where(o => o.Status == OrderStatus.QualityCheck).ToList();
+        var readyOrders = orders1.Where(o => o.Status == OrderStatus.QualityCheck).ToList();
         var suggestionByOrderId = new Dictionary<Guid, (string GroupKey, IReadOnlyList<string> Companions)>();
 
         var visited = new HashSet<Guid>();
@@ -56,10 +53,10 @@ public class GetShipmentQueueQueryHandler : IRequestHandler<GetShipmentQueueQuer
             }
         }
 
-        var dtos = orders
+        var dtos = orders1
             .Select(o =>
             {
-                var suggestion = suggestionByOrderId.TryGetValue(o.Id, out var s)
+                var (groupKey, companions) = suggestionByOrderId.TryGetValue(o.Id, out var s)
                     ? s
                     : ((string? GroupKey, IReadOnlyList<string>? Companions))(null, null);
 
@@ -75,8 +72,8 @@ public class GetShipmentQueueQueryHandler : IRequestHandler<GetShipmentQueueQuer
                     FormatAddress(o),
                     o.ReadyForPackingAtUtc ?? o.ConfirmedAt ?? o.CreatedAt,
                     o.ConsolidatedShipmentId,
-                    suggestion.GroupKey,
-                    suggestion.Companions,
+                    groupKey,
+                    companions,
                     o.TotalPrice.Amount,
                     o.RefundedAmount,
                     o.Items.Count);

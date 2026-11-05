@@ -15,44 +15,35 @@ namespace PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 /// </summary>
 public record ReportJobFailureCommand(Guid JobId, string Reason) : IRequest<Result<UrgentReprintResultDto>>;
 
-public class ReportJobFailureCommandHandler
+public class ReportJobFailureCommandHandler(
+    IJobRepository jobs,
+    ILabRepository labs,
+    IUnitOfWork unitOfWork,
+    ISender sender)
     : IRequestHandler<ReportJobFailureCommand, Result<UrgentReprintResultDto>>
 {
-    private readonly IJobRepository _jobs;
-    private readonly ILabRepository _labs;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ISender _sender;
-
-    public ReportJobFailureCommandHandler(
-        IJobRepository jobs,
-        ILabRepository labs,
-        IUnitOfWork unitOfWork,
-        ISender sender)
-    {
-        _jobs = jobs;
-        _labs = labs;
-        _unitOfWork = unitOfWork;
-        _sender = sender;
-    }
-
     public async Task<Result<UrgentReprintResultDto>> Handle(
         ReportJobFailureCommand command,
         CancellationToken cancellationToken)
     {
-        var job = await _jobs.GetByIdAsync(command.JobId, cancellationToken);
+        var job = await jobs.GetByIdAsync(command.JobId, cancellationToken);
         if (job is null)
             return Result.Failure<UrgentReprintResultDto>(Error.NotFound("Job", command.JobId));
 
         var reason = (command.Reason ?? string.Empty).Trim();
         if (reason.Length < 10)
+        {
             return Result.Failure<UrgentReprintResultDto>(
                 Error.Validation("Lý do lỗi phải có ít nhất 10 ký tự."));
+        }
 
         // Only work the lab actually took on can be reported as failed; a job still waiting
         // for acceptance should be Declined instead.
         if (job.Status is not (JobStatus.Accepted or JobStatus.InProgress))
+        {
             return Result.Failure<UrgentReprintResultDto>(
                 Error.Conflict($"Job in state {job.Status} cannot be reported as failed"));
+        }
 
         var failedAtLabId = job.LabId;
 
@@ -64,9 +55,9 @@ public class ReportJobFailureCommandHandler
         // Settling (rather than silently releasing) releases the hold and records the usage.
         if (job.LabId is { } labId)
         {
-            var lab = await _labs.GetByIdAsync(labId, cancellationToken);
-            var reservedGrams = lab?.MaterialReservations
-                .FirstOrDefault(r => r.JobId == job.Id)?.ReservedGrams;
+            var lab = await labs.GetByIdAsync(labId, cancellationToken);
+            decimal? reservedGrams = lab?.MaterialReservations.Any(r => r.JobId == job.Id) == true
+                ? lab.MaterialReservations.Where(r => r.JobId == job.Id).Sum(r => r.ReservedGrams) : null;
 
             if (lab is not null && reservedGrams is { } grams)
             {
@@ -82,9 +73,9 @@ public class ReportJobFailureCommandHandler
         }
 
         // Commit the failure first so the reprint handler sees a Failed job.
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return await _sender.Send(
+        return await sender.Send(
             new CreateUrgentReprintCommand(
                 job.Id,
                 reason,

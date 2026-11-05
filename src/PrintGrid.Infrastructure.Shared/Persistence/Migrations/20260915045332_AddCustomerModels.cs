@@ -37,7 +37,7 @@ public partial class AddCustomerModels : Migration
             name: "IX_models_CustomerId_CreatedAt",
             schema: "customer",
             table: "models",
-            columns: new[] { "CustomerId", "CreatedAt" });
+            columns: ["CustomerId", "CreatedAt"]);
     }
 
     /// <inheritdoc />

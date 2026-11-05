@@ -8,11 +8,11 @@ using PrintGrid.SharedKernel.Results;
 namespace PrintGrid.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/date-change-requests")]
+[Route("api/v1/date-change-requests/{token}")]
 [Authorize(Policy = Policies.RequireCustomer)]
 public sealed class DateChangeRequestsController(ISender sender) : ControllerBase
 {
-    [HttpGet("{token}")]
+    [HttpGet("")]
     public async Task<IActionResult> Get(string token, CancellationToken ct)
     {
         var customerId = User.GetCustomerId();
@@ -20,7 +20,7 @@ public sealed class DateChangeRequestsController(ISender sender) : ControllerBas
         return ToResult(await sender.Send(new GetDateChangeRequestQuery(token, customerId.Value), ct));
     }
 
-    [HttpPost("{token}/decision")]
+    [HttpPost("decision")]
     public async Task<IActionResult> Decide(string token, DateChangeDecisionRequest body, CancellationToken ct)
     {
         var customerId = User.GetCustomerId();

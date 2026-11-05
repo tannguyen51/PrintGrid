@@ -9,7 +9,6 @@ public static class AssignmentTriggers
 {
     public const string InitialAssign = "initial_assign";
     public const string LabDecline = "lab_decline";
-    public const string PrintFailure = "print_failure";
     public const string UrgentReprint = "urgent_reprint";
     public const string OpsOverride = "ops_override";
     public const string DateChangeProbe = "date_change_probe";

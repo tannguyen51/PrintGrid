@@ -15,7 +15,7 @@ namespace PrintGrid.Modules.Scheduling.Application.Services;
 public static class LabMetricsCalculator
 {
     /// <summary>BR-PERF-002: below ten completed jobs a standing score is provisional.</summary>
-    public const int MinimumScoredJobs = 10;
+    private const int _minimumScoredJobs = 10;
 
     public static LabMetricsSnapshot ComputeForLab(
         Lab lab,
@@ -56,8 +56,9 @@ public static class LabMetricsCalculator
     }
 
     private static List<Job> CompletedJobs(IReadOnlyList<Job> jobs) =>
-        jobs.Where(j => j.Status is JobStatus.AwaitingInspection or JobStatus.Completed || j.CompletedAtUtc.HasValue)
-            .ToList();
+    [
+        .. jobs.Where(j => j.Status is JobStatus.AwaitingInspection or JobStatus.Completed || j.CompletedAtUtc.HasValue)
+    ];
 
     private static LabMetricsSnapshot Compute(
         IReadOnlyList<Job> assignedJobs,
@@ -95,9 +96,9 @@ public static class LabMetricsCalculator
             ? decimal.Round((decimal)acceptedCount / totalAssignedCount, 4)
             : useStoredFallback ? 1.0m : 0m;
 
-        var capacityMinutes7d = activeMachines * 7m * 8m * 60m;
-        var utilizationRate = capacityMinutes7d > 0
-            ? decimal.Round(Math.Clamp(recentMinutes / capacityMinutes7d, 0m, 1m), 4)
+        var capacityMinutes7D = activeMachines * 7m * 8m * 60m;
+        var utilizationRate = capacityMinutes7D > 0
+            ? decimal.Round(Math.Clamp(recentMinutes / capacityMinutes7D, 0m, 1m), 4)
             : 0m;
 
         return new LabMetricsSnapshot(
@@ -108,7 +109,7 @@ public static class LabMetricsCalculator
             fpy,
             acceptanceRate,
             utilizationRate,
-            IsProvisional: completedCount < MinimumScoredJobs);
+            IsProvisional: completedCount < _minimumScoredJobs);
     }
 
     private readonly record struct StoredRates(decimal? OnTimeDeliveryRate, decimal? FirstPassYield);

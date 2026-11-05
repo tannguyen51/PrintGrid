@@ -17,8 +17,8 @@ public class SetMaterialStockCommandHandler(ILabRepository labs, IUnitOfWork uni
         {
             lab.SetMaterialStock(command.MaterialCode, command.ColorCode, command.QuantityGrams, command.ReorderPointGrams);
             await unitOfWork.SaveChangesAsync(cancellationToken);
-            var stock = lab.MaterialStocks.Single(x => x.MaterialCode == command.MaterialCode.Trim().ToUpperInvariant()
-                && x.ColorCode == command.ColorCode.Trim().ToUpperInvariant());
+            var stock = lab.MaterialStocks.Single(x => x.MaterialCode.Equals(command.MaterialCode.Trim(), StringComparison.InvariantCultureIgnoreCase)
+                && x.ColorCode.Equals(command.ColorCode.Trim(), StringComparison.InvariantCultureIgnoreCase));
             return Result.Success(ToDto(stock));
         }
         catch (InvalidOperationException ex) { return Result.Failure<MaterialStockDto>(Error.Conflict(ex.Message)); }

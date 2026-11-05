@@ -1,8 +1,6 @@
-using FluentAssertions;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.Events;
-using Xunit;
 
 namespace PrintGrid.UnitTests.Scheduling;
 
@@ -95,7 +93,7 @@ public class JobLifecycleTests
     public void Decline_transitions_job_back_to_pending_and_clears_assignment()
     {
         var job = CreateAssignedJob();
-        var reason = "Hết vật liệu";
+        const string reason = "Hết vật liệu";
 
         var result = job.Decline(reason);
 
@@ -188,8 +186,9 @@ public class JobLifecycleTests
         var command = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommand(
             Guid.NewGuid(),
             Passed: true,
-            ChecklistResults: new[] { new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.ChecklistItemResult("Kích thước", "Pass") },
-            PhotoUrls: Array.Empty<string>()
+            ChecklistResults: [new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.ChecklistItemResult("Kích thước", "Pass")
+            ],
+            PhotoUrls: []
         );
 
         var result = validator.Validate(command);
@@ -204,8 +203,9 @@ public class JobLifecycleTests
         var command = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommand(
             Guid.NewGuid(),
             Passed: true,
-            ChecklistResults: new[] { new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.ChecklistItemResult("Kích thước", "InvalidStatus") },
-            PhotoUrls: new[] { "https://cdn.printgrid.dev/qc/sample.jpg" }
+            ChecklistResults: [new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.ChecklistItemResult("Kích thước", "InvalidStatus")
+            ],
+            PhotoUrls: ["https://cdn.printgrid.dev/qc/sample.jpg"]
         );
 
         var result = validator.Validate(command);
@@ -220,8 +220,9 @@ public class JobLifecycleTests
         var command = new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.InspectJobCommand(
             Guid.NewGuid(),
             Passed: false,
-            ChecklistResults: new[] { new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.ChecklistItemResult("Kích thước", "Fail") },
-            PhotoUrls: new[] { "https://cdn.printgrid.dev/qc/defect.jpg" },
+            ChecklistResults: [new PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle.ChecklistItemResult("Kích thước", "Fail")
+            ],
+            PhotoUrls: ["https://cdn.printgrid.dev/qc/defect.jpg"],
             FaultAttribution: null
         );
 
@@ -236,7 +237,7 @@ public class JobLifecycleTests
         var job = CreateAssignedJob();
         job.Accept();
         job.Start(DateTime.UtcNow);
-        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", new[] { "qc/ok.jpg" });
+        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", ["qc/ok.jpg"]);
 
         var result = job.Fail("Bề mặt nứt");
 
@@ -258,10 +259,10 @@ public class JobLifecycleTests
         var job = CreateAssignedJob();
         job.Accept();
         job.Start(DateTime.UtcNow);
-        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", new[] { "qc/ok.jpg" });
+        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", ["qc/ok.jpg"]);
 
         var photoUrls = new[] { "https://cdn.printgrid.dev/qc/defect.jpg" };
-        var message = "Lỗi file 3D của khách hàng";
+        const string message = "Lỗi file 3D của khách hàng";
 
         var result = job.FailInspectionCustomerFault("Lỗi mesh", photoUrls, message);
 
@@ -279,7 +280,7 @@ public class JobLifecycleTests
         var job = CreateAssignedJob();
         job.Accept();
         job.Start(DateTime.UtcNow);
-        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", new[] { "qc/ok.jpg" });
+        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", ["qc/ok.jpg"]);
         // The lab's own QC evidence must be approved before the hub signs the job off.
         job.ReviewQcProof(approved: true, Guid.NewGuid(), null, DateTime.UtcNow);
 
@@ -297,9 +298,9 @@ public class JobLifecycleTests
         var job = CreateAssignedJob();
         job.Accept();
         job.Start(DateTime.UtcNow);
-        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", new[] { "qc/ok.jpg" });
+        job.Complete(DateTime.UtcNow, 60, "Bề mặt đạt", ["qc/ok.jpg"]);
 
-        var result = job.MarkInspectionPassed(new[] { "https://cdn.printgrid.dev/qc/ok.jpg" });
+        var result = job.MarkInspectionPassed(["https://cdn.printgrid.dev/qc/ok.jpg"]);
 
         result.IsFailure.Should().BeTrue(
             "the hub only signs off on work whose lab QC evidence has been approved");

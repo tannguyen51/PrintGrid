@@ -17,13 +17,20 @@ public sealed class SampleModelRepository(PrintGridDbContext context) : ISampleM
         if (!string.IsNullOrWhiteSpace(category) && category != "Tất cả")
             query = query.Where(x => x.Category == category);
 
-        if (!string.IsNullOrWhiteSpace(search))
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            return await query
+                .OrderBy(x => x.SortOrder)
+                .ThenByDescending(x => x.CreatedAtUtc)
+                .ToListAsync(cancellationToken);
+        }
+
         {
             var term = search.Trim().ToLowerInvariant();
             query = query.Where(x =>
-                x.Name.ToLower().Contains(term) ||
-                (x.Description != null && x.Description.ToLower().Contains(term)) ||
-                x.Category.ToLower().Contains(term));
+                x.Name.Contains(term, StringComparison.CurrentCultureIgnoreCase) ||
+                (x.Description != null && x.Description.Contains(term, StringComparison.CurrentCultureIgnoreCase)) ||
+                x.Category.Contains(term, StringComparison.CurrentCultureIgnoreCase));
         }
 
         return await query

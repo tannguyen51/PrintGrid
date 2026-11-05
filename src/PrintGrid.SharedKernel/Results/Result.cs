@@ -4,13 +4,17 @@ public class Result
 {
     protected Result(bool isSuccess, Error error)
     {
-        if (isSuccess && error != Error.None)
-            throw new InvalidOperationException("A successful result cannot carry an error");
-        if (!isSuccess && error == Error.None)
-            throw new InvalidOperationException("A failed result must carry an error");
-
-        IsSuccess = isSuccess;
-        Error = error;
+        switch (isSuccess)
+        {
+            case true when error != Error.None:
+                throw new InvalidOperationException("A successful result cannot carry an error");
+            case false when error == Error.None:
+                throw new InvalidOperationException("A failed result must carry an error");
+            default:
+                IsSuccess = isSuccess;
+                Error = error;
+                break;
+        }
     }
 
     public bool IsSuccess { get; }

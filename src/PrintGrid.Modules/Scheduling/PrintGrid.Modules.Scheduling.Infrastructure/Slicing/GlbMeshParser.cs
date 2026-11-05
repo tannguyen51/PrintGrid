@@ -64,7 +64,9 @@ internal static class GlbMeshParser
 
                 if (!primitive.TryGetProperty("attributes", out var attributes) ||
                     !attributes.TryGetProperty("POSITION", out var positionElement))
+                {
                     throw new InvalidDataException("glTF primitive has no POSITION attribute");
+                }
 
                 var firstVertex = vertices.Count;
                 ReadPositions(accessors, bufferViews, binary, positionElement.GetInt32(), vertices);
@@ -210,17 +212,12 @@ internal static class GlbMeshParser
 
             // Chunks are padded to a 4-byte boundary; the padding is outside chunkLength.
             var padding = (int)((4 - (chunkLength % 4)) % 4);
-            if (padding > 0)
-            {
-                ReadExact(stream, new byte[padding]);
-                consumed += padding;
-            }
+            if (padding <= 0) continue;
+            ReadExact(stream, new byte[padding]);
+            consumed += padding;
         }
 
-        if (json is null)
-            throw new InvalidDataException("glTF container has no JSON chunk");
-
-        return (json, binary ?? []);
+        return json is null ? throw new InvalidDataException("glTF container has no JSON chunk") : (json, binary ?? []);
     }
 
     private static void ReadPositions(
@@ -299,7 +296,7 @@ internal static class GlbMeshParser
         var start = (view.TryGetProperty("byteOffset", out var viewOffset) ? viewOffset.GetInt32() : 0)
             + (accessor.TryGetProperty("byteOffset", out var accessorOffset) ? accessorOffset.GetInt32() : 0);
 
-        if (start < 0 || count > 0 && (long)start + (long)stride * (count - 1) + elementSize > binary.Length)
+        if (start < 0 || count > 0 && start + (long)stride * (count - 1) + elementSize > binary.Length)
             throw new InvalidDataException("glTF accessor reads past the binary chunk");
 
         return (start, stride, count);

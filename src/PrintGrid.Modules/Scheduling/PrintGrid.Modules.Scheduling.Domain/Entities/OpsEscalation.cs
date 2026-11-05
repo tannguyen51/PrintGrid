@@ -16,7 +16,6 @@ public class OpsEscalation : AggregateRoot<Guid>
     public string Reason { get; private set; } = string.Empty;
     public OpsEscalationStatus Status { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
-    public DateTime? ResolvedAtUtc { get; private set; }
 
     private OpsEscalation() { }
 
@@ -37,11 +36,5 @@ public class OpsEscalation : AggregateRoot<Guid>
             Status = OpsEscalationStatus.Open,
             CreatedAtUtc = createdAtUtc ?? DateTime.UtcNow
         };
-    }
-
-    public void Resolve(DateTime resolvedAtUtc)
-    {
-        Status = OpsEscalationStatus.Resolved;
-        ResolvedAtUtc = resolvedAtUtc;
     }
 }

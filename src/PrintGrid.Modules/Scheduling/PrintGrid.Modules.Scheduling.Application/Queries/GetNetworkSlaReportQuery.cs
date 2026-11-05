@@ -15,48 +15,38 @@ namespace PrintGrid.Modules.Scheduling.Application.Queries;
 /// </summary>
 public record GetNetworkSlaReportQuery(Guid? LabId = null) : IRequest<Result<SlaReportDto>>;
 
-public class GetNetworkSlaReportQueryHandler : IRequestHandler<GetNetworkSlaReportQuery, Result<SlaReportDto>>
+public class GetNetworkSlaReportQueryHandler(
+    ILabRepository labs,
+    IJobRepository jobs,
+    IDateTimeProvider clock)
+    : IRequestHandler<GetNetworkSlaReportQuery, Result<SlaReportDto>>
 {
-    public const int WindowDays = 90;
-
-    private readonly ILabRepository _labs;
-    private readonly IJobRepository _jobs;
-    private readonly IDateTimeProvider _clock;
-
-    public GetNetworkSlaReportQueryHandler(
-        ILabRepository labs,
-        IJobRepository jobs,
-        IDateTimeProvider clock)
-    {
-        _labs = labs;
-        _jobs = jobs;
-        _clock = clock;
-    }
+    private const int _windowDays = 90;
 
     public async Task<Result<SlaReportDto>> Handle(
         GetNetworkSlaReportQuery query,
         CancellationToken cancellationToken)
     {
-        var now = _clock.UtcNow;
-        var windowStart = now.AddDays(-WindowDays);
+        var now = clock.UtcNow;
+        var windowStart = now.AddDays(-_windowDays);
 
-        var allLabs = await _labs.GetAllAsync(cancellationToken);
+        var allLabs = await labs.GetAllAsync(cancellationToken);
         if (query.LabId.HasValue && allLabs.All(l => l.Id != query.LabId.Value))
             return Result.Failure<SlaReportDto>(Error.NotFound("Lab", query.LabId.Value));
 
-        var recentJobs = await _jobs.GetAllAssignedToLabsAsync(windowStart, cancellationToken);
+        var recentJobs = await jobs.GetAllAssignedToLabsAsync(windowStart, cancellationToken);
         var jobsByLab = recentJobs
             .Where(j => j.LabId.HasValue)
             .GroupBy(j => j.LabId!.Value)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<Job>)g.ToList());
+            .ToDictionary(g => g.Key, IReadOnlyList<Job> (g) => g.ToList());
 
         // SLA reporting has no stored fallback: a lab with no completed jobs in the window
-        // honestly reports 0 % (BR-PERF-001 "recent behaviour"), not its lifetime average.
+        // honestly reports 0 % (BR-PERF-001 "recent behavior"), not its lifetime average.
         var scopedLabs = query.LabId.HasValue
-            ? allLabs.Where(l => l.Id == query.LabId.Value).ToList()
+            ? [.. allLabs.Where(l => l.Id == query.LabId.Value)]
             : allLabs;
 
-        var rows = scopedLabs
+        var slaLabRowDtos = scopedLabs
             .OrderBy(l => l.Name)
             .Select(lab =>
             {
@@ -73,13 +63,13 @@ public class GetNetworkSlaReportQueryHandler : IRequestHandler<GetNetworkSlaRepo
         var network = ToRow(null, "Toàn mạng lưới", networkMetrics);
 
         return Result.Success(new SlaReportDto(
-            GeneratedAtUtc: now,
-            WindowStartUtc: windowStart,
-            WindowEndUtc: now,
-            WindowDays: WindowDays,
-            LabFilter: query.LabId,
-            Network: network,
-            Labs: rows));
+            now,
+            windowStart,
+            now,
+            _windowDays,
+            query.LabId,
+            network,
+            slaLabRowDtos));
     }
 
     private static SlaLabRowDto ToRow(Guid? labId, string labName, LabMetricsSnapshot metrics) =>

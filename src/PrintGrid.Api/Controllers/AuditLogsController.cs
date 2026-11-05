@@ -22,7 +22,7 @@ public sealed class AuditLogsController(ISender sender, IAuditLogWriter writer) 
         [FromQuery] int pageSize = 25,
         CancellationToken cancellationToken = default)
     {
-        if (fromUtc is not null && toUtc is not null && fromUtc > toUtc)
+        if (fromUtc > toUtc)
             return BadRequest(new { error = new { code = "invalid_date_range", message = "Ngày bắt đầu phải trước ngày kết thúc." } });
 
         return Ok(await sender.Send(
@@ -38,7 +38,7 @@ public sealed class AuditLogsController(ISender sender, IAuditLogWriter writer) 
         [FromQuery] DateTime? toUtc,
         CancellationToken cancellationToken)
     {
-        if (fromUtc is not null && toUtc is not null && fromUtc > toUtc)
+        if (fromUtc > toUtc)
             return BadRequest(new { error = new { code = "invalid_date_range", message = "Ngày bắt đầu phải trước ngày kết thúc." } });
 
         var result = await sender.Send(new GetAuditLogsQuery(actor, actionClass, fromUtc, toUtc, 1, 10_000), cancellationToken);
@@ -58,7 +58,7 @@ public sealed class AuditLogsController(ISender sender, IAuditLogWriter writer) 
             IpAddress: HttpContext.Connection.RemoteIpAddress?.ToString(), TraceId: HttpContext.TraceIdentifier,
             RequirementCodes: ["FR-ADMIN-004", "UC-025", "BR-CONFIG-002", "BR-CONFIG-004"]), cancellationToken);
 
-        return File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(),
+        return File([.. Encoding.UTF8.GetPreamble(), .. Encoding.UTF8.GetBytes(csv.ToString())],
             "text/csv; charset=utf-8", $"printgrid-audit-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv");
     }
 

@@ -153,7 +153,7 @@ public partial class GoldenPathR1 : Migration
             name: "IX_email_outbox_Status_CreatedAtUtc",
             schema: "shared",
             table: "email_outbox",
-            columns: new[] { "Status", "CreatedAtUtc" });
+            columns: ["Status", "CreatedAtUtc"]);
 
         // NFR-REL-004: machine double-booking is IMPOSSIBLE BY CONSTRUCTION —
         // overlapping assigned windows for the same machine are rejected by the DB itself,

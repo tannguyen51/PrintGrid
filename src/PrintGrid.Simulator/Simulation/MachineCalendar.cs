@@ -5,7 +5,7 @@ public sealed record Booking(DateTime StartUtc, DateTime EndUtc, bool IsDowntime
 /// <summary>
 /// The in-memory machine timeline used instead of PostgreSQL. It implements only the scheduling
 /// primitives the engine's <c>IMachineTimelineService</c> would provide: earliest free slot and
-/// utilisation over a window, plus downtime intervals introduced by breakdowns.
+/// utilization over a window, plus downtime intervals introduced by breakdowns.
 /// </summary>
 public sealed class MachineCalendar
 {
@@ -69,35 +69,28 @@ public sealed class MachineCalendar
     public DateTime? DowntimeEndAt(Guid machineId, DateTime utcTime)
     {
         if (!_downtime.TryGetValue(machineId, out var intervals)) return null;
-        foreach (var interval in intervals)
+        foreach (var (_, toUtc) in intervals.Where(interval => utcTime >= interval.FromUtc && utcTime < interval.ToUtc))
         {
-            if (utcTime >= interval.FromUtc && utcTime < interval.ToUtc)
-                return interval.ToUtc;
+            return toUtc;
         }
 
         return null;
     }
 
-    public IReadOnlyList<Booking> GetAllBookings(Guid machineId) => Bookings(machineId).ToList();
-
     private List<Booking> ListFor(Guid machineId)
     {
-        if (!_bookings.TryGetValue(machineId, out var list))
-        {
-            list = [];
-            _bookings[machineId] = list;
-        }
+        if (_bookings.TryGetValue(machineId, out var list)) return list;
+        list = [];
+        _bookings[machineId] = list;
 
         return list;
     }
 
     private List<(DateTime, DateTime)> DowntimeListFor(Guid machineId)
     {
-        if (!_downtime.TryGetValue(machineId, out var list))
-        {
-            list = [];
-            _downtime[machineId] = list;
-        }
+        if (_downtime.TryGetValue(machineId, out var list)) return list;
+        list = [];
+        _downtime[machineId] = list;
 
         return list;
     }
@@ -105,7 +98,7 @@ public sealed class MachineCalendar
     private IEnumerable<Booking> Bookings(Guid machineId) =>
         _bookings.TryGetValue(machineId, out var list)
             ? list.OrderBy(b => b.StartUtc)
-            : Enumerable.Empty<Booking>();
+            : [];
 
     private static DateTime Min(DateTime a, DateTime b) => a < b ? a : b;
     private static DateTime Max(DateTime a, DateTime b) => a > b ? a : b;

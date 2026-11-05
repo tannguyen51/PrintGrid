@@ -3,6 +3,7 @@ using PrintGrid.Modules.Scheduling.Application.Commands.LabRegistry;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
+using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
 using PrintGrid.SharedKernel.Interfaces;
 
 namespace PrintGrid.UnitTests.Scheduling;
@@ -43,7 +44,7 @@ public class LabRegistryTests
                 250, 210, 210,
                 0.05m,
                 0.15m,
-                new[] { "PLA", "PETG" }),
+                ["PLA", "PETG"]),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -60,7 +61,8 @@ public class LabRegistryTests
         var handler = new RegisterMachineCommandHandler(_labs, _unitOfWork);
 
         var result = await handler.Handle(
-            new RegisterMachineCommand(Guid.NewGuid(), "M", "X", PrintTechnology.Fdm, 100, 100, 100, 0.1m, 0.2m, new[] { "PLA" }),
+            new RegisterMachineCommand(Guid.NewGuid(), "M", "X", PrintTechnology.Fdm, 100, 100, 100, 0.1m, 0.2m, ["PLA"
+            ]),
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
@@ -77,7 +79,7 @@ public class LabRegistryTests
         var handler = new RegisterMachineCommandHandler(_labs, _unitOfWork);
 
         var result = await handler.Handle(
-            new RegisterMachineCommand(lab.Id, "M", "X", PrintTechnology.Fdm, 100, 100, 100, 0.1m, 0.2m, new[] { "PLA" }, ownerId),
+            new RegisterMachineCommand(lab.Id, "M", "X", PrintTechnology.Fdm, 100, 100, 100, 0.1m, 0.2m, ["PLA"], ownerId),
             CancellationToken.None);
 
         lab.IsActive.Should().BeFalse("xưởng do LabManager đăng ký phải chờ Admin duyệt");
@@ -91,8 +93,8 @@ public class LabRegistryTests
     {
         var lab = Lab.Onboard("Test Lab", "Hà Nội", 1);
         var machine = Machine.Register(lab.Id, "Prusa #1", "MK3S", PrintTechnology.Fdm,
-            PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume.Create(250, 210, 210),
-            0.05m, 0.15m, new[] { "PLA" });
+            BuildVolume.Create(250, 210, 210),
+            0.05m, 0.15m, ["PLA"]);
         lab.AddMachine(machine);
         _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
         var handler = new SetMachineStatusCommandHandler(_labs, _unitOfWork);
@@ -112,8 +114,8 @@ public class LabRegistryTests
         var ownerId = Guid.NewGuid();
         var lab = Lab.Onboard("Pending Lab", "Hà Nội", 1, ownerId);
         lab.AddMachine(Machine.Register(lab.Id, "M1", "MK3", PrintTechnology.Fdm,
-            PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume.Create(200, 200, 200),
-            0.1m, 0.2m, new[] { "PLA" }));
+            BuildVolume.Create(200, 200, 200),
+            0.1m, 0.2m, ["PLA"]));
         _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
 
         var result = await new SetLabActiveCommandHandler(_labs, _unitOfWork)
@@ -130,8 +132,8 @@ public class LabRegistryTests
         var ownerId = Guid.NewGuid();
         var lab = Lab.Onboard("Complete Lab", "Hà Nội", 1, ownerId);
         lab.AddMachine(Machine.Register(lab.Id, "M1", "MK3", PrintTechnology.Fdm,
-            PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume.Create(200, 200, 200),
-            0.1m, 0.2m, new[] { "PLA" }));
+            BuildVolume.Create(200, 200, 200),
+            0.1m, 0.2m, ["PLA"]));
         lab.SetMaterialStock("PLA", "BLACK", 1000m, 100m);
         _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
 
@@ -149,14 +151,16 @@ public class LabRegistryTests
         var ownerId = Guid.NewGuid();
         var lab = Lab.Onboard("Lab", "Hà Nội", 1, ownerId);
         var machine = Machine.Register(lab.Id, "M1", "MK3", PrintTechnology.Fdm,
-            PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume.Create(200, 200, 200),
-            0.1m, 0.2m, new[] { "PLA" });
+            BuildVolume.Create(200, 200, 200),
+            0.1m, 0.2m, ["PLA"]);
         lab.AddMachine(machine);
         _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
         jobs.GetActiveByMachineAsync(machine.Id, Arg.Any<CancellationToken>())
-            .Returns(new[] { Job.Create(Guid.NewGuid(), Guid.NewGuid(), PrintGrid.Modules.Scheduling.Domain.ValueObjects.JobSpecification.Create(
-                PrintGrid.Modules.Scheduling.Domain.ValueObjects.BuildVolume.Create(20, 20, 20), "PLA", "BLACK", 0.2m, 0.3m,
-                PrintTechnology.Fdm, 10m), 30, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2))) });
+            .Returns([
+                Job.Create(Guid.NewGuid(), Guid.NewGuid(), JobSpecification.Create(
+                BuildVolume.Create(20, 20, 20), "PLA", "BLACK", 0.2m, 0.3m,
+                PrintTechnology.Fdm, 10m), 30, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)))
+            ]);
 
         var result = await new MachineCrudCommandHandler(_labs, jobs, _unitOfWork)
             .Handle(new DeleteMachineCommand(lab.Id, machine.Id, ownerId), CancellationToken.None);

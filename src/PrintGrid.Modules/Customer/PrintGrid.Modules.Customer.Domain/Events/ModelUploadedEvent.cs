@@ -8,8 +8,6 @@ namespace PrintGrid.Modules.Customer.Domain.Events;
 /// </summary>
 public sealed record ModelUploadedEvent(
     Guid CustomerId,
-    Guid ModelId,
-    string FileName,
-    string StorageKey,
-    string Sha256,
-    long SizeBytes) : DomainEvent;
+    string FileName = "",
+    long SizeBytes = 0,
+    string Sha256 = "") : DomainEvent;

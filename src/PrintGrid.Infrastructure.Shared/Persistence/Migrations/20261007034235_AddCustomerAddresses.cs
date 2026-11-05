@@ -46,7 +46,7 @@ public partial class AddCustomerAddresses : Migration
             name: "IX_customer_addresses_CustomerId_IsDefault",
             schema: "customer",
             table: "customer_addresses",
-            columns: new[] { "CustomerId", "IsDefault" });
+            columns: ["CustomerId", "IsDefault"]);
     }
 
     /// <inheritdoc />

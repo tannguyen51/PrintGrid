@@ -7,14 +7,12 @@ namespace PrintGrid.Modules.Analytics.Application;
 
 public static class AnalyticsApplicationExtensions
 {
-    public static IServiceCollection AddAnalyticsApplication(this IServiceCollection services)
+    public static void AddAnalyticsApplication(this IServiceCollection services)
     {
         var assembly = typeof(AssemblyMarker).Assembly;
 
         services.AddMediatR(config => config.RegisterServicesFromAssembly(assembly));
         services.AddValidatorsFromAssembly(assembly);
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-
-        return services;
     }
 }

@@ -17,8 +17,7 @@ internal static class ObjMeshParser
         // leaveOpen: the caller owns this stream — ModelFileInspector resets Position right
         // after the call, and disposing here made every OBJ upload fail on a closed stream.
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true);
-        string? line;
-        while ((line = reader.ReadLine()) is not null)
+        while (reader.ReadLine() is { } line)
         {
             var tokens = line.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (tokens.Length == 0 || tokens[0].StartsWith('#')) continue;
@@ -52,8 +51,8 @@ internal static class ObjMeshParser
         if (vertices.Count == 0)
             throw new InvalidDataException("OBJ file contains no vertices");
 
-        var min = new double[] { double.MaxValue, double.MaxValue, double.MaxValue };
-        var max = new double[] { double.MinValue, double.MinValue, double.MinValue };
+        var min = new[] { double.MaxValue, double.MaxValue, double.MaxValue };
+        var max = new[] { double.MinValue, double.MinValue, double.MinValue };
         foreach (var (x, y, z) in vertices)
         {
             min[0] = Math.Min(min[0], x); max[0] = Math.Max(max[0], x);

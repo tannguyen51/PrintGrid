@@ -1,4 +1,3 @@
-using FluentAssertions;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
 
 namespace PrintGrid.UnitTests.Scheduling;

@@ -8,7 +8,6 @@ using PrintGrid.Modules.Customer.Application.Commands.Users.DeactivateUser;
 using PrintGrid.Modules.Customer.Application.Queries.Users;
 using PrintGrid.Modules.Customer.Application.Commands.Users.ActivateUser;
 using PrintGrid.Modules.Customer.Application.Users;
-using PrintGrid.SharedKernel.Results;
 using PrintGrid.Modules.Admin.Application.AuditLogs;
 using PrintGrid.Api.Authorization;
 
@@ -17,21 +16,12 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/[controller]")]
 [Authorize(Policy = Policies.RequireAdmin)]
-public class UsersController : ControllerBase
+public class UsersController(IMediator mediator, IAuditLogWriter audit) : ControllerBase
 {
-    private readonly IMediator _mediator;
-    private readonly IAuditLogWriter _audit;
-
-    public UsersController(IMediator mediator, IAuditLogWriter audit)
-    {
-        _mediator = mediator;
-        _audit = audit;
-    }
-
     [HttpGet]
     public async Task<IActionResult> GetUsers(CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(new GetUsersQuery(), cancellationToken);
+        var result = await mediator.Send(new GetUsersQuery(), cancellationToken);
         return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
     }
 
@@ -42,47 +32,47 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request, CancellationToken cancellationToken)
     {
         var command = new CreateUserCommand(request.Email, request.Password, request.FullName, request.PhoneNumber, request.Role);
-        var result = await _mediator.Send(command, cancellationToken);
+        var result = await mediator.Send(command, cancellationToken);
         if (result.IsFailure) return BadRequest(result.Error);
         await WriteAudit("user.create", result.Value.ToString(), null,
             new { request.Email, request.FullName, request.PhoneNumber, request.Role }, cancellationToken);
         return Ok(new { Id = result.Value });
     }
 
-    [HttpPut("{id}/role")]
+    [HttpPut("{id:guid}/role")]
     public async Task<IActionResult> AssignRole(Guid id, [FromBody] AssignRoleRequest request, CancellationToken cancellationToken)
     {
         var actingUserId = Guid.Parse(User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var before = (await _mediator.Send(new GetUsersQuery(), cancellationToken)).Value
+        var before = (await mediator.Send(new GetUsersQuery(), cancellationToken)).Value
             .FirstOrDefault(x => x.Id == id);
         var command = new AssignRoleCommand(id, request.Role, actingUserId);
-        var result = await _mediator.Send(command, cancellationToken);
+        var result = await mediator.Send(command, cancellationToken);
         if (result.IsFailure) return BadRequest(result.Error);
         await WriteAudit("user.role_changed", id.ToString(), new { before?.Roles },
-            new { Roles = new[] { request.Role } }, cancellationToken);
+            new { Roles = (IReadOnlyList<string>?)[request.Role] }, cancellationToken);
         return Ok();
     }
 
-    [HttpPut("{id}/deactivate")]
+    [HttpPut("{id:guid}/deactivate")]
     public async Task<IActionResult> DeactivateUser(Guid id, CancellationToken cancellationToken)
     {
         var actingUserId = Guid.Parse(User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var before = (await _mediator.Send(new GetUsersQuery(), cancellationToken)).Value
+        var before = (await mediator.Send(new GetUsersQuery(), cancellationToken)).Value
             .FirstOrDefault(x => x.Id == id);
         var command = new DeactivateUserCommand(id, actingUserId);
-        var result = await _mediator.Send(command, cancellationToken);
+        var result = await mediator.Send(command, cancellationToken);
         if (result.IsFailure) return BadRequest(result.Error);
         await WriteAudit("user.deactivated", id.ToString(), new { before?.IsActive },
-            new { IsActive = false }, cancellationToken);
+            new { IsActive = (bool?)false }, cancellationToken);
         return Ok();
     }
 
-    [HttpPut("{id}/activate")]
+    [HttpPut("{id:guid}/activate")]
     public async Task<IActionResult> ActivateUser(Guid id, CancellationToken cancellationToken)
     {
-        var actingUserId = Guid.Parse(User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var command = new ActivateUserCommand(id, actingUserId);
-        var result = await _mediator.Send(command, cancellationToken);
+        Guid.Parse(User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var command = new ActivateUserCommand(id);
+        var result = await mediator.Send(command, cancellationToken);
         if (result.IsFailure) return BadRequest(result.Error);
         await WriteAudit("user.activated", id.ToString(), new { IsActive = false }, new { IsActive = true }, cancellationToken);
         return Ok();
@@ -91,7 +81,7 @@ public class UsersController : ControllerBase
     private Task WriteAudit(string action, string entityId, object? oldValues, object? newValues, CancellationToken cancellationToken)
     {
         var actorId = Guid.TryParse(User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : (Guid?)null;
-        return _audit.WriteAsync(new AuditLogWriteRequest(
+        return audit.WriteAsync(new AuditLogWriteRequest(
             actorId,
             User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name ?? "unknown",
             User.FindFirstValue(ClaimTypes.Role) ?? "Admin",

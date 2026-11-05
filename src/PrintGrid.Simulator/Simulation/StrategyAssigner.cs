@@ -23,22 +23,12 @@ public sealed record AssignerProposal(
 /// <summary>
 /// The in-process assigner. It reuses the REAL <see cref="CapabilityFilter"/>,
 /// <see cref="AssignmentScorer"/> and <see cref="ScoringWeights"/>; only the timeline loop
-/// (earliest free slot + utilisation against <see cref="MachineCalendar"/>) is implemented
+/// (earliest free slot + utilization against <see cref="MachineCalendar"/>) is implemented
 /// here, mirroring <c>AssignmentEngine.AssignAsync</c>. Each strategy is a different weight
 /// mix on the same scorer, so the comparison measures strategy, not four implementations.
 /// </summary>
-public sealed class StrategyAssigner
+public sealed class StrategyAssigner(IReadOnlyList<Lab> labs, MachineCalendar calendar)
 {
-    private readonly IReadOnlyList<Lab> _labs;
-    private readonly MachineCalendar _calendar;
-    private readonly CapabilityFilter _filter = new();
-
-    public StrategyAssigner(IReadOnlyList<Lab> labs, MachineCalendar calendar)
-    {
-        _labs = labs;
-        _calendar = calendar;
-    }
-
     public AssignerProposal? TryAssign(
         Job job,
         DateTime notBeforeUtc,
@@ -46,7 +36,7 @@ public sealed class StrategyAssigner
         Random strategyRandom,
         Guid? excludeLabId = null)
     {
-        var filtered = _filter.Filter(job.Specification, _labs);
+        var filtered = CapabilityFilter.Filter(job.Specification, labs);
         var candidates = filtered.Candidates;
 
         if (excludeLabId is { } excluded)
@@ -59,17 +49,7 @@ public sealed class StrategyAssigner
         if (candidates.Count == 0) return null;
 
         var proposals = new List<PlacementProposal>(candidates.Count);
-        foreach (var candidate in candidates)
-        {
-            var duration = Math.Max(1.0, (double)job.EstimatedPrintMinutes / (double)candidate.Machine.SpeedFactor);
-            var start = _calendar.FindEarliestFreeSlot(candidate.Machine.Id, duration, notBeforeUtc);
-            var end = start.AddMinutes(duration);
-            var horizonEnd = end > notBeforeUtc.AddDays(7) ? end : notBeforeUtc.AddDays(7);
-            var utilization = _calendar.GetUtilization(candidate.Machine.Id, notBeforeUtc, horizonEnd);
-            var cost = job.Specification.MaterialGrams * 0.5m + (decimal)duration * 0.1m;
-
-            proposals.Add(new PlacementProposal(candidate, start, end, cost, utilization));
-        }
+        proposals.AddRange(from candidate in candidates let duration = Math.Max(1.0, job.EstimatedPrintMinutes / (double)candidate.Machine.SpeedFactor) let start = calendar.FindEarliestFreeSlot(candidate.Machine.Id, duration, notBeforeUtc) let end = start.AddMinutes(duration) let horizonEnd = end > notBeforeUtc.AddDays(7) ? end : notBeforeUtc.AddDays(7) let utilization = calendar.GetUtilization(candidate.Machine.Id, notBeforeUtc, horizonEnd) let cost = job.Specification.MaterialGrams * 0.5m + (decimal)duration * 0.1m select new PlacementProposal(candidate, start, end, cost, utilization));
 
         var scorer = new AssignmentScorer(WeightsFor(strategy));
         var ranked = scorer.Rank(job, proposals, proposals.Max(p => p.EstimatedCost));
@@ -80,30 +60,31 @@ public sealed class StrategyAssigner
         // says nothing about the strategy. Equal scores go to the earliest finish instead.
         if (strategy != SchedulingStrategy.Random)
         {
-            ranked = ranked
-                .OrderByDescending(s => s.Score)
-                .ThenBy(s => s.Placement.PlannedEndUtc)
-                .ToList();
+            ranked =
+            [
+                .. ranked
+                    .OrderByDescending(s => s.Score)
+                    .ThenBy(s => s.Placement.PlannedEndUtc)
+            ];
         }
 
-        var chosen = strategy == SchedulingStrategy.Random
+        var (placement, score, _) = strategy == SchedulingStrategy.Random
             ? ranked[strategyRandom.Next(ranked.Count)]
             : ranked[0];
 
-        var placement = chosen.Placement;
-        _calendar.Book(placement.Candidate.Machine.Id, placement.PlannedStartUtc, placement.PlannedEndUtc);
+        calendar.Book(placement.Candidate.Machine.Id, placement.PlannedStartUtc, placement.PlannedEndUtc);
 
         return new AssignerProposal(
             placement.Candidate.Lab.Id,
             placement.Candidate.Machine.Id,
             placement.PlannedStartUtc,
             placement.PlannedEndUtc,
-            chosen.Score,
+            score,
             placement.MachineUtilization,
             candidates.Count);
     }
 
-    public static ScoringWeights WeightsFor(SchedulingStrategy strategy) => strategy switch
+    private static ScoringWeights WeightsFor(SchedulingStrategy strategy) => strategy switch
     {
         // capacity: least loaded machine first.
         SchedulingStrategy.Capacity => new ScoringWeights

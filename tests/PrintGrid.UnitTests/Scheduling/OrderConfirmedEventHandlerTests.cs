@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PrintGrid.Modules.Customer.Domain.Events;
@@ -25,12 +24,10 @@ public sealed class OrderConfirmedEventHandlerTests
     private OrderConfirmedEventHandler Handler() =>
         new(_jobs, _unitOfWork, _engine, _shortfall, NullLogger<OrderConfirmedEventHandler>.Instance);
 
-    private static readonly AssignmentOutcome Assigned = new(
+    private static readonly AssignmentOutcome _assigned = new(
         Assigned: true,
-        Result: new PrintGrid.Modules.Scheduling.Application.Commands.AssignJob.AssignmentResultDto(
-            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
-            DateTime.UtcNow.AddHours(1), DateTime.UtcNow.AddHours(2), 0.9m,
-            new Dictionary<string, decimal>()),
+        Result: new PrintGrid.Modules.Scheduling.Application.Commands.AssignJob.AssignmentResultDto(Guid.NewGuid(),
+            DateTime.UtcNow.AddHours(1), DateTime.UtcNow.AddHours(2), 0.9m),
         Outcome: AssignmentOutcomes.Assigned,
         Reason: null,
         Ranking: [],
@@ -42,12 +39,14 @@ public sealed class OrderConfirmedEventHandlerTests
     private static AssignmentOutcome Unplaced(string outcome, string? reason = null) =>
         new(false, null, outcome, reason, [], [], ElapsedMs: 120, BudgetExceeded: false, EarliestFeasibleEndUtc: null);
 
-    private static OrderConfirmedEvent Event(params OrderConfirmedItem[] items) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)), items);
-
-    private static OrderConfirmedItem Item(int minutes = 60, decimal grams = 45m) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), 1, "PLA", "BLACK", 0.2m, 15, 0.3m,
-            minutes, grams, 80m, 80m, 80m);
+    private static OrderConfirmedEvent Event(int itemCount = 2) =>
+        new(Guid.NewGuid(),
+            Enumerable.Range(0, itemCount)
+                .Select(_ => new OrderConfirmedItem(
+                    Guid.NewGuid(), Guid.NewGuid(), 1, "PLA", "BLUE",
+                    0.2m, 60, 10m, 20m, 20m, 20m))
+                .ToList(),
+            DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)));
 
     private List<Job> CaptureCreatedJobs()
     {
@@ -61,9 +60,9 @@ public sealed class OrderConfirmedEventHandlerTests
     {
         var created = CaptureCreatedJobs();
         _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Assigned);
+            .Returns(_assigned);
 
-        await Handler().Handle(Event(Item(), Item()), default);
+        await Handler().Handle(Event(2), CancellationToken.None);
 
         created.Should().HaveCount(2);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
@@ -78,7 +77,7 @@ public sealed class OrderConfirmedEventHandlerTests
         foreach (var job in created)
             await _engine.Received(1).AssignAsync(job, Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>());
 
-        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!, default);
+        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(null!, null!);
     }
 
     [Fact]
@@ -88,7 +87,7 @@ public sealed class OrderConfirmedEventHandlerTests
         _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
             .Returns(Unplaced(AssignmentOutcomes.NoFeasibleSlot, "No capable machine has capacity"));
 
-        await Handler().Handle(Event(Item()), default);
+        await Handler().Handle(Event(1), CancellationToken.None);
 
         await _shortfall.Received(1).HandleAsync(
             Arg.Any<Job>(), "No capable machine has capacity", Arg.Any<CancellationToken>());
@@ -101,7 +100,7 @@ public sealed class OrderConfirmedEventHandlerTests
         _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
             .Returns(Unplaced(AssignmentOutcomes.NoCapableMachine, "No lab can satisfy the specification"));
 
-        await Handler().Handle(Event(Item()), default);
+        await Handler().Handle(Event(1), CancellationToken.None);
 
         await _shortfall.Received(1).HandleAsync(
             Arg.Any<Job>(), "No lab can satisfy the specification", Arg.Any<CancellationToken>());
@@ -114,9 +113,9 @@ public sealed class OrderConfirmedEventHandlerTests
         _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
             .Returns(Unplaced(AssignmentOutcomes.PlacementRace, "constraint lost"));
 
-        await Handler().Handle(Event(Item()), default);
+        await Handler().Handle(Event(), CancellationToken.None);
 
-        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!, default);
+        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(null!, null!);
     }
 
     [Fact]
@@ -126,7 +125,7 @@ public sealed class OrderConfirmedEventHandlerTests
         _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
             .Returns<Task<AssignmentOutcome>>(_ => throw new InvalidOperationException("engine blew up"));
 
-        var act = () => Handler().Handle(Event(Item(), Item(), Item()), default);
+        var act = () => Handler().Handle(Event(3), CancellationToken.None);
 
         await act.Should().NotThrowAsync();
         await _engine.Received(3).AssignAsync(

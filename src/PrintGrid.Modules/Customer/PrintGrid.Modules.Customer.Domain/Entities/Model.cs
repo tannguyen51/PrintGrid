@@ -9,7 +9,7 @@ namespace PrintGrid.Modules.Customer.Domain.Entities;
 /// </summary>
 public class Model : AggregateRoot<Guid>
 {
-    private readonly List<string> _tags = new();
+    private readonly List<string> _tags = [];
 
     public Guid CustomerId { get; private set; }
     public string Name { get; private set; } = string.Empty;
@@ -22,10 +22,10 @@ public class Model : AggregateRoot<Guid>
     /// Object key of the uploaded binary in MinIO (e.g. "printgrid-models/&lt;customerId&gt;/&lt;modelId&gt;.stl").
     /// Null when the model was registered as metadata-only (no file uploaded yet).
     /// </summary>
-    public string? StorageKey { get; private set; }
+    public string? StorageKey { get; private init; }
 
     /// <summary>SHA-256 of the uploaded bytes — integrity + ownership evidence (BR-IP-001).</summary>
-    public string? Sha256 { get; private set; }
+    public string? Sha256 { get; private init; }
 
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
@@ -67,7 +67,7 @@ public class Model : AggregateRoot<Guid>
         string name,
         string? description,
         string fileName,
-        string fileFormat,
+        string? fileFormat,
         long sizeBytes,
         IEnumerable<string>? tags,
         string? storageKey = null,
@@ -103,8 +103,14 @@ public class Model : AggregateRoot<Guid>
         // platform sample is not an upload by the customer, so it opts out.
         if (emitUploadReceipt && storageKey is not null && sha256 is not null)
         {
-            model.AddDomainEvent(new Events.ModelUploadedEvent(
-                customerId, model.Id, model.FileName, storageKey, sha256.ToLowerInvariant(), sizeBytes));
+            if (model.Sha256 != null)
+            {
+                model.AddDomainEvent(new Events.ModelUploadedEvent(
+                    customerId,
+                    model.FileName,
+                    model.SizeBytes,
+                    model.Sha256));
+            }
         }
 
         return model;
@@ -114,7 +120,7 @@ public class Model : AggregateRoot<Guid>
         string name,
         string? description,
         string fileName,
-        string fileFormat,
+        string? fileFormat,
         long sizeBytes,
         IEnumerable<string>? tags)
     {
@@ -169,7 +175,7 @@ public class Model : AggregateRoot<Guid>
     }
 
     /// <summary>Puts the model back into the queue (new file bytes, or an explicit reset).</summary>
-    public void ResetReview()
+    private void ResetReview()
     {
         ReviewStatus = ModelReviewStatus.Pending;
         ReviewReason = null;

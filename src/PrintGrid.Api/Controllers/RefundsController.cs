@@ -17,19 +17,15 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/refunds")]
 [Authorize(Policy = Policies.RequireOps)]
-public sealed class RefundsController : ControllerBase
+public sealed class RefundsController(ISender sender) : ControllerBase
 {
-    private const string CsvHeader =
+    private const string _csvHeader =
         "refund_id,order_id,order_item_id,date_change_request_id,amount,currency,payment_transaction_id,reason,status,created_at_utc";
-
-    private readonly ISender _sender;
-
-    public RefundsController(ISender sender) => _sender = sender;
 
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] string? status, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetRefundRequestsQuery(status), cancellationToken);
+        var result = await sender.Send(new GetRefundRequestsQuery(status), cancellationToken);
         return result.IsFailure ? ToError(result.Error) : Ok(result.Value);
     }
 
@@ -42,7 +38,7 @@ public sealed class RefundsController : ControllerBase
         var actorId = User.GetCustomerId();
         if (actorId is null) return Forbid();
 
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new ProcessRefundCommand(id, request.Approve, request.Note, actorId.Value),
             cancellationToken);
         return result.IsFailure ? ToError(result.Error) : Ok(result.Value);
@@ -53,11 +49,11 @@ public sealed class RefundsController : ControllerBase
         [FromQuery] string? status,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetRefundRequestsQuery(status), cancellationToken);
+        var result = await sender.Send(new GetRefundRequestsQuery(status), cancellationToken);
         if (result.IsFailure) return ToError(result.Error);
 
         var csv = new StringBuilder();
-        csv.Append(CsvHeader).Append("\r\n");
+        csv.Append(_csvHeader).Append("\r\n");
         foreach (var row in result.Value)
         {
             csv.AppendJoin(',',
@@ -75,7 +71,7 @@ public sealed class RefundsController : ControllerBase
         }
 
         return File(
-            Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(),
+            [.. Encoding.UTF8.GetPreamble(), .. Encoding.UTF8.GetBytes(csv.ToString())],
             "text/csv; charset=utf-8",
             $"printgrid-refunds-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv");
     }
@@ -94,7 +90,7 @@ public sealed class RefundsController : ControllerBase
     private static string Csv(string? value)
     {
         var safe = value ?? string.Empty;
-        // Neutralise spreadsheet formula execution in exported free-text fields.
+        // Neutralize spreadsheet formula execution in exported free-text fields.
         if (safe.Length > 0 && safe[0] is '=' or '+' or '-' or '@') safe = $"'{safe}";
         return $"\"{safe.Replace("\"", "\"\"")}\"";
     }

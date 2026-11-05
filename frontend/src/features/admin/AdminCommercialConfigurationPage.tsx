@@ -21,6 +21,7 @@ export default function AdminCommercialConfigurationPage() {
   const active = query.data?.find(x => x.status === 'Active')
   const [params, setParams] = useState<CommercialParameters>(defaults)
   const [error, setError] = useState('')
+  const [colorRates, setColorRates] = useState('{}')
   const materials = useMemo(() => Object.keys(params.materialRates), [params.materialRates])
   const startCreate = () => {
     const next = active ? structuredClone(active.parameters) : structuredClone(defaults)
@@ -31,10 +32,17 @@ export default function AdminCommercialConfigurationPage() {
     }
     const activeCodes = new Set((catalog.data ?? []).filter(x => x.catalogType === 'Material' && !x.isDeprecated).map(x => x.code))
     if (activeCodes.size) { for (const code of Object.keys(next.materialRates)) if (!activeCodes.has(code)) { delete next.materialRates[code]; delete next.materialDensities[code] } }
-    setName(''); setSummary(''); setParams(next); setError(''); setOpen(true)
+    setName(''); setSummary(''); setParams(next); setColorRates(JSON.stringify(next.colorPricePerKg ?? {}, null, 2)); setError(''); setOpen(true)
   }
   const number = (key: keyof CommercialParameters, value: string) => setParams(p => ({ ...p, [key]: Number(value) }))
-  const save = async () => { try { await create.mutateAsync({ name, changeSummary: summary, parameters: params }); setOpen(false) } catch (e) { setError(getApiErrorMessage(e, 'Không thể tạo phiên bản.')) } }
+  const save = async () => { try {
+    let rates: Record<string, number>
+    try { rates = JSON.parse(colorRates) } catch { setError('Bảng giá màu phải là JSON hợp lệ.'); return }
+    if (!rates || Array.isArray(rates) || typeof rates !== 'object' || Object.entries(rates).some(([key, value]) => !/^[A-Z0-9_]+:[A-Z0-9_]+$/.test(key) || typeof value !== 'number' || value <= 0)) {
+      setError('Mỗi đơn giá màu phải có khóa VẬT_LIỆU:MÀU và số tiền đồng/kg lớn hơn 0.'); return
+    }
+    await create.mutateAsync({ name, changeSummary: summary, parameters: { ...params, colorPricePerKg: rates } }); setOpen(false)
+  } catch (e) { setError(getApiErrorMessage(e, 'Không thể tạo phiên bản.')) } }
   const doActivate = async (id: string) => { setError(''); try { await activate.mutateAsync(id) } catch (e) { setError(getApiErrorMessage(e, 'Không thể kích hoạt phiên bản.')) } }
 
   return <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
@@ -56,6 +64,13 @@ export default function AdminCommercialConfigurationPage() {
       {error && <Alert severity="error">{error}</Alert>}<TextField label="Tên phiên bản" value={name} onChange={e => setName(e.target.value)} required /><TextField label="Mô tả thay đổi" value={summary} onChange={e => setSummary(e.target.value)} multiline minRows={2} required />
       <Typography fontWeight={750}>Thông số giá</Typography><Grid container spacing={2}><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Giá mỗi giờ máy" value={params.pricePerPrintHour} onChange={e => number('pricePerPrintHour', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Phí xử lý hub" value={params.hubHandlingFee} onChange={e => number('hubHandlingFee', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Biên nền tảng (%)" value={params.platformMarginPercent} onChange={e => number('platformMarginPercent', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Phụ phí ưu tiên (%)" value={params.prioritySurchargePercent} onChange={e => number('prioritySurchargePercent', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Ngưỡng tự duyệt" value={params.autoLaneThreshold} onChange={e => number('autoLaneThreshold', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Hiệu lực báo giá (giờ)" value={params.quoteValidityHours} onChange={e => number('quoteValidityHours', e.target.value)} /></Grid></Grid>
       <Typography fontWeight={750}>Đơn giá vật liệu / gram</Typography><Grid container spacing={2}>{materials.map(code => <Grid key={code} size={{ xs: 6, md: 4 }}><TextField fullWidth type="number" label={code} value={params.materialRates[code]} onChange={e => setParams(p => ({ ...p, materialRates: { ...p.materialRates, [code]: Number(e.target.value) } }))} /></Grid>)}</Grid>
+      <Typography fontWeight={750}>Báo giá theo slicer</Typography>
+      <Typography variant="body2" color="text.secondary">Giá = (tiền vật liệu từng màu + tiền giờ máy) / (1 − tỷ lệ lỗi) + dịch vụ. Không cộng biên nền tảng, điện hoặc phí thanh toán. Nếu màu chưa có giá riêng, dùng đơn giá vật liệu ở trên.</Typography>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth type="number" label="Tỷ lệ lỗi (%)" value={(params.failureRate ?? 0) * 100} inputProps={{ min: 0, max: 99, step: 0.1 }} onChange={e => setParams(p => ({ ...p, failureRate: Number(e.target.value) / 100 }))} /></Grid>
+        <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth type="number" label="Đánh bóng (đồng/sản phẩm)" value={params.polishingPerUnit ?? 0} inputProps={{ min: 0 }} onChange={e => number('polishingPerUnit', e.target.value)} /></Grid>
+      </Grid>
+      <TextField label="Giá từng màu (JSON, đồng/kg)" multiline minRows={4} value={colorRates} onChange={e => setColorRates(e.target.value)} helperText={'Ví dụ: {"PLA:BLUE":300000,"PLA:WHITE":290000,"PLA:SIGNALRED":310000}'} />
       <Typography fontWeight={750}>Giới hạn vận hành</Typography><Grid container spacing={2}><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Kích thước lô tối đa" value={params.maxBatchSize} onChange={e => number('maxBatchSize', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Ngân sách lập lịch (giây)" value={params.schedulingTimeBudgetSeconds} onChange={e => number('schedulingTimeBudgetSeconds', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Ngưỡng rủi ro SLA (giờ)" value={params.slaRiskThresholdHours} onChange={e => number('slaRiskThresholdHours', e.target.value)} /></Grid></Grid>
     </Stack></DialogContent><DialogActions><Button onClick={() => setOpen(false)}>Hủy</Button><Button variant="contained" disabled={!name.trim() || !summary.trim() || create.isPending} onClick={save}>Lưu bản nháp</Button></DialogActions></Dialog>
     </Box>

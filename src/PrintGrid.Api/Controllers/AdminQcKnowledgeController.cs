@@ -64,10 +64,10 @@ public sealed class AdminQcKnowledgeController(ISender sender, IAuditLogWriter a
             User.FindFirstValue(ClaimTypes.Role) ?? "Admin", AuditActionClasses.Configuration,
             action, entityType, entityId, oldValues, newValues,
             IpAddress: HttpContext.Connection.RemoteIpAddress?.ToString(), TraceId: HttpContext.TraceIdentifier,
-            RequirementCodes: RequirementCodes), cancellationToken);
+            RequirementCodes: _requirementCodes), cancellationToken);
 
     private static object ApiError(string code, string message) => new { error = new { code, message } };
-    private static readonly string[] RequirementCodes = ["FR-ADMIN-005", "UC-024", "BR-QC-002", "BR-QC-004", "BR-CONFIG-001", "BR-CONFIG-002", "BR-CONFIG-003"];
+    private static readonly string[] _requirementCodes = ["FR-ADMIN-005", "UC-024", "BR-QC-002", "BR-QC-004", "BR-CONFIG-001", "BR-CONFIG-002", "BR-CONFIG-003"];
 }
 
 public sealed record SaveInspectionChecklistRequest(IReadOnlyList<InspectionChecklistItemDto> Items);

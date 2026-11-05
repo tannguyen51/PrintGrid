@@ -6,29 +6,21 @@ using PrintGrid.Modules.Customer.Application.Users;
 
 namespace PrintGrid.Modules.Customer.Application.Commands.Users.AssignRole;
 
-public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Result>
+public class AssignRoleCommandHandler(ICustomerRepository customers, IUnitOfWork unitOfWork)
+    : IRequestHandler<AssignRoleCommand, Result>
 {
-    private readonly ICustomerRepository _customers;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public AssignRoleCommandHandler(ICustomerRepository customers, IUnitOfWork unitOfWork)
-    {
-        _customers = customers;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result> Handle(AssignRoleCommand request, CancellationToken cancellationToken)
     {
         if (request.UserId == request.ActingUserId)
             return Result.Failure(Error.Validation("Cannot assign role to yourself"));
 
-        var customer = await _customers.GetByIdAsync(request.UserId, cancellationToken);
+        var customer = await customers.GetByIdAsync(request.UserId, cancellationToken);
         if (customer is null)
             return Result.Failure(Error.NotFound("User", request.UserId));
 
         customer.AssignRole(UserRoleCatalog.Canonicalize(request.Role));
-        
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
 }

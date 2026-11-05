@@ -7,6 +7,7 @@ using PrintGrid.Modules.Admin.Application.AuditLogs;
 using PrintGrid.Modules.Scheduling.Application.Commands.LabRegistry;
 using PrintGrid.Modules.Scheduling.Application.Queries;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
+using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
 using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Api.Controllers;
@@ -20,17 +21,8 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/labs")]
 [Authorize]
-public class LabsController : ControllerBase
+public class LabsController(ISender sender, IAuditLogWriter audit) : ControllerBase
 {
-    private readonly ISender _sender;
-    private readonly IAuditLogWriter _audit;
-
-    public LabsController(ISender sender, IAuditLogWriter audit)
-    {
-        _sender = sender;
-        _audit = audit;
-    }
-
     private bool IsAdminOrOps => User.IsInRole(Roles.Admin) || User.IsInRole(Roles.OpsManager);
 
     [HttpGet]
@@ -41,7 +33,7 @@ public class LabsController : ControllerBase
         var ownerUserId = User.IsInRole(Roles.LabManager) ? User.GetCustomerId() : null;
         if (User.IsInRole(Roles.LabManager) && ownerUserId is null) return Forbid();
 
-        var result = await _sender.Send(new GetLabsQuery(includeInactive, ownerUserId), cancellationToken);
+        var result = await sender.Send(new GetLabsQuery(includeInactive, ownerUserId), cancellationToken);
         return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
     }
 
@@ -53,7 +45,7 @@ public class LabsController : ControllerBase
         if (userId is null)
             return Unauthorized();
 
-        var result = await _sender.Send(new GetMyLabQuery(userId.Value, allowUnclaimedFallback), cancellationToken);
+        var result = await sender.Send(new GetMyLabQuery(userId.Value, allowUnclaimedFallback), cancellationToken);
         return result.IsFailure ? ToErrorResult(result.Error) : Ok(result.Value);
     }
 
@@ -61,7 +53,7 @@ public class LabsController : ControllerBase
     [Authorize(Roles = $"{Roles.LabManager},{Roles.OpsManager},{Roles.Admin}")]
     public async Task<IActionResult> GetLab(Guid labId, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetLabQuery(labId), cancellationToken);
+        var result = await sender.Send(new GetLabQuery(labId), cancellationToken);
         if (result.IsFailure)
             return ToErrorResult(result.Error);
         if (User.IsInRole(Roles.LabManager) && result.Value.OwnerUserId != User.GetCustomerId()) return Forbid();
@@ -83,7 +75,7 @@ public class LabsController : ControllerBase
             if (ownerUserId is null) return Forbid();
         }
 
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new RegisterLabCommand(
                 request.Name,
                 request.City,
@@ -113,7 +105,7 @@ public class LabsController : ControllerBase
     public async Task<IActionResult> SelfRegister([FromBody] SelfRegisterLabRequest request, CancellationToken cancellationToken)
     {
         var userId = User.GetCustomerId();
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new SelfRegisterLabCommand(
                 request.Name,
                 request.City,
@@ -142,7 +134,7 @@ public class LabsController : ControllerBase
     public async Task<IActionResult> ApproveLab(Guid labId, CancellationToken cancellationToken)
     {
         var userId = User.GetCustomerId();
-        var result = await _sender.Send(new ApproveLabCommand(labId, userId), cancellationToken);
+        var result = await sender.Send(new ApproveLabCommand(labId, userId), cancellationToken);
         if (result.IsFailure)
             return ToErrorResult(result.Error);
 
@@ -156,7 +148,7 @@ public class LabsController : ControllerBase
     [Authorize(Roles = $"{Roles.OpsManager},{Roles.Admin}")]
     public async Task<IActionResult> RejectLab(Guid labId, [FromBody] RejectLabRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new RejectLabCommand(labId, request.Reason), cancellationToken);
+        var result = await sender.Send(new RejectLabCommand(labId, request.Reason), cancellationToken);
         if (result.IsFailure)
             return ToErrorResult(result.Error);
 
@@ -170,7 +162,7 @@ public class LabsController : ControllerBase
     [Authorize(Roles = $"{Roles.OpsManager},{Roles.Admin}")]
     public async Task<IActionResult> SetActive(Guid labId, [FromBody] SetActiveRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new SetLabActiveCommand(labId, request.IsActive), cancellationToken);
+        var result = await sender.Send(new SetLabActiveCommand(labId, request.IsActive), cancellationToken);
         if (result.IsFailure)
             return ToErrorResult(result.Error);
 
@@ -184,7 +176,7 @@ public class LabsController : ControllerBase
     [Authorize(Roles = Roles.OpsManager)]
     public async Task<IActionResult> SetStanding(Guid labId, [FromBody] SetStandingRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new SetLabStandingCommand(labId, request.IsInGoodStanding), cancellationToken);
+        var result = await sender.Send(new SetLabStandingCommand(labId, request.IsInGoodStanding), cancellationToken);
         if (result.IsFailure)
             return ToErrorResult(result.Error);
 
@@ -198,7 +190,7 @@ public class LabsController : ControllerBase
     [Authorize(Roles = Roles.OpsManager)]
     public async Task<IActionResult> SetCapacityLimit(Guid labId, [FromBody] SetCapacityLimitRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new SetLabCapacityLimitCommand(labId, request.MaxConcurrentJobs), cancellationToken);
+        var result = await sender.Send(new SetLabCapacityLimitCommand(labId, request.MaxConcurrentJobs), cancellationToken);
         if (result.IsFailure)
             return ToErrorResult(result.Error);
 
@@ -213,7 +205,7 @@ public class LabsController : ControllerBase
     public async Task<IActionResult> RegisterMachine(Guid labId, [FromBody] RegisterMachineRequest request, CancellationToken cancellationToken)
     {
         var actorUserId = User.GetCustomerId();
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new RegisterMachineCommand(
                 labId,
                 request.Name,
@@ -227,7 +219,8 @@ public class LabsController : ControllerBase
                 request.SupportedMaterials,
                 actorUserId,
                 IsAdminOrOps,
-                actorUserId),
+                actorUserId,
+                request.PrinterConfiguration),
             cancellationToken);
 
         if (result.IsFailure)
@@ -247,7 +240,7 @@ public class LabsController : ControllerBase
         [FromBody] RegisterMachineRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new UpdateMachineCommand(
                 labId,
                 machineId,
@@ -261,7 +254,8 @@ public class LabsController : ControllerBase
                 request.AchievableToleranceMm,
                 request.SupportedMaterials,
                 User.GetCustomerId(),
-                IsAdminOrOps),
+                IsAdminOrOps,
+                request.PrinterConfiguration),
             cancellationToken);
 
         if (result.IsFailure)
@@ -277,7 +271,7 @@ public class LabsController : ControllerBase
     [Authorize(Policy = Policies.RequireProduction)]
     public async Task<IActionResult> DeleteMachine(Guid labId, Guid machineId, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new DeleteMachineCommand(labId, machineId, User.GetCustomerId(), IsAdminOrOps),
             cancellationToken);
 
@@ -295,7 +289,7 @@ public class LabsController : ControllerBase
     public async Task<IActionResult> SetMachineStatus(Guid labId, Guid machineId, [FromBody] SetMachineStatusRequest request, CancellationToken cancellationToken)
     {
         var actorUserId = User.GetCustomerId();
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new SetMachineStatusCommand(labId, machineId, request.Status, actorUserId, IsAdminOrOps, actorUserId),
             cancellationToken);
 
@@ -310,7 +304,7 @@ public class LabsController : ControllerBase
         [FromBody] ScheduleMaintenanceRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new ScheduleMachineMaintenanceCommand(
                 labId,
                 machineId,
@@ -330,7 +324,7 @@ public class LabsController : ControllerBase
     [Authorize(Policy = Policies.RequireProduction)]
     public async Task<IActionResult> GetTimeline(Guid labId, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetLabTimelineQuery(labId), cancellationToken);
+        var result = await sender.Send(new GetLabTimelineQuery(labId), cancellationToken);
         return result.IsFailure ? ToErrorResult(result.Error) : Ok(result.Value);
     }
 
@@ -338,7 +332,7 @@ public class LabsController : ControllerBase
     [Authorize(Policy = Policies.RequireProduction)]
     public async Task<IActionResult> GetPerformance(Guid labId, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetLabPerformanceQuery(labId), cancellationToken);
+        var result = await sender.Send(new GetLabPerformanceQuery(labId), cancellationToken);
         return result.IsFailure ? ToErrorResult(result.Error) : Ok(result.Value);
     }
 
@@ -351,7 +345,7 @@ public class LabsController : ControllerBase
     public async Task<IActionResult> GetStaff(Guid labId, CancellationToken cancellationToken)
     {
         if (!await CallerManagesLabAsync(labId, cancellationToken)) return Forbid();
-        var result = await _sender.Send(new GetLabStaffQuery(labId), cancellationToken);
+        var result = await sender.Send(new GetLabStaffQuery(labId), cancellationToken);
         return result.IsFailure ? ToErrorResult(result.Error) : Ok(result.Value);
     }
 
@@ -360,7 +354,7 @@ public class LabsController : ControllerBase
     public async Task<IActionResult> AddStaff(Guid labId, [FromBody] AddLabStaffRequest request, CancellationToken cancellationToken)
     {
         if (!await CallerManagesLabAsync(labId, cancellationToken)) return Forbid();
-        var result = await _sender.Send(new AddLabStaffCommand(labId, request.UserId), cancellationToken);
+        var result = await sender.Send(new AddLabStaffCommand(labId, request.UserId), cancellationToken);
         return result.IsFailure ? ToErrorResult(result.Error) : NoContent();
     }
 
@@ -369,7 +363,7 @@ public class LabsController : ControllerBase
     public async Task<IActionResult> RemoveStaff(Guid labId, Guid userId, CancellationToken cancellationToken)
     {
         if (!await CallerManagesLabAsync(labId, cancellationToken)) return Forbid();
-        var result = await _sender.Send(new RemoveLabStaffCommand(labId, userId), cancellationToken);
+        var result = await sender.Send(new RemoveLabStaffCommand(labId, userId), cancellationToken);
         return result.IsFailure ? ToErrorResult(result.Error) : NoContent();
     }
 
@@ -383,8 +377,8 @@ public class LabsController : ControllerBase
         var userId = User.GetCustomerId();
         if (userId is null) return false;
 
-        var mine = await _sender.Send(new GetMyLabQuery(userId.Value, AllowUnclaimedFallback: false), cancellationToken);
-        return mine.IsSuccess && mine.Value is { } lab && lab.Id == labId;
+        var mine = await sender.Send(new GetMyLabQuery(userId.Value, AllowUnclaimedFallback: false), cancellationToken);
+        return mine is { IsSuccess: true, Value: { } lab } && lab.Id == labId;
     }
 
     private IActionResult ToErrorResult(Error error)
@@ -409,7 +403,7 @@ public class LabsController : ControllerBase
         IReadOnlyList<string> requirementCodes,
         string? reason,
         CancellationToken cancellationToken) =>
-        _audit.WriteAsync(new AuditLogWriteRequest(
+        audit.WriteAsync(new AuditLogWriteRequest(
             User.GetCustomerId(),
             User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name ?? "unknown",
             User.FindFirstValue(ClaimTypes.Role) ?? "unknown",
@@ -456,7 +450,8 @@ public record RegisterMachineRequest(
     decimal BuildHeightMm,
     decimal MinLayerHeightMm,
     decimal AchievableToleranceMm,
-    IReadOnlyList<string> SupportedMaterials);
+    IReadOnlyList<string> SupportedMaterials,
+    PrinterConfiguration PrinterConfiguration);
 
 public record SetActiveRequest(bool IsActive);
 

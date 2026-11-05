@@ -6,16 +6,12 @@ using PrintGrid.Modules.Scheduling.Domain.Enums;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Scheduling;
 
-public class MachineTimelineService : IMachineTimelineService
+public abstract class MachineTimelineService(PrintGridDbContext context) : IMachineTimelineService
 {
     private static readonly JobStatus[] _blockingStatuses =
-    {
+    [
         JobStatus.Assigned, JobStatus.Accepted, JobStatus.InProgress
-    };
-
-    private readonly PrintGridDbContext _context;
-
-    public MachineTimelineService(PrintGridDbContext context) => _context = context;
+    ];
 
     public async Task<DateTime> FindEarliestFreeSlotAsync(
         Machine machine,
@@ -27,10 +23,10 @@ public class MachineTimelineService : IMachineTimelineService
         var adjustedDuration = TimeSpan.FromMinutes(durationMinutes / (double)machine.SpeedFactor);
         var cursor = notBeforeUtc;
 
-        foreach (var window in booked)
+        foreach (var (start, end) in booked)
         {
-            if (window.Start - cursor >= adjustedDuration) return cursor;
-            if (window.End > cursor) cursor = window.End;
+            if (start - cursor >= adjustedDuration) return cursor;
+            if (end > cursor) cursor = end;
         }
 
         return cursor;
@@ -60,7 +56,7 @@ public class MachineTimelineService : IMachineTimelineService
         DateTime fromUtc,
         CancellationToken cancellationToken)
     {
-        var rows = await _context.Set<Job>()
+        var rows = await context.Set<Job>()
             .Where(j => j.MachineId == machine.Id
                         && _blockingStatuses.Contains(j.Status)
                         && j.PlannedEndUtc != null

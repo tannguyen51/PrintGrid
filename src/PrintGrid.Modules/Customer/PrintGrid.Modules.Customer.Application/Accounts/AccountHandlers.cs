@@ -8,9 +8,12 @@ namespace PrintGrid.Modules.Customer.Application.Accounts;
 
 internal static class AccountMappings
 {
-    public static CustomerProfileDto Profile(global::PrintGrid.Modules.Customer.Domain.Entities.Customer x) => new(x.Id, x.Email, x.FullName, x.PhoneNumber, x.IsEmailVerified);
-    public static CustomerAddressDto Address(CustomerAddress x) => new(x.Id, x.Label, x.RecipientName, x.PhoneNumber,
-        x.Street, x.Ward, x.District, x.City, x.PostalCode, x.Country, x.IsDefault);
+    public static CustomerProfileDto Profile(global::PrintGrid.Modules.Customer.Domain.Entities.Customer x) =>
+        new(x.Id, x.Email, x.FullName, x.PhoneNumber, x.IsEmailVerified);
+
+    public static CustomerAddressDto Address(CustomerAddress x) =>
+        new(x.Id, x.Label, x.RecipientName, x.PhoneNumber, x.Street, x.Ward, x.District,
+            x.City, x.PostalCode, x.Country, x.IsDefault);
 }
 
 public class GetProfileQueryHandler(ICustomerRepository customers) : IRequestHandler<GetProfileQuery, Result<CustomerProfileDto>>

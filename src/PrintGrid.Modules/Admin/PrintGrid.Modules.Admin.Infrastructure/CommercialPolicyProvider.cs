@@ -10,7 +10,7 @@ namespace PrintGrid.Modules.Admin.Infrastructure;
 /// <summary>Reads the active DB version for each new quote; existing quotes retain their version.</summary>
 public sealed class CommercialPolicyProvider(PrintGridDbContext context) : ICommercialPolicyProvider
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<CommercialPolicy> GetActiveAsync(CancellationToken cancellationToken = default)
     {
@@ -19,13 +19,14 @@ public sealed class CommercialPolicyProvider(PrintGridDbContext context) : IComm
         if (active is null)
             return new CommercialPolicy(PricingParameterSet.Active, 300_000m, 48);
 
-        var parameters = JsonSerializer.Deserialize<CommercialParametersDto>(active.ParametersJson, JsonOptions)!;
+        var parameters = JsonSerializer.Deserialize<CommercialParametersDto>(active.ParametersJson, _jsonOptions)!;
         var pricing = new PricingParameterSet(
             $"commercial-v{active.VersionNumber}",
             new Dictionary<string, decimal>(parameters.MaterialRates, StringComparer.OrdinalIgnoreCase),
             new Dictionary<string, decimal>(parameters.MaterialDensities, StringComparer.OrdinalIgnoreCase),
             parameters.PricePerPrintHour,
-            PricingParameterSet.Active.TimeMultiplierByLayer);
+            PricingParameterSet.Active.TimeMultiplierByLayer,
+            parameters.ColorPricePerKg, parameters.FailureRate, parameters.PolishingPerUnit);
         return new CommercialPolicy(pricing, parameters.AutoLaneThreshold, parameters.QuoteValidityHours);
     }
 }

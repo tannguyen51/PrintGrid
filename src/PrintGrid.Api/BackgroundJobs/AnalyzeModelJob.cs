@@ -13,37 +13,20 @@ namespace PrintGrid.Api.BackgroundJobs;
 /// While binary upload is metadata-only, the analysis derives a deterministic placeholder
 /// envelope; wiring MinIO replaces AnalyzeFromMetadata with AnalyzeAsync on the real bytes.
 /// </summary>
-public class AnalyzeModelJob
+public class AnalyzeModelJob(
+    IModelRepository models,
+    ISlicingService slicing,
+    IUnitOfWork unitOfWork,
+    IFileStorage files,
+    ILabRepository labs,
+    ILogger<AnalyzeModelJob> logger)
 {
-    private readonly IModelRepository _models;
-    private readonly ISlicingService _slicing;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IFileStorage _files;
-    private readonly ILabRepository _labs;
-    private readonly ILogger<AnalyzeModelJob> _logger;
-
-    public AnalyzeModelJob(
-        IModelRepository models,
-        ISlicingService slicing,
-        IUnitOfWork unitOfWork,
-        IFileStorage files,
-        ILabRepository labs,
-        ILogger<AnalyzeModelJob> logger)
-    {
-        _models = models;
-        _slicing = slicing;
-        _unitOfWork = unitOfWork;
-        _files = files;
-        _labs = labs;
-        _logger = logger;
-    }
-
     public async Task ExecuteAsync(Guid modelId, CancellationToken cancellationToken = default)
     {
-        var model = await _models.GetByIdAsync(modelId, cancellationToken);
+        var model = await models.GetByIdAsync(modelId, cancellationToken);
         if (model is null)
         {
-            _logger.LogWarning("AnalyzeModelJob: model {ModelId} not found", modelId);
+            logger.LogWarning("AnalyzeModelJob: model {ModelId} not found", modelId);
             return;
         }
 
@@ -57,21 +40,21 @@ public class AnalyzeModelJob
                 if (separator <= 0 || separator == model.StorageKey.Length - 1)
                     throw new InvalidDataException("Invalid model storage key");
 
-                await using var stream = await _files.DownloadAsync(
+                await using var stream = await files.DownloadAsync(
                     model.StorageKey[..separator], model.StorageKey[(separator + 1)..], cancellationToken);
-                geometry = await _slicing.AnalyzeAsync(stream, model.FileFormat, cancellationToken);
+                geometry = await slicing.AnalyzeAsync(stream, model.FileFormat, cancellationToken);
             }
             else
             {
-                geometry = _slicing.AnalyzeFromMetadata(model.SizeBytes);
+                geometry = slicing.AnalyzeFromMetadata(model.SizeBytes);
             }
 
             if (!geometry.IsValid)
                 throw new InvalidDataException(geometry.ErrorMessage ?? "Geometry analysis failed");
 
-            var estimate = _slicing.Estimate(geometry, "PLA", 0.2m, 30, PrintTechnology.Fdm);
-            var labs = await _labs.GetActiveWithMachinesAsync(cancellationToken);
-            var fitsAnyMachine = labs.SelectMany(lab => lab.Machines).Any(machine =>
+            var estimate = slicing.Estimate(geometry, "PLA", 0.2m, 30, PrintTechnology.Fdm);
+            var labs1 = await labs.GetActiveWithMachinesAsync(cancellationToken);
+            var fitsAnyMachine = labs1.SelectMany(lab => lab.Machines).Any(machine =>
                 CanFitInAnyOrientation(
                     geometry.WidthMm, geometry.DepthMm, geometry.HeightMm,
                     machine.BuildVolume.WidthMm, machine.BuildVolume.DepthMm, machine.BuildVolume.HeightMm));
@@ -79,7 +62,7 @@ public class AnalyzeModelJob
             if (!geometry.IsWatertight) issues.Add("Model không kín (not watertight)");
             if (!geometry.IsManifold) issues.Add("Model có cạnh non-manifold");
             if (!fitsAnyMachine) issues.Add("Kích thước model vượt quá khổ in của tất cả máy trong mạng lưới");
-            var printable = geometry.IsWatertight && geometry.IsManifold && fitsAnyMachine;
+            var printable = geometry is { IsWatertight: true, IsManifold: true } && fitsAnyMachine;
 
             model.ApplyGeometry(
                 geometry.WidthMm,
@@ -93,17 +76,17 @@ public class AnalyzeModelJob
                 printable,
                 issues.Count == 0 ? null : string.Join("; ", issues));
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Analyzed model {ModelId}: {Volume} cm3, {Minutes} min reference estimate",
                 model.Id, geometry.VolumeCm3, estimate.PrintMinutes);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "AnalyzeModelJob failed for model {ModelId}", model.Id);
+            logger.LogError(ex, "AnalyzeModelJob failed for model {ModelId}", model.Id);
             model.MarkGeometryFailed(ex.Message);
         }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     private static bool CanFitInAnyOrientation(

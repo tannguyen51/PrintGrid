@@ -22,7 +22,8 @@ public record UpdateMachineCommand(
     decimal AchievableToleranceMm,
     IReadOnlyList<string> SupportedMaterials,
     Guid? RequestingUserId = null,
-    bool IsAdminOrOps = true) : IRequest<Result<MachineDto>>;
+    bool IsAdminOrOps = true,
+    PrinterConfiguration? PrinterConfiguration = null) : IRequest<Result<MachineDto>>;
 
 public record DeleteMachineCommand(
     Guid LabId,
@@ -41,29 +42,23 @@ public record ScheduleMachineMaintenanceCommand(
     Guid? RequestingUserId = null,
     bool IsAdminOrOps = true) : IRequest<Result<MachineDto>>;
 
-public class MachineCrudCommandHandler :
-    IRequestHandler<UpdateMachineCommand, Result<MachineDto>>,
-    IRequestHandler<DeleteMachineCommand, Result>,
-    IRequestHandler<ScheduleMachineMaintenanceCommand, Result<MachineDto>>
+public class MachineCrudCommandHandler(
+    ILabRepository labs,
+    IJobRepository jobs,
+    IUnitOfWork unitOfWork,
+    Abstractions.IMachineProfileMatcher? profiles = null)
+    :
+        IRequestHandler<UpdateMachineCommand, Result<MachineDto>>,
+        IRequestHandler<DeleteMachineCommand, Result>,
+        IRequestHandler<ScheduleMachineMaintenanceCommand, Result<MachineDto>>
 {
-    private readonly ILabRepository _labs;
-    private readonly IJobRepository _jobs;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public MachineCrudCommandHandler(ILabRepository labs, IJobRepository jobs, IUnitOfWork unitOfWork)
-    {
-        _labs = labs;
-        _jobs = jobs;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result<MachineDto>> Handle(UpdateMachineCommand command, CancellationToken cancellationToken)
     {
-        var lab = await _labs.GetByIdAsync(command.LabId, cancellationToken);
+        var lab = await labs.GetByIdAsync(command.LabId, cancellationToken);
         if (lab is null)
             return Result.Failure<MachineDto>(Error.NotFound("Lab", command.LabId));
 
-        if (!command.IsAdminOrOps && command.RequestingUserId.HasValue)
+        if (command is { IsAdminOrOps: false, RequestingUserId: not null })
         {
             if (lab.OwnerUserId.HasValue && lab.OwnerUserId.Value != command.RequestingUserId.Value)
                 return Result.Failure<MachineDto>(Error.Forbidden("Bạn chỉ có quyền chỉnh sửa máy thuộc xưởng của mình."));
@@ -83,6 +78,11 @@ public class MachineCrudCommandHandler :
             return Result.Failure<MachineDto>(Error.Validation("Layer height và dung sai phải lớn hơn 0."));
 
         var buildVolume = BuildVolume.Create(command.BuildWidthMm, command.BuildDepthMm, command.BuildHeightMm);
+        if (command.PrinterConfiguration is not null)
+        {
+            try { machine.ConfigurePrinter(command.PrinterConfiguration); }
+            catch (ArgumentException e) { return Result.Failure<MachineDto>(Error.Validation(e.Message)); }
+        }
         machine.UpdateSpecifications(
             command.Name,
             command.Model,
@@ -92,17 +92,20 @@ public class MachineCrudCommandHandler :
             command.AchievableToleranceMm,
             command.SupportedMaterials);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        // Any specification change invalidates the previous approval.
+        if (profiles is not null) await profiles.MatchAsync(machine, cancellationToken);
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(LabMappings.ToDto(machine));
     }
 
     public async Task<Result> Handle(DeleteMachineCommand command, CancellationToken cancellationToken)
     {
-        var lab = await _labs.GetByIdAsync(command.LabId, cancellationToken);
+        var lab = await labs.GetByIdAsync(command.LabId, cancellationToken);
         if (lab is null)
             return Result.Failure(Error.NotFound("Lab", command.LabId));
 
-        if (!command.IsAdminOrOps && command.RequestingUserId.HasValue)
+        if (command is { IsAdminOrOps: false, RequestingUserId: not null })
         {
             if (lab.OwnerUserId.HasValue && lab.OwnerUserId.Value != command.RequestingUserId.Value)
                 return Result.Failure(Error.Forbidden("Bạn chỉ có quyền xóa máy thuộc xưởng của mình."));
@@ -112,7 +115,7 @@ public class MachineCrudCommandHandler :
         if (machine is null)
             return Result.Failure(Error.NotFound("Machine", command.MachineId));
 
-        var activeJobs = await _jobs.GetActiveByMachineAsync(command.MachineId, cancellationToken);
+        var activeJobs = await jobs.GetActiveByMachineAsync(command.MachineId, cancellationToken);
         if (activeJobs.Count > 0)
         {
             return Result.Failure(Error.Conflict(
@@ -120,17 +123,17 @@ public class MachineCrudCommandHandler :
         }
 
         lab.RemoveMachine(machine.Id);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
 
     public async Task<Result<MachineDto>> Handle(ScheduleMachineMaintenanceCommand command, CancellationToken cancellationToken)
     {
-        var lab = await _labs.GetByIdAsync(command.LabId, cancellationToken);
+        var lab = await labs.GetByIdAsync(command.LabId, cancellationToken);
         if (lab is null)
             return Result.Failure<MachineDto>(Error.NotFound("Lab", command.LabId));
 
-        if (!command.IsAdminOrOps && command.RequestingUserId.HasValue)
+        if (command is { IsAdminOrOps: false, RequestingUserId: not null })
         {
             if (lab.OwnerUserId.HasValue && lab.OwnerUserId.Value != command.RequestingUserId.Value)
                 return Result.Failure<MachineDto>(Error.Forbidden("Bạn chỉ có quyền đặt lịch bảo trì máy thuộc xưởng của mình."));
@@ -146,8 +149,7 @@ public class MachineCrudCommandHandler :
         }
         else
         {
-            if (command.MaintenanceFromUtc.HasValue
-                && command.MaintenanceUntilUtc.HasValue
+            if (command is { MaintenanceFromUtc: not null, MaintenanceUntilUtc: not null }
                 && command.MaintenanceUntilUtc.Value <= command.MaintenanceFromUtc.Value)
             {
                 return Result.Failure<MachineDto>(Error.Validation("Thời gian kết thúc bảo trì phải sau thời gian bắt đầu."));
@@ -160,7 +162,7 @@ public class MachineCrudCommandHandler :
                 command.SetMaintenanceStatusNow);
         }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(LabMappings.ToDto(machine));
     }
 }

@@ -5,30 +5,29 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Customer.Application.Queries.Users;
 
-public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, Result<IReadOnlyList<AdminUserDto>>>
+public class GetUsersQueryHandler(ICustomerRepository customers)
+    : IRequestHandler<GetUsersQuery, Result<IReadOnlyList<AdminUserDto>>>
 {
-    private readonly ICustomerRepository _customers;
-
-    public GetUsersQueryHandler(ICustomerRepository customers) => _customers = customers;
-
     public async Task<Result<IReadOnlyList<AdminUserDto>>> Handle(
         GetUsersQuery request,
         CancellationToken cancellationToken)
     {
-        var users = await _customers.GetAllAsync(cancellationToken);
+        var users = await customers.GetAllAsync(cancellationToken);
 
-        IReadOnlyList<AdminUserDto> result = users
-            .Select(user => new AdminUserDto(
-                user.Id,
-                user.Email,
-                user.FullName,
-                user.PhoneNumber,
-                user.Roles,
-                user.IsActive,
-                user.IsEmailVerified,
-                user.CreatedAt,
-                user.LastLoginAt))
-            .ToList();
+        IReadOnlyList<AdminUserDto> result =
+        [
+            .. users
+                .Select(user => new AdminUserDto(
+                    user.Id,
+                    user.Email,
+                    user.FullName,
+                    user.PhoneNumber,
+                    user.Roles,
+                    user.IsActive,
+                    user.IsEmailVerified,
+                    user.CreatedAt,
+                    user.LastLoginAt))
+        ];
 
         return Result.Success(result);
     }

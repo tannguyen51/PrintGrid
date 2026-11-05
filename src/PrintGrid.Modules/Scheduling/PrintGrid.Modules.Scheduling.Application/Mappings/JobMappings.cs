@@ -22,7 +22,7 @@ public static class JobMappings
         job.CompletedAtUtc,
         job.AssignedAtUtc,
         // The lab has two hours to accept a placement (Accept timeout, BR-ASSIGN-007).
-        job.AssignedAtUtc.HasValue ? job.AssignedAtUtc.Value.AddHours(2) : null,
+        job.AssignedAtUtc?.AddHours(2),
         job.FailureReason,
         job.Specification.MaterialCode,
         job.Specification.ColorCode,
@@ -31,7 +31,6 @@ public static class JobMappings
         job.Quantity,
         job.ParentJobId,
         job.QcProofStatus.ToString(),
-        job.QcSelfReport,
         job.GetQcProofPhotoKeys(),
         job.QcReviewedBy,
         job.QcReviewedAtUtc,

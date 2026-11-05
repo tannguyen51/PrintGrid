@@ -4,12 +4,12 @@ namespace PrintGrid.Modules.Customer.Application.Commands.ReprintRequests;
 
 public class CreateReprintRequestCommandValidator : AbstractValidator<CreateReprintRequestCommand>
 {
-    public static readonly string[] AllowedReasons =
+    private static readonly string[] _allowedReasons =
         ["dimensional_inaccuracy", "surface_defect", "wrong_material_or_color", "damaged_in_transit", "missing_parts", "other"];
 
     public CreateReprintRequestCommandValidator()
     {
-        RuleFor(x => x.Reason).Must(reason => AllowedReasons.Contains(reason?.Trim().ToLowerInvariant()))
+        RuleFor(x => x.Reason).Must(reason => _allowedReasons.Contains(reason?.Trim().ToLowerInvariant()))
             .WithMessage("Reason is not supported.");
         RuleFor(x => x.Description).NotEmpty().MaximumLength(2000);
         RuleFor(x => x.Photos).NotEmpty().Must(x => x.Count <= 5)

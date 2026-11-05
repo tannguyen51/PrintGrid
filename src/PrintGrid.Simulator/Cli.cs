@@ -6,7 +6,7 @@ namespace PrintGrid.Simulator;
 
 public static class Cli
 {
-    private static readonly SchedulingStrategy[] AllStrategies =
+    private static readonly SchedulingStrategy[] _allStrategies =
         [SchedulingStrategy.Capacity, SchedulingStrategy.Edd, SchedulingStrategy.Nearest, SchedulingStrategy.Random];
 
     public static int Run(string[] args)
@@ -21,7 +21,7 @@ public static class Cli
         var options = new SimulationOptions();
         var faults = FaultConfig.Default;
         var disableFaults = false;
-        IReadOnlyList<SchedulingStrategy> strategies = AllStrategies;
+        IReadOnlyList<SchedulingStrategy> strategies = _allStrategies;
         var assertDeterministic = false;
         var labsExplicit = false;
         var machinesExplicit = false;
@@ -160,12 +160,9 @@ public static class Cli
     private static IReadOnlyList<SchedulingStrategy> ParseStrategies(string value)
     {
         if (string.Equals(value, "all", StringComparison.OrdinalIgnoreCase))
-            return AllStrategies;
+            return _allStrategies;
 
-        if (!Enum.TryParse<SchedulingStrategy>(value, ignoreCase: true, out var strategy))
-            throw new ArgumentException($"Unknown strategy '{value}'. Use capacity|edd|nearest|random|all.");
-
-        return [strategy];
+        return !Enum.TryParse<SchedulingStrategy>(value, ignoreCase: true, out var strategy) ? throw new ArgumentException($"Unknown strategy '{value}'. Use capacity|edd|nearest|random|all.") : [strategy];
     }
 
     private static FaultConfig ParseFaults(string value, FaultConfig current)
@@ -217,12 +214,7 @@ public static class Cli
         _ => throw new ArgumentException($"Unknown fault key '{key}'")
     };
 
-    private static string NextValue(string[] args, ref int index, string flag)
-    {
-        if (index + 1 >= args.Length)
-            throw new ArgumentException($"{flag} requires a value");
-        return args[++index];
-    }
+    private static string NextValue(string[] args, ref int index, string flag) => index + 1 >= args.Length ? throw new ArgumentException($"{flag} requires a value") : args[++index];
 
     private static int NextInt(string[] args, ref int index, string flag) =>
         int.Parse(NextValue(args, ref index, flag), NumberStyles.Integer, CultureInfo.InvariantCulture);

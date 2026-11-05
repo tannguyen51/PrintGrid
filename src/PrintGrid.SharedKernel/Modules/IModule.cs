@@ -5,7 +5,5 @@ namespace PrintGrid.SharedKernel.Modules;
 
 public interface IModule
 {
-    string Name { get; }
-
     void RegisterServices(IServiceCollection services, IConfiguration configuration);
 }

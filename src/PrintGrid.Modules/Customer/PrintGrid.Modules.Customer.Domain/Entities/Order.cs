@@ -8,16 +8,16 @@ namespace PrintGrid.Modules.Customer.Domain.Entities;
 
 public class Order : AggregateRoot<Guid>
 {
-    private readonly List<OrderItem> _items = new();
+    private readonly List<OrderItem> _items = [];
 
-    public Guid CustomerId { get; private set; }
+    public Guid CustomerId { get; private init; }
     public Guid QuoteId { get; private set; }
-    public string OrderNumber { get; private set; } = string.Empty;
+    public string OrderNumber { get; private init; } = string.Empty;
     public OrderStatus Status { get; private set; }
-    public Money TotalPrice { get; private set; } = Money.Zero();
+    public Money TotalPrice { get; private init; } = Money.Zero();
     public DateOnly PromisedDeliveryDate { get; private set; }
-    public Address DeliveryAddress { get; private set; } = null!;
-    public DateTime CreatedAt { get; private set; }
+    public Address DeliveryAddress { get; private init; } = null!;
+    public DateTime CreatedAt { get; private init; }
     public DateTime? ConfirmedAt { get; private set; }
     public string? PaymentTransactionId { get; private set; }
     public bool IsDelayed { get; private set; }
@@ -56,7 +56,7 @@ public class Order : AggregateRoot<Guid>
     public decimal RefundedAmount { get; private set; }
 
     /// <summary>Deposit required before production starts (FR-CUST-012 / BR-PAY-007).</summary>
-    public decimal DepositAmount { get; private set; }
+    public decimal DepositAmount { get; private init; }
 
     /// <summary>Amount the customer has actually paid so far (deposit + settlement instalments).</summary>
     public decimal PaidAmount { get; private set; }
@@ -134,7 +134,7 @@ public class Order : AggregateRoot<Guid>
     /// confirmation date, so two concurrent confirmations cannot collide. The unique filtered
     /// index on ContractNumber is the database backstop.
     /// </summary>
-    public static string BuildContractNumber(Guid orderId, DateTime confirmedAtUtc) =>
+    private static string BuildContractNumber(Guid orderId, DateTime confirmedAtUtc) =>
         $"PG-CT-{confirmedAtUtc:yyyyMMdd}-{orderId.ToString("N")[..12].ToUpperInvariant()}";
 
     /// <summary>
@@ -189,22 +189,22 @@ public class Order : AggregateRoot<Guid>
 
         AddDomainEvent(new OrderConfirmedEvent(
             Id,
-            CustomerId,
-            PromisedDeliveryDate,
-            _items.Select(i => new OrderConfirmedItem(
-                i.Id,
-                i.ModelId,
-                i.Quantity,
-                i.Configuration.MaterialCode,
-                i.Configuration.ColorCode,
-                i.Configuration.LayerHeightMm,
-                i.Configuration.InfillPercent,
-                i.Configuration.ToleranceMm,
-                i.EstimatedPrintMinutes,
-                i.EstimatedMaterialGrams,
-                i.BoundingWidthMm,
-                i.BoundingDepthMm,
-                i.BoundingHeightMm)).ToList()));
+            _items.Select(item => new OrderConfirmedItem(
+                item.Id,
+                item.ModelId,
+                item.Quantity,
+                item.Configuration.MaterialCode,
+                item.Configuration.ColorCode,
+                item.Configuration.LayerHeightMm,
+                item.EstimatedPrintMinutes,
+                item.EstimatedMaterialGrams,
+                item.BoundingWidthMm,
+                item.BoundingDepthMm,
+                item.BoundingHeightMm,
+                item.CalculationJson,
+                item.QuotedMachineId,
+                item.Configuration.ToleranceMm)).ToList(),
+            PromisedDeliveryDate));
 
         return Result.Success();
     }

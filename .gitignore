@@ -103,5 +103,6 @@ agent_changes.md
 .figma-images/
 
 # Local database dumps and editor backups (never commit)
+.local/
 .db-backups/
 *.drawio.bkp

@@ -10,6 +10,8 @@ public sealed record JobAssignedEvent(
     DateTime PlannedEndUtc,
     decimal Score) : DomainEvent;
 
+public sealed record JobDeclinedEvent(Guid JobId, Guid LabId, string Reason) : DomainEvent;
+
 public sealed record JobFailedEvent(
     Guid JobId,
     Guid LabId,
@@ -17,11 +19,6 @@ public sealed record JobFailedEvent(
     string Reason,
     int AttemptNumber,
     Guid OrderItemId) : DomainEvent;
-
-public sealed record JobDeclinedEvent(
-    Guid JobId,
-    Guid LabId,
-    string Reason) : DomainEvent;
 
 /// <summary>
 /// Raised when a production event invalidates a placement and the plan must be repaired
@@ -31,7 +28,6 @@ public sealed record JobDeclinedEvent(
 public sealed record ReschedulingTriggeredEvent(
     Guid JobId,
     string Trigger,
-    DateOnly InternalDueDate,
     Guid? ExcludedLabId = null) : DomainEvent;
 
 /// <summary>
@@ -45,21 +41,15 @@ public sealed record JobReprintCreatedEvent(
     Guid? FaultLabId,
     DateOnly InheritedDueDate) : DomainEvent;
 
-public sealed record JobStartedEvent(
-    Guid JobId,
-    Guid OrderItemId) : DomainEvent;
+public sealed record JobStartedEvent(Guid JobId = default, Guid OrderItemId = default) : DomainEvent;
 
-public sealed record JobCompletedEvent(
-    Guid JobId,
-    Guid OrderItemId) : DomainEvent;
+public sealed record JobCompletedEvent(Guid JobId = default, Guid OrderItemId = default) : DomainEvent;
 
 public sealed record JobInspectionPassedEvent(
-    Guid JobId,
-    IReadOnlyList<string> PhotoUrls) : DomainEvent;
+    Guid JobId) : DomainEvent;
 
 public sealed record CustomerFaultInspectionFailedEvent(
     Guid JobId,
     string? FailureReason,
     IReadOnlyList<string> PhotoUrls,
     string CustomerNotificationMessage) : DomainEvent;
-

@@ -4,7 +4,6 @@ using PrintGrid.Modules.Scheduling.Application.Services;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
-using PrintGrid.Modules.Scheduling.Domain.Services;
 using PrintGrid.SharedKernel.Interfaces;
 using PrintGrid.SharedKernel.Results;
 using System.Text.Json;
@@ -50,13 +49,18 @@ public sealed class GetOpsMonitorQueryHandler(IJobRepository jobs, ILabRepositor
         var risks = open.Select(job => (Job: job, Slack: OpsRisk.SlackHours(job, clock.UtcNow)))
             .Where(x => x.Slack < policy.AtRiskSlackHours)
             .OrderBy(x => x.Slack)
-            .Select(x => new OpsRiskJobDto(x.Job.Id, x.Job.Status.ToString(), x.Job.LabId, x.Slack, OpsRisk.Reason(x.Job, x.Slack), x.Job.InternalDueDate, x.Job.PlannedEndUtc, x.Job.Quantity))
+            .Select(x => new OpsRiskJobDto(
+                x.Job.Id, x.Job.Status.ToString(), x.Job.LabId, x.Slack, OpsRisk.Reason(x.Job, x.Slack),
+                x.Job.InternalDueDate, x.Job.PlannedEndUtc, x.Job.Quantity))
             .ToList();
         var loads = allLabs.Select(lab =>
         {
             var active = open.Count(job => job.LabId == lab.Id);
             var machines = lab.Machines.Count;
-            return new OpsLabLoadDto(lab.Id, lab.Name, active, machines, machines == 0 ? active : decimal.Round((decimal)active / machines, 2), lab.IsActive, lab.IsInGoodStanding);
+            return new OpsLabLoadDto(
+                lab.Id, lab.Name, active, machines,
+                machines == 0 ? active : decimal.Round((decimal)active / machines, 2),
+                lab.IsActive, lab.IsInGoodStanding);
         }).OrderByDescending(x => x.JobsPerMachine).ToList();
         var forecast = open.Count == 0 ? 100m : decimal.Round((decimal)(open.Count - risks.Count) / open.Count * 100m, 1);
         return Result.Success(new OpsMonitorDto(open.Count, risks.Count, policy.AtRiskSlackHours, forecast, risks, loads, clock.UtcNow));
@@ -77,13 +81,18 @@ public sealed class PreviewOpsReassignQueryHandler(IJobRepository jobs, IAssignm
         if (feasible.Ranking.Count > 0)
         {
             var best = feasible.Ranking[0];
-            return Result.Success(new OpsReassignPreviewDto(job.Id, true, false, currentLab, best.Placement.Candidate.Lab.Id, best.Placement.Candidate.Machine.Id, best.Placement.PlannedEndUtc, null, "Có thể gán lại mà không đổi ngày cam kết khách."));
+            return Result.Success(new OpsReassignPreviewDto(
+                job.Id, true, false, currentLab, best.Placement.Candidate.Lab.Id,
+                best.Placement.Candidate.Machine.Id, best.Placement.PlannedEndUtc, null,
+                "Có thể gán lại mà không đổi ngày cam kết khách."));
         }
         var late = await engine.AssignAsync(job, new AssignmentRequest(AssignmentTriggers.DateChangeProbe, IgnoreDueDate: true, ProbeOnly: true, ExcludeLabId: currentLab), ct);
         var proposed = late.EarliestFeasibleEndUtc is { } end
             ? DateOnly.FromDateTime(end).AddDays(PlacementShortfallService.HubAndTransitBufferDays)
             : job.InternalDueDate.AddDays(PlacementShortfallService.HubAndTransitBufferDays + 1);
-        return Result.Success(new OpsReassignPreviewDto(job.Id, false, true, currentLab, null, null, late.EarliestFeasibleEndUtc, proposed, "Gán lại sẽ ảnh hưởng ngày khách; cần bước xác nhận và khách duyệt ngày mới."));
+        return Result.Success(new OpsReassignPreviewDto(
+            job.Id, false, true, currentLab, null, null, late.EarliestFeasibleEndUtc, proposed,
+            "Gán lại sẽ ảnh hưởng ngày khách; cần bước xác nhận và khách duyệt ngày mới."));
     }
 }
 
@@ -112,7 +121,7 @@ public sealed class ReassignJobByOpsCommandHandler(
                 return Result.Failure<OpsReassignResultDto>(Error.Conflict("Xác nhận bước 2 là bắt buộc vì ngày cam kết khách bị ảnh hưởng"));
             if (command.DateChangeReason is null || !Enum.IsDefined(command.DateChangeReason.Value))
                 return Result.Failure<OpsReassignResultDto>(Error.Validation("Phải chọn một trong ba điều kiện đổi ngày của B16"));
-            if (command.DateChangeReason == PrintGrid.Modules.Scheduling.Domain.Enums.DateChangeReason.ReprintDeadlineUnrecoverable && job.AttemptNumber < 2)
+            if (command.DateChangeReason == DateChangeReason.ReprintDeadlineUnrecoverable && job.AttemptNumber < 2)
                 return Result.Failure<OpsReassignResultDto>(Error.Conflict("B16 yêu cầu ít nhất hai lần in lại trước khi đổi ngày vì không thể cứu hạn"));
             if (await dateChanges.HasPendingAsync(job.Id, ct))
                 return Result.Failure<OpsReassignResultDto>(Error.Conflict("Job đã có đề nghị đổi ngày đang chờ khách"));
@@ -140,15 +149,19 @@ public sealed class ReassignJobByOpsCommandHandler(
                 chosenMachineId: job.MachineId,
                 createdAtUtc: clock.UtcNow), ct);
             await unitOfWork.SaveChangesAsync(ct);
-            return Result.Success(new OpsReassignResultDto("PendingCustomerApproval", job.Id, job.LabId, job.MachineId, request.Id, "Đã ghi nhận lý do và tạo yêu cầu đổi ngày chờ khách duyệt; lịch hiện tại chưa bị thay đổi."));
+            return Result.Success(new OpsReassignResultDto(
+                "PendingCustomerApproval", job.Id, job.LabId, job.MachineId, request.Id,
+                "Đã ghi nhận lý do và tạo yêu cầu đổi ngày chờ khách duyệt; lịch hiện tại chưa bị thay đổi."));
         }
 
         var oldLab = job.LabId;
         var prepared = job.PrepareForOpsReassignment(command.Reason);
         if (prepared.IsFailure) return Result.Failure<OpsReassignResultDto>(prepared.Error);
         var assigned = await engine.AssignAsync(job, new AssignmentRequest(AssignmentTriggers.OpsOverride, "ops", command.ActorId.ToString(), ExcludeLabId: oldLab, Reason: command.Reason.Trim()), ct);
-        if (!assigned.Assigned)
-            return Result.Failure<OpsReassignResultDto>(Error.Conflict(assigned.Reason ?? "Không thể gán lại job"));
-        return Result.Success(new OpsReassignResultDto("Reassigned", job.Id, assigned.Result!.LabId, assigned.Result.MachineId, null, "Đã gán lại qua capability filter và ghi audit."));
+        return !assigned.Assigned
+            ? Result.Failure<OpsReassignResultDto>(Error.Conflict(assigned.Reason ?? "Không thể gán lại job"))
+            : Result.Success(new OpsReassignResultDto(
+                "Reassigned", job.Id, assigned.Result!.LabId, assigned.Result.MachineId, null,
+                "Đã gán lại qua capability filter và ghi audit."));
     }
 }

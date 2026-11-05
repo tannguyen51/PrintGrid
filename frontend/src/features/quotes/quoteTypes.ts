@@ -11,6 +11,14 @@ export interface QuoteItem {
   machineTimeCostAmount: number
   estimatedPrintMinutes: number
   estimatedMaterialGrams: number
+  calculation?: QuoteCalculation | null
+}
+
+export interface QuoteCalculation {
+  sizeCode: string; widthMm: number; depthMm: number; heightMm: number; scale: number; quantity: number; engine: string
+  colors: { colorCode: string; grams: number; pricePerKg: number; amount: number }[]
+  printMinutes: number; pricePerHour: number; materialAmount: number; machineAmount: number
+  failureRate: number; failureAllowance: number; polishingPerUnit: number; serviceAmount: number; totalAmount: number
 }
 
 export type QuoteStatus = 'Pending' | 'Draft' | 'Ready' | 'Expired' | 'Converted' | 'Failed'
@@ -48,6 +56,9 @@ export interface QuoteConfigInput {
   infillPercent: number
   quantity: number
   toleranceMm: number
+  sizeCode?: string
+  colorCodes?: string[]
+  polishing?: boolean
 }
 
 // Selector labels only — actual rates live server-side in the versioned pricing
@@ -65,6 +76,9 @@ export const COLORS = [
   { code: 'WHITE', label: 'Trắng' },
   { code: 'SIGNALRED', label: 'Đỏ' },
   { code: 'BLUE', label: 'Xanh dương' },
+  { code: 'GREEN', label: 'Xanh lá' },
+  { code: 'YELLOW', label: 'Vàng' },
+  { code: 'ORANGE', label: 'Cam' },
   { code: 'GREY', label: 'Xám' },
   { code: 'TRANSPARENT', label: 'Trong suốt' },
 ]

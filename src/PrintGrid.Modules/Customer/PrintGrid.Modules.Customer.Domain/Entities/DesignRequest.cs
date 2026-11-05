@@ -12,13 +12,13 @@ public sealed class DesignRequest : Entity<Guid>
 {
     public static readonly string[] AllowedStatuses = ["Pending", "InReview", "Quoted", "Rejected", "Accepted"];
 
-    private readonly List<string> _referenceImageKeys = new();
+    private readonly List<string> _referenceImageKeys = [];
 
     public Guid CustomerId { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
     public string Status { get; private set; } = "Pending";
-    public Guid? QuoteId { get; private set; }
+    public static Guid? QuoteId => null;
     public IReadOnlyList<string> ReferenceImageKeys => _referenceImageKeys.AsReadOnly();
     public DateTime CreatedAtUtc { get; private set; }
 
@@ -52,10 +52,12 @@ public sealed class DesignRequest : Entity<Guid>
     /// <summary>Ops triage transition. Status is constrained to the documented intake lifecycle.</summary>
     public Result ChangeStatus(string status)
     {
-        var next = AllowedStatuses.FirstOrDefault(s => s.Equals(status?.Trim(), StringComparison.OrdinalIgnoreCase));
+        var next = AllowedStatuses.FirstOrDefault(s => s.Equals(status.Trim(), StringComparison.OrdinalIgnoreCase));
         if (next is null)
+        {
             return Result.Failure(Error.Validation(
                 $"Trạng thái '{status}' không hợp lệ. Chỉ chấp nhận: {string.Join(", ", AllowedStatuses)}."));
+        }
 
         Status = next;
         return Result.Success();

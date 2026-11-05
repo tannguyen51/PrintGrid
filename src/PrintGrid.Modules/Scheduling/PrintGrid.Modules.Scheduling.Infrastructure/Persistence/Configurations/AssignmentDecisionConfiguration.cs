@@ -7,7 +7,7 @@ namespace PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Configurations
 /// <summary>
 /// Append-only decision log (FR-SCHED-009 / BR-ASSIGN-004). Candidate sets and score
 /// breakdowns are stored as jsonb — the log must reproduce a decision exactly as it was
-/// made, so the shape is deliberately not normalised into per-criterion rows.
+/// made, so the shape is deliberately not normalized into per-criterion rows.
 /// </summary>
 public class AssignmentDecisionConfiguration : IEntityTypeConfiguration<AssignmentDecision>
 {

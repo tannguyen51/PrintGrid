@@ -13,20 +13,12 @@ namespace PrintGrid.Modules.Customer.Application.Commands.Payments;
 /// </summary>
 public sealed record MarkOrderPaidCommand(Guid OrderId, decimal? Amount) : IRequest<Result<OrderPaymentDto>>;
 
-public sealed class MarkOrderPaidCommandHandler : IRequestHandler<MarkOrderPaidCommand, Result<OrderPaymentDto>>
+public sealed class MarkOrderPaidCommandHandler(IOrderRepository orders, IUnitOfWork unitOfWork)
+    : IRequestHandler<MarkOrderPaidCommand, Result<OrderPaymentDto>>
 {
-    private readonly IOrderRepository _orders;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public MarkOrderPaidCommandHandler(IOrderRepository orders, IUnitOfWork unitOfWork)
-    {
-        _orders = orders;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result<OrderPaymentDto>> Handle(MarkOrderPaidCommand command, CancellationToken cancellationToken)
     {
-        var order = await _orders.GetByIdAsync(command.OrderId, cancellationToken);
+        var order = await orders.GetByIdAsync(command.OrderId, cancellationToken);
         if (order is null)
             return Result.Failure<OrderPaymentDto>(Error.NotFound("Order", command.OrderId));
 
@@ -40,19 +32,13 @@ public sealed class MarkOrderPaidCommandHandler : IRequestHandler<MarkOrderPaidC
         if (applied.IsFailure)
             return Result.Failure<OrderPaymentDto>(applied.Error);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(PaymentMapping.ToDto(order));
     }
 }
 
 internal static class PaymentMapping
 {
-    internal static OrderPaymentDto ToDto(Domain.Entities.Order order) => new(
-        order.TotalPrice.Amount,
-        order.DepositAmount,
-        order.PaidAmount,
-        Math.Max(0m, order.TotalPrice.Amount - order.PaidAmount),
-        order.IsDeposited,
-        order.IsSettled,
-        order.TotalPrice.Currency);
+    internal static OrderPaymentDto ToDto(Domain.Entities.Order order) =>
+        new(order.IsDeposited, order.IsSettled, order.PaidAmount);
 }

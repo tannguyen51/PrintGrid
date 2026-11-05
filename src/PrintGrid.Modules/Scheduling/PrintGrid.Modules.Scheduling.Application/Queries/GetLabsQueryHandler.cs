@@ -6,21 +6,17 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Scheduling.Application.Queries;
 
-public class GetLabsQueryHandler : IRequestHandler<GetLabsQuery, Result<IReadOnlyList<LabDto>>>
+public class GetLabsQueryHandler(ILabRepository labs) : IRequestHandler<GetLabsQuery, Result<IReadOnlyList<LabDto>>>
 {
-    private readonly ILabRepository _labs;
-
-    public GetLabsQueryHandler(ILabRepository labs) => _labs = labs;
-
     public async Task<Result<IReadOnlyList<LabDto>>> Handle(
         GetLabsQuery query,
         CancellationToken cancellationToken)
     {
         var entities = query.OwnerUserId.HasValue
-            ? await _labs.GetByOwnerAsync(query.OwnerUserId.Value, cancellationToken)
+            ? await labs.GetByOwnerAsync(query.OwnerUserId.Value, cancellationToken)
             : query.IncludeInactive
-                ? await _labs.GetAllAsync(cancellationToken)
-                : await _labs.GetActiveWithMachinesAsync(cancellationToken);
+                ? await labs.GetAllAsync(cancellationToken)
+                : await labs.GetActiveWithMachinesAsync(cancellationToken);
 
         return Result.Success<IReadOnlyList<LabDto>>(entities.Select(LabMappings.ToDto).ToList());
     }

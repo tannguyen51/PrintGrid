@@ -28,17 +28,9 @@ public record CreateModelFromSampleCommand(
     int EstimatedPrintMinutes,
     decimal EstimatedMaterialGrams) : IRequest<Result<ModelDto>>;
 
-public class CreateModelFromSampleCommandHandler : IRequestHandler<CreateModelFromSampleCommand, Result<ModelDto>>
+public class CreateModelFromSampleCommandHandler(IModelRepository models, IUnitOfWork unitOfWork)
+    : IRequestHandler<CreateModelFromSampleCommand, Result<ModelDto>>
 {
-    private readonly IModelRepository _models;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public CreateModelFromSampleCommandHandler(IModelRepository models, IUnitOfWork unitOfWork)
-    {
-        _models = models;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result<ModelDto>> Handle(CreateModelFromSampleCommand command, CancellationToken cancellationToken)
     {
         var model = Domain.Entities.Model.Create(
@@ -67,8 +59,8 @@ public class CreateModelFromSampleCommandHandler : IRequestHandler<CreateModelFr
         // Platform-owned samples are trusted content: they skip the moderation queue.
         model.Approve(reviewerId: null, atUtc: DateTime.UtcNow, note: "Platform sample");
 
-        await _models.AddAsync(model, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await models.AddAsync(model, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(ModelMappings.ToDto(model));
     }

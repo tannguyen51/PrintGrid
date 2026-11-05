@@ -8,8 +8,6 @@ public sealed class BuildVolume : ValueObject
     public decimal DepthMm { get; }
     public decimal HeightMm { get; }
 
-    private BuildVolume() { }
-
     private BuildVolume(decimal widthMm, decimal depthMm, decimal heightMm)
     {
         WidthMm = widthMm;

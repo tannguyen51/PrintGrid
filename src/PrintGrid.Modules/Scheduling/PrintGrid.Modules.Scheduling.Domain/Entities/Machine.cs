@@ -1,4 +1,5 @@
 using PrintGrid.Modules.Scheduling.Domain.Enums;
+using PrintGrid.Modules.Scheduling.Domain.Services;
 using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
 using PrintGrid.SharedKernel.Common;
 
@@ -17,6 +18,44 @@ public class Machine : Entity<Guid>
     public decimal AchievableToleranceMm { get; private set; }
     public MachineStatus Status { get; private set; }
     public decimal SpeedFactor { get; private set; } = 1.0m;
+    public PrinterConfiguration? PrinterConfiguration { get; private set; }
+    public string ProfileStatus { get; private set; } = "MissingProfile";
+    public Guid[] CuraProfileIds { get; private set; } = [];
+    public string? ProfileReviewReason { get; private set; }
+    public Guid? ProfileReviewedBy { get; private set; }
+    public DateTime? ProfileReviewedAtUtc { get; private set; }
+
+    public void ConfigurePrinter(PrinterConfiguration configuration)
+    {
+        configuration.Validate();
+        PrinterConfiguration = configuration with { Manufacturer = configuration.Manufacturer.Trim() };
+        SetMatchedProfiles([], false);
+    }
+
+    public void SetMatchedProfiles(IEnumerable<Guid> ids, bool complete)
+    {
+        CuraProfileIds = [.. ids.Distinct()];
+        ProfileStatus = complete && CuraProfileIds.Length > 0 ? "PendingReview" : "MissingProfile";
+        ProfileReviewReason = null;
+        ProfileReviewedBy = null;
+        ProfileReviewedAtUtc = null;
+    }
+
+    public void ReviewProfile(bool approve, Guid reviewerId, string? reason)
+    {
+        switch (approve)
+        {
+            case true when (ProfileStatus != "PendingReview" || CuraProfileIds.Length == 0 || PrinterConfiguration is null):
+                throw new ArgumentException("Máy cần đủ profile phù hợp và ở trạng thái chờ duyệt.");
+            case false when string.IsNullOrWhiteSpace(reason):
+                throw new ArgumentException("Vui lòng nhập lý do từ chối.");
+        }
+
+        ProfileStatus = approve ? "Approved" : "Rejected";
+        ProfileReviewReason = approve ? null : reason!.Trim();
+        ProfileReviewedBy = reviewerId;
+        ProfileReviewedAtUtc = DateTime.UtcNow;
+    }
 
     /// <summary>
     /// FR-SCHED-008 correction factor learned from completed jobs on this machine.
@@ -107,7 +146,8 @@ public class Machine : Entity<Guid>
     }
 
     public bool Supports(JobSpecification spec) =>
-        Technology == spec.Technology
+        (Technology != PrintTechnology.Fdm || ProfileStatus == "Approved")
+        && Technology == spec.Technology
         && BuildVolume.CanFit(spec.RequiredVolume)
         && MinLayerHeightMm <= spec.LayerHeightMm
         && AchievableToleranceMm <= spec.ToleranceMm
@@ -116,12 +156,10 @@ public class Machine : Entity<Guid>
     public void SetStatus(MachineStatus status)
     {
         Status = status;
-        if (status == MachineStatus.Idle)
-        {
-            MaintenanceFromUtc = null;
-            MaintenanceUntilUtc = null;
-            MaintenanceReason = null;
-        }
+        if (status != MachineStatus.Idle) return;
+        MaintenanceFromUtc = null;
+        MaintenanceUntilUtc = null;
+        MaintenanceReason = null;
     }
 
     public void UpdateSpecifications(
@@ -147,6 +185,7 @@ public class Machine : Entity<Guid>
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Select(x => x.Trim().ToUpperInvariant())
             .Distinct());
+        SetMatchedProfiles([], false);
     }
 
     public void AdjustSpeedFactor(decimal factor)
@@ -164,7 +203,7 @@ public class Machine : Entity<Guid>
     /// </summary>
     public void ApplyCalibrationFactor(decimal factor, int sampleCount, decimal mape, DateTime computedAtUtc)
     {
-        if (sampleCount < PrintGrid.Modules.Scheduling.Domain.Services.EstimationCalibration.MinimumSamples)
+        if (sampleCount < EstimationCalibration.MinimumSamples)
             throw new ArgumentOutOfRangeException(nameof(sampleCount), "At least 10 valid samples are required before a factor can be applied");
         if (mape < 0m)
             throw new ArgumentOutOfRangeException(nameof(mape), "MAPE cannot be negative");
@@ -182,9 +221,5 @@ public class Machine : Entity<Guid>
     /// <c>Job.EstimatedPrintMinutes</c> stays the untouched baseline that MAPE is measured
     /// against and no existing job is ever rewritten.
     /// </summary>
-    public int ApplyToEstimate(int rawEstimatedMinutes)
-    {
-        if (rawEstimatedMinutes <= 0) return rawEstimatedMinutes;
-        return Math.Max(1, (int)Math.Round(rawEstimatedMinutes * CalibrationFactor, MidpointRounding.AwayFromZero));
-    }
+    public int ApplyToEstimate(int rawEstimatedMinutes) => rawEstimatedMinutes <= 0 ? rawEstimatedMinutes : Math.Max(1, (int)Math.Round(rawEstimatedMinutes * CalibrationFactor, MidpointRounding.AwayFromZero));
 }

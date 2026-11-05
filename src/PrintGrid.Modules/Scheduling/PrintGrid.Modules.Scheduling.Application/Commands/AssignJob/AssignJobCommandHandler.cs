@@ -10,26 +10,18 @@ namespace PrintGrid.Modules.Scheduling.Application.Commands.AssignJob;
 /// <see cref="IAssignmentEngine"/> so that automatic rescheduling (FR-SCHED-007) and urgent
 /// reprints (FR-HUB-003) run exactly the same logic — and leave the same decision log entry.
 /// </summary>
-public class AssignJobCommandHandler : IRequestHandler<AssignJobCommand, Result<AssignmentResultDto>>
+public class AssignJobCommandHandler(IJobRepository jobs, IAssignmentEngine engine)
+    : IRequestHandler<AssignJobCommand, Result<AssignmentResultDto>>
 {
-    private readonly IJobRepository _jobs;
-    private readonly IAssignmentEngine _engine;
-
-    public AssignJobCommandHandler(IJobRepository jobs, IAssignmentEngine engine)
-    {
-        _jobs = jobs;
-        _engine = engine;
-    }
-
     public async Task<Result<AssignmentResultDto>> Handle(
         AssignJobCommand command,
         CancellationToken cancellationToken)
     {
-        var job = await _jobs.GetByIdAsync(command.JobId, cancellationToken);
+        var job = await jobs.GetByIdAsync(command.JobId, cancellationToken);
         if (job is null)
             return Result.Failure<AssignmentResultDto>(Error.NotFound("Job", command.JobId));
 
-        var outcome = await _engine.AssignAsync(
+        var outcome = await engine.AssignAsync(
             job,
             new AssignmentRequest(AssignmentTriggers.InitialAssign, ActorType: "ops"),
             cancellationToken);

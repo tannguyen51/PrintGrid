@@ -6,20 +6,12 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Customer.Application.Models;
 
-public class UpdateModelCommandHandler : IRequestHandler<UpdateModelCommand, Result<ModelDto>>
+public class UpdateModelCommandHandler(IModelRepository models, IUnitOfWork unitOfWork)
+    : IRequestHandler<UpdateModelCommand, Result<ModelDto>>
 {
-    private readonly IModelRepository _models;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public UpdateModelCommandHandler(IModelRepository models, IUnitOfWork unitOfWork)
-    {
-        _models = models;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result<ModelDto>> Handle(UpdateModelCommand command, CancellationToken cancellationToken)
     {
-        var model = await _models.GetByIdForCustomerAsync(command.CustomerId, command.ModelId, cancellationToken);
+        var model = await models.GetByIdForCustomerAsync(command.CustomerId, command.ModelId, cancellationToken);
         if (model is null)
             return Result.Failure<ModelDto>(Error.NotFound("Model", command.ModelId));
 
@@ -31,8 +23,8 @@ public class UpdateModelCommandHandler : IRequestHandler<UpdateModelCommand, Res
             command.SizeBytes,
             command.Tags);
 
-        _models.Update(model);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        models.Update(model);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(ModelMappings.ToDto(model));
     }

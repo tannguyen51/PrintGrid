@@ -14,32 +14,23 @@ namespace PrintGrid.Modules.Scheduling.Application.Queries;
 /// </summary>
 public record GetCalibrationStatusQuery(Guid? LabId = null) : IRequest<Result<IReadOnlyList<CalibrationStatusDto>>>;
 
-public class GetCalibrationStatusQueryHandler
+public class GetCalibrationStatusQueryHandler(ILabRepository labs, ICalibrationSampleRepository samples)
     : IRequestHandler<GetCalibrationStatusQuery, Result<IReadOnlyList<CalibrationStatusDto>>>
 {
-    private readonly ILabRepository _labs;
-    private readonly ICalibrationSampleRepository _samples;
-
-    public GetCalibrationStatusQueryHandler(ILabRepository labs, ICalibrationSampleRepository samples)
-    {
-        _labs = labs;
-        _samples = samples;
-    }
-
     public async Task<Result<IReadOnlyList<CalibrationStatusDto>>> Handle(
         GetCalibrationStatusQuery query,
         CancellationToken cancellationToken)
     {
-        var labs = await _labs.GetAllAsync(cancellationToken);
+        var labs1 = await labs.GetAllAsync(cancellationToken);
         if (query.LabId.HasValue)
-            labs = labs.Where(l => l.Id == query.LabId.Value).ToList();
+            labs1 = labs1.Where(l => l.Id == query.LabId.Value).ToList();
 
-        var samples = await _samples.GetAllAsync(cancellationToken);
-        var byMachine = samples
+        var samples1 = await samples.GetAllAsync(cancellationToken);
+        var byMachine = samples1
             .GroupBy(s => s.MachineId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var statuses = labs
+        var statuses = labs1
             .SelectMany(lab => lab.Machines.Select(machine => new
             {
                 Lab = lab,

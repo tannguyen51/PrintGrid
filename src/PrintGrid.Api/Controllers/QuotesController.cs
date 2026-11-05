@@ -9,19 +9,15 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/quotes")]
 [Authorize(Policy = Policies.RequireCustomer)]
-public class QuotesController : ControllerBase
+public class QuotesController(ISender sender) : ControllerBase
 {
-    private readonly ISender _sender;
-
-    public QuotesController(ISender sender) => _sender = sender;
-
     [HttpGet]
     public async Task<IActionResult> GetQuotes(CancellationToken cancellationToken)
     {
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var result = await _sender.Send(new GetQuotesQuery(customerId.Value), cancellationToken);
+        var result = await sender.Send(new GetQuotesQuery(customerId.Value), cancellationToken);
         return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
     }
 
@@ -31,7 +27,7 @@ public class QuotesController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var result = await _sender.Send(new GetQuoteByIdQuery(customerId.Value, quoteId), cancellationToken);
+        var result = await sender.Send(new GetQuoteByIdQuery(customerId.Value, quoteId), cancellationToken);
         return result.IsFailure
             ? NotFound(new { error = new { code = result.Error.Code, message = result.Error.Message } })
             : Ok(result.Value);
@@ -43,7 +39,7 @@ public class QuotesController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new CreateQuoteCommand(
                 customerId.Value,
                 request.ModelId,
@@ -52,18 +48,15 @@ public class QuotesController : ControllerBase
                 request.LayerHeightMm,
                 request.InfillPercent,
                 request.Quantity,
-                request.ToleranceMm),
+                request.ToleranceMm, request.SizeCode ?? "ORIGINAL", request.ColorCodes, request.Polishing),
             cancellationToken);
 
-        if (result.IsFailure)
-        {
-            var status = result.Error.Code == "conflict"
-                ? StatusCodes.Status409Conflict
-                : StatusCodes.Status400BadRequest;
-            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
-        }
+        if (!result.IsFailure) return CreatedAtAction(nameof(GetQuotes), new { }, result.Value);
+        var status = result.Error.Code == "conflict"
+            ? StatusCodes.Status409Conflict
+            : StatusCodes.Status400BadRequest;
+        return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
-        return CreatedAtAction(nameof(GetQuotes), new { }, result.Value);
     }
 }
 
@@ -74,4 +67,7 @@ public record CreateQuoteRequest(
     decimal LayerHeightMm,
     int InfillPercent,
     int Quantity,
-    decimal ToleranceMm);
+    decimal ToleranceMm,
+    string? SizeCode = null,
+    IReadOnlyList<string>? ColorCodes = null,
+    bool Polishing = false);

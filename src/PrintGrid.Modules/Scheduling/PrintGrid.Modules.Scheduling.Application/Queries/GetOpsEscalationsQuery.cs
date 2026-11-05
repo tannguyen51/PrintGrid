@@ -8,32 +8,22 @@ namespace PrintGrid.Modules.Scheduling.Application.Queries;
 /// <summary>The operations queue: reprints past the cap and jobs with no feasible date (FR-ANAL-004).</summary>
 public record GetOpsEscalationsQuery : IRequest<Result<IReadOnlyList<OpsEscalationDto>>>;
 
-public class GetOpsEscalationsQueryHandler
+public class GetOpsEscalationsQueryHandler(IOpsEscalationRepository escalations)
     : IRequestHandler<GetOpsEscalationsQuery, Result<IReadOnlyList<OpsEscalationDto>>>
 {
-    private readonly IOpsEscalationRepository _escalations;
-
-    public GetOpsEscalationsQueryHandler(IOpsEscalationRepository escalations)
-    {
-        _escalations = escalations;
-    }
-
     public async Task<Result<IReadOnlyList<OpsEscalationDto>>> Handle(
         GetOpsEscalationsQuery query,
         CancellationToken cancellationToken)
     {
-        var open = await _escalations.GetOpenAsync(cancellationToken);
+        var open = await escalations.GetOpenAsync(cancellationToken);
 
-        IReadOnlyList<OpsEscalationDto> dtos = open
-            .Select(e => new OpsEscalationDto(
-                e.Id,
-                e.JobId,
-                e.OrderItemId,
-                e.Kind.ToString(),
-                e.Reason,
-                e.Status.ToString(),
-                e.CreatedAtUtc))
-            .ToList();
+        IReadOnlyList<OpsEscalationDto> dtos =
+        [
+            .. open
+                .Select(e => new OpsEscalationDto(
+                    e.Id, e.JobId, e.OrderItemId, e.Kind.ToString(), e.Reason,
+                    e.Status.ToString(), e.CreatedAtUtc))
+        ];
 
         return Result.Success(dtos);
     }

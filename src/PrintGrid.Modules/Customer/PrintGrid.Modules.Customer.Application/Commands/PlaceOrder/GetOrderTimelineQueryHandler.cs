@@ -8,18 +8,12 @@ namespace PrintGrid.Modules.Customer.Application.Commands.PlaceOrder;
 
 public record GetOrderTimelineQuery(Guid OrderId, Guid CustomerId) : IRequest<Result<CustomerTimelineDto>>;
 
-public class GetOrderTimelineQueryHandler : IRequestHandler<GetOrderTimelineQuery, Result<CustomerTimelineDto>>
+public class GetOrderTimelineQueryHandler(IOrderRepository orders)
+    : IRequestHandler<GetOrderTimelineQuery, Result<CustomerTimelineDto>>
 {
-    private readonly IOrderRepository _orders;
-
-    public GetOrderTimelineQueryHandler(IOrderRepository orders)
-    {
-        _orders = orders;
-    }
-
     public async Task<Result<CustomerTimelineDto>> Handle(GetOrderTimelineQuery request, CancellationToken cancellationToken)
     {
-        var order = await _orders.GetByIdAsync(request.OrderId, cancellationToken);
+        var order = await orders.GetByIdAsync(request.OrderId, cancellationToken);
         if (order == null || order.CustomerId != request.CustomerId)
         {
             return Result.Failure<CustomerTimelineDto>(Error.NotFound("Order", request.OrderId));
@@ -27,8 +21,8 @@ public class GetOrderTimelineQueryHandler : IRequestHandler<GetOrderTimelineQuer
 
         // The hub's "Delivered" is only the physical handover; the warranty anchor (DeliveredAt) is
         // stamped by the CUSTOMER's receipt confirmation. So the last two stages split on that flag.
-        var handedOver = order.Status == OrderStatus.Delivered && order.DeliveredAt is null;
-        var receivedByCustomer = order.Status == OrderStatus.Delivered && order.DeliveredAt is not null;
+        var handedOver = order is { Status: OrderStatus.Delivered, DeliveredAt: null };
+        var receivedByCustomer = order is { Status: OrderStatus.Delivered, DeliveredAt: not null };
 
         var stages = new List<OrderStageDto>
         {
@@ -45,10 +39,9 @@ public class GetOrderTimelineQueryHandler : IRequestHandler<GetOrderTimelineQuer
 
         var itemDtos = order.Items.Select(i => new CustomerOrderItemDto(
             i.Id,
-            "Model_" + i.ModelId.ToString().Substring(0, 4), // Since ModelName is not directly in OrderItem, we mock it or fetch it. Actually the FE might not need the exact model name or we just provide the ID.
+            "Model_" + i.ModelId.ToString()[..4],
             i.Quantity,
-            i.ItemStatus
-        )).ToList();
+            i.ItemStatus)).ToList();
 
         var dto = new CustomerTimelineDto(
             order.Id,
@@ -61,8 +54,7 @@ public class GetOrderTimelineQueryHandler : IRequestHandler<GetOrderTimelineQuer
             order.TrackingNumber,
             order.DeliveredAt,
             CanConfirmReceipt: handedOver,
-            ContractNumber: order.ContractNumber
-        );
+            ContractNumber: order.ContractNumber);
 
         return Result.Success(dto);
     }

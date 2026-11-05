@@ -38,8 +38,8 @@ export default function PricingPage() {
     <PublicPage>
       <PageHeading
         eyebrow="Bảng giá & vật liệu"
-        title="Một công thức giá cho toàn mạng lưới."
-        description="Mỗi báo giá được tính từ cùng một bộ tham số đang hoạt động: khối lượng vật liệu cộng thời gian máy. Không có bảng giá riêng cho từng xưởng."
+        title="Giá theo vật liệu, thời gian in và dịch vụ."
+        description="Bảng dưới là đơn giá tham chiếu. Báo giá cho file của bạn dùng kích thước đã chọn, lượng nhựa từng màu và thời gian từ slicer, đơn giá hợp đồng của máy phù hợp, dự phòng lỗi và dịch vụ hậu kỳ."
         actions={
           !isCustomer ? (
             <PillButton onClick={() => setAuthMode('login')}>Đăng nhập để xem đơn giá</PillButton>
@@ -142,14 +142,14 @@ export default function PricingPage() {
                 <StepCard
                   step="01"
                   title="Khối lượng vật liệu"
-                  body="Thể tích hình học × khối lượng riêng × tỷ lệ đặc. Bạn chọn vật liệu và mức đặc (infill) ở bước cấu hình."
+                  body="Slicer tính lượng nhựa từng màu sau khi điều chỉnh size, gồm support và nhựa xả theo cấu hình máy."
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <StepCard
                   step="02"
                   title="Thời gian máy"
-                  body="Thời gian in ước tính theo chiều cao lớp × đơn giá giờ máy của mạng lưới — một mức chung cho mọi xưởng."
+                  body="Thời gian dự kiến từ slicer × đơn giá giờ máy theo hợp đồng. Các máy có thể có đơn giá riêng."
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>

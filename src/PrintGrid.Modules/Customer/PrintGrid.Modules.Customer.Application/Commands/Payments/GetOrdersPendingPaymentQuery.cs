@@ -25,28 +25,26 @@ public sealed record PendingOrderPaymentDto(
 public sealed record GetOrdersPendingPaymentQuery(string? Search = null)
     : IRequest<Result<IReadOnlyList<PendingOrderPaymentDto>>>;
 
-public sealed class GetOrdersPendingPaymentQueryHandler
+public sealed class GetOrdersPendingPaymentQueryHandler(IOrderRepository orders)
     : IRequestHandler<GetOrdersPendingPaymentQuery, Result<IReadOnlyList<PendingOrderPaymentDto>>>
 {
     private static readonly OrderStatus[] _pendingStatuses = [OrderStatus.PaymentPending];
-
-    private readonly IOrderRepository _orders;
-
-    public GetOrdersPendingPaymentQueryHandler(IOrderRepository orders) => _orders = orders;
 
     public async Task<Result<IReadOnlyList<PendingOrderPaymentDto>>> Handle(
         GetOrdersPendingPaymentQuery request,
         CancellationToken cancellationToken)
     {
-        var orders = await _orders.GetByStatusAsync(_pendingStatuses, cancellationToken);
+        var orders1 = await orders.GetByStatusAsync(_pendingStatuses, cancellationToken);
 
         var search = request.Search?.Trim();
         var filtered = string.IsNullOrWhiteSpace(search)
-            ? orders
-            : orders.Where(o =>
+            ? orders1
+            :
+            [
+                .. orders1.Where(o =>
                     o.OrderNumber.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                     o.CustomerId.ToString().Contains(search, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            ];
 
         var dtos = filtered
             .Select(o => new PendingOrderPaymentDto(

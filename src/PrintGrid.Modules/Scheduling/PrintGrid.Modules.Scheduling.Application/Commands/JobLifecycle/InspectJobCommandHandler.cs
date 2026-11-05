@@ -21,31 +21,17 @@ namespace PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 /// attribution, the cap of two reprints and the decision log.</item>
 /// </list>
 /// </summary>
-public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Result>
+public class InspectJobCommandHandler(
+    IJobRepository jobs,
+    IUnitOfWork unitOfWork,
+    ISender sender,
+    ILogger<InspectJobCommandHandler> logger,
+    IQcKnowledgeRepository qcKnowledge)
+    : IRequestHandler<InspectJobCommand, Result>
 {
-    private readonly IJobRepository _jobs;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ISender _sender;
-    private readonly ILogger<InspectJobCommandHandler> _logger;
-    private readonly IQcKnowledgeRepository _qcKnowledge;
-
-    public InspectJobCommandHandler(
-        IJobRepository jobs,
-        IUnitOfWork unitOfWork,
-        ISender sender,
-        ILogger<InspectJobCommandHandler> logger,
-        IQcKnowledgeRepository qcKnowledge)
-    {
-        _jobs = jobs;
-        _unitOfWork = unitOfWork;
-        _sender = sender;
-        _logger = logger;
-        _qcKnowledge = qcKnowledge;
-    }
-
     public async Task<Result> Handle(InspectJobCommand command, CancellationToken cancellationToken)
     {
-        var job = await _jobs.GetByIdAsync(command.JobId, cancellationToken);
+        var job = await jobs.GetByIdAsync(command.JobId, cancellationToken);
         if (job is null) return Result.Failure(Error.NotFound("Job", command.JobId));
 
         // Only a job awaiting inspection can be judged — this also stops a retried FAIL from
@@ -54,14 +40,14 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
             return Result.Failure(Error.Conflict($"Job in state {job.Status} cannot be inspected"));
 
         // AC01/AC02 (BR-QC-002/003): no conclusion without evidence, none with a half-done checklist.
-        if (command.PhotoUrls is null || command.PhotoUrls.Count == 0)
+        if (command.PhotoUrls.Count == 0)
             return Result.Failure(Error.Validation("Photographic evidence is required for inspection"));
-        if (command.ChecklistResults is null || command.ChecklistResults.Count == 0)
+        if (command.ChecklistResults.Count == 0)
             return Result.Failure(Error.Validation("Inspection checklist items are mandatory"));
 
         if (command.ChecklistVersionId is null)
             return Result.Failure(Error.Validation("Inspection checklist version is required"));
-        var checklist = await _qcKnowledge.GetChecklistAsync(command.ChecklistVersionId.Value, cancellationToken);
+        var checklist = await qcKnowledge.GetChecklistAsync(command.ChecklistVersionId.Value, cancellationToken);
         if (checklist is null)
             return Result.Failure(Error.Validation("Inspection checklist version does not exist"));
 
@@ -77,7 +63,9 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
             .Where(x => !string.IsNullOrWhiteSpace(x)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (expectedItems.Where(x => x.Mandatory).Any(x => !submittedCodes.Contains(x.Code)) ||
             command.ChecklistResults.Any(x => string.IsNullOrWhiteSpace(x.ItemCode) || expectedItems.All(e => !e.Code.Equals(x.ItemCode, StringComparison.OrdinalIgnoreCase))))
+        {
             return Result.Failure(Error.Validation("Inspection results must match every mandatory item in the selected checklist version"));
+        }
 
         string? defectCode = null;
         if (!command.Passed)
@@ -85,7 +73,7 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
             defectCode = command.DefectCode?.Trim().ToUpperInvariant();
             if (string.IsNullOrWhiteSpace(defectCode))
                 return Result.Failure(Error.Validation("Defect code is required when inspection fails"));
-            var defect = await _qcKnowledge.GetDefectAsync(defectCode, cancellationToken);
+            var defect = await qcKnowledge.GetDefectAsync(defectCode, cancellationToken);
             if (defect is null || defect.IsDeprecated)
                 return Result.Failure(Error.Validation("Defect code does not exist or is deprecated"));
         }
@@ -103,14 +91,16 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
             var passed = job.MarkInspectionPassed(command.PhotoUrls.ToList());
             if (passed.IsFailure) return passed;
 
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             return Result.Success();
         }
 
         // AC03 (BR-QC-004): a failure without attribution cannot be routed to anyone.
         if (command.FaultAttribution is null)
+        {
             return Result.Failure(Error.Validation(
                 "Fault attribution (Lab, Hub or Customer) is required when inspection fails"));
+        }
 
         var fault = command.FaultAttribution.Value;
         var reason = command.Note ?? $"Failed hub inspection ({fault} fault)";
@@ -126,9 +116,9 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
                 reason, command.PhotoUrls.ToList(), message);
             if (customerFault.IsFailure) return customerFault;
 
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Job {JobId} failed inspection attributed to the customer — no reprint created",
                 job.Id);
             return Result.Success();
@@ -139,9 +129,9 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
         var fail = job.Fail(reason);
         if (fail.IsFailure) return fail;
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var reprint = await _sender.Send(
+        var reprint = await sender.Send(
             new CreateUrgentReprintCommand(job.Id, reason, Fault: fault),
             cancellationToken);
 
@@ -149,7 +139,7 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
         {
             // The QC failure itself is committed; what failed is the reprint, which ops must
             // pick up. Surfacing it lets the hub see why no reprint job appeared.
-            _logger.LogError(
+            logger.LogError(
                 "QC failure recorded for job {JobId} but the urgent reprint could not be created: {Code} {Message}",
                 job.Id, reprint.Error.Code, reprint.Error.Message);
             return Result.Failure(reprint.Error);
@@ -157,13 +147,13 @@ public class InspectJobCommandHandler : IRequestHandler<InspectJobCommand, Resul
 
         if (reprint.Value.EscalatedToOps)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Job {JobId} failed inspection again; reprint limit reached, escalated to operations",
                 job.Id);
         }
         else
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Job {JobId} failed inspection ({Fault} fault) — reprint {ReprintJobId} created, charged to the at-fault party; lab of the failed print was {FailedAtLabId}",
                 job.Id, fault, reprint.Value.ReprintJobId, failedAtLabId);
         }

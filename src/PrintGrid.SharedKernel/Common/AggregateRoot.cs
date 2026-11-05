@@ -8,7 +8,7 @@ public interface IAggregateRoot
 
 public abstract class AggregateRoot<TId> : Entity<TId>, IAggregateRoot where TId : notnull
 {
-    private readonly List<IDomainEvent> _domainEvents = new();
+    private readonly List<IDomainEvent> _domainEvents = [];
 
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 

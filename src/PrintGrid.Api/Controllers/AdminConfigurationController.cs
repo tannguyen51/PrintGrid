@@ -25,7 +25,7 @@ public sealed class AdminConfigurationController(ISender sender, IAuditLogWriter
         var created = await sender.Send(new CreateCommercialConfigurationCommand(
             request.Name, request.Parameters, request.ChangeSummary, ActorId()), cancellationToken);
         await WriteAudit("commercial_configuration.created", "CommercialConfigurationVersion", created.Id.ToString(),
-            null, created, CommercialCodes, cancellationToken);
+            null, created, _commercialCodes, cancellationToken);
         return CreatedAtAction(nameof(GetConfigurations), new { id = created.Id }, created);
     }
 
@@ -36,7 +36,7 @@ public sealed class AdminConfigurationController(ISender sender, IAuditLogWriter
         var result = await sender.Send(new ActivateCommercialConfigurationCommand(id), cancellationToken);
         if (!result.IsSuccess) return Conflict(ApiError(result.ErrorCode!, result.ErrorMessage!));
         await WriteAudit("commercial_configuration.activated", "CommercialConfigurationVersion", id.ToString(),
-            before, result.Value, CommercialCodes, cancellationToken);
+            before, result.Value, _commercialCodes, cancellationToken);
         return Ok(result.Value);
     }
 
@@ -60,7 +60,7 @@ public sealed class AdminConfigurationController(ISender sender, IAuditLogWriter
             request.Properties, request.IsDeprecated, ActorId()), cancellationToken);
         if (!result.IsSuccess) return Conflict(ApiError(result.ErrorCode!, result.ErrorMessage!));
         await WriteAudit(before is null ? "catalog_item.created" : "catalog_item.revised", "SharedCatalogItem",
-            result.Value!.Id.ToString(), before, result.Value, CatalogCodes, cancellationToken);
+            result.Value!.Id.ToString(), before, result.Value, _catalogCodes, cancellationToken);
         return Ok(result.Value);
     }
 
@@ -73,7 +73,7 @@ public sealed class AdminConfigurationController(ISender sender, IAuditLogWriter
             .FirstOrDefault(x => x.Code.Equals(code, StringComparison.OrdinalIgnoreCase));
         var result = await sender.Send(new DeleteSharedCatalogItemCommand(type, code), cancellationToken);
         if (!result.IsSuccess) return Conflict(ApiError(result.ErrorCode!, result.ErrorMessage!));
-        await WriteAudit("catalog_item.deleted", "SharedCatalogItem", before?.Id.ToString(), before, null, CatalogCodes, cancellationToken);
+        await WriteAudit("catalog_item.deleted", "SharedCatalogItem", before?.Id.ToString(), before, null, _catalogCodes, cancellationToken);
         return NoContent();
     }
 
@@ -89,8 +89,8 @@ public sealed class AdminConfigurationController(ISender sender, IAuditLogWriter
 
     private static object ApiError(string code, string message) => new { error = new { code, message } };
 
-    private static readonly string[] CommercialCodes = ["FR-ADMIN-002", "UC-009", "BR-CONFIG-001", "BR-CONFIG-002", "BR-CONFIG-003"];
-    private static readonly string[] CatalogCodes = ["FR-ADMIN-003", "UC-023", "BR-CONFIG-001", "BR-CONFIG-002", "BR-CONFIG-003"];
+    private static readonly string[] _commercialCodes = ["FR-ADMIN-002", "UC-009", "BR-CONFIG-001", "BR-CONFIG-002", "BR-CONFIG-003"];
+    private static readonly string[] _catalogCodes = ["FR-ADMIN-003", "UC-023", "BR-CONFIG-001", "BR-CONFIG-002", "BR-CONFIG-003"];
 }
 
 public sealed record CreateCommercialConfigurationRequest(

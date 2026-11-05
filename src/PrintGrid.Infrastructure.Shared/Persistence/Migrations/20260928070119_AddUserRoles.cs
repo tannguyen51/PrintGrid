@@ -24,7 +24,7 @@ public partial class AddUserRoles : Migration
             table: "customers",
             type: "text[]",
             nullable: false,
-            defaultValue: new string[0]);
+            defaultValue: Array.Empty<string>());
     }
 
     /// <inheritdoc />

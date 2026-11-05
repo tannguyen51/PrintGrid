@@ -15,19 +15,22 @@ public class ReprintRequest : Entity<Guid>
     public DateTime UpdatedAt { get; private set; }
     public string? ResolutionNote { get; private set; }
 
-    private ReprintRequest() { }
+    private ReprintRequest(string? resolutionNote)
+    {
+        ResolutionNote = resolutionNote;
+    }
 
     public static ReprintRequest Create(
         Guid orderId, Guid customerId, string reason, string description, IEnumerable<string> photos)
     {
-        return new ReprintRequest
+        return new ReprintRequest(null)
         {
             Id = Guid.NewGuid(),
             OrderId = orderId,
             CustomerId = customerId,
             Reason = reason.Trim().ToLowerInvariant(),
             Description = description.Trim(),
-            Photos = photos.ToArray(),
+            Photos = [.. photos],
             Status = ReprintRequestStatus.UnderReview,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

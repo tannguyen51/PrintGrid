@@ -16,8 +16,7 @@ public sealed class Money : ValueObject
     public static Money Of(decimal amount, string currency = "VND")
     {
         if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount), "Money cannot be negative");
-        if (string.IsNullOrWhiteSpace(currency)) throw new ArgumentException("Currency is required", nameof(currency));
-        return new Money(decimal.Round(amount, 2), currency.ToUpperInvariant());
+        return string.IsNullOrWhiteSpace(currency) ? throw new ArgumentException("Currency is required", nameof(currency)) : new Money(decimal.Round(amount, 2), currency.ToUpperInvariant());
     }
 
     public static Money Zero(string currency = "VND") => new(0m, currency);

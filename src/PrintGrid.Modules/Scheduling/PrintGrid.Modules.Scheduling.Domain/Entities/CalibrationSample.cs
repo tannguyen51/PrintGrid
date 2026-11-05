@@ -17,8 +17,8 @@ public class CalibrationSample : Entity<Guid>
     public Guid MachineId { get; private set; }
     public Guid ModelId { get; private set; }
     public string MaterialCode { get; private set; } = string.Empty;
-    public decimal EstimatedMinutes { get; private set; }
-    public decimal ActualMinutes { get; private set; }
+    public decimal EstimatedMinutes { get; private init; }
+    public decimal ActualMinutes { get; private init; }
     public DateTime CreatedAtUtc { get; private set; }
 
     /// <summary>Actual / estimated; 1.0 means the slicer was exact.</summary>

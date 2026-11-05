@@ -39,10 +39,6 @@ public sealed record PricingDetailDto(
     IReadOnlyList<PricingMaterialDto> Materials,
     PricingExampleDto? ReferenceExample);
 
-/// <summary>
-/// One worked example computed by the engine (never by the browser), so the page can
-/// show a full breakdown without re-implementing the formula in TypeScript.
-/// </summary>
 public sealed record PricingExampleDto(
     string MaterialCode,
     decimal VolumeCm3,
@@ -86,26 +82,23 @@ public sealed class PricingQueryHandlers(
             .OrderBy(item => item.IsPremium)
             .ThenBy(item => item.Name)
             .Select(item => new PublicMaterialPriceDto(
-                item.Code,
-                item.Name,
-                item.Description,
-                item.IsPremium,
-                Samples.PublicPricing.Band(
-                    Samples.PublicPricing.ExactUnitPrice(
-                        set, item.Code, Samples.PublicPricing.ReferenceVolumeCm3, request.ReferenceBaseMinutes))))
+                item.Code, item.Name, item.Description, item.IsPremium,
+                Samples.PublicPricing.Band(Samples.PublicPricing.ExactUnitPrice(
+                    set, item.Code, Samples.PublicPricing.ReferenceVolumeCm3, request.ReferenceBaseMinutes))))
             .ToList();
 
         // An empty catalogue must still render a usable page — fall back to the engine's codes.
         if (materials.Count == 0)
         {
-            materials = set.PricePerGram.Keys
-                .OrderBy(code => code)
-                .Select(code => new PublicMaterialPriceDto(
-                    code, code, null, false,
-                    Samples.PublicPricing.Band(
-                        Samples.PublicPricing.ExactUnitPrice(
+            materials =
+            [
+                .. set.PricePerGram.Keys
+                    .OrderBy(code => code)
+                    .Select(code => new PublicMaterialPriceDto(
+                        code, code, null, false,
+                        Samples.PublicPricing.Band(Samples.PublicPricing.ExactUnitPrice(
                             set, code, Samples.PublicPricing.ReferenceVolumeCm3, request.ReferenceBaseMinutes))))
-                .ToList();
+            ];
         }
 
         return new PublicPricingDto(
@@ -136,32 +129,49 @@ public sealed class PricingQueryHandlers(
                     item?.Name ?? pair.Key,
                     item?.Description,
                     pair.Value,
-                    set.DensityGramsPerCm3.TryGetValue(pair.Key, out var density) ? density : 0m,
+                    set.DensityGramsPerCm3.GetValueOrDefault(pair.Key, 0m),
                     item?.IsPremium ?? false);
             })
             .ToList();
 
         var exampleMaterial = set.PricePerGram.ContainsKey("PLA") ? "PLA" : set.PricePerGram.Keys.FirstOrDefault();
         PricingExampleDto? example = null;
-        if (exampleMaterial is not null)
+        if (exampleMaterial is null)
         {
-            var line = QuotePricing.PriceLine(
-                set, Samples.PublicPricing.ReferenceVolumeCm3, request.ReferenceBaseMinutes,
-                Samples.PublicPricing.ReferenceInfillPercent, exampleMaterial,
-                Samples.PublicPricing.ReferenceLayerHeightMm);
-
-            example = new PricingExampleDto(
-                exampleMaterial,
+            return new PricingDetailDto(
+                set.Version,
+                active?.ActivatedAtUtc ?? active?.CreatedAtUtc,
+                set.PricePerPrintHour,
                 Samples.PublicPricing.ReferenceVolumeCm3,
-                request.ReferenceBaseMinutes,
-                line.EffectiveMinutes,
-                Samples.PublicPricing.ReferenceLayerHeightMm,
+                ReferenceHeightMm,
                 Samples.PublicPricing.ReferenceInfillPercent,
-                line.Grams,
-                line.MaterialCostAmount,
-                line.MachineTimeCostAmount,
-                line.UnitPrice);
+                request.ReferenceBaseMinutes,
+                new Dictionary<string, decimal>(set.PricePerGram, StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, decimal>(set.DensityGramsPerCm3, StringComparer.OrdinalIgnoreCase),
+                set.TimeMultiplierByLayer
+                    .OrderByDescending(pair => pair.Key)
+                    .Select(pair => new PricingLayerDto(pair.Key, pair.Value))
+                    .ToList(),
+                materials,
+                example);
         }
+
+        var line = QuotePricing.PriceLine(
+            set, Samples.PublicPricing.ReferenceVolumeCm3, request.ReferenceBaseMinutes,
+            Samples.PublicPricing.ReferenceInfillPercent, exampleMaterial,
+            Samples.PublicPricing.ReferenceLayerHeightMm);
+
+        example = new PricingExampleDto(
+            exampleMaterial,
+            Samples.PublicPricing.ReferenceVolumeCm3,
+            request.ReferenceBaseMinutes,
+            line.EffectiveMinutes,
+            Samples.PublicPricing.ReferenceLayerHeightMm,
+            Samples.PublicPricing.ReferenceInfillPercent,
+            line.Grams,
+            line.MaterialCostAmount,
+            line.MachineTimeCostAmount,
+            line.UnitPrice);
 
         return new PricingDetailDto(
             set.Version,
@@ -173,10 +183,11 @@ public sealed class PricingQueryHandlers(
             request.ReferenceBaseMinutes,
             new Dictionary<string, decimal>(set.PricePerGram, StringComparer.OrdinalIgnoreCase),
             new Dictionary<string, decimal>(set.DensityGramsPerCm3, StringComparer.OrdinalIgnoreCase),
-            set.TimeMultiplierByLayer
-                .OrderByDescending(pair => pair.Key)
-                .Select(pair => new PricingLayerDto(pair.Key, pair.Value))
-                .ToList(),
+            [
+                .. set.TimeMultiplierByLayer
+                    .OrderByDescending(pair => pair.Key)
+                    .Select(pair => new PricingLayerDto(pair.Key, pair.Value))
+            ],
             materials,
             example);
     }

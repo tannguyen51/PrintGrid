@@ -6,7 +6,6 @@ using PrintGrid.Modules.Customer.Application.Commands.Auth.GoogleLogin;
 using PrintGrid.Modules.Customer.Application.Commands.Auth.ForgotPassword;
 using PrintGrid.Modules.Customer.Application.Commands.Auth.ResetPassword;
 using PrintGrid.Modules.Customer.Application.DTOs;
-using PrintGrid.Modules.Customer.Domain.Entities;
 using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.SharedKernel.Interfaces;
 using CustomerEntity = PrintGrid.Modules.Customer.Domain.Entities.Customer;
@@ -146,7 +145,7 @@ public class RegisterLoginTests
         var result = await handler.Handle(new ForgotPasswordCommand("unknown@example.com"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        await _emailService.DidNotReceiveWithAnyArgs().SendEmailAsync(default!, default!, default!, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendEmailAsync(null!, null!, null!);
     }
 
     [Fact]

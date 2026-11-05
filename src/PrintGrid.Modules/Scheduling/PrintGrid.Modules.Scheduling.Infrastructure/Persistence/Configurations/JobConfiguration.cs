@@ -11,6 +11,7 @@ public class JobConfiguration : IEntityTypeConfiguration<Job>
     {
         builder.ToTable("jobs", "scheduling");
         builder.HasKey(j => j.Id);
+        builder.Property(j => j.ProductionQuoteJson).HasColumnType("jsonb");
 
         builder.Property(j => j.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(j => j.FailureReason).HasMaxLength(500);

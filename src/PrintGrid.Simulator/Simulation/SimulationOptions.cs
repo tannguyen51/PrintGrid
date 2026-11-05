@@ -31,6 +31,4 @@ public sealed class SimulationOptions
         if (Machines < Labs)
             throw new ArgumentOutOfRangeException(nameof(Machines), "--machines must be at least --labs so every lab can receive work");
     }
-
-    public SimulationOptions Clone() => (SimulationOptions)MemberwiseClone();
 }

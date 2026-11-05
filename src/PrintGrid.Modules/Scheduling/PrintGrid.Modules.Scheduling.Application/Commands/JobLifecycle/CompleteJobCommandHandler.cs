@@ -6,32 +6,24 @@ using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 
-public class CompleteJobCommandHandler : IRequestHandler<CompleteJobCommand, Result>
+public class CompleteJobCommandHandler(
+    IJobRepository jobs,
+    ILabRepository labs,
+    IUnitOfWork unitOfWork,
+    IDateTimeProvider clock)
+    : IRequestHandler<CompleteJobCommand, Result>
 {
-    private readonly IJobRepository _jobs;
-    private readonly ILabRepository _labs;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IDateTimeProvider _clock;
-
-    public CompleteJobCommandHandler(IJobRepository jobs, ILabRepository labs, IUnitOfWork unitOfWork, IDateTimeProvider clock)
-    {
-        _jobs = jobs;
-        _labs = labs;
-        _unitOfWork = unitOfWork;
-        _clock = clock;
-    }
-
     public async Task<Result> Handle(CompleteJobCommand command, CancellationToken cancellationToken)
     {
-        var job = await _jobs.GetByIdAsync(command.JobId, cancellationToken);
+        var job = await jobs.GetByIdAsync(command.JobId, cancellationToken);
         if (job is null) return Result.Failure(Error.NotFound("Job", command.JobId));
 
         if (job.LabId is null) return Result.Failure(Error.Conflict("Job has no assigned lab"));
-        var lab = await _labs.GetByIdAsync(job.LabId.Value, cancellationToken);
+        var lab = await labs.GetByIdAsync(job.LabId.Value, cancellationToken);
         if (lab is null) return Result.Failure(Error.NotFound("Lab", job.LabId.Value));
 
         var result = job.Complete(
-            _clock.UtcNow,
+            clock.UtcNow,
             command.ActualPrintMinutes,
             command.SelfReport,
             command.PhotoKeys,
@@ -41,8 +33,8 @@ public class CompleteJobCommandHandler : IRequestHandler<CompleteJobCommand, Res
         // The lab reports what it used; when it does not, what it reserved on acceptance is the
         // honest estimate of what the print consumed — settling on that also releases the
         // reservation instead of leaving it held forever.
-        var reservedGrams = lab.MaterialReservations
-            .FirstOrDefault(r => r.JobId == job.Id)?.ReservedGrams;
+        decimal? reservedGrams = lab.MaterialReservations.Any(r => r.JobId == job.Id)
+            ? lab.MaterialReservations.Where(r => r.JobId == job.Id).Sum(r => r.ReservedGrams) : null;
         var consumedGrams = command.ActualMaterialGrams ?? reservedGrams;
 
         if (consumedGrams is { } consumed)
@@ -55,15 +47,16 @@ public class CompleteJobCommandHandler : IRequestHandler<CompleteJobCommand, Res
         // hub-caused failure is credited back to whoever printed it (CostBearer.System).
         if (job.CostBearer == CostBearer.System && consumedGrams is { } compensated)
         {
-            lab.CompensateMaterial(
-                job.Id,
-                job.Specification.MaterialCode,
-                job.Specification.ColorCode,
-                compensated,
-                "Bồi hoàn do lỗi hub (hệ thống chịu phí)");
+            var colors = job.MaterialByColor();
+            var total = colors.Values.Sum();
+            foreach (var color in colors)
+            {
+                lab.CompensateMaterial(job.Id, job.Specification.MaterialCode, color.Key,
+                    compensated * color.Value / total, "Bồi hoàn do lỗi hub (hệ thống chịu phí)");
+            }
         }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
 }

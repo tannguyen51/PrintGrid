@@ -20,9 +20,4 @@ public record OrderStageDto(
     bool IsCurrent
 );
 
-public record CustomerOrderItemDto(
-    Guid Id,
-    string ModelName,
-    int Quantity,
-    string Status
-);
+public record CustomerOrderItemDto(Guid Id, string ModelName, int Quantity, string Status);

@@ -11,6 +11,24 @@ export type PrintTechnology = 0 | 1 | 2
 export type MachineStatus = 0 | 1 | 2 | 3
 export type LabApprovalStatus = 'Pending' | 'Active' | 'Rejected' | 'Inactive'
 
+export interface PrinterConfiguration {
+  manufacturer: string
+  extruderCount: number
+  maximumColorSlots: number
+  nozzleDiameterMm: number
+  filamentDiameterMm: number
+  heatedBed: boolean
+  maxNozzleTemperatureC: number
+  maxBedTemperatureC: number
+  pricePerHour: number
+  failureRate: number
+}
+
+export const PROFILE_STATUS_LABELS: Record<string, string> = {
+  MissingProfile: 'Chưa có đủ profile', PendingReview: 'Đã tìm thấy profile · Chờ duyệt',
+  Approved: 'Đã duyệt báo giá', Rejected: 'Bị từ chối',
+}
+
 export interface Machine {
   id: string
   name: string
@@ -27,6 +45,10 @@ export interface Machine {
   maintenanceFromUtc?: string | null
   maintenanceUntilUtc?: string | null
   maintenanceReason?: string | null
+  printerConfiguration?: PrinterConfiguration | null
+  profileStatus: string
+  curaProfileIds: string[]
+  profileReviewReason?: string | null
 }
 
 /**
@@ -91,6 +113,7 @@ export interface RegisterMachineInput {
   minLayerHeightMm: number
   achievableToleranceMm: number
   supportedMaterials: string[]
+  printerConfiguration?: PrinterConfiguration
 }
 
 export interface UpdateMachineInput extends RegisterMachineInput {

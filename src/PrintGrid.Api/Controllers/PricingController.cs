@@ -18,26 +18,17 @@ namespace PrintGrid.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/pricing")]
-public sealed class PricingController : ControllerBase
+public sealed class PricingController(ISender sender, ISlicingService slicing) : ControllerBase
 {
-    private readonly ISender _sender;
-    private readonly ISlicingService _slicing;
-
-    public PricingController(ISender sender, ISlicingService slicing)
-    {
-        _sender = sender;
-        _slicing = slicing;
-    }
-
     [HttpGet("preview")]
     [AllowAnonymous]
     public async Task<IActionResult> GetPreview(CancellationToken cancellationToken) =>
-        Ok(await _sender.Send(new GetPublicPricingQuery(ReferenceBaseMinutes()), cancellationToken));
+        Ok(await sender.Send(new GetPublicPricingQuery(ReferenceBaseMinutes()), cancellationToken));
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireCustomer)]
     public async Task<IActionResult> GetPricing(CancellationToken cancellationToken) =>
-        Ok(await _sender.Send(new GetPricingDetailQuery(ReferenceBaseMinutes()), cancellationToken));
+        Ok(await sender.Send(new GetPricingDetailQuery(ReferenceBaseMinutes()), cancellationToken));
 
     /// <summary>
     /// Print time of the documented reference part (50 cm³, 40 mm tall, 0.2 mm layer,
@@ -54,7 +45,7 @@ public sealed class PricingController : ControllerBase
             VertexCount: 0,
             FaceCount: 0);
 
-        return _slicing.Estimate(
+        return slicing.Estimate(
             geometry,
             "PLA",
             PublicPricing.ReferenceLayerHeightMm,

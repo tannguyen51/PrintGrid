@@ -5,15 +5,13 @@ namespace PrintGrid.Modules.Scheduling.Domain.ValueObjects;
 
 public sealed class JobSpecification : ValueObject
 {
-    public BuildVolume RequiredVolume { get; } = null!;
-    public string MaterialCode { get; } = string.Empty;
-    public string ColorCode { get; } = string.Empty;
+    public BuildVolume RequiredVolume { get; }
+    public string MaterialCode { get; }
+    public string ColorCode { get; }
     public decimal LayerHeightMm { get; }
     public decimal ToleranceMm { get; }
     public PrintTechnology Technology { get; }
     public decimal MaterialGrams { get; }
-
-    private JobSpecification() { }
 
     private JobSpecification(
         BuildVolume requiredVolume,

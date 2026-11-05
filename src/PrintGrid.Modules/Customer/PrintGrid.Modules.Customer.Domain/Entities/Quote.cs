@@ -9,7 +9,7 @@ namespace PrintGrid.Modules.Customer.Domain.Entities;
 
 public class Quote : AggregateRoot<Guid>
 {
-    private readonly List<QuoteItem> _items = new();
+    private readonly List<QuoteItem> _items = [];
 
     public Guid CustomerId { get; private set; }
     public QuoteStatus Status { get; private set; }
@@ -39,7 +39,7 @@ public class Quote : AggregateRoot<Guid>
 
     public IReadOnlyCollection<QuoteItem> Items => _items.AsReadOnly();
 
-    public bool IsExpired(DateTime asOfUtc) => ExpiresAt.HasValue && asOfUtc >= ExpiresAt.Value;
+    private bool IsExpired(DateTime asOfUtc) => ExpiresAt.HasValue && asOfUtc >= ExpiresAt.Value;
 
     private Quote() { }
 
@@ -89,10 +89,12 @@ public class Quote : AggregateRoot<Guid>
         CustomerPlacementSummary = customerPlacementSummary;
         TotalPrice = _items.Aggregate(
             Money.Zero(_items[0].UnitPrice.Currency),
-            (sum, item) => sum.Add(item.UnitPrice.Multiply(item.Quantity)));
+            (sum, item) => sum.Add(item.BatchTotalAmount.HasValue
+                ? Money.Of(item.BatchTotalAmount.Value, item.UnitPrice.Currency)
+                : item.UnitPrice.Multiply(item.Quantity)));
         EngineTotalAmount = TotalPrice.Amount;
         EnginePromisedDeliveryDate = promisedDeliveryDate;
-        AddDomainEvent(new QuoteDraftedEvent(Id, TotalPrice.Amount, promisedDeliveryDate, placementBasis));
+        AddDomainEvent(new QuoteDraftedEvent());
 
         return Result.Success();
     }
@@ -129,10 +131,7 @@ public class Quote : AggregateRoot<Guid>
         ApprovedAt = approvedAtUtc;
         ExpiresAt = approvedAtUtc.Add(validity);
         Status = QuoteStatus.Ready;
-        AddDomainEvent(new QuoteApprovedEvent(
-            Id, staffId, engineAmount, totalAmount,
-            EnginePromisedDeliveryDate ?? promisedDeliveryDate, promisedDeliveryDate,
-            AdjustmentReason, autoApproved, approvedAtUtc));
+        AddDomainEvent(new QuoteApprovedEvent());
         return Result.Success();
     }
 

@@ -17,6 +17,17 @@ public class QuoteItem : Entity<Guid>
     /// <summary>Per-unit cost split frozen with the quote (BR-QUOTE-005 itemized breakdown).</summary>
     public decimal MaterialCostAmount { get; private set; }
     public decimal MachineTimeCostAmount { get; private set; }
+    public string? CalculationJson { get; private set; }
+    public decimal? BatchTotalAmount { get; private set; }
+    public Guid? QuotedMachineId { get; private set; }
+
+    public void FreezeCalculation(string json, decimal batchTotal, Guid? machineId = null)
+    {
+        if (CalculationJson is not null || batchTotal <= 0) throw new InvalidOperationException("Invalid or already frozen calculation");
+        CalculationJson = json;
+        BatchTotalAmount = batchTotal;
+        QuotedMachineId = machineId;
+    }
 
     /// <summary>Part bounding box (mm) from geometry analysis — carried to order/jobs for real placement (FR-SCHED-006).</summary>
     public decimal? BoundingWidthMm { get; private set; }

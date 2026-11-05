@@ -22,6 +22,19 @@ public class MachineConfiguration : IEntityTypeConfiguration<Machine>
         builder.Property(m => m.CalibrationSampleCount).IsRequired();
         builder.Property(m => m.CalibrationMape).HasPrecision(6, 4).IsRequired();
         builder.Property(m => m.MaintenanceReason).HasMaxLength(300);
+        builder.Property(m => m.ProfileStatus).HasMaxLength(30).IsRequired();
+        builder.Property(m => m.ProfileReviewReason).HasMaxLength(1000);
+        builder.Property(m => m.CuraProfileIds).HasColumnType("uuid[]").IsRequired();
+        builder.OwnsOne(m => m.PrinterConfiguration, c =>
+        {
+            c.Property(p => p.Manufacturer).HasMaxLength(100);
+            c.Property(p => p.NozzleDiameterMm).HasPrecision(6, 3);
+            c.Property(p => p.FilamentDiameterMm).HasPrecision(6, 3);
+            c.Property(p => p.MaxNozzleTemperatureC).HasPrecision(6, 2);
+            c.Property(p => p.MaxBedTemperatureC).HasPrecision(6, 2);
+            c.Property(p => p.PricePerHour).HasPrecision(18, 2);
+            c.Property(p => p.FailureRate).HasPrecision(7, 6);
+        });
 
         builder.HasIndex(m => new { m.LabId, m.Status });
 

@@ -14,15 +14,15 @@ public static class PublicPricing
     public const decimal ReferenceVolumeCm3 = 50m;
     public const decimal ReferenceInfillPercent = 30m;
     public const decimal ReferenceLayerHeightMm = 0.2m;
-    public const decimal BandLowerFactor = 0.9m;
-    public const decimal BandUpperFactor = 1.1m;
-    private const decimal Rounding = 10_000m;
+    private const decimal _bandLowerFactor = 0.9m;
+    private const decimal _bandUpperFactor = 1.1m;
+    private const decimal _rounding = 10_000m;
 
     public static PublicPriceRangeDto Band(decimal exact)
     {
-        var from = decimal.Floor(exact * BandLowerFactor / Rounding) * Rounding;
-        var to = decimal.Ceiling(exact * BandUpperFactor / Rounding) * Rounding;
-        return new PublicPriceRangeDto(from, decimal.Max(to, from + Rounding), "VND");
+        var from = decimal.Floor(exact * _bandLowerFactor / _rounding) * _rounding;
+        var to = decimal.Ceiling(exact * _bandUpperFactor / _rounding) * _rounding;
+        return new PublicPriceRangeDto(from, decimal.Max(to, from + _rounding), "VND");
     }
 
     public static decimal ExactUnitPrice(
@@ -31,7 +31,7 @@ public static class PublicPricing
             set, volumeCm3, baseMinutes, ReferenceInfillPercent, materialCode, ReferenceLayerHeightMm).UnitPrice;
 
     /// <summary>Cheapest material for a known geometry — what a "từ … đ" card has to show.</summary>
-    public static decimal? CheapestExact(PricingParameterSet set, decimal? volumeCm3, int? baseMinutes)
+    private static decimal? CheapestExact(PricingParameterSet set, decimal? volumeCm3, int? baseMinutes)
     {
         if (volumeCm3 is null or <= 0 || baseMinutes is null || baseMinutes <= 0) return null;
 
@@ -116,14 +116,14 @@ public static class SampleMappings
 {
     public static SampleSummaryDto ToSummary(SampleModel sample, PricingParameterSet pricing) => new(
         sample.Id, sample.Slug, sample.Name, sample.Description, sample.Category,
-        sample.Tags.ToList(), sample.FileFormat, sample.SizeBytes, sample.CoverImageUrl,
+        [.. sample.Tags], sample.FileFormat, sample.SizeBytes, sample.CoverImageUrl,
         sample.VolumeCm3, sample.BoundingWidthMm, sample.BoundingDepthMm, sample.BoundingHeightMm,
         sample.EstimatedPrintMinutes,
         PublicPricing.CheapestRange(pricing, sample.VolumeCm3, sample.EstimatedPrintMinutes));
 
     public static SampleDetailDto ToDetail(SampleModel sample, PricingParameterSet pricing) => new(
         sample.Id, sample.Slug, sample.Name, sample.Description, sample.Category,
-        sample.Tags.ToList(), sample.FileName, sample.FileFormat, sample.SizeBytes,
+        [.. sample.Tags], sample.FileName, sample.FileFormat, sample.SizeBytes,
         sample.CoverImageUrl, sample.VolumeCm3, sample.BoundingWidthMm, sample.BoundingDepthMm,
         sample.BoundingHeightMm, sample.EstimatedPrintMinutes, sample.EstimatedMaterialGrams,
         PublicPricing.CheapestRange(pricing, sample.VolumeCm3, sample.EstimatedPrintMinutes),
@@ -131,7 +131,7 @@ public static class SampleMappings
 
     public static SampleAdminDto ToAdmin(SampleModel sample) => new(
         sample.Id, sample.Slug, sample.Name, sample.Description, sample.Category,
-        sample.Tags.ToList(), sample.FileName, sample.FileFormat, sample.SizeBytes,
+        [.. sample.Tags], sample.FileName, sample.FileFormat, sample.SizeBytes,
         sample.CoverImageUrl, sample.StorageKey, sample.VolumeCm3, sample.BoundingWidthMm,
         sample.BoundingDepthMm, sample.BoundingHeightMm, sample.EstimatedPrintMinutes,
         sample.EstimatedMaterialGrams, sample.IsPublished, sample.SortOrder,

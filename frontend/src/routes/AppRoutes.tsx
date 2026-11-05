@@ -35,6 +35,7 @@ const AdminCommercialConfigurationPage = lazy(() => import('../features/admin/Ad
 const AdminSharedCatalogPage = lazy(() => import('../features/admin/AdminSharedCatalogPage'))
 const AdminQcKnowledgePage = lazy(() => import('../features/admin/AdminQcKnowledgePage'))
 const AdminLabApprovalPage = lazy(() => import('../features/admin/AdminLabApprovalPage'))
+const AdminCuraProfilesPage = lazy(() => import('../features/admin/AdminCuraProfilesPage'))
 const ForbiddenPage = lazy(() => import('../features/errors/ForbiddenPage'))
 const NotFoundPage = lazy(() => import('../features/errors/NotFoundPage'))
 const AccountPage = lazy(() => import('../features/account/AccountPage'))
@@ -369,6 +370,10 @@ export function AppRoutes() {
         <Route
           path="/admin/qc-knowledge"
           element={<ProtectedRoute allowedRoles={['Admin']}><AdminQcKnowledgePage /></ProtectedRoute>}
+        />
+        <Route
+          path="/admin/cura-profiles"
+          element={<ProtectedRoute allowedRoles={['Admin']}><AdminCuraProfilesPage /></ProtectedRoute>}
         />
         <Route
           path="/admin/labs"

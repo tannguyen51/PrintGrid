@@ -11,7 +11,7 @@ public static class ModelMappings
         model.FileName,
         model.FileFormat,
         model.SizeBytes,
-        model.Tags.ToList(),
+        [.. model.Tags],
         model.CreatedAt,
         model.UpdatedAt,
         model.GeometryStatus.ToString(),

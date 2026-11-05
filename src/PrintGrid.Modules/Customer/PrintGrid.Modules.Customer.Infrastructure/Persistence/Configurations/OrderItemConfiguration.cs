@@ -12,6 +12,8 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.HasKey(i => i.Id);
 
         builder.Property(i => i.Quantity).IsRequired();
+        builder.Property(i => i.CalculationJson).HasColumnType("jsonb");
+        builder.Property(i => i.BatchTotalAmount).HasPrecision(18, 2);
         builder.Property(i => i.EstimatedPrintMinutes).IsRequired().HasDefaultValue(0);
         builder.Property(i => i.EstimatedMaterialGrams).HasPrecision(10, 2).IsRequired().HasDefaultValue(0m);
         builder.Property(i => i.BoundingWidthMm).HasPrecision(8, 2);

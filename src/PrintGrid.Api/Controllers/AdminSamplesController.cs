@@ -20,39 +20,26 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/admin/samples")]
 [Authorize(Policy = Policies.RequireAdmin)]
-public sealed class AdminSamplesController : ControllerBase
+public sealed class AdminSamplesController(
+    ISender sender,
+    IFileStorage files,
+    IOptions<MinioOptions> minio,
+    IOptions<ModelUploadOptions> uploadOptions,
+    ISlicingService slicing,
+    IAuditLogWriter audit)
+    : ControllerBase
 {
-    private readonly ISender _sender;
-    private readonly IFileStorage _files;
-    private readonly MinioOptions _minio;
-    private readonly ModelUploadOptions _uploadOptions;
-    private readonly ISlicingService _slicing;
-    private readonly IAuditLogWriter _audit;
-
-    public AdminSamplesController(
-        ISender sender,
-        IFileStorage files,
-        IOptions<MinioOptions> minio,
-        IOptions<ModelUploadOptions> uploadOptions,
-        ISlicingService slicing,
-        IAuditLogWriter audit)
-    {
-        _sender = sender;
-        _files = files;
-        _minio = minio.Value;
-        _uploadOptions = uploadOptions.Value;
-        _slicing = slicing;
-        _audit = audit;
-    }
+    private readonly MinioOptions _minio = minio.Value;
+    private readonly ModelUploadOptions _uploadOptions = uploadOptions.Value;
 
     [HttpGet]
     public async Task<IActionResult> GetSamples(CancellationToken cancellationToken) =>
-        Ok(await _sender.Send(new GetAdminSamplesQuery(), cancellationToken));
+        Ok(await sender.Send(new GetAdminSamplesQuery(), cancellationToken));
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetSample(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetSampleByIdQuery(id), cancellationToken);
+        var result = await sender.Send(new GetSampleByIdQuery(id), cancellationToken);
         return result.IsFailure ? NotFound(ErrorBody(result.Error)) : Ok(result.Value);
     }
 
@@ -66,7 +53,7 @@ public sealed class AdminSamplesController : ControllerBase
 
         try
         {
-            var result = await _sender.Send(new CreateSampleCommand(
+            var result = await sender.Send(new CreateSampleCommand(
                 form.Slug, form.Name, form.Description, form.Category ?? string.Empty,
                 upload.FileName!, upload.FileFormat!, upload.SizeBytes!.Value,
                 upload.StorageKey!, upload.Sha256, form.CoverImageUrl, SplitTags(form.Tags),
@@ -96,7 +83,7 @@ public sealed class AdminSamplesController : ControllerBase
     [RequestSizeLimit(60 * 1024 * 1024)]
     public async Task<IActionResult> Update(Guid id, [FromForm] SaveSampleForm form, CancellationToken cancellationToken)
     {
-        var before = await _sender.Send(new GetSampleByIdQuery(id), cancellationToken);
+        var before = await sender.Send(new GetSampleByIdQuery(id), cancellationToken);
         if (before.IsFailure) return NotFound(ErrorBody(before.Error));
 
         PreparedUpload upload = new();
@@ -108,7 +95,7 @@ public sealed class AdminSamplesController : ControllerBase
 
         try
         {
-            var result = await _sender.Send(new UpdateSampleCommand(
+            var result = await sender.Send(new UpdateSampleCommand(
                 id, form.Slug, form.Name, form.Description, form.Category ?? string.Empty,
                 form.CoverImageUrl, SplitTags(form.Tags), form.SortOrder,
                 upload.FileName, upload.FileFormat, upload.File is null ? null : upload.SizeBytes,
@@ -140,10 +127,10 @@ public sealed class AdminSamplesController : ControllerBase
     [HttpPost("{id:guid}/publish")]
     public async Task<IActionResult> SetPublished(Guid id, [FromBody] SetSamplePublishedRequest request, CancellationToken cancellationToken)
     {
-        var before = await _sender.Send(new GetSampleByIdQuery(id), cancellationToken);
+        var before = await sender.Send(new GetSampleByIdQuery(id), cancellationToken);
         if (before.IsFailure) return NotFound(ErrorBody(before.Error));
 
-        var result = await _sender.Send(new SetSamplePublishedCommand(id, request.Published), cancellationToken);
+        var result = await sender.Send(new SetSamplePublishedCommand(id, request.Published), cancellationToken);
         if (!result.IsSuccess) return Conflict(ErrorBody(result.ErrorCode!, result.ErrorMessage!));
 
         await WriteAudit(
@@ -155,10 +142,10 @@ public sealed class AdminSamplesController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var before = await _sender.Send(new GetSampleByIdQuery(id), cancellationToken);
+        var before = await sender.Send(new GetSampleByIdQuery(id), cancellationToken);
         if (before.IsFailure) return NotFound(ErrorBody(before.Error));
 
-        var result = await _sender.Send(new DeleteSampleCommand(id), cancellationToken);
+        var result = await sender.Send(new DeleteSampleCommand(id), cancellationToken);
         if (!result.IsSuccess) return Conflict(ErrorBody(result.ErrorCode!, result.ErrorMessage!));
 
         await DeleteStoredAsync(before.Value.StorageKey);
@@ -196,33 +183,37 @@ public sealed class AdminSamplesController : ControllerBase
 
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!ModelFileInspector.IsAllowedExtension(extension))
+        {
             return new PreparedUpload
             {
                 ErrorCode = "unsupported_format",
                 Error = "Định dạng không được hỗ trợ. Chỉ chấp nhận STL, OBJ, 3MF hoặc GLB."
             };
+        }
 
         await using var stream = file.OpenReadStream();
         using var buffer = new MemoryStream();
         await stream.CopyToAsync(buffer, cancellationToken);
         buffer.Position = 0;
 
-        var analysis = await _slicing.AnalyzeAsync(buffer, extension, cancellationToken);
+        var analysis = await slicing.AnalyzeAsync(buffer, extension, cancellationToken);
         if (!analysis.IsValid)
+        {
             return new PreparedUpload
             {
                 ErrorCode = "invalid_file_content",
                 Error = analysis.ErrorMessage ?? "Không đọc được hình học của file."
             };
+        }
 
-        var estimate = _slicing.Estimate(analysis, "PLA", 0.2m, 30, PrintTechnology.Fdm);
+        var estimate = slicing.Estimate(analysis, "PLA", 0.2m, 30, PrintTechnology.Fdm);
 
         var sha256 = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(buffer, cancellationToken))
             .ToLowerInvariant();
 
         var objectName = $"samples/{Guid.NewGuid()}{extension}";
         buffer.Position = 0;
-        await _files.UploadAsync(_minio.ModelBucket, objectName, buffer, ContentTypeFor(extension), cancellationToken);
+        await files.UploadAsync(_minio.ModelBucket, objectName, buffer, ContentTypeFor(extension), cancellationToken);
 
         return new PreparedUpload
         {
@@ -246,7 +237,7 @@ public sealed class AdminSamplesController : ControllerBase
         if (string.IsNullOrWhiteSpace(storageKey)) return;
         var separator = storageKey.IndexOf('/');
         if (separator <= 0 || separator == storageKey.Length - 1) return;
-        await _files.DeleteAsync(storageKey[..separator], storageKey[(separator + 1)..], CancellationToken.None);
+        await files.DeleteAsync(storageKey[..separator], storageKey[(separator + 1)..], CancellationToken.None);
     }
 
     private static IReadOnlyList<string>? SplitTags(string? tags) =>
@@ -266,7 +257,7 @@ public sealed class AdminSamplesController : ControllerBase
     private Guid ActorId() => Guid.Parse(User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     private Task WriteAudit(string action, string entityId, object? before, object? after, CancellationToken cancellationToken) =>
-        _audit.WriteAsync(new AuditLogWriteRequest(
+        audit.WriteAsync(new AuditLogWriteRequest(
             ActorId(),
             User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name ?? "unknown",
             User.FindFirstValue(ClaimTypes.Role) ?? "Admin",

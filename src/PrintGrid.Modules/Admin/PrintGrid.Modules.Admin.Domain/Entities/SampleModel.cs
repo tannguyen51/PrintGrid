@@ -14,8 +14,6 @@ namespace PrintGrid.Modules.Admin.Domain.Entities;
 /// </summary>
 public sealed class SampleModel : Entity<Guid>
 {
-    private readonly List<string> _tags = new();
-
     public string Slug { get; private set; } = string.Empty;
     public string Name { get; private set; } = string.Empty;
     public string? Description { get; private set; }
@@ -30,7 +28,7 @@ public sealed class SampleModel : Entity<Guid>
     /// <summary>Optional admin-supplied thumbnail; the detail page still uses the 3D viewer.</summary>
     public string? CoverImageUrl { get; private set; }
 
-    // Geometry is analysed once at upload and copied to every customer copy, so a
+    // Geometry is analyzed once at upload and copied to every customer copy, so a
     // sample quote costs exactly what the same geometry would cost after an upload.
     public decimal? BoundingWidthMm { get; private set; }
     public decimal? BoundingDepthMm { get; private set; }
@@ -45,7 +43,7 @@ public sealed class SampleModel : Entity<Guid>
     public int SortOrder { get; private set; }
 
     /// <summary>EF needs a writable primitive collection (same constraint as customer models).</summary>
-    public List<string> Tags => _tags;
+    public List<string> Tags { get; } = [];
 
     public Guid CreatedBy { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
@@ -59,7 +57,7 @@ public sealed class SampleModel : Entity<Guid>
         string? description,
         string category,
         string fileName,
-        string fileFormat,
+        string? fileFormat,
         long sizeBytes,
         string storageKey,
         string? sha256,
@@ -119,7 +117,7 @@ public sealed class SampleModel : Entity<Guid>
     }
 
     /// <summary>Replaces the stored binary when an admin uploads a new revision of the sample.</summary>
-    public void ReplaceFile(string fileName, string fileFormat, long sizeBytes, string storageKey, string? sha256)
+    public void ReplaceFile(string fileName, string? fileFormat, long sizeBytes, string storageKey, string? sha256)
     {
         FileName = fileName.Trim();
         FileFormat = (fileFormat ?? string.Empty).Trim().TrimStart('.').ToUpperInvariant();
@@ -154,9 +152,9 @@ public sealed class SampleModel : Entity<Guid>
 
     private void ReplaceTags(IEnumerable<string>? tags)
     {
-        _tags.Clear();
+        Tags.Clear();
         if (tags is not null)
-            _tags.AddRange(tags.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase));
+            Tags.AddRange(tags.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase));
     }
 
     private void Touch() => UpdatedAtUtc = DateTime.UtcNow;
@@ -197,10 +195,9 @@ public sealed class SampleModel : Entity<Guid>
         var pre = value.Replace('đ', 'd').Replace('Đ', 'D');
         var decomposed = pre.Normalize(NormalizationForm.FormD);
         var builder = new StringBuilder(decomposed.Length);
-        foreach (var ch in decomposed)
+        foreach (var ch in decomposed.Where(ch => CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark))
         {
-            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
-                builder.Append(ch);
+            builder.Append(ch);
         }
         return builder.ToString().Normalize(NormalizationForm.FormC);
     }

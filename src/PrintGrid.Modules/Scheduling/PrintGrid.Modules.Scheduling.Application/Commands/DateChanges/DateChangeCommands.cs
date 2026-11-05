@@ -37,8 +37,8 @@ public sealed class GetDateChangeRequestQueryHandler(
 
     internal static DateChangeRequestDto Map(DateChangeRequest request) => new(
         request.Token, request.OriginalDeliveryDate, request.ProposedDeliveryDate,
-        request.ReasonCode.ToString(), request.Reason, request.Status.ToString(), request.CreatedAtUtc,
-        request.DecidedAtUtc);
+        request.ReasonCode.ToString(), request.Reason, request.Status.ToString(),
+        request.CreatedAtUtc, request.DecidedAtUtc);
 }
 
 public sealed class DecideDateChangeCommandHandler(

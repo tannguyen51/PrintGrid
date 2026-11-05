@@ -12,8 +12,9 @@ internal static class MachineBuilder
         decimal minLayerHeight = 0.1m,
         decimal achievableTolerance = 0.2m,
         IEnumerable<string>? materials = null,
-        PrintTechnology technology = PrintTechnology.Fdm) =>
-        Machine.Register(
+        PrintTechnology technology = PrintTechnology.Fdm)
+    {
+        var machine = Machine.Register(
             labId ?? Guid.NewGuid(),
             "Printer-01",
             "Prusa MK4",
@@ -21,7 +22,12 @@ internal static class MachineBuilder
             buildVolume ?? BuildVolume.Create(250, 210, 220),
             minLayerHeight,
             achievableTolerance,
-            materials ?? new[] { "PLA", "PETG" });
+            materials ?? ["PLA", "PETG"]);
+        machine.ConfigurePrinter(new PrinterConfiguration("Prusa", 1, 1, .4m, 1.75m, true, 300, 120, 6000, .08m));
+        machine.SetMatchedProfiles([Guid.NewGuid()], true);
+        machine.ReviewProfile(true, Guid.NewGuid(), null);
+        return machine;
+    }
 }
 
 internal static class SpecBuilder

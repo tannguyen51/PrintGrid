@@ -14,12 +14,8 @@ namespace PrintGrid.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/orders")]
-public class OrderPaymentsController : ControllerBase
+public class OrderPaymentsController(ISender sender) : ControllerBase
 {
-    private readonly ISender _sender;
-
-    public OrderPaymentsController(ISender sender) => _sender = sender;
-
     /// <summary>Ops queue: orders still waiting for their deposit (PaymentPending).</summary>
     [HttpGet("pending-payment")]
     [Authorize(Policy = Policies.RequireOps)]
@@ -27,7 +23,7 @@ public class OrderPaymentsController : ControllerBase
         [FromQuery] string? search,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetOrdersPendingPaymentQuery(search), cancellationToken);
+        var result = await sender.Send(new GetOrdersPendingPaymentQuery(search), cancellationToken);
         return result.IsFailure ? ToError(result.Error) : Ok(result.Value);
     }
 
@@ -38,7 +34,7 @@ public class OrderPaymentsController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var result = await _sender.Send(new GetOrderPaymentQuery(orderId, customerId.Value), cancellationToken);
+        var result = await sender.Send(new GetOrderPaymentQuery(orderId, customerId.Value), cancellationToken);
         return result.IsFailure ? ToError(result.Error) : Ok(result.Value);
     }
 
@@ -49,7 +45,7 @@ public class OrderPaymentsController : ControllerBase
         [FromBody] MarkOrderPaidRequest? request,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new MarkOrderPaidCommand(orderId, request?.Amount), cancellationToken);
+        var result = await sender.Send(new MarkOrderPaidCommand(orderId, request?.Amount), cancellationToken);
         return result.IsFailure ? ToError(result.Error) : Ok(result.Value);
     }
 

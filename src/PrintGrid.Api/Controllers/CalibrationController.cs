@@ -15,31 +15,27 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/calibration")]
 [Authorize(Policy = Policies.RequireOps)]
-public sealed class CalibrationController : ControllerBase
+public sealed class CalibrationController(ISender sender) : ControllerBase
 {
-    private readonly ISender _sender;
-
-    public CalibrationController(ISender sender) => _sender = sender;
-
     /// <summary>POST /calibration/samples/collect — sample newly completed jobs (idempotent).</summary>
     [HttpPost("samples/collect")]
     public async Task<IActionResult> Collect(CancellationToken cancellationToken) =>
-        ToResult(await _sender.Send(new CollectCalibrationSamplesCommand(), cancellationToken));
+        ToResult(await sender.Send(new CollectCalibrationSamplesCommand(), cancellationToken));
 
     /// <summary>POST /calibration/recalibrate/{machineId} — recompute one machine's factor.</summary>
     [HttpPost("recalibrate/{machineId:guid}")]
     public async Task<IActionResult> Recalibrate(Guid machineId, CancellationToken cancellationToken) =>
-        ToResult(await _sender.Send(new RecalibrateCommand(machineId), cancellationToken));
+        ToResult(await sender.Send(new RecalibrateCommand(machineId), cancellationToken));
 
     /// <summary>POST /calibration/recalibrate — recompute every machine.</summary>
     [HttpPost("recalibrate")]
     public async Task<IActionResult> RecalibrateAll(CancellationToken cancellationToken) =>
-        ToResult(await _sender.Send(new RecalibrateAllCommand(), cancellationToken));
+        ToResult(await sender.Send(new RecalibrateAllCommand(), cancellationToken));
 
     /// <summary>GET /calibration/status?labId= — current factor, sample count and MAPE.</summary>
     [HttpGet("status")]
     public async Task<IActionResult> Status([FromQuery] Guid? labId, CancellationToken cancellationToken) =>
-        ToResult(await _sender.Send(new GetCalibrationStatusQuery(labId), cancellationToken));
+        ToResult(await sender.Send(new GetCalibrationStatusQuery(labId), cancellationToken));
 
     private IActionResult ToResult<T>(Result<T> result)
     {

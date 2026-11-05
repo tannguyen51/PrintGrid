@@ -11,10 +11,13 @@ public sealed record PricingParameterSet(
     IReadOnlyDictionary<string, decimal> PricePerGram,
     IReadOnlyDictionary<string, decimal> DensityGramsPerCm3,
     decimal PricePerPrintHour,
-    IReadOnlyDictionary<decimal, decimal> TimeMultiplierByLayer)
+    IReadOnlyDictionary<decimal, decimal> TimeMultiplierByLayer,
+    IReadOnlyDictionary<string, decimal>? ColorPricePerKg = null,
+    decimal FailureRate = 0m,
+    decimal PolishingPerUnit = 0m)
 {
     /// <summary>Rates as they stood when the register was approved (legacy constants).</summary>
-    public static readonly PricingParameterSet V2026_09 = new(
+    public static readonly PricingParameterSet V202609 = new(
         "2026.09",
         new Dictionary<string, decimal> { ["PLA"] = 450m, ["PETG"] = 550m, ["ABS"] = 500m, ["TPU"] = 650m, ["RESIN"] = 1500m },
         new Dictionary<string, decimal> { ["PLA"] = 1.24m, ["PETG"] = 1.27m, ["ABS"] = 1.04m, ["TPU"] = 1.21m, ["RESIN"] = 1.10m },
@@ -22,15 +25,15 @@ public sealed record PricingParameterSet(
         new Dictionary<decimal, decimal> { [0.3m] = 1.0m, [0.2m] = 1.25m, [0.1m] = 1.8m, [0.05m] = 2.6m });
 
     /// <summary>First versioned set — filament/hour rates raised ~5% (demo of forward-only change).</summary>
-    public static readonly PricingParameterSet V2026_10 = new(
+    public static readonly PricingParameterSet V202610 = new(
         "2026.10",
         new Dictionary<string, decimal> { ["PLA"] = 470m, ["PETG"] = 575m, ["ABS"] = 520m, ["TPU"] = 680m, ["RESIN"] = 1550m },
-        V2026_09.DensityGramsPerCm3,
+        V202609.DensityGramsPerCm3,
         94_500m,
-        V2026_09.TimeMultiplierByLayer);
+        V202609.TimeMultiplierByLayer);
 
     /// <summary>Append-only history; newest entry is what new quotes use (FR-ADMIN-002 will extend this into DB config).</summary>
-    public static IReadOnlyList<PricingParameterSet> All { get; } = [V2026_09, V2026_10];
+    private static IReadOnlyList<PricingParameterSet> All { get; } = [V202609, V202610];
 
     public static PricingParameterSet Active => All[^1];
 

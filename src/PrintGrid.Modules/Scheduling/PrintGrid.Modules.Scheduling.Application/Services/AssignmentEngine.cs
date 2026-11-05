@@ -5,6 +5,7 @@ using PrintGrid.Modules.Scheduling.Application.Commands.AssignJob;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
 using PrintGrid.Modules.Scheduling.Domain.Services;
+using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
 using PrintGrid.SharedKernel.Interfaces;
 
 namespace PrintGrid.Modules.Scheduling.Application.Services;
@@ -19,48 +20,26 @@ namespace PrintGrid.Modules.Scheduling.Application.Services;
 /// written to the decision log in the same transaction as the placement (FR-SCHED-009 E1);</item>
 /// <item>the job itself must be Pending/Reassigned — jobs already printing are never touched
 /// (BR-SCHED-007), and this engine never modifies any OTHER job;</item>
-/// <item>the DB EXCLUDE constraint on scheduling.jobs is the final arbiter against concurrent
+/// <item>the DB EXCLUDE constraint on scheduling. Jobs is the final arbiter against concurrent
 /// placers, so the committed schedule is feasible by construction (NFR-REL-004);</item>
 /// <item>the best-ranked placement is always attempted once, so a feasible fallback is
 /// committed even when the time budget runs out (BR-SCHED-005/006).</item>
 /// </list>
 /// </summary>
-public class AssignmentEngine : IAssignmentEngine
+public class AssignmentEngine(
+    IJobRepository jobs,
+    ILabRepository labs,
+    CapabilityFilter capabilityFilter,
+    IScoringConfigurationProvider scoringConfigurations,
+    IMachineTimelineService timeline,
+    IUnitOfWork unitOfWork,
+    IAssignmentDecisionRepository decisions,
+    IDateTimeProvider clock,
+    ILogger<AssignmentEngine> logger)
+    : IAssignmentEngine
 {
     /// <summary>BR-SCHED-005 / NFR-PERF-002: repair ≤ 30 s hard, ≤ 15 s mean.</summary>
     public const int DefaultTimeBudgetSeconds = 30;
-
-    private readonly IJobRepository _jobs;
-    private readonly ILabRepository _labs;
-    private readonly CapabilityFilter _capabilityFilter;
-    private readonly IScoringConfigurationProvider _scoringConfigurations;
-    private readonly IMachineTimelineService _timeline;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IAssignmentDecisionRepository _decisions;
-    private readonly IDateTimeProvider _clock;
-    private readonly ILogger<AssignmentEngine> _logger;
-
-    public AssignmentEngine(
-        IJobRepository jobs,
-        ILabRepository labs,
-        CapabilityFilter capabilityFilter,
-        IScoringConfigurationProvider scoringConfigurations,
-        IMachineTimelineService timeline,
-        IUnitOfWork unitOfWork,
-        IAssignmentDecisionRepository decisions,
-        IDateTimeProvider clock,
-        ILogger<AssignmentEngine> logger)
-    {
-        _jobs = jobs;
-        _labs = labs;
-        _capabilityFilter = capabilityFilter;
-        _scoringConfigurations = scoringConfigurations;
-        _timeline = timeline;
-        _unitOfWork = unitOfWork;
-        _decisions = decisions;
-        _clock = clock;
-        _logger = logger;
-    }
 
     public async Task<AssignmentOutcome> AssignAsync(
         Job job,
@@ -69,23 +48,41 @@ public class AssignmentEngine : IAssignmentEngine
     {
         var budget = request.TimeBudget ?? TimeSpan.FromSeconds(DefaultTimeBudgetSeconds);
         var stopwatch = Stopwatch.StartNew();
-        var scoringConfig = await _scoringConfigurations.GetActiveAsync(cancellationToken);
+        var scoringConfig = await scoringConfigurations.GetActiveAsync(cancellationToken);
         var scorer = new AssignmentScorer(scoringConfig.Weights);
 
-        var labs = await _labs.GetActiveWithMachinesAsync(cancellationToken);
-        var activeCounts = await _jobs.GetActiveCountsByLabAsync(cancellationToken)
-            ?? new Dictionary<Guid, int>();
-        labs = labs
-            .Where(lab => !lab.MaxConcurrentJobs.HasValue
-                || !activeCounts.TryGetValue(lab.Id, out var activeCount)
-                || activeCount < lab.MaxConcurrentJobs.Value)
-            .ToList();
+        var labs1 = await labs.GetActiveWithMachinesAsync(cancellationToken);
+        var activeCounts = await jobs.GetActiveCountsByLabAsync(cancellationToken);
+        labs1 =
+        [
+            .. labs1
+                .Where(lab => !lab.MaxConcurrentJobs.HasValue
+                              || !activeCounts.TryGetValue(lab.Id, out var activeCount)
+                              || activeCount < lab.MaxConcurrentJobs.Value)
+        ];
         var filter = ApplyExclusion(
-            _capabilityFilter.Filter(job.Specification, labs), request.ExcludeLabId, job.Id);
+            CapabilityFilter.Filter(FirstColorSpec(job), labs1), request.ExcludeLabId, job.Id);
+        var colorDemands = job.MaterialByColor();
+        var job1 = job;
+        filter = new CapabilityFilterResult(
+        [
+            .. filter.Candidates.Where(c =>
+                colorDemands.All(d => c.Lab.HasStock(job1.Specification.MaterialCode, d.Key, d.Value)))
+        ], filter.Rejections);
+        if (job.QuotedMachineId.HasValue)
+        {
+            var job2 = job;
+            var job3 = job;
+            filter = new CapabilityFilterResult([.. filter.Candidates.Where(c => c.Machine.Id == job2.QuotedMachineId)],
+            [
+                .. filter.Rejections, .. filter.Candidates.Where(c => c.Machine.Id != job3.QuotedMachineId)
+                    .Select(c => new CapabilityRejection(c.Machine.Id, "different_slicer_profile"))
+            ]);
+        }
 
         if (filter.Candidates.Count == 0)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Job {JobId} has no capable machine; {RejectionCount} machines rejected",
                 job.Id, filter.Rejections.Count);
 
@@ -105,10 +102,12 @@ public class AssignmentEngine : IAssignmentEngine
             // machine's own calibration factor is applied here, at the point a concrete
             // machine is considered. Job.EstimatedPrintMinutes stays untouched — it is the
             // baseline the calibration loop measures MAPE against, never rewritten.
-            var machineEstimateMinutes = candidate.Machine.ApplyToEstimate(job.EstimatedPrintMinutes);
-            var start = await _timeline.FindEarliestFreeSlotAsync(
-                candidate.Machine, machineEstimateMinutes, _clock.UtcNow, cancellationToken);
-            var duration = machineEstimateMinutes / candidate.Machine.SpeedFactor;
+            var machineEstimateMinutes = job.QuotedMachineId.HasValue ? job.EstimatedPrintMinutes
+                : candidate.Machine.ApplyToEstimate(job.EstimatedPrintMinutes);
+            var start = await timeline.FindEarliestFreeSlotAsync(
+                candidate.Machine, machineEstimateMinutes, clock.UtcNow, cancellationToken);
+            var duration = job.QuotedMachineId.HasValue ? machineEstimateMinutes
+                : machineEstimateMinutes / candidate.Machine.SpeedFactor;
             var end = start.AddMinutes((double)duration);
 
             if (earliestEnd is null || end < earliestEnd.Value)
@@ -119,9 +118,9 @@ public class AssignmentEngine : IAssignmentEngine
             if (!request.IgnoreDueDate && end > windowEnd)
                 continue;
 
-            var utilization = await _timeline.GetUtilizationAsync(
-                candidate.Machine, _clock.UtcNow, windowEnd, cancellationToken);
-            var cost = job.Specification.MaterialGrams * 0.5m + (decimal)duration * 0.1m;
+            var utilization = await timeline.GetUtilizationAsync(
+                candidate.Machine, clock.UtcNow, windowEnd, cancellationToken);
+            var cost = job.Specification.MaterialGrams * 0.5m + duration * 0.1m;
 
             proposals.Add(new PlacementProposal(candidate, start, end, cost, utilization));
         }
@@ -180,37 +179,34 @@ public class AssignmentEngine : IAssignmentEngine
 
             // FR-SCHED-009 E1: the decision entry rides in the SAME transaction as the
             // placement it explains — if the log cannot be written, neither is the assignment.
-            await _decisions.AddAsync(
+            await decisions.AddAsync(
                 BuildDecision(job, request, AssignmentOutcomes.Assigned, filter, ranked, stopwatch, budget, budgetExceeded, best, scoringConfig),
                 cancellationToken);
 
-            if (await _unitOfWork.TrySaveChangesSafeAsync(cancellationToken))
+            if (await unitOfWork.TrySaveChangesSafeAsync(cancellationToken))
             {
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Job {JobId} assigned to lab {LabId} machine {MachineId} with score {Score} (trigger {Trigger}, {ElapsedMs} ms)",
                     job.Id, job.LabId, job.MachineId, best.Score, request.Trigger, Elapsed(stopwatch));
 
                 return new AssignmentOutcome(
                     true,
-                    new AssignmentResultDto(
-                        job.Id,
-                        best.Placement.Candidate.Lab.Id,
-                        best.Placement.Candidate.Machine.Id,
+                    new AssignmentResultDto(best.Placement.Candidate.Machine.Id,
                         best.Placement.PlannedStartUtc,
                         best.Placement.PlannedEndUtc,
                         best.Score,
-                        best.Breakdown),
+                        job.LabId ?? Guid.Empty),
                     AssignmentOutcomes.Assigned, null, ranked, filter.Rejections,
                     Elapsed(stopwatch), budgetExceeded, earliestEnd);
             }
 
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Placement race on job {JobId} for machine {MachineId} — trying next candidate",
                 job.Id, best.Placement.Candidate.Machine.Id);
 
             // The failed save detached every tracked change, decision row included; re-read
             // the aggregate before mutating it again.
-            var reloaded = await _jobs.GetByIdAsync(job.Id, cancellationToken);
+            var reloaded = await jobs.GetByIdAsync(job.Id, cancellationToken);
             if (reloaded is null)
             {
                 return await RecordFailureAsync(
@@ -221,7 +217,7 @@ public class AssignmentEngine : IAssignmentEngine
             job = reloaded;
         }
 
-        _logger.LogWarning(
+        logger.LogWarning(
             "Job {JobId}: no candidate could be committed (trigger {Trigger}, budget exceeded: {BudgetExceeded})",
             job.Id, request.Trigger, budgetExceeded);
 
@@ -229,6 +225,15 @@ public class AssignmentEngine : IAssignmentEngine
             job, request, filter, ranked, AssignmentOutcomes.PlacementRace,
             "Every candidate placement collided with a concurrent booking — retry shortly",
             stopwatch, budget, budgetExceeded, earliestEnd, scoringConfig, cancellationToken);
+    }
+
+    private static JobSpecification FirstColorSpec(Job job)
+    {
+        if (job.ProductionQuoteJson is null) return job.Specification;
+        var first = job.MaterialByColor().First();
+        var spec = job.Specification;
+        return JobSpecification.Create(spec.RequiredVolume, spec.MaterialCode, first.Key, spec.LayerHeightMm,
+            spec.ToleranceMm, spec.Technology, first.Value);
     }
 
     /// <summary>
@@ -245,15 +250,12 @@ public class AssignmentEngine : IAssignmentEngine
             return filter;
 
         var remaining = filter.Candidates.Where(c => c.Lab.Id != excluded).ToList();
-        if (remaining.Count == 0)
-        {
-            _logger.LogWarning(
-                "Job {JobId}: excluding lab {LabId} would leave no capable candidate — keeping it as the last resort",
-                jobId, excluded);
-            return filter;
-        }
+        if (remaining.Count != 0) return new CapabilityFilterResult(remaining, filter.Rejections);
+        logger.LogWarning(
+            "Job {JobId}: excluding lab {LabId} would leave no capable candidate — keeping it as the last resort",
+            jobId, excluded);
+        return filter;
 
-        return new CapabilityFilterResult(remaining, filter.Rejections);
     }
 
     /// <summary>
@@ -274,10 +276,10 @@ public class AssignmentEngine : IAssignmentEngine
         ScoringParameterSet scoringConfig,
         CancellationToken cancellationToken)
     {
-        await _decisions.AddAsync(
+        await decisions.AddAsync(
             BuildDecision(job, request, outcome, filter, ranked, stopwatch, budget, budgetExceeded, chosen: null, scoringConfig, reason),
             cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new AssignmentOutcome(
             false, null, outcome, reason, ranked, filter.Rejections,

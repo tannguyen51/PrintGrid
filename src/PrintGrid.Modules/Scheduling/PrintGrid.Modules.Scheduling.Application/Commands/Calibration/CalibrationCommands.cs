@@ -32,39 +32,26 @@ public sealed record CalibrationStatusDto(
     DateTime? ComputedAtUtc,
     bool IsSufficient);
 
-public class CollectCalibrationSamplesCommandHandler : IRequestHandler<CollectCalibrationSamplesCommand, Result<int>>
+public class CollectCalibrationSamplesCommandHandler(
+    IJobRepository jobs,
+    ICalibrationSampleRepository samples,
+    IUnitOfWork unitOfWork,
+    IDateTimeProvider clock)
+    : IRequestHandler<CollectCalibrationSamplesCommand, Result<int>>
 {
-    private readonly IJobRepository _jobs;
-    private readonly ICalibrationSampleRepository _samples;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IDateTimeProvider _clock;
-
-    public CollectCalibrationSamplesCommandHandler(
-        IJobRepository jobs,
-        ICalibrationSampleRepository samples,
-        IUnitOfWork unitOfWork,
-        IDateTimeProvider clock)
-    {
-        _jobs = jobs;
-        _samples = samples;
-        _unitOfWork = unitOfWork;
-        _clock = clock;
-    }
-
     public async Task<Result<int>> Handle(CollectCalibrationSamplesCommand command, CancellationToken cancellationToken)
     {
-        var completedJobs = await _jobs.GetCompletedWithActualTimeAsync(cancellationToken);
+        var completedJobs = await jobs.GetCompletedWithActualTimeAsync(cancellationToken);
         var candidateJobs = completedJobs
             .Where(j => j.MachineId.HasValue
-                        && j.ActualPrintMinutes is > 0
-                        && j.EstimatedPrintMinutes > 0)
+                        && j is { ActualPrintMinutes: > 0, EstimatedPrintMinutes: > 0 })
             .ToList();
         if (candidateJobs.Count == 0) return Result.Success(0);
 
-        var alreadySampled = await _samples.GetSampledJobIdsAsync(
-            candidateJobs.Select(j => j.Id).ToList(), cancellationToken);
+        var alreadySampled = await samples.GetSampledJobIdsAsync(
+            [.. candidateJobs.Select(j => j.Id)], cancellationToken);
 
-        var now = _clock.UtcNow;
+        var now = clock.UtcNow;
         var newSamples = candidateJobs
             .Where(j => !alreadySampled.Contains(j.Id))
             .Select(j => CalibrationSample.Create(
@@ -77,51 +64,37 @@ public class CollectCalibrationSamplesCommandHandler : IRequestHandler<CollectCa
                 now))
             .ToList();
 
-        if (newSamples.Count > 0)
-        {
-            await _samples.AddRangeAsync(newSamples, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-        }
+        if (newSamples.Count <= 0) return Result.Success(newSamples.Count);
+        await samples.AddRangeAsync(newSamples, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(newSamples.Count);
     }
 }
 
-public class RecalibrateCommandHandler : IRequestHandler<RecalibrateCommand, Result<CalibrationStatusDto>>
+public class RecalibrateCommandHandler(
+    ILabRepository labs,
+    ICalibrationSampleRepository samples,
+    IUnitOfWork unitOfWork,
+    IDateTimeProvider clock)
+    : IRequestHandler<RecalibrateCommand, Result<CalibrationStatusDto>>
 {
-    private readonly ILabRepository _labs;
-    private readonly ICalibrationSampleRepository _samples;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IDateTimeProvider _clock;
-
-    public RecalibrateCommandHandler(
-        ILabRepository labs,
-        ICalibrationSampleRepository samples,
-        IUnitOfWork unitOfWork,
-        IDateTimeProvider clock)
-    {
-        _labs = labs;
-        _samples = samples;
-        _unitOfWork = unitOfWork;
-        _clock = clock;
-    }
-
     public async Task<Result<CalibrationStatusDto>> Handle(RecalibrateCommand command, CancellationToken cancellationToken)
     {
         var (lab, machine) = await FindMachineAsync(command.MachineId, cancellationToken);
         if (lab is null || machine is null)
             return Result.Failure<CalibrationStatusDto>(Error.NotFound("Machine", command.MachineId));
 
-        var samples = await _samples.GetByMachineIdAsync(machine.Id, cancellationToken);
-        var status = Apply(lab, machine, samples, _clock.UtcNow);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        var samples1 = await samples.GetByMachineIdAsync(machine.Id, cancellationToken);
+        var status = Apply(lab, machine, samples1, clock.UtcNow);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(status);
     }
 
-    internal async Task<(Lab? Lab, Machine? Machine)> FindMachineAsync(Guid machineId, CancellationToken cancellationToken)
+    private async Task<(Lab? Lab, Machine? Machine)> FindMachineAsync(Guid machineId, CancellationToken cancellationToken)
     {
-        var labs = await _labs.GetAllAsync(cancellationToken);
-        foreach (var lab in labs)
+        var labs1 = await labs.GetAllAsync(cancellationToken);
+        foreach (var lab in labs1)
         {
             var machine = lab.Machines.SingleOrDefault(m => m.Id == machineId);
             if (machine is not null) return (lab, machine);
@@ -156,47 +129,27 @@ public class RecalibrateCommandHandler : IRequestHandler<RecalibrateCommand, Res
     }
 }
 
-public class RecalibrateAllCommandHandler : IRequestHandler<RecalibrateAllCommand, Result<IReadOnlyList<CalibrationStatusDto>>>
+public class RecalibrateAllCommandHandler(
+    ILabRepository labs,
+    ICalibrationSampleRepository samples,
+    IUnitOfWork unitOfWork,
+    IDateTimeProvider clock)
+    : IRequestHandler<RecalibrateAllCommand, Result<IReadOnlyList<CalibrationStatusDto>>>
 {
-    private readonly ILabRepository _labs;
-    private readonly ICalibrationSampleRepository _samples;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IDateTimeProvider _clock;
-
-    public RecalibrateAllCommandHandler(
-        ILabRepository labs,
-        ICalibrationSampleRepository samples,
-        IUnitOfWork unitOfWork,
-        IDateTimeProvider clock)
-    {
-        _labs = labs;
-        _samples = samples;
-        _unitOfWork = unitOfWork;
-        _clock = clock;
-    }
-
     public async Task<Result<IReadOnlyList<CalibrationStatusDto>>> Handle(
         RecalibrateAllCommand command,
         CancellationToken cancellationToken)
     {
-        var labs = await _labs.GetAllAsync(cancellationToken);
-        var samples = await _samples.GetAllAsync(cancellationToken);
-        var byMachine = samples
+        var labs1 = await labs.GetAllAsync(cancellationToken);
+        var samples1 = await samples.GetAllAsync(cancellationToken);
+        var byMachine = samples1
             .GroupBy(s => s.MachineId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyCollection<CalibrationSample>)g.ToList());
+            .ToDictionary(g => g.Key, IReadOnlyCollection<CalibrationSample> (g) => [.. g]);
 
-        var now = _clock.UtcNow;
-        var statuses = new List<CalibrationStatusDto>();
-        foreach (var lab in labs)
-        {
-            foreach (var machine in lab.Machines)
-            {
-                var machineSamples = byMachine.GetValueOrDefault(machine.Id) ?? Array.Empty<CalibrationSample>();
-                statuses.Add(RecalibrateCommandHandler.Apply(lab, machine, machineSamples, now));
-            }
-        }
+        var now = clock.UtcNow;
+        var statuses = (from lab in labs1 from machine in lab.Machines let machineSamples = byMachine.GetValueOrDefault(machine.Id) ?? Array.Empty<CalibrationSample>() select RecalibrateCommandHandler.Apply(lab, machine, machineSamples, now)).ToList();
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success<IReadOnlyList<CalibrationStatusDto>>(statuses);
     }
 }

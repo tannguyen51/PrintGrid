@@ -48,10 +48,10 @@ public static class SharedCatalogTypes
     public const string Color = "Color";
     public const string Technology = "Technology";
     public const string QualityGrade = "QualityGrade";
-    public const string PostProcessing = "PostProcessing";
+    private const string _postProcessing = "PostProcessing";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        Material, Color, Technology, QualityGrade, PostProcessing
+        Material, Color, Technology, QualityGrade, _postProcessing
     };
 }

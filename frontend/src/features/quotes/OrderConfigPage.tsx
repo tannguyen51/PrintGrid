@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '../../shared/api/apiClient'
@@ -41,6 +41,9 @@ export default function OrderConfigPage() {
   // Config state
   const [material, setMaterial] = useState('PLA')
   const [color, setColor] = useState('BLACK')
+  const [colors, setColors] = useState<string[]>(['BLACK'])
+  const [sizeCode, setSizeCode] = useState('ORIGINAL')
+  const [polishing, setPolishing] = useState(false)
   const [layerIndex, setLayerIndex] = useState(1) // Standard
   const [infill, setInfill] = useState(30)
   const [quantity, setQuantity] = useState(1)
@@ -55,6 +58,12 @@ export default function OrderConfigPage() {
   const [postalCode, setPostalCode] = useState('')
   const [orderError, setOrderError] = useState<string | null>(null)
   const [acceptTerms, setAcceptTerms] = useState(false)
+  const configKey = JSON.stringify([modelId, material, colors, sizeCode, polishing, layerIndex, infill, quantity])
+  const currentConfig = useRef(configKey)
+  currentConfig.current = configKey
+
+  // A result belongs to exactly one configuration. Never allow placing a stale quote.
+  useEffect(() => { setQuote(null) }, [configKey])
 
   // Live expiry countdown for the quote (BR-QUOTE-003) — refreshed every 30 s.
   const [now, setNow] = useState(() => Date.now())
@@ -96,17 +105,19 @@ export default function OrderConfigPage() {
     if (!modelId) return
     setConfigError(null)
     setQuote(null)
+    const submittedConfig = configKey
     try {
       const q = await createQuote.mutateAsync({
         modelId,
         materialCode: material,
-        colorCode: color,
+        colorCode: colors[0] ?? color,
         layerHeightMm: layer.layerMm,
         infillPercent: infill,
         quantity,
         toleranceMm: 0.2,
+        sizeCode, colorCodes: colors, polishing,
       })
-      setQuote(q)
+      if (currentConfig.current === submittedConfig) setQuote(q)
     } catch (error) {
       const apiMessage = axios.isAxiosError(error)
         ? (error.response?.data as { error?: { message?: string } } | undefined)?.error?.message
@@ -185,13 +196,29 @@ export default function OrderConfigPage() {
 
               <FormControl sx={{ width: { xs: '100%', sm: 180 } }}>
                 <InputLabel>Màu sắc</InputLabel>
-                <Select value={color} label="Màu sắc" onChange={(e) => setColor(e.target.value)}>
+                <Select multiple value={colors} label="Màu sắc" onChange={(e) => {
+                  const values = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value
+                  if (values.length) { setColors(values); setColor(values[0]) }
+                }}>
                   {COLORS.map((c) => (
                     <MenuItem key={c.code} value={c.code}>{c.label}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Stack>
+
+            <FormControl fullWidth>
+              <InputLabel>Kích thước</InputLabel>
+              <Select value={sizeCode} label="Kích thước" onChange={e => setSizeCode(e.target.value)}>
+                <MenuItem value="ORIGINAL">Giữ kích thước file</MenuItem>
+                <MenuItem value="S">S — cạnh lớn nhất 100 mm</MenuItem>
+                <MenuItem value="M">M — cạnh lớn nhất 200 mm</MenuItem>
+                <MenuItem value="L">L — cạnh lớn nhất 300 mm</MenuItem>
+              </Select>
+            </FormControl>
+            <Typography variant="body2" color="text.secondary">Các cạnh được thay đổi cùng tỷ lệ. Chọn nhiều màu trên một mô hình cần file 3MF có vùng vật liệu riêng; thứ tự màu chọn tương ứng thứ tự vùng vật liệu trong file.</Typography>
+            {colors.length > 1 && <Stack direction="row" gap={1} flexWrap="wrap">{colors.map((c, i) => <Chip key={c} label={`Vùng ${i + 1}: ${COLORS.find(x => x.code === c)?.label ?? c}`} />)}</Stack>}
+            <FormControlLabel control={<Checkbox checked={polishing} onChange={e => setPolishing(e.target.checked)} />} label="Thêm dịch vụ đánh bóng" />
 
             <Box>
               <Typography variant="body2" sx={{ color: 'text.primary', mb: 0.75 }}>Chất lượng (độ cao lớp)</Typography>
@@ -232,7 +259,7 @@ export default function OrderConfigPage() {
                 type="number"
                 inputProps={{ min: 1, max: 100 }}
                 value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+                onChange={(e) => setQuantity(Math.min(100, Math.max(1, Math.floor(Number(e.target.value) || 1))))}
                 sx={{ width: { xs: '100%', sm: 160 } }}
               />
               <Box sx={{ flex: 1 }} />
@@ -269,11 +296,22 @@ export default function OrderConfigPage() {
                 <Box key={it.id}>
                   <Typography variant="caption" color="text.disabled">CHI TIẾT</Typography>
                   <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                    <Row label="Vật liệu / màu" value={`${it.materialCode} · ${it.colorCode}`} />
-                    <Row label="Phân tích" value={`${it.estimatedPrintMinutes} phút · ${it.estimatedMaterialGrams} g vật liệu`} />
-                    <Row label="Đơn giá" value={`${fmt(it.unitPrice)} đ`} />
-                    <Row label="— vật liệu" value={`${fmt(it.materialCostAmount)} đ`} />
-                    <Row label="— giờ máy" value={`${fmt(it.machineTimeCostAmount)} đ`} />
+                    <Row label="Vật liệu / màu" value={`${it.materialCode} · ${it.calculation?.colors.map(c => c.colorCode).join(', ') ?? it.colorCode}`} />
+                    {it.calculation ? <>
+                      <Row label="Kích thước sau điều chỉnh" value={`${fmt(it.calculation.widthMm)} × ${fmt(it.calculation.depthMm)} × ${fmt(it.calculation.heightMm)} mm`} />
+                      <Row label="Thời gian in cả đơn (ước tính)" value={`${fmt(it.calculation.printMinutes / 60)} giờ`} />
+                      {it.calculation.colors.map(c => <Row key={c.colorCode} label={`${c.colorCode}: ${fmt(c.grams)} g × ${fmt(c.pricePerKg)} đ/kg`} value={`${fmt(c.amount)} đ`} />)}
+                      <Row label="Vật liệu cả đơn" value={`${fmt(it.calculation.materialAmount)} đ`} />
+                      <Row label={`Giờ máy (${fmt(it.calculation.pricePerHour)} đ/giờ)`} value={`${fmt(it.calculation.machineAmount)} đ`} />
+                      <Row label={`Dự phòng lỗi (${fmt(it.calculation.failureRate * 100)}%)`} value={`${fmt(it.calculation.failureAllowance)} đ`} />
+                      <Row label={`Đánh bóng (${fmt(it.calculation.polishingPerUnit)} đ/sản phẩm)`} value={`${fmt(it.calculation.serviceAmount)} đ`} />
+                      <Row label="Giá trung bình / sản phẩm" value={`${fmt(it.calculation.totalAmount / it.quantity)} đ`} />
+                    </> : <>
+                      <Row label="Phân tích" value={`${it.estimatedPrintMinutes} phút · ${it.estimatedMaterialGrams} g vật liệu`} />
+                      <Row label="Đơn giá" value={`${fmt(it.unitPrice)} đ`} />
+                      <Row label="— vật liệu" value={`${fmt(it.materialCostAmount)} đ`} />
+                      <Row label="— giờ máy" value={`${fmt(it.machineTimeCostAmount)} đ`} />
+                    </>}
                     <Row label="Số lượng" value={`${it.quantity}`} />
                   </Stack>
                 </Box>

@@ -18,34 +18,19 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/models")]
 [Authorize(Policy = Policies.RequireCustomer)]
-public class ModelsController : ControllerBase
+public class ModelsController(
+    ISender sender,
+    IFileStorage files,
+    IOptions<MinioOptions> minio,
+    IOptions<ModelUploadOptions> uploadOptions,
+    ISlicingService slicingService,
+    IAuditLogWriter audit,
+    IModelRepository models)
+    : ControllerBase
 {
-    private readonly ISender _sender;
-    private readonly IFileStorage _files;
-    private readonly MinioOptions _minio;
-    private readonly ModelUploadOptions _uploadOptions;
-    private readonly ISlicingService _slicingService;
-    private readonly IAuditLogWriter _audit;
-    private readonly IModelRepository _models;
-    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> UploadLocks = new();
-
-    public ModelsController(
-        ISender sender,
-        IFileStorage files,
-        IOptions<MinioOptions> minio,
-        IOptions<ModelUploadOptions> uploadOptions,
-        ISlicingService slicingService,
-        IAuditLogWriter audit,
-        IModelRepository models)
-    {
-        _sender = sender;
-        _files = files;
-        _minio = minio.Value;
-        _uploadOptions = uploadOptions.Value;
-        _slicingService = slicingService;
-        _audit = audit;
-        _models = models;
-    }
+    private readonly MinioOptions _minio = minio.Value;
+    private readonly ModelUploadOptions _uploadOptions = uploadOptions.Value;
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> _uploadLocks = new();
 
     [HttpGet("quota")]
     public async Task<IActionResult> GetQuota(CancellationToken cancellationToken)
@@ -62,7 +47,7 @@ public class ModelsController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var result = await _sender.Send(new GetModelsQuery(customerId.Value, search), cancellationToken);
+        var result = await sender.Send(new GetModelsQuery(customerId.Value, search), cancellationToken);
         return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
     }
 
@@ -72,7 +57,7 @@ public class ModelsController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var result = await _sender.Send(new GetModelQuery(customerId.Value, modelId), cancellationToken);
+        var result = await sender.Send(new GetModelQuery(customerId.Value, modelId), cancellationToken);
         return result.IsFailure
             ? NotFound(new { error = new { code = result.Error.Code, message = result.Error.Message } })
             : Ok(result.Value);
@@ -89,12 +74,12 @@ public class ModelsController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var result = await _sender.Send(new GetModelQuery(customerId.Value, modelId), cancellationToken);
+        var result = await sender.Send(new GetModelQuery(customerId.Value, modelId), cancellationToken);
         if (result.IsFailure)
             return NotFound(new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
         // The storage key is deliberately not part of ModelDto; load it from the entity.
-        var model = await _models.GetByIdForCustomerAsync(customerId.Value, modelId, cancellationToken);
+        var model = await models.GetByIdForCustomerAsync(customerId.Value, modelId, cancellationToken);
         var storageKey = model?.StorageKey;
         if (string.IsNullOrWhiteSpace(storageKey))
             return NotFound(new { error = new { code = "file_not_stored", message = "Model này chưa có file lưu trữ." } });
@@ -104,10 +89,10 @@ public class ModelsController : ControllerBase
         if (separator <= 0 || separator == storageKey.Length - 1)
             return NotFound(new { error = new { code = "file_not_stored", message = "Đường dẫn file lưu trữ không hợp lệ." } });
 
-        var stream = await _files.DownloadAsync(
+        var stream = await files.DownloadAsync(
             storageKey[..separator], storageKey[(separator + 1)..], cancellationToken);
 
-        await _audit.WriteAsync(new AuditLogWriteRequest(
+        await audit.WriteAsync(new AuditLogWriteRequest(
             customerId,
             User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? customerId.Value.ToString(),
             "Customer",
@@ -115,7 +100,7 @@ public class ModelsController : ControllerBase
             "model.file_downloaded",
             "Model",
             modelId.ToString(),
-            NewValues: new { result.Value.FileName, HasFile = storageKey is not null },
+            NewValues: new { result.Value.FileName, HasFile = true },
             IpAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
             TraceId: HttpContext.TraceIdentifier,
             RequirementCodes: ["FR-ADMIN-004", "UC-025", "BR-ACCESS-002", "BR-CONFIG-004"]), cancellationToken);
@@ -129,7 +114,7 @@ public class ModelsController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new CreateModelCommand(
                 customerId.Value,
                 request.Name,
@@ -156,7 +141,7 @@ public class ModelsController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new UpdateModelCommand(
                 customerId.Value,
                 modelId,
@@ -168,15 +153,12 @@ public class ModelsController : ControllerBase
                 request.Tags),
             cancellationToken);
 
-        if (result.IsFailure)
-        {
-            var status = result.Error.Code == "not_found"
-                ? StatusCodes.Status404NotFound
-                : StatusCodes.Status400BadRequest;
-            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
-        }
+        if (!result.IsFailure) return Ok(result.Value);
+        var status = result.Error.Code == "not_found"
+            ? StatusCodes.Status404NotFound
+            : StatusCodes.Status400BadRequest;
+        return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
-        return Ok(result.Value);
     }
 
     [HttpDelete("{modelId:guid}")]
@@ -185,23 +167,23 @@ public class ModelsController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var existing = await _sender.Send(new GetModelQuery(customerId.Value, modelId), cancellationToken);
+        var existing = await sender.Send(new GetModelQuery(customerId.Value, modelId), cancellationToken);
         if (existing.IsFailure)
             return NotFound(new { error = new { code = existing.Error.Code, message = existing.Error.Message } });
 
-        var result = await _sender.Send(new DeleteModelCommand(customerId.Value, modelId), cancellationToken);
+        var result = await sender.Send(new DeleteModelCommand(customerId.Value, modelId), cancellationToken);
         if (result.IsFailure)
             return NotFound(new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
-        var stored = await _models.GetByIdForCustomerAsync(customerId.Value, modelId, cancellationToken);
-        if (stored?.StorageKey is { } storageKey)
+        var stored = await models.GetByIdForCustomerAsync(customerId.Value, modelId, cancellationToken);
+        if (stored?.StorageKey is not { } storageKey) return NoContent();
+        var separator = storageKey.IndexOf('/');
+        if (separator > 0 && separator < storageKey.Length - 1)
         {
-            var separator = storageKey.IndexOf('/');
-            if (separator > 0 && separator < storageKey.Length - 1)
-                await _files.DeleteAsync(
-                    storageKey[..separator],
-                    storageKey[(separator + 1)..],
-                    cancellationToken);
+            await files.DeleteAsync(
+                storageKey[..separator],
+                storageKey[(separator + 1)..],
+                cancellationToken);
         }
 
         return NoContent();
@@ -222,24 +204,29 @@ public class ModelsController : ControllerBase
             return BadRequest(new { error = new { code = "validation_error", message = "File is required" } });
 
         if (request.File.Length > _uploadOptions.MaxFileBytes)
+        {
             return StatusCode(StatusCodes.Status413PayloadTooLarge, new
             {
                 error = new { code = "file_too_large", message = "Kích thước file vượt giới hạn 50 MiB.", maxBytes = _uploadOptions.MaxFileBytes }
             });
+        }
 
         var ext = Path.GetExtension(request.File.FileName).ToLowerInvariant();
         if (!ModelFileInspector.IsAllowedExtension(ext))
+        {
             return StatusCode(StatusCodes.Status415UnsupportedMediaType, new
             {
                 error = new { code = "unsupported_format", message = "Định dạng không được hỗ trợ. Chỉ chấp nhận STL, OBJ, 3MF hoặc GLB." }
             });
+        }
 
-        var uploadLock = UploadLocks.GetOrAdd(customerId.Value, _ => new SemaphoreSlim(1, 1));
+        var uploadLock = _uploadLocks.GetOrAdd(customerId.Value, _ => new SemaphoreSlim(1, 1));
         await uploadLock.WaitAsync(cancellationToken);
         try
         {
             var quota = await GetQuotaAsync(customerId.Value, cancellationToken);
             if (quota.UsedModels >= quota.MaxModels || quota.UsedBytes + request.File.Length > quota.MaxBytes)
+            {
                 return Conflict(new
                 {
                     error = new
@@ -249,6 +236,7 @@ public class ModelsController : ControllerBase
                         details = quota
                     }
                 });
+            }
 
             await using var stream = request.File.OpenReadStream();
 
@@ -258,12 +246,14 @@ public class ModelsController : ControllerBase
             await stream.CopyToAsync(buffer, cancellationToken);
             buffer.Position = 0;
 
-            var contentError = await ModelFileInspector.ValidateContentAsync(buffer, ext, _slicingService, cancellationToken);
+            var contentError = await ModelFileInspector.ValidateContentAsync(buffer, ext, slicingService, cancellationToken);
             if (contentError is not null)
+            {
                 return StatusCode(StatusCodes.Status415UnsupportedMediaType, new
                 {
                     error = new { code = "invalid_file_content", message = contentError }
                 });
+            }
 
             var sha256 = Convert.ToHexString(await sha.ComputeHashAsync(buffer, cancellationToken)).ToLowerInvariant();
             buffer.Position = 0;
@@ -271,11 +261,11 @@ public class ModelsController : ControllerBase
             // Object key: printgrid-models/{customerId}/{guid}.{ext}
             var randomId = Guid.NewGuid();
             var objectName = $"{customerId}/{randomId}{ext}";
-            await _files.UploadAsync(_minio.ModelBucket, objectName, buffer, ContentTypeFor(ext), cancellationToken);
+            await files.UploadAsync(_minio.ModelBucket, objectName, buffer, ContentTypeFor(ext), cancellationToken);
 
             try
             {
-                var result = await _sender.Send(
+                var result = await sender.Send(
                     new UploadModelCommand(
                         customerId.Value,
                         request.Name,
@@ -290,7 +280,7 @@ public class ModelsController : ControllerBase
 
                 if (result.IsFailure)
                 {
-                    await _files.DeleteAsync(_minio.ModelBucket, objectName, cancellationToken);
+                    await files.DeleteAsync(_minio.ModelBucket, objectName, cancellationToken);
                     return BadRequest(new { error = new { code = result.Error.Code, message = result.Error.Message } });
                 }
 
@@ -299,7 +289,7 @@ public class ModelsController : ControllerBase
             }
             catch
             {
-                await _files.DeleteAsync(_minio.ModelBucket, objectName, CancellationToken.None);
+                await files.DeleteAsync(_minio.ModelBucket, objectName, CancellationToken.None);
                 throw;
             }
         }
@@ -311,7 +301,7 @@ public class ModelsController : ControllerBase
 
     private async Task<ModelQuotaDto> GetQuotaAsync(Guid customerId, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetModelQuotaQuery(
+        var result = await sender.Send(new GetModelQuotaQuery(
             customerId,
             _uploadOptions.MaxModelsPerCustomer,
             _uploadOptions.MaxStorageBytesPerCustomer), cancellationToken);

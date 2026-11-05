@@ -27,8 +27,7 @@ public sealed record SimulationMetrics(
 /// <summary>A strategy's no-fault baseline next to its run with faults enabled.</summary>
 public sealed record StrategyComparison(
     SimulationMetrics Baseline,
-    SimulationMetrics WithFaults,
-    FaultConfig Faults);
+    SimulationMetrics WithFaults);
 
 public sealed record SimulationReport(
     int Seed,
@@ -48,17 +47,17 @@ public sealed record SimulationReport(
 /// </summary>
 public static class SimulationRunner
 {
-    private const int MaxOffersPerPlacement = 6;
-    private const int MaxReschedulesPerJob = 6;
+    private const int _maxOffersPerPlacement = 6;
+    private const int _maxReschedulesPerJob = 6;
 
     // Distinct, process-stable salts. These are plain integers (never HashCode.Combine or
     // Random.Shared) so every random stream is reproducible across processes.
-    private const int DeclineSalt = 0x1A2B3C4D;
-    private const int PrintSalt = 0x2B3C4D5E;
-    private const int BreakdownSalt = 0x3C4D5E6F;
-    private const int InspectionSalt = 0x4D5E6F70;
-    private const int NoiseSalt = 0x5E6F7081;
-    private const int StrategySalt = 0x6F708192;
+    private const int _declineSalt = 0x1A2B3C4D;
+    private const int _printSalt = 0x2B3C4D5E;
+    private const int _breakdownSalt = 0x3C4D5E6F;
+    private const int _inspectionSalt = 0x4D5E6F70;
+    private const int _noiseSalt = 0x5E6F7081;
+    private const int _strategySalt = 0x6F708192;
 
     public static SimulationReport Run(
         SimulationOptions options,
@@ -75,7 +74,7 @@ public static class SimulationRunner
         foreach (var strategy in strategies)
         {
             // Two fresh networks with the same seed: the baseline proves what the strategy does
-            // without faults, the faulted run shows the repair behaviour.
+            // without faults, the faulted run shows the repair behavior.
             var baselineNetwork = NetworkGenerator.Generate(options);
             orderHash = baselineNetwork.OrderListHash;
             var baseline = Execute(baselineNetwork, strategy, FaultConfig.None);
@@ -83,7 +82,7 @@ public static class SimulationRunner
             var faultedNetwork = NetworkGenerator.Generate(options);
             var withFaults = Execute(faultedNetwork, strategy, faults);
 
-            comparisons.Add(new StrategyComparison(baseline, withFaults, faults));
+            comparisons.Add(new StrategyComparison(baseline, withFaults));
         }
 
         stopwatch.Stop();
@@ -129,7 +128,6 @@ public static class SimulationRunner
         public Guid LabId;
         public DateTime BookingStartUtc;
         public DateTime BookingEndUtc;
-        public DateTime? PrintedAtUtc;
         public DateTime? CompletedAtUtc;
         public int ActualPrintMinutes;
         public double BusyMinutes;
@@ -139,14 +137,13 @@ public static class SimulationRunner
 
     private sealed record PlacementRecord(
         Guid MachineId,
-        Guid LabId,
         DateTime StartUtc,
         string Material,
         string Color);
 
     private sealed class SimulationRun
     {
-        private static readonly Guid SimStaffId = new("11111111-1111-1111-1111-111111111111");
+        private static readonly Guid _simStaffId = new("11111111-1111-1111-1111-111111111111");
 
         private readonly GeneratedNetwork _network;
         private readonly SchedulingStrategy _strategy;
@@ -154,7 +151,6 @@ public static class SimulationRunner
         private readonly VirtualClock _clock;
         private readonly MachineCalendar _calendar = new();
         private readonly StrategyAssigner _assigner;
-        private readonly Dictionary<Guid, Machine> _machinesById;
         private readonly Dictionary<Guid, Lab> _labsById;
 
         private readonly PriorityQueue<ScheduledEvent, (long Ticks, long Sequence)> _queue = new();
@@ -175,7 +171,6 @@ public static class SimulationRunner
         private int _breakdowns;
         private int _inspectionFailures;
         private int _reschedules;
-        private int _unplaced;
         private double _downtimeMinutes;
         private DateTime _lastActivityUtc;
 
@@ -186,17 +181,16 @@ public static class SimulationRunner
             _faults = faults;
             _clock = new VirtualClock(network.EpochUtc);
             _assigner = new StrategyAssigner(network.Labs, _calendar);
-            _machinesById = network.Machines.ToDictionary(m => m.Id);
             _labsById = network.Labs.ToDictionary(l => l.Id);
-            _states = network.Orders.Select(_ => new OrderState()).ToArray();
+            _states = [.. network.Orders.Select(_ => new OrderState())];
             _lastActivityUtc = network.EpochUtc;
 
-            _strategyRandom = new Random(StreamSeed(network.Seed, StrategySalt + (int)strategy * 7919));
-            _declineRandom = new Random(StreamSeed(network.Seed, DeclineSalt));
-            _printRandom = new Random(StreamSeed(network.Seed, PrintSalt));
-            _breakdownRandom = new Random(StreamSeed(network.Seed, BreakdownSalt));
-            _inspectionRandom = new Random(StreamSeed(network.Seed, InspectionSalt));
-            _noiseRandom = new Random(StreamSeed(network.Seed, NoiseSalt));
+            _strategyRandom = new Random(StreamSeed(network.Seed, _strategySalt + (int)strategy * 7919));
+            _declineRandom = new Random(StreamSeed(network.Seed, _declineSalt));
+            _printRandom = new Random(StreamSeed(network.Seed, _printSalt));
+            _breakdownRandom = new Random(StreamSeed(network.Seed, _breakdownSalt));
+            _inspectionRandom = new Random(StreamSeed(network.Seed, _inspectionSalt));
+            _noiseRandom = new Random(StreamSeed(network.Seed, _noiseSalt));
         }
 
         public void Execute()
@@ -204,14 +198,9 @@ public static class SimulationRunner
             var ordered = OrderForStrategy();
 
             // Batch placement: all orders are known up front, so EDD can order the whole queue.
-            foreach (var order in ordered)
+            foreach (var order in from order in ordered let notBefore = order.ArrivalUtc > _clock.UtcNow ? order.ArrivalUtc : _clock.UtcNow where !Place(order.Index, notBefore, excludeLabId: null) select order)
             {
-                var notBefore = order.ArrivalUtc > _clock.UtcNow ? order.ArrivalUtc : _clock.UtcNow;
-                if (!Place(order.Index, notBefore, excludeLabId: null))
-                {
-                    _unplaced++;
-                    _states[order.Index].GaveUp = true;
-                }
+                _states[order.Index].GaveUp = true;
             }
 
             while (_queue.TryDequeue(out var scheduled, out _))
@@ -267,7 +256,7 @@ public static class SimulationRunner
 
             if (state.GaveUp) return false;
 
-            for (var offer = 0; offer < MaxOffersPerPlacement; offer++)
+            for (var offer = 0; offer < _maxOffersPerPlacement; offer++)
             {
                 var proposal = _assigner.TryAssign(
                     order.Job, notBeforeUtc, _strategy, _strategyRandom, excludeLabId);
@@ -314,7 +303,6 @@ public static class SimulationRunner
                 state.BookingEndUtc = proposal.EndUtc;
                 _placements.Add(new PlacementRecord(
                     proposal.MachineId,
-                    proposal.LabId,
                     proposal.StartUtc,
                     order.Job.Specification.MaterialCode,
                     order.Job.Specification.ColorCode));
@@ -341,7 +329,7 @@ public static class SimulationRunner
             if (downUntil is { } repairEnd && repairEnd > scheduled.AtUtc)
             {
                 // A breakdown from an earlier job pushed into this slot: re-plan from repair end.
-                if (state.Reschedules >= MaxReschedulesPerJob)
+                if (state.Reschedules >= _maxReschedulesPerJob)
                 {
                     state.GaveUp = true;
                     return;
@@ -356,7 +344,6 @@ public static class SimulationRunner
                 if (!Place(scheduled.OrderIndex, repairEnd, excludeLabId: null))
                 {
                     state.GaveUp = true;
-                    _unplaced++;
                 }
 
                 return;
@@ -366,7 +353,7 @@ public static class SimulationRunner
 
             var duration = (state.BookingEndUtc - state.BookingStartUtc).TotalMinutes;
 
-            // Fault draws happen whether or not the fault is enabled, so each type's stream is
+            // Fault draws happen whether the fault is enabled, so each type's stream is
             // independent of which other faults are switched on.
             var printRoll = _printRandom.NextDouble();
             var breakdownRoll = _breakdownRandom.NextDouble();
@@ -426,7 +413,7 @@ public static class SimulationRunner
 
             state.Reschedules++;
             _reschedules++;
-            if (state.Reschedules > MaxReschedulesPerJob)
+            if (state.Reschedules > _maxReschedulesPerJob)
             {
                 state.GaveUp = true;
                 return;
@@ -436,7 +423,6 @@ public static class SimulationRunner
             if (!Place(scheduled.OrderIndex, scheduled.AtUtc, excludeLabId: null))
             {
                 state.GaveUp = true;
-                _unplaced++;
             }
         }
 
@@ -462,13 +448,12 @@ public static class SimulationRunner
                 actualGrams);
             if (completion.IsFailure) return;
 
-            var review = order.Job.ReviewQcProof(true, SimStaffId, null, scheduled.AtUtc);
+            var review = order.Job.ReviewQcProof(true, _simStaffId, null, scheduled.AtUtc);
             if (review.IsFailure) return;
 
             var elapsedMinutes = Math.Max(0.0, (scheduled.AtUtc - state.BookingStartUtc).TotalMinutes);
             state.BusyMinutes += elapsedMinutes;
             AddLabBusy(state.LabId, elapsedMinutes);
-            state.PrintedAtUtc = scheduled.AtUtc;
             state.ActualPrintMinutes = actualMinutes;
 
             if (scheduled.AtUtc > _lastActivityUtc) _lastActivityUtc = scheduled.AtUtc;
@@ -497,7 +482,7 @@ public static class SimulationRunner
 
                 state.Reschedules++;
                 _reschedules++;
-                if (state.Reschedules > MaxReschedulesPerJob)
+                if (state.Reschedules > _maxReschedulesPerJob)
                 {
                     state.GaveUp = true;
                     return;
@@ -507,7 +492,6 @@ public static class SimulationRunner
                 if (!Place(scheduled.OrderIndex, scheduled.AtUtc, excludeLabId: null))
                 {
                     state.GaveUp = true;
-                    _unplaced++;
                 }
 
                 return;
@@ -550,9 +534,10 @@ public static class SimulationRunner
             var totalBusy = _states.Sum(s => s.BusyMinutes);
             var utilization = Math.Clamp(totalBusy / (makespanMinutes * _network.Machines.Count), 0.0, 1.0) * 100.0;
 
-            var gini = ComputeGini(_network.Labs
-                .Select(lab => _labBusyMinutes.TryGetValue(lab.Id, out var minutes) ? minutes : 0.0)
-                .ToList());
+            var gini = ComputeGini([
+                .. _network.Labs
+                    .Select(lab => _labBusyMinutes.GetValueOrDefault(lab.Id, 0.0))
+            ]);
 
             return new SimulationMetrics(
                 Strategy: strategyName,
