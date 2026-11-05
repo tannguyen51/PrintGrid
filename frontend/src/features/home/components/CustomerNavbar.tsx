@@ -18,9 +18,10 @@ import {
 } from '@mui/material'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/AuthContext'
-import { MenuRounded, CloseRounded, NotificationsOutlined, PersonOutlineRounded } from '@mui/icons-material'
+import { MenuRounded, CloseRounded, PersonOutlineRounded } from '@mui/icons-material'
 import { BrandGlyph } from '../../../shared/components/BrandGlyph'
-import { palette, shadows } from '../../../shared/theme/tokens'
+import { NotificationBell } from '../../../shared/components/NotificationBell'
+import { palette } from '../../../shared/theme/tokens'
 
 /**
  * Navbar for a logged-in customer.
@@ -129,19 +130,10 @@ export function CustomerNavbar() {
             ))}
           </Stack>
 
+          <NotificationBell />
+
           {/* Account actions */}
           <Stack direction="row" spacing={1} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
-            <IconButton
-              aria-label="Thông báo (sắp có)"
-              onClick={() => go('/account')}
-              sx={{
-                border: `1px solid ${palette.border.hairline}`,
-                bgcolor: '#FFFFFF',
-                boxShadow: shadows.xs,
-              }}
-            >
-              <NotificationsOutlined fontSize="small" />
-            </IconButton>
             <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0.5 }} aria-label="Menu tài khoản">
               <Avatar sx={{ width: 34, height: 34, fontSize: 14 }}>
                 {user?.email?.charAt(0).toUpperCase() || 'U'}

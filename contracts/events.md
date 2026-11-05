@@ -13,6 +13,7 @@ Nhà sản xuất chỉ được PHÁT đúng tên + đúng payload; tiêu thụ
 | `JobAssignedEvent` | JobId, LabId, MachineId, PlannedStartUtc, PlannedEndUtc, Score | engine gán việc | ⚠ chưa có | T2: thông báo lab + realtime khách |
 | `JobFailedEvent` | JobId, LabId, MachineId, Reason, AttemptNumber | báo sự cố lab (T3) | ⚠ chưa có | T3: `ReschedulingHandler` (ghế Engine) |
 | `ReschedulingTriggeredEvent` | JobId, Trigger, InternalDueDate | từ-chối/in-hỏng/chết-máy/quá-hạn-2h | ⚠ **đang phát mà 0 ai nghe** — lỗ hổng lớn nhất | T3: handler vá lịch ≤30s |
+| `OrderTimelineUpdatedIntegrationEvent` | OrderId, CustomerId, Status? | trạng thái sản xuất / giao hàng | ✅ cập nhật timeline và tạo notification theo user/role; SignalR phát `NotificationsUpdated` | thông báo trạng thái cho khách và hàng đợi tương ứng cho Lab, Hub, Ops/Admin |
 
 ## Sự kiện CẦN THÊM theo kế hoạch (chưa có trong code)
 
@@ -47,3 +48,14 @@ Nhà sản xuất chỉ được PHÁT đúng tên + đúng payload; tiêu thụ
 | `ShipmentsMergedEvent` ★R1 | Waybill, OrderIds[], CustomerId | UC-017/FR-HUB-006 | tracking + khiếu nại vẫn theo đơn gốc (BR-LOG-002) |
 
 Quy tắc cũ giữ nguyên: chỉ đổi khi sửa file này + PR. **Các event ★R1 chưa được code — khóa mã khi B19–B24 chốt xong.**
+
+## Notifications đã triển khai
+
+Thông báo được lưu riêng theo `UserId` trong `shared.user_notifications`; trạng thái đã đọc
+không dùng chung giữa các tài khoản cùng role. `GET /api/v1/notifications` trả 30 mục gần nhất
+cùng unread count; `PATCH /api/v1/notifications/{id}/read` và
+`POST /api/v1/notifications/read-all` cập nhật trạng thái đọc.
+
+`OrderTimelineUpdatedIntegrationEvent.Status` tùy chọn để các thay đổi không liên quan sản xuất
+vẫn cập nhật timeline bình thường. Các status `Printing`, `QualityCheck`, `Completed`,
+`Failed`/`Delayed` tạo thông báo theo Customer, Lab, Hub hoặc Ops/Admin tương ứng.

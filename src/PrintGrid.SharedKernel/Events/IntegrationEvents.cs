@@ -11,4 +11,5 @@ public sealed record OrderDelayedIntegrationEvent(
 
 public sealed record OrderTimelineUpdatedIntegrationEvent(
     Guid OrderId,
-    Guid CustomerId) : INotification;
+    Guid CustomerId,
+    string? Status = null) : INotification;

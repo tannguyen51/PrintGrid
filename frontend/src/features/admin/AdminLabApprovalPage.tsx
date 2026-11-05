@@ -2,13 +2,13 @@ import { Alert, Box, Button, Chip, CircularProgress, Paper, Stack, Typography } 
 import { CheckCircleRounded, FactoryRounded } from '@mui/icons-material'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
-import { useLabs, useSetLabActive } from '../ops/useLabs'
+import { useApproveLab, useLabs } from '../ops/useLabs'
 
 export default function AdminLabApprovalPage() {
   const labs = useLabs(true)
-  const approve = useSetLabActive()
+  const approve = useApproveLab()
   const items = labs.data ?? []
-  const pendingCount = items.filter((lab) => !lab.isActive).length
+  const pendingCount = items.filter((lab) => lab.status === 'Pending').length
 
   return (
     <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
@@ -17,7 +17,7 @@ export default function AdminLabApprovalPage() {
           <PageBackButton />
           <Box>
             <Typography variant="h4" fontWeight={800}>Duyệt kích hoạt xưởng</Typography>
-            <Typography color="text.secondary">Kiểm tra khai báo máy trước khi cho phép xưởng nhận job từ hệ thống.</Typography>
+            <Typography color="text.secondary">Kiểm tra hồ sơ, máy in và vật liệu trước khi cho phép xưởng nhận job từ hệ thống.</Typography>
           </Box>
         </Stack>
 
@@ -43,24 +43,36 @@ export default function AdminLabApprovalPage() {
               const missing = [
                 lab.machines.length === 0 ? 'máy' : null,
                 lab.materialStockCount === 0 ? 'vật liệu' : null,
-                !lab.workingDays ? 'lịch hoạt động' : null,
-                lab.transitDaysToHub < 1 ? 'thời gian trung chuyển' : null,
+                !lab.operatingHours ? 'lịch hoạt động' : null,
+                lab.transitDaysToHub < 0 ? 'thời gian trung chuyển' : null,
               ].filter(Boolean)
+              const statusLabel = lab.status === 'Active'
+                ? 'Đã kích hoạt'
+                : lab.status === 'Rejected'
+                  ? 'Đã từ chối'
+                  : lab.status === 'Inactive'
+                    ? 'Đang tạm dừng'
+                    : 'Chờ duyệt'
               return (
             <Paper key={lab.id} variant="outlined" sx={{ p: 2.5, borderRadius: 3, opacity: lab.isActive ? 0.7 : 1 }}>
               <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} gap={2}>
                 <Box>
                   <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
                     <Typography variant="h6" fontWeight={750}>{lab.name}</Typography>
-                    <Chip size="small" color={lab.isActive ? 'success' : 'warning'} label={lab.isActive ? 'Đã kích hoạt' : 'Chờ duyệt'} />
+                    <Chip
+                      size="small"
+                      color={lab.status === 'Active' ? 'success' : lab.status === 'Rejected' ? 'error' : lab.status === 'Pending' ? 'warning' : 'default'}
+                      label={statusLabel}
+                    />
                   </Stack>
                   <Typography color="text.secondary">{lab.city} · {lab.machines.length} máy · {lab.materialStockCount} dòng vật liệu · vận chuyển về hub {lab.transitDaysToHub} ngày</Typography>
-                  <Typography variant="body2" color="text.secondary">Lịch: {lab.workingDays || 'Chưa khai'} · {lab.openingTime}–{lab.closingTime}</Typography>
+                  <Typography variant="body2" color="text.secondary">Lịch: {lab.operatingHours || 'Chưa khai'}</Typography>
                   {lab.machines.length > 0 && <Typography variant="body2" color="text.secondary" mt={0.75}>{lab.machines.map((machine) => `${machine.name} (${machine.model})`).join(' · ')}</Typography>}
-                  {missing.length > 0 && !lab.isActive && <Alert severity="warning" sx={{ mt: 1 }}>Hồ sơ còn thiếu: {missing.join(', ')}.</Alert>}
+                  {lab.status === 'Rejected' && lab.rejectionReason && <Alert severity="error" sx={{ mt: 1 }}>{lab.rejectionReason}</Alert>}
+                  {missing.length > 0 && lab.status === 'Pending' && <Alert severity="warning" sx={{ mt: 1 }}>Hồ sơ còn thiếu: {missing.join(', ')}.</Alert>}
                 </Box>
-                {!lab.isActive && (
-                  <Button variant="contained" startIcon={<CheckCircleRounded />} disabled={approve.isPending || missing.length > 0} onClick={() => approve.mutate({ labId: lab.id, isActive: true })}>
+                {lab.status === 'Pending' && (
+                  <Button variant="contained" startIcon={<CheckCircleRounded />} disabled={approve.isPending || missing.length > 0} onClick={() => approve.mutate(lab.id)}>
                     {missing.length > 0 ? 'Hồ sơ chưa đầy đủ' : 'Duyệt kích hoạt'}
                   </Button>
                 )}
