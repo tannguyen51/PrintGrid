@@ -35,7 +35,7 @@ public sealed class DateChangeDecisionTests
         state.Request.DecidedByCustomerId.Should().Be(state.CustomerId);
         state.Order.PromisedDeliveryDate.Should().Be(state.Request.ProposedDeliveryDate).And.BeAfter(originalOrderDate);
         state.Job.InternalDueDate.Should().BeAfter(originalJobDate);
-        await _refunds.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _refunds.DidNotReceiveWithAnyArgs().AddAsync(null!);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
@@ -80,7 +80,7 @@ public sealed class DateChangeDecisionTests
         var quote = Quote.CreatePending(customerId, TimeSpan.FromHours(48));
         quote.AddItem(Guid.NewGuid(), 2,
             PrintConfiguration.Create("PLA", "BLACK", .2m, 20, .3m),
-            Money.Of(100_000m, "VND"), 120, 50m, 20_000m, 30_000m, 10m, 10m, 10m);
+            Money.Of(100_000m), 120, 50m, 20_000m, 30_000m, 10m, 10m, 10m);
         var promised = new DateOnly(2026, 10, 20);
         quote.MarkReady(promised, "test");
         var order = Order.CreateFromQuote(quote,

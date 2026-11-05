@@ -2,14 +2,9 @@ using MediatR;
 
 namespace PrintGrid.SharedKernel.Common;
 
-public interface IDomainEvent : INotification
-{
-    Guid EventId { get; }
-    DateTime OccurredOn { get; }
-}
+public interface IDomainEvent : INotification;
 
 public abstract record DomainEvent : IDomainEvent
 {
-    public Guid EventId { get; init; } = Guid.NewGuid();
-    public DateTime OccurredOn { get; init; } = DateTime.UtcNow;
+    public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }

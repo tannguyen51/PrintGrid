@@ -6,14 +6,10 @@ using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Repositories;
 
-public class LabRepository : ILabRepository
+public abstract class LabRepository(PrintGridDbContext context) : ILabRepository
 {
-    private readonly PrintGridDbContext _context;
-
-    public LabRepository(PrintGridDbContext context) => _context = context;
-
     public Task<Lab?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _context.Set<Lab>()
+        context.Set<Lab>()
             .Include(l => l.Machines)
             .Include(l => l.MaterialStocks)
             .Include(l => l.StockTransactions)
@@ -22,7 +18,7 @@ public class LabRepository : ILabRepository
             .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
 
     public Task<Lab?> GetByStaffUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        _context.Set<Lab>()
+        context.Set<Lab>()
             .Include(l => l.Machines)
             .Include(l => l.MaterialStocks)
             .Include(l => l.StockTransactions)
@@ -31,7 +27,7 @@ public class LabRepository : ILabRepository
             .FirstOrDefaultAsync(l => l.Staff.Any(s => s.UserId == userId), cancellationToken);
 
     public Task<Lab?> GetByOwnerUserIdAsync(Guid ownerUserId, CancellationToken cancellationToken = default) =>
-        _context.Set<Lab>()
+        context.Set<Lab>()
             .Include(l => l.Machines)
             .Include(l => l.MaterialStocks)
             .Include(l => l.StockTransactions)
@@ -40,7 +36,7 @@ public class LabRepository : ILabRepository
             .FirstOrDefaultAsync(l => l.OwnerUserId == ownerUserId, cancellationToken);
 
     public async Task<IReadOnlyList<Lab>> GetActiveWithMachinesAsync(CancellationToken cancellationToken = default) =>
-        await _context.Set<Lab>()
+        await context.Set<Lab>()
             .Include(l => l.Machines)
             .Include(l => l.MaterialStocks)
             .Include(l => l.MaterialReservations)
@@ -48,14 +44,14 @@ public class LabRepository : ILabRepository
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Lab>> GetAllAsync(CancellationToken cancellationToken = default) =>
-        await _context.Set<Lab>()
+        await context.Set<Lab>()
             .Include(l => l.Machines)
             .Include(l => l.MaterialStocks)
             .OrderBy(l => l.Name)
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Lab>> GetByOwnerAsync(Guid ownerUserId, CancellationToken cancellationToken = default) =>
-        await _context.Set<Lab>()
+        await context.Set<Lab>()
             .Include(l => l.Machines)
             .Include(l => l.MaterialStocks)
             .Where(l => l.OwnerUserId == ownerUserId)
@@ -63,18 +59,18 @@ public class LabRepository : ILabRepository
             .ToListAsync(cancellationToken);
 
     public Task<bool> AnyAsync(CancellationToken cancellationToken = default) =>
-        _context.Set<Lab>().AnyAsync(cancellationToken);
+        context.Set<Lab>().AnyAsync(cancellationToken);
 
     public async Task AddAsync(Lab lab, CancellationToken cancellationToken = default) =>
-        await _context.Set<Lab>().AddAsync(lab, cancellationToken);
+        await context.Set<Lab>().AddAsync(lab, cancellationToken);
 
-    public void AddMachine(Machine machine) => _context.Set<Machine>().Add(machine);
+    public void AddMachine(Machine machine) => context.Set<Machine>().Add(machine);
 
-    public void RemoveMachine(Machine machine) => _context.Set<Machine>().Remove(machine);
+    public void RemoveMachine(Machine machine) => context.Set<Machine>().Remove(machine);
 
     public async Task<NetworkStatsSnapshot> GetNetworkStatsAsync(CancellationToken cancellationToken = default)
     {
-        var labs = await _context.Set<Lab>().Include(l => l.Machines).AsNoTracking().ToListAsync(cancellationToken);
+        var labs = await context.Set<Lab>().Include(l => l.Machines).AsNoTracking().ToListAsync(cancellationToken);
 
         var active = labs.Where(l => l.IsActive).ToList();
         var machines = active.SelectMany(l => l.Machines).ToList();

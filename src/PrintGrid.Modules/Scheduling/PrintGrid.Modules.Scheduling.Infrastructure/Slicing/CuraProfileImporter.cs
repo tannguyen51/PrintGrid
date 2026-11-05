@@ -11,7 +11,10 @@ public static class CuraProfileImporter
     {
         if (new[] { name, manufacturer, model, material, version, engineVersion }.Any(string.IsNullOrWhiteSpace) ||
             new[] { name, manufacturer, model, material, version, engineVersion }.Any(v => v.Length > 100))
+        {
             throw new ArgumentException("Tên profile, hãng, model, vật liệu, phiên bản là bắt buộc (tối đa 100 ký tự).");
+        }
+
         if (material.Trim().Equals("RESIN", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("CuraEngine chỉ hỗ trợ profile FDM/FFF.");
         if (extruderCount is < 1 or > 8 || json.Length > 2 * 1024 * 1024)
@@ -20,8 +23,6 @@ public static class CuraProfileImporter
         if (root.Any(p => p.Key != "global" && p.Key != "limit_to_extruder" && !p.Key.StartsWith("extruder.")))
             throw new ArgumentException("Cần profile resolved JSON gồm global và extruder.N; file .curaprofile/.def.json chưa resolve không được hỗ trợ.");
         var global = root["global"] as JsonObject ?? throw new ArgumentException("Profile thiếu global.");
-        decimal Number(JsonObject obj, string key) => decimal.TryParse(obj[key]?.ToString(), NumberStyles.Float,
-            CultureInfo.InvariantCulture, out var n) ? n : throw new ArgumentException($"Profile thiếu/sai thông số {key}.");
         var count = Number(global, "machine_extruder_count");
         if (count is < 1 or > 8 || count != decimal.Truncate(count)) throw new ArgumentException("Số tool màu trong profile không hợp lệ.");
         var slots = (int)count;
@@ -34,7 +35,10 @@ public static class CuraProfileImporter
             throw new ArgumentException("Báo giá hiện hỗ trợ bàn in chữ nhật; bàn tròn cần cấu hình kiểm tra vùng in riêng.");
         if (!bool.TryParse(global["machine_heated_bed"]?.ToString(), out var heated) ||
             !bool.TryParse(global["machine_center_is_zero"]?.ToString(), out _))
+        {
             throw new ArgumentException("Profile thiếu loại bàn nhiệt hoặc gốc tọa độ.");
+        }
+
         foreach (var key in new[] { "machine_max_feedrate_x", "machine_max_feedrate_y", "machine_acceleration", "layer_height", "speed_print" })
             if (Number(global, key) <= 0) throw new ArgumentException($"Thông số {key} phải lớn hơn 0.");
         var nozzle = Number(global, "machine_nozzle_size"); var filament = Number(global, "material_diameter");
@@ -53,5 +57,8 @@ public static class CuraProfileImporter
             heated, nozzleTemp, bedTemp, 1, 0).Validate();
         return CuraProfile.Import(name, manufacturer, model, material, version, engineVersion, nozzle, filament,
             extruderCount, slots, width, depth, height, heated, nozzleTemp, bedTemp, root.ToJsonString());
+
+        static decimal Number(JsonObject obj, string key) => decimal.TryParse(obj[key]?.ToString(), NumberStyles.Float,
+            CultureInfo.InvariantCulture, out var n) ? n : throw new ArgumentException($"Profile thiếu/sai thông số {key}.");
     }
 }

@@ -9,18 +9,18 @@ public sealed class ScoringWeightConfiguration
     private ScoringWeightConfiguration() { }
 
     public Guid Id { get; private set; }
-    public string Version { get; private set; } = string.Empty;
-    public decimal DueDateSlack { get; private set; }
-    public decimal LabReliability { get; private set; }
-    public decimal LoadBalance { get; private set; }
-    public decimal Cost { get; private set; }
-    public decimal Transit { get; private set; }
+    public string Version { get; private init; } = string.Empty;
+    public decimal DueDateSlack { get; private init; }
+    public decimal LabReliability { get; private init; }
+    public decimal LoadBalance { get; private init; }
+    public decimal Cost { get; private init; }
+    public decimal Transit { get; private init; }
     public bool IsActive { get; private set; }
     public string Reason { get; private set; } = string.Empty;
     public Guid ChangedBy { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
-    public ScoringWeights ToWeights() => new()
+    private ScoringWeights ToWeights() => new()
     {
         DueDateSlack = DueDateSlack,
         LabReliability = LabReliability,

@@ -18,9 +18,7 @@ public record CreateUrgentReprintCommand(
     FaultAttribution? Fault = null) : IRequest<Result<UrgentReprintResultDto>>;
 
 public record UrgentReprintResultDto(
-    Guid OriginalJobId,
-    Guid? ReprintJobId,
     bool EscalatedToOps,
     DateTime? PlannedStartUtc,
     DateTime? PlannedEndUtc,
-    decimal? Score);
+    Guid? ReprintJobId = null);

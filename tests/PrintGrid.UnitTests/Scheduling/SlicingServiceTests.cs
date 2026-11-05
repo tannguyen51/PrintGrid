@@ -316,10 +316,10 @@ public class SlicingServiceTests
         };
         // Same winding as the OBJ fixture (1-based there, converted below).
         int[] faces =
-        {
+        [
             1, 3, 4, 1, 2, 3, 5, 7, 8, 5, 6, 7, 2, 6, 7, 2, 3, 7,
-            1, 5, 8, 1, 4, 8, 3, 7, 8, 3, 4, 8, 1, 5, 6, 1, 2, 6,
-        };
+            1, 5, 8, 1, 4, 8, 3, 7, 8, 3, 4, 8, 1, 5, 6, 1, 2, 6
+        ];
 
         var positions = new byte[vertices.Length * 12];
         for (var i = 0; i < vertices.Length; i++)

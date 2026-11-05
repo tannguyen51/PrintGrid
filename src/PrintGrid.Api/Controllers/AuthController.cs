@@ -17,23 +17,14 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/auth")]
 [AllowAnonymous]
-public class AuthController : ControllerBase
+public class AuthController(ISender sender, IAuditLogWriter audit) : ControllerBase
 {
-    private readonly ISender _sender;
-    private readonly IAuditLogWriter _audit;
-
-    public AuthController(ISender sender, IAuditLogWriter audit)
-    {
-        _sender = sender;
-        _audit = audit;
-    }
-
     [HttpPost("register")]
     public async Task<IActionResult> Register(
         [FromBody] RegisterRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new RegisterCustomerCommand(request.FullName, request.Email, request.Password, request.PhoneNumber),
             cancellationToken);
 
@@ -47,7 +38,7 @@ public class AuthController : ControllerBase
         [FromBody] LoginRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new LoginCustomerCommand(request.Email, request.Password),
             cancellationToken);
 
@@ -59,7 +50,7 @@ public class AuthController : ControllerBase
             return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
         }
 
-        await _audit.WriteAsync(new AuditLogWriteRequest(
+        await audit.WriteAsync(new AuditLogWriteRequest(
             result.Value.User.Id,
             result.Value.User.Email,
             string.Join(',', result.Value.User.Roles),
@@ -80,19 +71,16 @@ public class AuthController : ControllerBase
         [FromBody] RefreshRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new RefreshSessionCommand(request.RefreshToken),
             cancellationToken);
 
-        if (result.IsFailure)
-        {
-            var status = result.Error.Code == "unauthorized"
-                ? StatusCodes.Status401Unauthorized
-                : StatusCodes.Status400BadRequest;
-            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
-        }
+        if (!result.IsFailure) return Ok(result.Value);
+        var status = result.Error.Code == "unauthorized"
+            ? StatusCodes.Status401Unauthorized
+            : StatusCodes.Status400BadRequest;
+        return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
-        return Ok(result.Value);
     }
 
     [HttpPost("google")]
@@ -100,11 +88,11 @@ public class AuthController : ControllerBase
         [FromBody] GoogleLoginRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GoogleLoginCommand(request.Credential), cancellationToken);
+        var result = await sender.Send(new GoogleLoginCommand(request.Credential), cancellationToken);
         if (result.IsFailure)
             return Unauthorized(new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
-        await _audit.WriteAsync(new AuditLogWriteRequest(
+        await audit.WriteAsync(new AuditLogWriteRequest(
             result.Value.User.Id,
             result.Value.User.Email,
             string.Join(',', result.Value.User.Roles),
@@ -125,7 +113,7 @@ public class AuthController : ControllerBase
         [FromBody] ForgotPasswordRequest request,
         CancellationToken cancellationToken)
     {
-        await _sender.Send(new ForgotPasswordCommand(request.Email), cancellationToken);
+        await sender.Send(new ForgotPasswordCommand(request.Email), cancellationToken);
         return Accepted(new
         {
             message = "Nếu email tồn tại, PrintGrid đã gửi liên kết đặt lại mật khẩu."
@@ -137,7 +125,7 @@ public class AuthController : ControllerBase
         [FromBody] ResetPasswordRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new ResetPasswordCommand(request.Email, request.Token, request.NewPassword),
             cancellationToken);
 
@@ -151,7 +139,7 @@ public class AuthController : ControllerBase
         [FromBody] VerifyEmailRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new VerifyEmailCommand(request.Email, request.Token), cancellationToken);
+        var result = await sender.Send(new VerifyEmailCommand(request.Email, request.Token), cancellationToken);
         if (result.IsFailure)
         {
             return BadRequest(new { error = new { code = result.Error.Code, message = result.Error.Message } });
@@ -164,15 +152,12 @@ public class AuthController : ControllerBase
         [FromBody] ResendVerificationRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new ResendVerificationCommand(request.Email), cancellationToken);
-        if (result.IsFailure)
-        {
-            var status = result.Error.Code == "rate_limit_exceeded" || result.Error.Code == "cooldown_active"
-                ? StatusCodes.Status429TooManyRequests
-                : StatusCodes.Status400BadRequest;
-            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
-        }
-        return Ok(result.Value);
+        var result = await sender.Send(new ResendVerificationCommand(request.Email), cancellationToken);
+        if (!result.IsFailure) return Ok(result.Value);
+        var status = result.Error.Code == "rate_limit_exceeded" || result.Error.Code == "cooldown_active"
+            ? StatusCodes.Status429TooManyRequests
+            : StatusCodes.Status400BadRequest;
+        return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
     }
 }
 

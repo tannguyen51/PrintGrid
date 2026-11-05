@@ -8,7 +8,7 @@ namespace PrintGrid.Modules.Admin.Infrastructure;
 
 public sealed class AuditLogWriter(IAuditLogRepository repository, PrintGridDbContext context) : IAuditLogWriter
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task WriteAsync(AuditLogWriteRequest request, CancellationToken cancellationToken = default)
     {
@@ -29,11 +29,11 @@ public sealed class AuditLogWriter(IAuditLogRepository repository, PrintGridDbCo
             request.Reason,
             request.IpAddress,
             request.TraceId,
-            JsonSerializer.Serialize(codes, JsonOptions));
+            JsonSerializer.Serialize(codes, _jsonOptions));
         await repository.AddAsync(entry, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
     }
 
     private static string? Serialize(object? value) =>
-        value is null ? null : JsonSerializer.Serialize(value, JsonOptions);
+        value is null ? null : JsonSerializer.Serialize(value, _jsonOptions);
 }

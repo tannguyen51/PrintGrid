@@ -6,17 +6,9 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Customer.Application.Models;
 
-public class UploadModelCommandHandler : IRequestHandler<UploadModelCommand, Result<ModelDto>>
+public class UploadModelCommandHandler(IModelRepository models, IUnitOfWork unitOfWork)
+    : IRequestHandler<UploadModelCommand, Result<ModelDto>>
 {
-    private readonly IModelRepository _models;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public UploadModelCommandHandler(IModelRepository models, IUnitOfWork unitOfWork)
-    {
-        _models = models;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result<ModelDto>> Handle(UploadModelCommand command, CancellationToken cancellationToken)
     {
         var model = Domain.Entities.Model.Create(
@@ -30,8 +22,8 @@ public class UploadModelCommandHandler : IRequestHandler<UploadModelCommand, Res
             command.StorageKey,
             command.Sha256);
 
-        await _models.AddAsync(model, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await models.AddAsync(model, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(ModelMappings.ToDto(model));
     }

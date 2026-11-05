@@ -18,7 +18,7 @@ public class AssignmentDecision : Entity<Guid>
     /// <summary>Attempt number of the job at decision time (1 for the first placement).</summary>
     public int AttemptNumber { get; private set; }
 
-    /// <summary>What provoked the decision: initial assignment, a reschedule trigger or an override.</summary>
+    /// <summary>What provoked the decision: initial assignment, a rescheduling trigger or an override.</summary>
     public string Trigger { get; private set; } = string.Empty;
 
     /// <summary>"system" for engine decisions, "ops" for human overrides.</summary>

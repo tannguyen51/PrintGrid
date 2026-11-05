@@ -9,29 +9,21 @@ namespace PrintGrid.Infrastructure.Shared.Outbox;
 /// </summary>
 public class EmailOutboxItem
 {
-    public Guid Id { get; set; }
-    public string ToEmail { get; set; } = string.Empty;
-    public string Subject { get; set; } = string.Empty;
-    public string Body { get; set; } = string.Empty;
+    public Guid Id { get; init; }
+    public string ToEmail { get; init; } = string.Empty;
+    public string Subject { get; init; } = string.Empty;
+    public string Body { get; init; } = string.Empty;
     public string Status { get; set; } = "Pending";
-    public DateTime CreatedAtUtc { get; set; }
+    public DateTime CreatedAtUtc { get; init; }
     public DateTime? SentAtUtc { get; set; }
 }
 
-public class EmailOutboxStore : IEmailOutbox
+public abstract class EmailOutboxStore(Persistence.PrintGridDbContext context, ILogger<EmailOutboxStore> logger)
+    : IEmailOutbox
 {
-    private readonly Persistence.PrintGridDbContext _context;
-    private readonly ILogger<EmailOutboxStore> _logger;
-
-    public EmailOutboxStore(Persistence.PrintGridDbContext context, ILogger<EmailOutboxStore> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
-
     public async Task QueueAsync(string toEmail, string subject, string body, CancellationToken cancellationToken = default)
     {
-        _context.EmailOutbox.Add(new EmailOutboxItem
+        context.EmailOutbox.Add(new EmailOutboxItem
         {
             Id = Guid.NewGuid(),
             ToEmail = toEmail,
@@ -40,12 +32,12 @@ public class EmailOutboxStore : IEmailOutbox
             Status = "Pending",
             CreatedAtUtc = DateTime.UtcNow
         });
-        await _context.SaveChangesAsync(cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<int> DeliverPendingAsync(CancellationToken cancellationToken = default)
     {
-        var pending = _context.EmailOutbox
+        var pending = context.EmailOutbox
             .Where(e => e.Status == "Pending")
             .OrderBy(e => e.CreatedAtUtc)
             .Take(50)
@@ -54,14 +46,14 @@ public class EmailOutboxStore : IEmailOutbox
         foreach (var message in pending)
         {
             // DEV CHANNEL: log delivery. Replace with SMTP send in T7 (NFR: keep body free of secrets).
-            _logger.LogInformation(
+            logger.LogInformation(
                 "EMAIL → {To} | {Subject} | {BodyLength} chars",
                 message.ToEmail, message.Subject, message.Body.Length);
             message.Status = "Sent";
             message.SentAtUtc = DateTime.UtcNow;
         }
 
-        if (pending.Count > 0) await _context.SaveChangesAsync(cancellationToken);
+        if (pending.Count > 0) await context.SaveChangesAsync(cancellationToken);
         return pending.Count;
     }
 }

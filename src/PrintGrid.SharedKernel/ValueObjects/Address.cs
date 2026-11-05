@@ -34,10 +34,10 @@ public sealed class Address : ValueObject
 
         return new Address(
             street.Trim(),
-            ward?.Trim() ?? string.Empty,
-            district?.Trim() ?? string.Empty,
+            ward.Trim(),
+            district.Trim(),
             city.Trim(),
-            postalCode?.Trim() ?? string.Empty,
+            postalCode.Trim(),
             country.Trim().ToUpperInvariant());
     }
 

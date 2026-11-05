@@ -1,10 +1,10 @@
 namespace PrintGrid.Modules.Customer.Application.Commands.ReprintRequests;
 
 public sealed record ReprintRequestDto(
-    Guid RequestId,
+    Guid Id,
     Guid OrderId,
     string Reason,
-    string Description,
+    string? Description,
     IReadOnlyList<string> Photos,
     string Status,
     DateTime CreatedAt,

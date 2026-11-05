@@ -18,30 +18,16 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/jobs")]
 [Authorize]
-public class JobsController : ControllerBase
+public class JobsController(
+    ISender sender,
+    IFileStorage files,
+    IOptions<MinioOptions> minio,
+    IOrderRepository orders,
+    IModelRepository models,
+    IAuditLogWriter audit)
+    : ControllerBase
 {
-    private readonly ISender _sender;
-    private readonly IFileStorage _files;
-    private readonly MinioOptions _minio;
-    private readonly IOrderRepository _orders;
-    private readonly IModelRepository _models;
-    private readonly IAuditLogWriter _audit;
-
-    public JobsController(
-        ISender sender,
-        IFileStorage files,
-        IOptions<MinioOptions> minio,
-        IOrderRepository orders,
-        IModelRepository models,
-        IAuditLogWriter audit)
-    {
-        _sender = sender;
-        _files = files;
-        _minio = minio.Value;
-        _orders = orders;
-        _models = models;
-        _audit = audit;
-    }
+    private readonly MinioOptions _minio = minio.Value;
 
     /// <summary>True for the two lab roles, which are scoped to one lab (BR-ACCESS-003/004).</summary>
     private bool CallerIsLab =>
@@ -55,7 +41,7 @@ public class JobsController : ControllerBase
     {
         var userId = User.GetCustomerId();
         if (userId is null) return null;
-        var result = await _sender.Send(new GetMyLabQuery(userId.Value), cancellationToken);
+        var result = await sender.Send(new GetMyLabQuery(userId.Value), cancellationToken);
         return result.IsSuccess ? result.Value?.Id : null;
     }
 
@@ -71,7 +57,7 @@ public class JobsController : ControllerBase
         var labId = await CallerLabIdAsync(cancellationToken);
         if (labId is null) return Forbid();
 
-        var job = await _sender.Send(new GetJobQuery(jobId), cancellationToken);
+        var job = await sender.Send(new GetJobQuery(jobId), cancellationToken);
         if (job.IsFailure) return null;
 
         return job.Value.LabId == labId ? null : Forbid();
@@ -90,12 +76,15 @@ public class JobsController : ControllerBase
             if (labFilter is null) return Ok(Array.Empty<JobDto>());
         }
 
-        var result = await _sender.Send(new GetJobsQuery(status ?? JobStatus.Pending, labFilter), cancellationToken);
+        var result = await sender.Send(new GetJobsQuery(status ?? JobStatus.Pending, labFilter), cancellationToken);
         if (result.IsFailure) return BadRequest(result.Error);
         var jobs = result.Value;
         if (status == JobStatus.AwaitingInspection &&
             (User.IsInRole(Roles.HubQc) || User.IsInRole(Roles.HubFulfillment)))
-            jobs = jobs.Where(j => j.QcProofStatus == "Approved").ToList();
+        {
+            jobs = [.. jobs.Where(j => j.QcProofStatus == "Approved")];
+        }
+
         return Ok(jobs);
     }
 
@@ -104,7 +93,7 @@ public class JobsController : ControllerBase
     public async Task<IActionResult> Accept(Guid jobId, CancellationToken cancellationToken)
     {
         if (await ForbidIfNotCallersJobAsync(jobId, cancellationToken) is { } forbidden) return forbidden;
-        var result = await _sender.Send(new AcceptJobCommand(jobId), cancellationToken);
+        var result = await sender.Send(new AcceptJobCommand(jobId), cancellationToken);
         return ToResult(result);
     }
 
@@ -117,7 +106,7 @@ public class JobsController : ControllerBase
     [Authorize(Policy = Policies.RequireProduction)]
     public async Task<IActionResult> GetJobFile(Guid jobId, CancellationToken cancellationToken)
     {
-        var job = await _sender.Send(new GetJobQuery(jobId), cancellationToken);
+        var job = await sender.Send(new GetJobQuery(jobId), cancellationToken);
         if (job.IsFailure)
             return NotFound(new { error = new { code = "not_found", message = job.Error.Message } });
 
@@ -129,16 +118,16 @@ public class JobsController : ControllerBase
 
         {
             var labId = await CallerLabIdAsync(cancellationToken);
-            if (labId is null || job.Value.LabId != labId) return Forbid();
-            if (job.Value.Status == JobStatus.Completed.ToString()
-                && job.Value.CompletedAtUtc is { } completedAt
+            if (labId is null || job.Value.LabId != labId || job.Value is { Status: nameof(JobStatus.Completed), CompletedAtUtc: { } completedAt }
                 && DateTime.UtcNow - completedAt > TimeSpan.FromHours(4))
+            {
                 return Forbid();
+            }
         }
 
-        var order = await _orders.GetByItemIdAsync(job.Value.OrderItemId, cancellationToken);
+        var order = await orders.GetByItemIdAsync(job.Value.OrderItemId, cancellationToken);
         var item = order?.Items.FirstOrDefault(i => i.Id == job.Value.OrderItemId);
-        var model = item is null ? null : await _models.GetByIdAsync(item.ModelId, cancellationToken);
+        var model = item is null ? null : await models.GetByIdAsync(item.ModelId, cancellationToken);
 
         var storageKey = model?.StorageKey;
         if (string.IsNullOrWhiteSpace(storageKey))
@@ -159,11 +148,11 @@ public class JobsController : ControllerBase
             _ => "application/octet-stream"
         };
 
-        var stream = await _files.DownloadAsync(
+        var stream = await files.DownloadAsync(
             storageKey[..separator], storageKey[(separator + 1)..], cancellationToken);
 
         // BR-ACCESS-002: every lab model-file download is logged (who, when, job, lab, IP).
-        await _audit.WriteAsync(new AuditLogWriteRequest(
+        await audit.WriteAsync(new AuditLogWriteRequest(
             User.GetCustomerId(),
             User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name ?? "unknown",
             User.FindFirstValue(ClaimTypes.Role) ?? "unknown",
@@ -184,7 +173,7 @@ public class JobsController : ControllerBase
     public async Task<IActionResult> Decline(Guid jobId, [FromBody] DeclineJobRequest request, CancellationToken cancellationToken)
     {
         if (await ForbidIfNotCallersJobAsync(jobId, cancellationToken) is { } forbidden) return forbidden;
-        var result = await _sender.Send(new DeclineJobCommand(jobId, request.Reason), cancellationToken);
+        var result = await sender.Send(new DeclineJobCommand(jobId, request.Reason), cancellationToken);
         return ToResult(result);
     }
 
@@ -193,7 +182,7 @@ public class JobsController : ControllerBase
     public async Task<IActionResult> Start(Guid jobId, CancellationToken cancellationToken)
     {
         if (await ForbidIfNotCallersJobAsync(jobId, cancellationToken) is { } forbidden) return forbidden;
-        var result = await _sender.Send(new StartJobCommand(jobId), cancellationToken);
+        var result = await sender.Send(new StartJobCommand(jobId), cancellationToken);
         return ToResult(result);
     }
 
@@ -210,7 +199,9 @@ public class JobsController : ControllerBase
                 photo.Length == 0 ||
                 photo.Length > 5 * 1024 * 1024 ||
                 !photo.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)))
+        {
             return BadRequest(new { error = new { code = "validation_error", message = "Mỗi ảnh QC phải là tệp ảnh không quá 5 MB." } });
+        }
 
         var photoKeys = new List<string>();
         foreach (var photo in request.Photos)
@@ -218,18 +209,16 @@ public class JobsController : ControllerBase
             var extension = Path.GetExtension(photo.FileName).ToLowerInvariant();
             var objectName = $"qc/{jobId}/{Guid.NewGuid()}{extension}";
             await using var stream = photo.OpenReadStream();
-            await _files.UploadAsync(_minio.PhotoBucket, objectName, stream, photo.ContentType, cancellationToken);
+            await files.UploadAsync(_minio.PhotoBucket, objectName, stream, photo.ContentType, cancellationToken);
             photoKeys.Add(objectName);
         }
 
-        var result = await _sender.Send(
-            new CompleteJobCommand(jobId, request.ActualPrintMinutes, request.SelfReport, photoKeys, request.ActualMaterialGrams),
+        var result = await sender.Send(
+            new CompleteJobCommand(jobId, request.ActualPrintMinutes, CompleteJobRequest.SelfReport, photoKeys, request.ActualMaterialGrams),
             cancellationToken);
-        if (result.IsFailure)
-        {
-            foreach (var key in photoKeys)
-                await _files.DeleteAsync(_minio.PhotoBucket, key, cancellationToken);
-        }
+        if (!result.IsFailure) return ToResult(result);
+        foreach (var key in photoKeys)
+            await files.DeleteAsync(_minio.PhotoBucket, key, cancellationToken);
         return ToResult(result);
     }
 
@@ -245,21 +234,18 @@ public class JobsController : ControllerBase
         CancellationToken cancellationToken)
     {
         if (await ForbidIfNotCallersJobAsync(jobId, cancellationToken) is { } forbidden) return forbidden;
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new ReportJobFailureCommand(jobId, request.Reason), cancellationToken);
 
-        if (result.IsFailure)
+        if (!result.IsFailure) return Ok(result.Value);
+        var status = result.Error.Code switch
         {
-            var status = result.Error.Code switch
-            {
-                "not_found" => StatusCodes.Status404NotFound,
-                "conflict" => StatusCodes.Status409Conflict,
-                _ => StatusCodes.Status400BadRequest,
-            };
-            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
-        }
+            "not_found" => StatusCodes.Status404NotFound,
+            "conflict" => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status400BadRequest,
+        };
+        return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
-        return Ok(result.Value);
     }
 
     [HttpPost("{jobId:guid}/inspection-photos")]
@@ -274,7 +260,9 @@ public class JobsController : ControllerBase
                 photo.Length == 0 ||
                 photo.Length > 5 * 1024 * 1024 ||
                 !photo.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)))
+        {
             return BadRequest(new { error = new { code = "validation_error", message = "Mỗi ảnh QC phải là tệp ảnh không quá 5 MB." } });
+        }
 
         var photoKeys = new List<string>();
         try
@@ -284,7 +272,7 @@ public class JobsController : ControllerBase
                 var extension = Path.GetExtension(photo.FileName).ToLowerInvariant();
                 var objectName = $"qc/{jobId}/{Guid.NewGuid()}{extension}";
                 await using var stream = photo.OpenReadStream();
-                await _files.UploadAsync(_minio.PhotoBucket, objectName, stream, photo.ContentType, cancellationToken);
+                await files.UploadAsync(_minio.PhotoBucket, objectName, stream, photo.ContentType, cancellationToken);
                 photoKeys.Add(objectName);
             }
         }
@@ -292,7 +280,7 @@ public class JobsController : ControllerBase
         {
             // Best-effort cleanup so a half-finished batch does not leak objects in the bucket.
             foreach (var key in photoKeys)
-                await _files.DeleteAsync(_minio.PhotoBucket, key, cancellationToken);
+                await files.DeleteAsync(_minio.PhotoBucket, key, cancellationToken);
             throw;
         }
 
@@ -305,7 +293,7 @@ public class JobsController : ControllerBase
     [Authorize(Policy = Policies.RequireQuoteReview)]
     public async Task<IActionResult> GetQcProofs(CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetJobsQuery(JobStatus.AwaitingInspection), cancellationToken);
+        var result = await sender.Send(new GetJobsQuery(JobStatus.AwaitingInspection), cancellationToken);
         if (result.IsFailure) return BadRequest(result.Error);
 
         var pending = result.Value.Where(j => j.QcProofStatus == "Pending").ToList();
@@ -314,7 +302,7 @@ public class JobsController : ControllerBase
         {
             var urls = new List<string>();
             foreach (var key in job.QcProofPhotoKeys)
-                urls.Add(await _files.GetPresignedUrlAsync(_minio.PhotoBucket, key, TimeSpan.FromMinutes(15)));
+                urls.Add(await files.GetPresignedUrlAsync(_minio.PhotoBucket, key, TimeSpan.FromMinutes(15)));
             response.Add(new { Job = job, PhotoUrls = urls });
         }
         return Ok(response);
@@ -326,7 +314,7 @@ public class JobsController : ControllerBase
     {
         var staffId = User.GetCustomerId();
         if (staffId is null) return Forbid();
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new ReviewQcProofCommand(jobId, staffId.Value, request.Approved, request.Reason),
             cancellationToken);
         return ToResult(result);
@@ -336,11 +324,11 @@ public class JobsController : ControllerBase
     [Authorize(Policy = Policies.RequireHub)]
     public async Task<IActionResult> Inspect(Guid jobId, [FromBody] InspectRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new InspectJobCommand(
+        var result = await sender.Send(new InspectJobCommand(
             jobId,
             request.Passed,
-            request.ChecklistResults ?? Array.Empty<ChecklistItemResult>(),
-            request.PhotoUrls ?? Array.Empty<string>(),
+            request.ChecklistResults ?? [],
+            request.PhotoUrls ?? [],
             request.FaultAttribution,
             request.Note,
             request.ChecklistVersionId,
@@ -361,18 +349,18 @@ public class JobsController : ControllerBase
     }
 }
 
-public sealed class CompleteJobRequest
+public sealed class CompleteJobRequest(List<IFormFile>? photos, int actualPrintMinutes, decimal? actualMaterialGrams)
 {
-    public int ActualPrintMinutes { get; init; }
-    public string SelfReport { get; init; } = string.Empty;
-    public List<IFormFile>? Photos { get; init; }
+    public int ActualPrintMinutes { get; } = actualPrintMinutes;
+    public static string SelfReport => string.Empty;
+    public List<IFormFile>? Photos { get; } = photos;
 
     /// <summary>Material the lab actually used, for the stock ledger. Optional until the form collects it.</summary>
-    public decimal? ActualMaterialGrams { get; init; }
+    public decimal? ActualMaterialGrams { get; } = actualMaterialGrams;
 }
-public sealed class UploadInspectionPhotosRequest
+public sealed class UploadInspectionPhotosRequest(List<IFormFile>? photos)
 {
-    public List<IFormFile>? Photos { get; init; }
+    public List<IFormFile>? Photos { get; } = photos;
 }
 
 public record ReviewQcProofRequest(bool Approved, string? Reason);

@@ -1,4 +1,3 @@
-using FluentValidation;
 using MediatR;
 using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.SharedKernel.Interfaces;
@@ -10,23 +9,14 @@ namespace PrintGrid.Modules.Customer.Application.Commands.DesignRequests;
 public sealed record ChangeDesignRequestStatusCommand(Guid DesignRequestId, string Status)
     : IRequest<Result<DesignRequestDto>>;
 
-public sealed class ChangeDesignRequestStatusCommandHandler
+public sealed class ChangeDesignRequestStatusCommandHandler(IDesignRequestRepository requests, IUnitOfWork unitOfWork)
     : IRequestHandler<ChangeDesignRequestStatusCommand, Result<DesignRequestDto>>
 {
-    private readonly IDesignRequestRepository _requests;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public ChangeDesignRequestStatusCommandHandler(IDesignRequestRepository requests, IUnitOfWork unitOfWork)
-    {
-        _requests = requests;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result<DesignRequestDto>> Handle(
         ChangeDesignRequestStatusCommand command,
         CancellationToken cancellationToken)
     {
-        var request = await _requests.GetByIdAsync(command.DesignRequestId, cancellationToken);
+        var request = await requests.GetByIdAsync(command.DesignRequestId, cancellationToken);
         if (request is null)
             return Result.Failure<DesignRequestDto>(Error.NotFound("DesignRequest", command.DesignRequestId));
 
@@ -34,16 +24,7 @@ public sealed class ChangeDesignRequestStatusCommandHandler
         if (changed.IsFailure)
             return Result.Failure<DesignRequestDto>(changed.Error);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(DesignRequestMapping.ToDto(request));
-    }
-}
-
-public sealed class ChangeDesignRequestStatusCommandValidator : AbstractValidator<ChangeDesignRequestStatusCommand>
-{
-    public ChangeDesignRequestStatusCommandValidator()
-    {
-        RuleFor(x => x.DesignRequestId).NotEmpty();
-        RuleFor(x => x.Status).NotEmpty();
     }
 }

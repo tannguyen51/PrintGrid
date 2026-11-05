@@ -125,13 +125,13 @@ public class CommerceFlowTests
             customerId,
             "  Bracket for a robot arm  ",
             "  Needs M3 mounting holes  ",
-            new[] { "design/a.png", " ", "design/b.png" });
+            ["design/a.png", " ", "design/b.png"]);
 
         request.CustomerId.Should().Be(customerId);
         request.Title.Should().Be("Bracket for a robot arm");
         request.Description.Should().Be("Needs M3 mounting holes");
         request.Status.Should().Be("Pending");
-        request.QuoteId.Should().BeNull();
+        DesignRequest.QuoteId.Should().BeNull();
         request.ReferenceImageKeys.Should().Equal("design/a.png", "design/b.png");
         request.CreatedAtUtc.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
     }

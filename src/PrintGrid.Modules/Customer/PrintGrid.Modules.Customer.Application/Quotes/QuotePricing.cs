@@ -21,7 +21,7 @@ public static class QuotePricing
     public static decimal MaterialGrams(PricingParameterSet set, decimal volumeCm3, decimal infillPercent, string materialCode)
     {
         // Infill fractional mass between ~30% (hollow-ish) and 100% solid.
-        var density = set.DensityGramsPerCm3.TryGetValue(materialCode, out var d) ? d : 1.2m;
+        var density = set.DensityGramsPerCm3.GetValueOrDefault(materialCode, 1.2m);
         var infillFactor = 0.3m + (infillPercent / 100m) * 0.7m;
         return decimal.Round(volumeCm3 * density * infillFactor, 1);
     }
@@ -33,7 +33,7 @@ public static class QuotePricing
         effectiveMinutes / 60m * set.PricePerPrintHour;
 
     public static int EffectiveMinutes(PricingParameterSet set, int baseMinutes, decimal layerHeightMm) =>
-        (int)decimal.Round(baseMinutes * (set.TimeMultiplierByLayer.TryGetValue(layerHeightMm, out var m) ? m : 1.25m));
+        (int)decimal.Round(baseMinutes * (set.TimeMultiplierByLayer.GetValueOrDefault(layerHeightMm, 1.25m)));
 
     /// <summary>Prices one unit end-to-end. Same inputs + same set version ⇒ same output (AC of FR-SCHED-010).</summary>
     public static PricedLine PriceLine(

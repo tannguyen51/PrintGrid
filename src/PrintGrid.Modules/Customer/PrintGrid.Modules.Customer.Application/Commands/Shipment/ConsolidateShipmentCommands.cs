@@ -11,10 +11,7 @@ using PrintGrid.SharedKernel.Results;
 namespace PrintGrid.Modules.Customer.Application.Commands.Shipment;
 
 public sealed record ConsolidatedShipmentResultDto(
-    Guid ConsolidatedShipmentId,
-    string TrackingNumber,
-    IReadOnlyList<Guid> OrderIds,
-    IReadOnlyList<string> OrderNumbers);
+    string TrackingNumber);
 
 public sealed record ShipConsolidatedOrdersCommand(
     IReadOnlyList<Guid> OrderIds,
@@ -25,34 +22,19 @@ public sealed record DeliverConsolidatedOrdersCommand(
 
 public sealed record RefundOrderWithinScopeCommand(
     Guid OrderId,
-    decimal Amount,
-    string? Reason = null) : IRequest<Result>;
+    decimal Amount) : IRequest<Result>;
 
-public class ConsolidateShipmentCommandHandler :
-    IRequestHandler<ShipConsolidatedOrdersCommand, Result<ConsolidatedShipmentResultDto>>,
-    IRequestHandler<DeliverConsolidatedOrdersCommand, Result>,
-    IRequestHandler<RefundOrderWithinScopeCommand, Result>
+public class ConsolidateShipmentCommandHandler(
+    IOrderRepository orders,
+    IUnitOfWork unitOfWork,
+    IPublisher publisher,
+    IConfiguration configuration,
+    ILogger<ConsolidateShipmentCommandHandler> logger)
+    :
+        IRequestHandler<ShipConsolidatedOrdersCommand, Result<ConsolidatedShipmentResultDto>>,
+        IRequestHandler<DeliverConsolidatedOrdersCommand, Result>,
+        IRequestHandler<RefundOrderWithinScopeCommand, Result>
 {
-    private readonly IOrderRepository _orders;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IPublisher _publisher;
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<ConsolidateShipmentCommandHandler> _logger;
-
-    public ConsolidateShipmentCommandHandler(
-        IOrderRepository orders,
-        IUnitOfWork unitOfWork,
-        IPublisher publisher,
-        IConfiguration configuration,
-        ILogger<ConsolidateShipmentCommandHandler> logger)
-    {
-        _orders = orders;
-        _unitOfWork = unitOfWork;
-        _publisher = publisher;
-        _configuration = configuration;
-        _logger = logger;
-    }
-
     public async Task<Result<ConsolidatedShipmentResultDto>> Handle(
         ShipConsolidatedOrdersCommand command,
         CancellationToken cancellationToken)
@@ -60,14 +42,14 @@ public class ConsolidateShipmentCommandHandler :
         if (string.IsNullOrWhiteSpace(command.TrackingNumber))
             return Result.Failure<ConsolidatedShipmentResultDto>(Error.Validation("Mã vận đơn không được để trống."));
 
-        var distinctIds = command.OrderIds?.Distinct().ToList() ?? new List<Guid>();
+        var distinctIds = command.OrderIds.Distinct().ToList();
         if (distinctIds.Count < 2)
             return Result.Failure<ConsolidatedShipmentResultDto>(Error.Validation("Cần chọn ít nhất 2 đơn hàng để đóng gói kiện gộp."));
 
         var loaded = new List<Order>();
         foreach (var id in distinctIds)
         {
-            var order = await _orders.GetByIdAsync(id, cancellationToken);
+            var order = await orders.GetByIdAsync(id, cancellationToken);
             if (order is null)
                 return Result.Failure<ConsolidatedShipmentResultDto>(Error.NotFound("Order", id));
             loaded.Add(order);
@@ -104,7 +86,7 @@ public class ConsolidateShipmentCommandHandler :
         // FR-CUST-012 AC02 / BR-PAY-008: a consolidated package may only ship when every included
         // order is settled — one unpaid order blocks the whole package. The same QC-completed gate
         // applies to every member: one item still in QualityCheck/Pending blocks the whole package.
-        if (ShippingGateSettings.IsEnforced(_configuration))
+        if (ShippingGateSettings.IsEnforced(configuration))
         {
             foreach (var order in loaded)
             {
@@ -122,60 +104,52 @@ public class ConsolidateShipmentCommandHandler :
         }
         else
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Shipping gates are disabled (Shipping:Gates:Enforce=false) — consolidated package " +
                 "[{OrderNumbers}] ships without the settlement / full-refund / item-QC checks.",
                 string.Join(", ", loaded.Select(o => o.OrderNumber)));
         }
 
-        foreach (var order in loaded)
+        foreach (var shipResult in loaded.Select(order => order.Ship(tracking, consolidatedId)).Where(shipResult => shipResult.IsFailure))
         {
-            var shipResult = order.Ship(tracking, consolidatedId);
-            if (shipResult.IsFailure)
-                return Result.Failure<ConsolidatedShipmentResultDto>(shipResult.Error);
+            return Result.Failure<ConsolidatedShipmentResultDto>(shipResult.Error);
         }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         foreach (var order in loaded)
         {
-            await _publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
+            await publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
         }
 
-        return Result.Success(new ConsolidatedShipmentResultDto(
-            consolidatedId,
-            tracking,
-            loaded.Select(o => o.Id).ToList(),
-            loaded.Select(o => o.OrderNumber).ToList()));
+        return Result.Success(new ConsolidatedShipmentResultDto(tracking));
     }
 
     public async Task<Result> Handle(DeliverConsolidatedOrdersCommand command, CancellationToken cancellationToken)
     {
-        var distinctIds = command.OrderIds?.Distinct().ToList() ?? new List<Guid>();
+        var distinctIds = command.OrderIds.Distinct().ToList() ?? [];
         if (distinctIds.Count == 0)
             return Result.Failure(Error.Validation("Danh sách đơn cần xác nhận giao trống."));
 
         var loaded = new List<Order>();
         foreach (var id in distinctIds)
         {
-            var order = await _orders.GetByIdAsync(id, cancellationToken);
+            var order = await orders.GetByIdAsync(id, cancellationToken);
             if (order is null)
                 return Result.Failure(Error.NotFound("Order", id));
             loaded.Add(order);
         }
 
-        foreach (var order in loaded)
+        foreach (var result in loaded.Select(order => order.MarkDelivered()).Where(result => result.IsFailure))
         {
-            var result = order.MarkDelivered();
-            if (result.IsFailure)
-                return result;
+            return result;
         }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         foreach (var order in loaded)
         {
-            await _publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
+            await publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
         }
 
         return Result.Success();
@@ -183,7 +157,7 @@ public class ConsolidateShipmentCommandHandler :
 
     public async Task<Result> Handle(RefundOrderWithinScopeCommand command, CancellationToken cancellationToken)
     {
-        var order = await _orders.GetByIdAsync(command.OrderId, cancellationToken);
+        var order = await orders.GetByIdAsync(command.OrderId, cancellationToken);
         if (order is null)
             return Result.Failure(Error.NotFound("Order", command.OrderId));
 
@@ -191,7 +165,7 @@ public class ConsolidateShipmentCommandHandler :
         if (result.IsFailure)
             return result;
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
 }

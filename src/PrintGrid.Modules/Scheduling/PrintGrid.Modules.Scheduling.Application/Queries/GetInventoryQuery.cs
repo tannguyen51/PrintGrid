@@ -15,8 +15,10 @@ public class GetInventoryQueryHandler(ILabRepository labs) : IRequestHandler<Get
     {
         var lab = await labs.GetByIdAsync(query.LabId, cancellationToken);
         if (lab is null) return Result.Failure<IReadOnlyList<MaterialStockDto>>(Error.NotFound("Lab", query.LabId));
-        return Result.Success<IReadOnlyList<MaterialStockDto>>(lab.MaterialStocks.OrderBy(x => x.MaterialCode)
-            .ThenBy(x => x.ColorCode).Select(SetMaterialStockCommandHandler.ToDto).ToList());
+        return Result.Success<IReadOnlyList<MaterialStockDto>>([
+            .. lab.MaterialStocks.OrderBy(x => x.MaterialCode)
+                .ThenBy(x => x.ColorCode).Select(SetMaterialStockCommandHandler.ToDto)
+        ]);
     }
 }
 
@@ -26,8 +28,11 @@ public class GetStockTransactionsQueryHandler(ILabRepository labs) : IRequestHan
     {
         var lab = await labs.GetByIdAsync(query.LabId, cancellationToken);
         if (lab is null) return Result.Failure<IReadOnlyList<StockTransactionDto>>(Error.NotFound("Lab", query.LabId));
-        return Result.Success<IReadOnlyList<StockTransactionDto>>(lab.StockTransactions.OrderByDescending(x => x.CreatedAtUtc)
-            .Select(x => new StockTransactionDto(x.TransactionCode, x.MaterialStockId, x.DeltaGrams, x.RunningTotalGrams,
-                x.Reason, x.JobId, x.CreatedAtUtc)).ToList());
+        return Result.Success<IReadOnlyList<StockTransactionDto>>([
+            .. lab.StockTransactions.OrderByDescending(x => x.CreatedAtUtc)
+                .Select(x => new StockTransactionDto(x.TransactionCode, x.MaterialStockId, x.DeltaGrams,
+                    x.RunningTotalGrams,
+                    x.Reason, x.JobId, x.CreatedAtUtc))
+        ]);
     }
 }

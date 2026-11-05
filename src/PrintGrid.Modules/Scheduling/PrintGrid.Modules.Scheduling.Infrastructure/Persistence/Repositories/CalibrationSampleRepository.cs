@@ -5,14 +5,10 @@ using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Repositories;
 
-public class CalibrationSampleRepository : ICalibrationSampleRepository
+public abstract class CalibrationSampleRepository(PrintGridDbContext context) : ICalibrationSampleRepository
 {
-    private readonly PrintGridDbContext _context;
-
-    public CalibrationSampleRepository(PrintGridDbContext context) => _context = context;
-
     public async Task<IReadOnlyList<CalibrationSample>> GetAllAsync(CancellationToken cancellationToken = default) =>
-        await _context.Set<CalibrationSample>()
+        await context.Set<CalibrationSample>()
             .AsNoTracking()
             .OrderBy(s => s.CreatedAtUtc)
             .ToListAsync(cancellationToken);
@@ -20,7 +16,7 @@ public class CalibrationSampleRepository : ICalibrationSampleRepository
     public async Task<IReadOnlyList<CalibrationSample>> GetByMachineIdAsync(
         Guid machineId,
         CancellationToken cancellationToken = default) =>
-        await _context.Set<CalibrationSample>()
+        await context.Set<CalibrationSample>()
             .AsNoTracking()
             .Where(s => s.MachineId == machineId)
             .OrderBy(s => s.CreatedAtUtc)
@@ -32,7 +28,7 @@ public class CalibrationSampleRepository : ICalibrationSampleRepository
     {
         if (jobIds.Count == 0) return new HashSet<Guid>();
 
-        var sampled = await _context.Set<CalibrationSample>()
+        var sampled = await context.Set<CalibrationSample>()
             .AsNoTracking()
             .Where(s => jobIds.Contains(s.JobId))
             .Select(s => s.JobId)
@@ -41,5 +37,5 @@ public class CalibrationSampleRepository : ICalibrationSampleRepository
     }
 
     public async Task AddRangeAsync(IEnumerable<CalibrationSample> samples, CancellationToken cancellationToken = default) =>
-        await _context.Set<CalibrationSample>().AddRangeAsync(samples, cancellationToken);
+        await context.Set<CalibrationSample>().AddRangeAsync(samples, cancellationToken);
 }

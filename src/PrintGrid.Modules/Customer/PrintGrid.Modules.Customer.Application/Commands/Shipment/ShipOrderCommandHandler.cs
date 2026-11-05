@@ -17,7 +17,7 @@ namespace PrintGrid.Modules.Customer.Application.Commands.Shipment;
 /// </summary>
 internal static class ShipmentGate
 {
-    internal const string CompletedItemStatus = "Completed";
+    private const string _completedItemStatus = "Completed";
 
     internal static Result EnsureReadyToLeaveHub(Order order)
     {
@@ -29,7 +29,7 @@ internal static class ShipmentGate
         }
 
         var notCompleted = order.Items
-            .Where(i => !string.Equals(i.ItemStatus, CompletedItemStatus, StringComparison.Ordinal))
+            .Where(i => !string.Equals(i.ItemStatus, _completedItemStatus, StringComparison.Ordinal))
             .Select(i => $"{i.Id} ({i.ItemStatus})")
             .ToList();
 
@@ -37,7 +37,7 @@ internal static class ShipmentGate
         {
             return Result.Failure(Error.Conflict(
                 $"Đơn {order.OrderNumber} còn {notCompleted.Count} item chưa hoàn tất QC: {string.Join(", ", notCompleted)}. " +
-                $"Chỉ xuất kho khi mọi item ở trạng thái {CompletedItemStatus}."));
+                $"Chỉ xuất kho khi mọi item ở trạng thái {_completedItemStatus}."));
         }
 
         return Result.Success();
@@ -53,41 +53,27 @@ internal static class ShipmentGate
 /// </summary>
 internal static class ShippingGateSettings
 {
-    internal const string EnforceKey = "Shipping:Gates:Enforce";
+    private const string _enforceKey = "Shipping:Gates:Enforce";
 
     internal static bool IsEnforced(IConfiguration configuration) =>
-        !bool.TryParse(configuration[EnforceKey], out var enforce) || enforce;
+        !bool.TryParse(configuration[_enforceKey], out var enforce) || enforce;
 }
 
-public class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, Result>
+public class ShipOrderCommandHandler(
+    IOrderRepository orders,
+    IUnitOfWork unitOfWork,
+    IPublisher publisher,
+    IConfiguration configuration,
+    ILogger<ShipOrderCommandHandler> logger)
+    : IRequestHandler<ShipOrderCommand, Result>
 {
-    private readonly IOrderRepository _orders;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IPublisher _publisher;
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<ShipOrderCommandHandler> _logger;
-
-    public ShipOrderCommandHandler(
-        IOrderRepository orders,
-        IUnitOfWork unitOfWork,
-        IPublisher publisher,
-        IConfiguration configuration,
-        ILogger<ShipOrderCommandHandler> logger)
-    {
-        _orders = orders;
-        _unitOfWork = unitOfWork;
-        _publisher = publisher;
-        _configuration = configuration;
-        _logger = logger;
-    }
-
     public async Task<Result> Handle(ShipOrderCommand command, CancellationToken cancellationToken)
     {
-        var order = await _orders.GetByIdAsync(command.OrderId, cancellationToken);
+        var order = await orders.GetByIdAsync(command.OrderId, cancellationToken);
         if (order is null)
             return Result.Failure(Error.NotFound("Order", command.OrderId));
 
-        if (ShippingGateSettings.IsEnforced(_configuration))
+        if (ShippingGateSettings.IsEnforced(configuration))
         {
             // FR-CUST-012 AC02 / BR-PAY-008: goods may not leave the hub until the order is fully settled.
             if (!order.IsSettled)
@@ -104,7 +90,7 @@ public class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, Result>
         }
         else
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Shipping gates are disabled (Shipping:Gates:Enforce=false) — order {OrderNumber} ships " +
                 "without the settlement / full-refund / item-QC checks.",
                 order.OrderNumber);
@@ -115,10 +101,10 @@ public class ShipOrderCommandHandler : IRequestHandler<ShipOrderCommand, Result>
         if (result.IsFailure)
             return result;
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Customer-visible: push a timeline refresh so the order shows "đang giao" (Shipping).
-        await _publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
+        await publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
         return Result.Success();
     }
 }

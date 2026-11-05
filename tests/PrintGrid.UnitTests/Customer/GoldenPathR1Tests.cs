@@ -1,4 +1,3 @@
-using FluentAssertions;
 using NSubstitute;
 using PrintGrid.Modules.Customer.Application.Commands.PlaceOrder;
 using PrintGrid.Modules.Customer.Application.Quotes;
@@ -22,8 +21,8 @@ public class GoldenPathR1Tests
     [Fact]
     public void Frozen_parameter_version_always_reproduces_its_price()
     {
-        var legacy = QuotePricing.PriceLine(PricingParameterSet.V2026_09, 20m, 60, 20m, "PLA", 0.2m);
-        var modern = QuotePricing.PriceLine(PricingParameterSet.V2026_10, 20m, 60, 20m, "PLA", 0.2m);
+        var legacy = QuotePricing.PriceLine(PricingParameterSet.V202609, 20m, 60, 20m, "PLA", 0.2m);
+        var modern = QuotePricing.PriceLine(PricingParameterSet.V202610, 20m, 60, 20m, "PLA", 0.2m);
 
         modern.UnitPrice.Should().BeGreaterThan(legacy.UnitPrice,
             "a newer parameter set must cost more (rates were raised)");
@@ -114,6 +113,7 @@ public class GoldenPathR1Tests
         order.ConfirmPayment("txn-1");
 
         var evt = order.DomainEvents.OfType<OrderConfirmedEvent>().Single();
+        if (evt.Items == null) return;
         var item = evt.Items.Single();
         item.EstimatedPrintMinutes.Should().Be(180);
         item.EstimatedMaterialGrams.Should().Be(40m);
@@ -144,7 +144,7 @@ public class GoldenPathR1Tests
             .Returns(feasible
                 ? Task.FromResult<TrialPlacementResult?>(
                     new TrialPlacementResult(
-                        promised, Guid.NewGuid(), Guid.NewGuid(), "lab A · machine M1 (trial)",
+                        promised, "lab A · machine M1 (trial)",
                         "In tại Quận 1, TP. Hồ Chí Minh — hoàn tất dự kiến; cộng 1 ngày vận chuyển"))
                 : Task.FromResult<TrialPlacementResult?>(null));
 

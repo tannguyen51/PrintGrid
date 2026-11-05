@@ -7,9 +7,7 @@ namespace PrintGrid.Modules.Scheduling.Application.DTOs;
 /// candidate's per-criterion score, the frozen config version and the final choice, exactly
 /// as they were when the decision was made. Contract: GET /ops/decisions/{jobId}.
 /// </summary>
-public record DecisionLogDto(
-    Guid JobId,
-    IReadOnlyList<DecisionEntryDto> Decisions);
+public record DecisionLogDto(Guid JobId, IReadOnlyList<DecisionEntryDto> Decisions);
 
 public record DecisionEntryDto(
     Guid Id,

@@ -25,16 +25,13 @@ internal static class StlMeshParser
         ReadExact(buffered, lead);
         buffered.Position = 0;
 
-        if (lead is [0x73, 0x6F, 0x6C, 0x69, 0x64]) // "solid"
-        {
-            // Ambiguous: binary files may also begin with "solid". After the 5 bytes, if we
-            // can parse an ASCII body within it we treat as ASCII; otherwise fall back to binary.
-            var ascii = TryParseAscii(buffered);
-            if (ascii is not null) return ascii;
+        if (lead is not [0x73, 0x6F, 0x6C, 0x69, 0x64]) return ParseBinary(buffered); // "solid"
+        // Ambiguous: binary files may also begin with "solid". After the 5 bytes, if we
+        // can parse an ASCII body within it, we treat as ASCII; otherwise fall back to binary.
+        var ascii = TryParseAscii(buffered);
+        if (ascii is not null) return ascii;
 
-            buffered.Position = 0;
-            return ParseBinary(buffered);
-        }
+        buffered.Position = 0;
 
         return ParseBinary(buffered);
     }
@@ -51,8 +48,8 @@ internal static class StlMeshParser
             throw new InvalidDataException($"Suspicious triangle count {triangleCount}");
 
         Span<byte> record = stackalloc byte[_triangleRecordSize];
-        var min = new double[] { double.MaxValue, double.MaxValue, double.MaxValue };
-        var max = new double[] { double.MinValue, double.MinValue, double.MinValue };
+        var min = new[] { double.MaxValue, double.MaxValue, double.MaxValue };
+        var max = new[] { double.MinValue, double.MinValue, double.MinValue };
         double signedVolume = 0, absVolume = 0;
         var faceCount = 0;
         var edges = new Dictionary<Edge, int>();
@@ -92,14 +89,13 @@ internal static class StlMeshParser
     {
         using var reader = new StreamReader(stream, Encoding.ASCII, leaveOpen: true);
         var facetCount = 0;
-        var min = new double[] { double.MaxValue, double.MaxValue, double.MaxValue };
-        var max = new double[] { double.MinValue, double.MinValue, double.MinValue };
+        var min = new[] { double.MaxValue, double.MaxValue, double.MaxValue };
+        var max = new[] { double.MinValue, double.MinValue, double.MinValue };
         double signedVolume = 0, absVolume = 0;
         var edges = new Dictionary<Edge, int>();
 
-        string? line;
         var sawFacet = false;
-        while ((line = reader.ReadLine()) is not null)
+        while (reader.ReadLine() is { } line)
         {
             var tokens = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (tokens.Length == 0) continue;
@@ -130,25 +126,25 @@ internal static class StlMeshParser
         stream.Position = 0;
         using var volumeReader = new StreamReader(stream, Encoding.ASCII, leaveOpen: true);
         var verts = new List<(double X, double Y, double Z)>(3);
-        string? vline;
-        while ((vline = volumeReader.ReadLine()) is not null)
+        while (volumeReader.ReadLine() is { } vline)
         {
             var tokens = vline.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (tokens.Length == 0 || tokens[0] != "vertex" || tokens.Length < 4) continue;
 
             if (!double.TryParse(tokens[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var vx) ||
                 !double.TryParse(tokens[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var vy) ||
-                !double.TryParse(tokens[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var vz)) continue;
+                !double.TryParse(tokens[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var vz))
+            {
+                continue;
+            }
 
             verts.Add((vx, vy, vz));
-            if (verts.Count == 3)
-            {
-                var tri = SignedTetraVolume(verts[0], verts[1], verts[2]);
-                CountEdges(edges, verts[0], verts[1], verts[2]);
-                signedVolume += tri;
-                absVolume += Math.Abs(tri);
-                verts.Clear();
-            }
+            if (verts.Count != 3) continue;
+            var tri = SignedTetraVolume(verts[0], verts[1], verts[2]);
+            CountEdges(edges, verts[0], verts[1], verts[2]);
+            signedVolume += tri;
+            absVolume += Math.Abs(tri);
+            verts.Clear();
         }
 
         var closed = Math.Abs(signedVolume) > 1e-6;
@@ -187,7 +183,7 @@ internal static class StlMeshParser
 
     private static void UpdateBounds(double[] min, double[] max, params (double X, double Y, double Z)[] points)
     {
-        foreach (var p in points) UpdatePoint(min, max, p.X, p.Y, p.Z);
+        foreach (var (x, y, z) in points) UpdatePoint(min, max, x, y, z);
     }
 
     private static void UpdatePoint(double[] min, double[] max, double x, double y, double z)

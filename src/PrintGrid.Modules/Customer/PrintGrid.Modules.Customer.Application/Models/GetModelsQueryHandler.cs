@@ -5,17 +5,14 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Customer.Application.Models;
 
-public class GetModelsQueryHandler : IRequestHandler<GetModelsQuery, Result<IReadOnlyList<ModelDto>>>
+public class GetModelsQueryHandler(IModelRepository models)
+    : IRequestHandler<GetModelsQuery, Result<IReadOnlyList<ModelDto>>>
 {
-    private readonly IModelRepository _models;
-
-    public GetModelsQueryHandler(IModelRepository models) => _models = models;
-
     public async Task<Result<IReadOnlyList<ModelDto>>> Handle(
         GetModelsQuery query,
         CancellationToken cancellationToken)
     {
-        var modelEntities = await _models.GetForCustomerAsync(query.CustomerId, query.Search, cancellationToken);
+        var modelEntities = await models.GetForCustomerAsync(query.CustomerId, query.Search, cancellationToken);
         var dtos = modelEntities.Select(ModelMappings.ToDto).ToList();
         return Result.Success<IReadOnlyList<ModelDto>>(dtos);
     }

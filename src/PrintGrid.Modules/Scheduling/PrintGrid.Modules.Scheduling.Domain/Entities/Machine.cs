@@ -1,4 +1,5 @@
 using PrintGrid.Modules.Scheduling.Domain.Enums;
+using PrintGrid.Modules.Scheduling.Domain.Services;
 using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
 using PrintGrid.SharedKernel.Common;
 
@@ -33,7 +34,7 @@ public class Machine : Entity<Guid>
 
     public void SetMatchedProfiles(IEnumerable<Guid> ids, bool complete)
     {
-        CuraProfileIds = ids.Distinct().ToArray();
+        CuraProfileIds = [.. ids.Distinct()];
         ProfileStatus = complete && CuraProfileIds.Length > 0 ? "PendingReview" : "MissingProfile";
         ProfileReviewReason = null;
         ProfileReviewedBy = null;
@@ -42,10 +43,14 @@ public class Machine : Entity<Guid>
 
     public void ReviewProfile(bool approve, Guid reviewerId, string? reason)
     {
-        if (approve && (ProfileStatus != "PendingReview" || CuraProfileIds.Length == 0 || PrinterConfiguration is null))
-            throw new ArgumentException("Máy cần đủ profile phù hợp và ở trạng thái chờ duyệt.");
-        if (!approve && string.IsNullOrWhiteSpace(reason))
-            throw new ArgumentException("Vui lòng nhập lý do từ chối.");
+        switch (approve)
+        {
+            case true when (ProfileStatus != "PendingReview" || CuraProfileIds.Length == 0 || PrinterConfiguration is null):
+                throw new ArgumentException("Máy cần đủ profile phù hợp và ở trạng thái chờ duyệt.");
+            case false when string.IsNullOrWhiteSpace(reason):
+                throw new ArgumentException("Vui lòng nhập lý do từ chối.");
+        }
+
         ProfileStatus = approve ? "Approved" : "Rejected";
         ProfileReviewReason = approve ? null : reason!.Trim();
         ProfileReviewedBy = reviewerId;
@@ -151,12 +156,10 @@ public class Machine : Entity<Guid>
     public void SetStatus(MachineStatus status)
     {
         Status = status;
-        if (status == MachineStatus.Idle)
-        {
-            MaintenanceFromUtc = null;
-            MaintenanceUntilUtc = null;
-            MaintenanceReason = null;
-        }
+        if (status != MachineStatus.Idle) return;
+        MaintenanceFromUtc = null;
+        MaintenanceUntilUtc = null;
+        MaintenanceReason = null;
     }
 
     public void UpdateSpecifications(
@@ -200,7 +203,7 @@ public class Machine : Entity<Guid>
     /// </summary>
     public void ApplyCalibrationFactor(decimal factor, int sampleCount, decimal mape, DateTime computedAtUtc)
     {
-        if (sampleCount < PrintGrid.Modules.Scheduling.Domain.Services.EstimationCalibration.MinimumSamples)
+        if (sampleCount < EstimationCalibration.MinimumSamples)
             throw new ArgumentOutOfRangeException(nameof(sampleCount), "At least 10 valid samples are required before a factor can be applied");
         if (mape < 0m)
             throw new ArgumentOutOfRangeException(nameof(mape), "MAPE cannot be negative");
@@ -218,9 +221,5 @@ public class Machine : Entity<Guid>
     /// <c>Job.EstimatedPrintMinutes</c> stays the untouched baseline that MAPE is measured
     /// against and no existing job is ever rewritten.
     /// </summary>
-    public int ApplyToEstimate(int rawEstimatedMinutes)
-    {
-        if (rawEstimatedMinutes <= 0) return rawEstimatedMinutes;
-        return Math.Max(1, (int)Math.Round(rawEstimatedMinutes * CalibrationFactor, MidpointRounding.AwayFromZero));
-    }
+    public int ApplyToEstimate(int rawEstimatedMinutes) => rawEstimatedMinutes <= 0 ? rawEstimatedMinutes : Math.Max(1, (int)Math.Round(rawEstimatedMinutes * CalibrationFactor, MidpointRounding.AwayFromZero));
 }

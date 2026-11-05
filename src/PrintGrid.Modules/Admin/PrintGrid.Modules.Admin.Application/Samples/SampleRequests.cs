@@ -167,9 +167,7 @@ public sealed class SampleRequestHandlers(ISampleModelRepository repository, ICo
                 request.Sha256);
         }
 
-        if (request.VolumeCm3 is { } volume && request.WidthMm is { } width && request.DepthMm is { } depth
-            && request.HeightMm is { } height && request.EstimatedPrintMinutes is { } minutes
-            && request.EstimatedMaterialGrams is { } grams)
+        if (request is { VolumeCm3: { } volume, WidthMm: { } width, DepthMm: { } depth, HeightMm: { } height, EstimatedPrintMinutes: { } minutes, EstimatedMaterialGrams: { } grams })
         {
             sample.ApplyGeometry(width, depth, height, volume, minutes, grams);
         }
@@ -210,9 +208,11 @@ public sealed class SampleRequestHandlers(ISampleModelRepository repository, ICo
         var baseSlug = SampleModel.NormaliseSlug(requestedSlug, name);
 
         if (!string.IsNullOrWhiteSpace(requestedSlug))
+        {
             return await repository.SlugExistsAsync(baseSlug, exceptId, cancellationToken)
                 ? (null, "slug_exists")
                 : (baseSlug, null);
+        }
 
         var candidate = baseSlug;
         for (var suffix = 2; await repository.SlugExistsAsync(candidate, exceptId, cancellationToken); suffix++)

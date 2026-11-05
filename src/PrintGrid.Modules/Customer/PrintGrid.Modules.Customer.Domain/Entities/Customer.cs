@@ -1,11 +1,11 @@
-using PrintGrid.SharedKernel.Common;
 using PrintGrid.Modules.Customer.Domain.Events;
+using PrintGrid.SharedKernel.Common;
 
 namespace PrintGrid.Modules.Customer.Domain.Entities;
 
 public class Customer : AggregateRoot<Guid>
 {
-    public string Email { get; private set; } = string.Empty;
+    public string Email { get; private init; } = string.Empty;
     public string PasswordHash { get; private set; } = string.Empty;
     public string FullName { get; private set; } = string.Empty;
     public string? PhoneNumber { get; private set; }
@@ -13,8 +13,8 @@ public class Customer : AggregateRoot<Guid>
     public DateTime? LastLoginAt { get; private set; }
     public bool IsActive { get; private set; } = true;
     public string[] Roles { get; private set; } = ["Customer"];
-    
-    public bool IsEmailVerified { get; private set; } = false;
+
+    public bool IsEmailVerified { get; private set; }
     public string? VerificationTokenHash { get; private set; }
     public DateTime? VerificationTokenExpiresAt { get; private set; }
     public string? GoogleSubject { get; private set; }
@@ -39,7 +39,7 @@ public class Customer : AggregateRoot<Guid>
             CreatedAt = DateTime.UtcNow
         };
 
-        customer.AddDomainEvent(new CustomerRegisteredEvent(customer.Id, customer.Email));
+        customer.AddDomainEvent(new CustomerRegisteredEvent());
         return customer;
     }
 
@@ -67,10 +67,7 @@ public class Customer : AggregateRoot<Guid>
 
     public void Deactivate() => IsActive = false;
     public void Activate() => IsActive = true;
-    public void AssignRole(string role)
-    {
-        Roles = [role];
-    }
+    public void AssignRole(string role) => Roles = [role];
 
     public void SetVerificationToken(string hash, TimeSpan expiresIn)
     {

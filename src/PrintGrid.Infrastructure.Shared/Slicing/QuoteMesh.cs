@@ -26,7 +26,7 @@ public static class QuoteMesh
         else throw new InvalidDataException("Báo giá CuraEngine hiện nhận STL một màu hoặc 3MF có phân vùng vật liệu. Hãy xuất file sang định dạng phù hợp.");
         if (groups.Count == 0 || groups.Values.Any(g => g.Count == 0) || groups.Values.Sum(g => (long)g.Count) > 1_000_000)
             throw new InvalidDataException("File rỗng hoặc vượt giới hạn 1 triệu mặt cho báo giá tự động.");
-        return groups.Values.ToList();
+        return [.. groups.Values];
     }
 
     private static List<Triangle> ReadStl(Stream stream)
@@ -43,9 +43,10 @@ public static class QuoteMesh
                 for (var i = 0; i < count; i++)
                 {
                     reader.ReadBytes(12);
-                    Vector3 Point() => Checked(new(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle()));
-                    triangles.Add(new(Point(), Point(), Point()));
+                    triangles.Add(new Triangle(Point(), Point(), Point()));
                     reader.ReadUInt16();
+                    continue;
+                    Vector3 Point() => Checked(new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle()));
                 }
                 return triangles;
             }
@@ -56,12 +57,12 @@ public static class QuoteMesh
         while (text.ReadLine() is { } line)
         {
             var tokens = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-            if (tokens.Length != 4 || tokens[0] != "vertex") continue;
-            vertices.Add(Checked(new(F(tokens[1]), F(tokens[2]), F(tokens[3]))));
+            if (tokens is not ["vertex", _, _, _]) continue;
+            vertices.Add(Checked(new Vector3(F(tokens[1]), F(tokens[2]), F(tokens[3]))));
             if (vertices.Count > 3_000_000) throw new InvalidDataException("File quá nhiều mặt.");
         }
         if (vertices.Count == 0 || vertices.Count % 3 != 0) throw new InvalidDataException("STL không hợp lệ.");
-        return vertices.Chunk(3).Select(v => new Triangle(v[0], v[1], v[2])).ToList();
+        return [.. vertices.Chunk(3).Select(v => new Triangle(v[0], v[1], v[2]))];
     }
 
     private static void Read3Mf(Stream stream, SortedDictionary<string, List<Triangle>> groups)
@@ -80,6 +81,10 @@ public static class QuoteMesh
         var objects = root.Element(ns + "resources")?.Elements(ns + "object").ToDictionary(o => (string)o.Attribute("id")!)
             ?? throw new InvalidDataException("3MF thiếu resources.");
         var total = 0;
+        foreach (var item in root.Element(ns + "build")?.Elements(ns + "item") ?? [])
+            Visit((string)item.Attribute("objectid")!, Transform((string?)item.Attribute("transform")), []);
+        return;
+
         void Visit(string id, Matrix4x4 transform, HashSet<string> path)
         {
             if (!path.Add(id) || path.Count > 64 || !objects.TryGetValue(id, out var obj)) throw new InvalidDataException("3MF tham chiếu component không hợp lệ.");
@@ -95,10 +100,11 @@ public static class QuoteMesh
                         throw new InvalidDataException("3MF có màu nội suy trên mặt. Hãy xuất các vùng màu thành vật liệu riêng.");
                     var pid = (string?)t.Attribute("pid") ?? (string?)obj.Attribute("pid") ?? "0";
                     var key = $"{pid.PadLeft(10, '0')}:{p.PadLeft(10, '0')}";
-                    if (!groups.TryGetValue(key, out var list)) groups[key] = list = new();
-                    int Index(string a) => int.Parse((string)t.Attribute(a)!, CultureInfo.InvariantCulture);
-                    list.Add(new(vertices[Index("v1")], vertices[Index("v2")], vertices[Index("v3")]));
+                    if (!groups.TryGetValue(key, out var list)) groups[key] = list = [];
+                    list.Add(new Triangle(vertices[Index("v1")], vertices[Index("v2")], vertices[Index("v3")]));
                     if (++total > 1_000_000) throw new InvalidDataException("File quá nhiều mặt.");
+                    continue;
+                    int Index(string a) => int.Parse((string)t.Attribute(a)!, CultureInfo.InvariantCulture);
                 }
             }
             foreach (var c in obj.Element(ns + "components")?.Elements(ns + "component") ?? [])
@@ -107,16 +113,13 @@ public static class QuoteMesh
                 Visit((string)c.Attribute("objectid")!, Transform((string?)c.Attribute("transform")) * transform, new(path));
             }
         }
-        foreach (var item in root.Element(ns + "build")?.Elements(ns + "item") ?? [])
-            Visit((string)item.Attribute("objectid")!, Transform((string?)item.Attribute("transform")), new());
     }
 
     private static Matrix4x4 Transform(string? raw)
     {
         if (raw is null) return Matrix4x4.Identity;
         var v = raw.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Select(F).ToArray();
-        if (v.Length != 12) throw new InvalidDataException("Transform 3MF không hợp lệ.");
-        return new(v[0], v[1], v[2], 0, v[3], v[4], v[5], 0, v[6], v[7], v[8], 0, v[9], v[10], v[11], 1);
+        return v.Length != 12 ? throw new InvalidDataException("Transform 3MF không hợp lệ.") : new Matrix4x4(v[0], v[1], v[2], 0, v[3], v[4], v[5], 0, v[6], v[7], v[8], 0, v[9], v[10], v[11], 1);
     }
     private static float F(string s) => float.Parse(s, CultureInfo.InvariantCulture);
     private static Vector3 Checked(Vector3 v) => float.IsFinite(v.X) && float.IsFinite(v.Y) && float.IsFinite(v.Z)

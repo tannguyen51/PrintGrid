@@ -15,18 +15,10 @@ namespace PrintGrid.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/design-requests")]
-public sealed class DesignRequestsController : ControllerBase
+public sealed class DesignRequestsController(ISender sender, IFileStorage files, IOptions<MinioOptions> minio)
+    : ControllerBase
 {
-    private readonly ISender _sender;
-    private readonly IFileStorage _files;
-    private readonly MinioOptions _minio;
-
-    public DesignRequestsController(ISender sender, IFileStorage files, IOptions<MinioOptions> minio)
-    {
-        _sender = sender;
-        _files = files;
-        _minio = minio.Value;
-    }
+    private readonly MinioOptions _minio = minio.Value;
 
     [HttpPost]
     [Authorize(Policy = Policies.RequireCustomer)]
@@ -37,7 +29,7 @@ public sealed class DesignRequestsController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new CreateDesignRequestCommand(
                 customerId.Value,
                 body.Title,
@@ -57,7 +49,7 @@ public sealed class DesignRequestsController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var result = await _sender.Send(new GetMyDesignRequestsQuery(customerId.Value), cancellationToken);
+        var result = await sender.Send(new GetMyDesignRequestsQuery(customerId.Value), cancellationToken);
         return result.IsFailure ? ToError(result.Error) : Ok(result.Value);
     }
 
@@ -65,7 +57,7 @@ public sealed class DesignRequestsController : ControllerBase
     [Authorize(Policy = Policies.RequireOps)]
     public async Task<IActionResult> Get([FromQuery] string? status, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetDesignRequestsQuery(status), cancellationToken);
+        var result = await sender.Send(new GetDesignRequestsQuery(status), cancellationToken);
         return result.IsFailure ? ToError(result.Error) : Ok(result.Value);
     }
 
@@ -76,7 +68,7 @@ public sealed class DesignRequestsController : ControllerBase
         [FromBody] ChangeDesignRequestStatusBody body,
         CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new ChangeDesignRequestStatusCommand(id, body.Status), cancellationToken);
+        var result = await sender.Send(new ChangeDesignRequestStatusCommand(id, body.Status), cancellationToken);
         return result.IsFailure ? ToError(result.Error) : Ok(result.Value);
     }
 
@@ -113,7 +105,7 @@ public sealed class DesignRequestsController : ControllerBase
                 var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
                 var objectName = $"design/{customerId.Value}/{Guid.NewGuid():N}{extension}";
                 await using var stream = image.OpenReadStream();
-                await _files.UploadAsync(_minio.PhotoBucket, objectName, stream, image.ContentType, cancellationToken);
+                await files.UploadAsync(_minio.PhotoBucket, objectName, stream, image.ContentType, cancellationToken);
                 imageKeys.Add(objectName);
             }
         }
@@ -121,7 +113,7 @@ public sealed class DesignRequestsController : ControllerBase
         {
             // Best-effort cleanup so a half-finished batch does not leak objects in the bucket.
             foreach (var key in imageKeys)
-                await _files.DeleteAsync(_minio.PhotoBucket, key, cancellationToken);
+                await files.DeleteAsync(_minio.PhotoBucket, key, cancellationToken);
             throw;
         }
 
@@ -147,7 +139,7 @@ public sealed record CreateDesignRequestBody(
 
 public sealed record ChangeDesignRequestStatusBody(string Status);
 
-public sealed class UploadDesignImagesRequest
+public sealed class UploadDesignImagesRequest(List<IFormFile>? images)
 {
-    public List<IFormFile>? Images { get; init; }
+    public List<IFormFile>? Images { get; } = images;
 }

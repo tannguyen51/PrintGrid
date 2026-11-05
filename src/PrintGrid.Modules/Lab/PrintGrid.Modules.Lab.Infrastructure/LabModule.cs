@@ -11,14 +11,12 @@ public class LabModule : IModule
 {
     public string Name => "Lab";
 
-    public static Assembly ApplicationAssembly => typeof(AssemblyMarker).Assembly;
-
-    public static Assembly InfrastructureAssembly => typeof(LabModule).Assembly;
+    private static Assembly InfrastructureAssembly => typeof(LabModule).Assembly;
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         ModuleAssemblyRegistry.Register(InfrastructureAssembly);
         services.AddLabApplication();
-        LabModuleRegistration.AddRepositories(services);
+        LabModuleRegistration.AddRepositories();
     }
 }

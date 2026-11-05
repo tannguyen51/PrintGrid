@@ -1,6 +1,5 @@
 using Hangfire;
 using Hangfire.PostgreSql;
-using MediatR;
 using Serilog;
 using PrintGrid.Api.BackgroundJobs;
 using PrintGrid.Api.Bootstrap;

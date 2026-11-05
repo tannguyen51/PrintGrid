@@ -11,21 +11,21 @@ public record PlacementProposal(
 
 public record ScoredPlacement(PlacementProposal Placement, decimal Score, IReadOnlyDictionary<string, decimal> Breakdown);
 
-public class AssignmentScorer
+public class AssignmentScorer(ScoringWeights? weights = null)
 {
-    private readonly ScoringWeights _weights;
-
-    public AssignmentScorer(ScoringWeights? weights = null) => _weights = weights ?? ScoringWeights.Default;
+    private readonly ScoringWeights _weights = weights ?? ScoringWeights.Default;
 
     public IReadOnlyList<ScoredPlacement> Rank(
         Job job,
         IEnumerable<PlacementProposal> placements,
         decimal maxCostAcrossPlacements)
     {
-        return placements
-            .Select(p => Score(job, p, maxCostAcrossPlacements))
-            .OrderByDescending(s => s.Score)
-            .ToList();
+        return
+        [
+            .. placements
+                .Select(p => Score(job, p, maxCostAcrossPlacements))
+                .OrderByDescending(s => s.Score)
+        ];
     }
 
     public ScoredPlacement Score(Job job, PlacementProposal placement, decimal maxCost)
@@ -58,9 +58,5 @@ public class AssignmentScorer
         return new ScoredPlacement(placement, decimal.Round(score, 4), breakdown);
     }
 
-    private static decimal Normalize(decimal value, decimal min, decimal max)
-    {
-        if (max <= min) return 0m;
-        return Math.Clamp((value - min) / (max - min), 0m, 1m);
-    }
+    private static decimal Normalize(decimal value, decimal min, decimal max) => max <= min ? 0m : Math.Clamp((value - min) / (max - min), 0m, 1m);
 }

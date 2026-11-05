@@ -5,14 +5,9 @@ using PrintGrid.SharedKernel.Interfaces;
 
 namespace PrintGrid.Infrastructure.Shared.Services;
 
-public sealed class SmtpEmailService : IEmailService
+public sealed class SmtpEmailService(IOptions<SmtpOptions> options) : IEmailService
 {
-    private readonly SmtpOptions _options;
-
-    public SmtpEmailService(IOptions<SmtpOptions> options)
-    {
-        _options = options.Value;
-    }
+    private readonly SmtpOptions _options = options.Value;
 
     public async Task SendEmailAsync(
         string toEmail,
@@ -29,21 +24,17 @@ public sealed class SmtpEmailService : IEmailService
             throw new InvalidOperationException("SMTP is enabled but its credentials are incomplete.");
         }
 
-        using var message = new MailMessage
-        {
-            From = new MailAddress(fromEmail, _options.FromName),
-            Subject = subject,
-            Body = htmlBody,
-            IsBodyHtml = true
-        };
+        using var message = new MailMessage();
+        message.From = new MailAddress(fromEmail, _options.FromName);
+        message.Subject = subject;
+        message.Body = htmlBody;
+        message.IsBodyHtml = true;
         message.To.Add(new MailAddress(toEmail));
 
-        using var client = new SmtpClient(_options.Host, _options.Port)
-        {
-            EnableSsl = true,
-            UseDefaultCredentials = false,
-            Credentials = new NetworkCredential(_options.Username, _options.Password)
-        };
+        using var client = new SmtpClient(_options.Host, _options.Port);
+        client.EnableSsl = true;
+        client.UseDefaultCredentials = false;
+        client.Credentials = new NetworkCredential(_options.Username, _options.Password);
 
         cancellationToken.ThrowIfCancellationRequested();
         await client.SendMailAsync(message, cancellationToken);

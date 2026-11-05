@@ -15,7 +15,7 @@ public sealed record ActivateCommercialConfigurationCommand(Guid Id) : IRequest<
 
 public sealed class CommercialParametersValidator : AbstractValidator<CommercialParametersDto>
 {
-    private static readonly string[] WeightKeys = ["time", "load", "quality", "cost", "logistics"];
+    private static readonly string[] _weightKeys = ["time", "load", "quality", "cost", "logistics"];
 
     public CommercialParametersValidator()
     {
@@ -38,7 +38,7 @@ public sealed class CommercialParametersValidator : AbstractValidator<Commercial
         RuleFor(x => x.SchedulingTimeBudgetSeconds).InclusiveBetween(1, 300);
         RuleFor(x => x.SlaRiskThresholdHours).InclusiveBetween(1, 720);
         RuleFor(x => x.AssignmentWeights).Cascade(CascadeMode.Stop).NotEmpty().Must(weights =>
-                WeightKeys.All(weights.ContainsKey) && weights.Values.All(v => v >= 0 && v <= 1) &&
+                _weightKeys.All(weights.ContainsKey) && weights.Values.All(v => v is >= 0 and <= 1) &&
                 Math.Abs(weights.Values.Sum() - 1m) <= 0.001m)
             .WithMessage("Trọng số phải đủ 5 tiêu chí, nằm trong [0,1] và có tổng bằng 1.");
     }
@@ -60,7 +60,7 @@ public sealed class CommercialConfigurationHandlers(IAdminConfigurationRepositor
     IRequestHandler<CreateCommercialConfigurationCommand, CommercialConfigurationDto>,
     IRequestHandler<ActivateCommercialConfigurationCommand, MutationResult<CommercialConfigurationDto>>
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<IReadOnlyList<CommercialConfigurationDto>> Handle(GetCommercialConfigurationsQuery request, CancellationToken cancellationToken) =>
         (await repository.GetConfigurationsAsync(cancellationToken)).Select(Map).ToList();
@@ -78,7 +78,7 @@ public sealed class CommercialConfigurationHandlers(IAdminConfigurationRepositor
 
         var number = await repository.GetNextConfigurationVersionAsync(cancellationToken);
         var entity = CommercialConfigurationVersion.Create(number, request.Name,
-            JsonSerializer.Serialize(request.Parameters, JsonOptions), request.ChangeSummary, request.ActorId);
+            JsonSerializer.Serialize(request.Parameters, _jsonOptions), request.ChangeSummary, request.ActorId);
         await repository.AddConfigurationAsync(entity, cancellationToken);
         return Map(entity);
     }
@@ -96,6 +96,6 @@ public sealed class CommercialConfigurationHandlers(IAdminConfigurationRepositor
 
     private static CommercialConfigurationDto Map(CommercialConfigurationVersion x) => new(
         x.Id, x.VersionNumber, x.Name, x.Status,
-        JsonSerializer.Deserialize<CommercialParametersDto>(x.ParametersJson, JsonOptions)!,
+        JsonSerializer.Deserialize<CommercialParametersDto>(x.ParametersJson, _jsonOptions)!,
         x.ChangeSummary, x.CreatedBy, x.CreatedAtUtc, x.ActivatedAtUtc);
 }

@@ -4,14 +4,9 @@ using PrintGrid.Modules.Customer.Application.Auth;
 
 namespace PrintGrid.Modules.Customer.Infrastructure.Auth;
 
-public sealed class GoogleIdentityVerifier : IGoogleIdentityVerifier
+public sealed class GoogleIdentityVerifier(IConfiguration configuration) : IGoogleIdentityVerifier
 {
-    private readonly string _clientId;
-
-    public GoogleIdentityVerifier(IConfiguration configuration)
-    {
-        _clientId = configuration["Authentication:Google:ClientId"] ?? string.Empty;
-    }
+    private readonly string _clientId = configuration["Authentication:Google:ClientId"] ?? string.Empty;
 
     public async Task<GoogleIdentity?> VerifyAsync(string credential, CancellationToken cancellationToken = default)
     {

@@ -26,24 +26,23 @@ public class SlicedQuoteFlowTests
         clock.UtcNow.Returns(new DateTime(2026, 11, 4, 8, 0, 0, DateTimeKind.Utc));
         var first = Guid.NewGuid(); var second = Guid.NewGuid();
         var slicer = Substitute.For<IQuoteSlicer>();
-        slicer.GetConfiguredMachineIdsAsync(Arg.Any<CancellationToken>()).Returns(new[] { first, second });
+        slicer.GetConfiguredMachineIdsAsync(Arg.Any<CancellationToken>()).Returns([first, second]);
         slicer.SliceAsync(Arg.Any<QuoteSliceRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             var request = call.Arg<QuoteSliceRequest>();
-            return new QuoteSliceResult(new[] { new QuoteColorUsage("BLUE", 460), new QuoteColorUsage("WHITE", 460) },
-                3900, "CuraEngine", request.MachineId == first ? 6000 : 5000, .08m);
+            return new QuoteSliceResult([new QuoteColorUsage("BLUE", 460), new QuoteColorUsage("WHITE", 460)],
+                3900, request.MachineId == first ? 6000 : 5000, .08m);
         });
         var probe = Substitute.For<IProductionCapacityProbe>();
         probe.FindEarliestFeasibleDeliveryAsync(Arg.Any<IReadOnlyList<TrialPlacementLine>>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns(call => new TrialPlacementResult(new DateOnly(2026, 11, 10), Guid.NewGuid(),
-                call.Arg<IReadOnlyList<TrialPlacementLine>>()[0].RequiredMachineId!.Value, "private", "HCM"));
+            .Returns(_ => new TrialPlacementResult(new DateOnly(2026, 11, 10), "private", "HCM"));
         var rates = PricingParameterSet.Active with { PolishingPerUnit = 30000,
             ColorPricePerKg = new Dictionary<string, decimal> { ["PLA:BLUE"] = 300000, ["PLA:WHITE"] = 290000 } };
         var policy = Substitute.For<ICommercialPolicyProvider>();
         policy.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(new CommercialPolicy(rates, 10_000_000, 48));
         var handler = new CreateQuoteCommandHandler(models, quotes, Substitute.For<IUnitOfWork>(), clock, probe, policy, slicer);
-        var result = await handler.Handle(new(customer, model.Id, "PLA", "BLUE", .2m, 30, 5, .2m,
-            "M", new[] { "BLUE", "WHITE" }, true), CancellationToken.None);
+        var result = await handler.Handle(new CreateQuoteCommand(customer, model.Id, "PLA", "BLUE", .2m, 30, 5, .2m,
+            "M", ["BLUE", "WHITE"], true), CancellationToken.None);
         result.IsSuccess.Should().BeTrue();
         result.Value.Items.Single().Calculation!.WidthMm.Should().Be(150);
         result.Value.Items.Single().Calculation!.DepthMm.Should().Be(100);
@@ -62,17 +61,17 @@ public class SlicedQuoteFlowTests
     public void Unpriced_color_falls_back_to_material_rate_without_adding_a_color_surcharge()
     {
         var rates = PricingParameterSet.Active with { ColorPricePerKg = new Dictionary<string, decimal>() };
-        var result = SlicedQuotePricing.Calculate(rates, "PLA", "ORIGINAL", 10, 10, 10, 1, 1,
-            new(new[] { new QuoteColorUsage("BLUE", 10) }, 60, "CuraEngine"), false);
+        var result = SlicedQuotePricing.Calculate(rates, "PLA", 1,
+            new QuoteSliceResult([new QuoteColorUsage("BLUE", 10)], 60), false);
         result.MaterialAmount.Should().Be(10 * rates.PricePerGram["PLA"]);
     }
 
     [Fact]
     public void Real_cli_summary_is_used_instead_of_placeholder_gcode_header()
     {
-        var result = PrintGrid.Modules.Customer.Infrastructure.Slicing.CuraQuoteSlicer.ParseEngineSummary(
+        var result = Modules.Customer.Infrastructure.Slicing.CuraQuoteSlicer.ParseEngineSummary(
             "[info] Print time (s): 3600\n[info] Filament (mm^3): 1000\n[info] Filament 2: 2000\n[info] Filament 3: 3000",
-            new[] { "BLUE", "WHITE", "SIGNALRED" }, 1.24m, 5);
+            ["BLUE", "WHITE", "SIGNALRED"], 1.24m, 5);
         result!.PrintMinutes.Should().Be(300);
         result.Colors.Select(c => c.Grams).Should().Equal(6.2m, 12.4m, 18.6m);
     }

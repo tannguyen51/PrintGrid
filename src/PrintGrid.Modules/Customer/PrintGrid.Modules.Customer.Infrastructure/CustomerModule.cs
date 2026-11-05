@@ -11,9 +11,7 @@ public class CustomerModule : IModule
 {
     public string Name => "Customer";
 
-    public static Assembly ApplicationAssembly => typeof(AssemblyMarker).Assembly;
-
-    public static Assembly InfrastructureAssembly => typeof(CustomerModule).Assembly;
+    private static Assembly InfrastructureAssembly => typeof(CustomerModule).Assembly;
 
     public void RegisterServices(IServiceCollection services, IConfiguration configuration)
     {

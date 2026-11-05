@@ -9,7 +9,7 @@ namespace PrintGrid.Modules.Scheduling.Application;
 
 public static class SchedulingApplicationExtensions
 {
-    public static IServiceCollection AddSchedulingApplication(this IServiceCollection services)
+    public static void AddSchedulingApplication(this IServiceCollection services)
     {
         var assembly = typeof(AssemblyMarker).Assembly;
 
@@ -21,7 +21,5 @@ public static class SchedulingApplicationExtensions
         // rescheduling and urgent reprints (FR-SCHED-006/007, FR-HUB-003).
         services.AddScoped<IAssignmentEngine, AssignmentEngine>();
         services.AddScoped<IPlacementShortfallService, PlacementShortfallService>();
-
-        return services;
     }
 }

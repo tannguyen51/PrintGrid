@@ -42,9 +42,9 @@ public class ShipmentBatch : AggregateRoot<Guid>
         Guid sealedBy,
         DateTime nowUtc)
     {
-        if (totalWeightGrams <= 0) throw new ArgumentOutOfRangeException(nameof(totalWeightGrams));
-        if (transportAllowance < 0) throw new ArgumentOutOfRangeException(nameof(transportAllowance));
-        if (jobCount <= 0) throw new ArgumentOutOfRangeException(nameof(jobCount));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(totalWeightGrams);
+        ArgumentOutOfRangeException.ThrowIfNegative(transportAllowance);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(jobCount);
         var id = Guid.NewGuid();
         return new ShipmentBatch
         {

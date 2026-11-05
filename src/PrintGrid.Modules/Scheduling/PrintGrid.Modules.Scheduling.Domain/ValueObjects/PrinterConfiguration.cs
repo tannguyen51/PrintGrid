@@ -22,7 +22,10 @@ public sealed record PrinterConfiguration(
             throw new ArgumentException("Đường kính đầu phun hoặc sợi nhựa không hợp lệ.");
         if (MaxNozzleTemperatureC is <= 0 or > 500 || MaxBedTemperatureC is < 0 or > 200 ||
             (HeatedBed && MaxBedTemperatureC <= 0) || (!HeatedBed && MaxBedTemperatureC != 0))
+        {
             throw new ArgumentException("Giới hạn nhiệt độ đầu phun/bàn in không hợp lệ.");
+        }
+
         if (PricePerHour is <= 0 or > 10000000 || FailureRate is < 0 or >= 1)
             throw new ArgumentException("Đơn giá máy phải lớn hơn 0; tỷ lệ lỗi từ 0% đến dưới 100%.");
     }

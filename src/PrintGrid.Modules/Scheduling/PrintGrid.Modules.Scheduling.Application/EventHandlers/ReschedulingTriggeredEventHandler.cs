@@ -17,31 +17,19 @@ namespace PrintGrid.Modules.Scheduling.Application.EventHandlers;
 /// fallback (BR-SCHED-006), never touches work that is printing (BR-SCHED-007) and never
 /// delays a committed date silently (BR-SCHED-008/011).
 /// </summary>
-public class ReschedulingTriggeredEventHandler : INotificationHandler<ReschedulingTriggeredEvent>
+public class ReschedulingTriggeredEventHandler(
+    IJobRepository jobs,
+    IAssignmentEngine engine,
+    IPlacementShortfallService shortfall,
+    ILogger<ReschedulingTriggeredEventHandler> logger)
+    : INotificationHandler<ReschedulingTriggeredEvent>
 {
-    private readonly IJobRepository _jobs;
-    private readonly IAssignmentEngine _engine;
-    private readonly IPlacementShortfallService _shortfall;
-    private readonly ILogger<ReschedulingTriggeredEventHandler> _logger;
-
-    public ReschedulingTriggeredEventHandler(
-        IJobRepository jobs,
-        IAssignmentEngine engine,
-        IPlacementShortfallService shortfall,
-        ILogger<ReschedulingTriggeredEventHandler> logger)
-    {
-        _jobs = jobs;
-        _engine = engine;
-        _shortfall = shortfall;
-        _logger = logger;
-    }
-
     public async Task Handle(ReschedulingTriggeredEvent notification, CancellationToken cancellationToken)
     {
-        var job = await _jobs.GetByIdAsync(notification.JobId, cancellationToken);
+        var job = await jobs.GetByIdAsync(notification.JobId, cancellationToken);
         if (job is null)
         {
-            _logger.LogWarning("Reschedule requested for unknown job {JobId}", notification.JobId);
+            logger.LogWarning("Reschedule requested for unknown job {JobId}", notification.JobId);
             return;
         }
 
@@ -50,24 +38,24 @@ public class ReschedulingTriggeredEventHandler : INotificationHandler<Rescheduli
         // handled by the reprint flow (FR-HUB-003), not by re-placing the dead job.
         if (job.Status is not (JobStatus.Pending or JobStatus.Reassigned))
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Reschedule skipped for job {JobId} in state {Status} (trigger {Trigger}, BR-SCHED-007)",
                 job.Id, job.Status, notification.Trigger);
             return;
         }
 
-        var outcome = await _engine.AssignAsync(
+        var outcome = await engine.AssignAsync(
             job,
             new AssignmentRequest(
                 notification.Trigger,
                 TimeBudget: TimeSpan.FromSeconds(AssignmentEngine.DefaultTimeBudgetSeconds),
                 // BR-RESCHED-001: repair the plan around the party that caused the event.
-                ExcludeLabId: notification.ExcludedLabId),
+                ExcludeLabId: notification.ExcludedLabId ?? job.LabId),
             cancellationToken);
 
         if (outcome.Assigned)
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Job {JobId} replanned after {Trigger} in {ElapsedMs} ms (budget exceeded: {BudgetExceeded})",
                 job.Id, notification.Trigger, outcome.ElapsedMs, outcome.BudgetExceeded);
             return;
@@ -78,16 +66,16 @@ public class ReschedulingTriggeredEventHandler : INotificationHandler<Rescheduli
         // customer-facing date-change flow.
         if (outcome.Outcome is not (AssignmentOutcomes.NoFeasibleSlot or AssignmentOutcomes.NoCapableMachine))
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Job {JobId} left unplaced after {Trigger} ({Outcome}) — retry from the ops board",
                 job.Id, notification.Trigger, outcome.Outcome);
             return;
         }
 
-        _logger.LogWarning(
+        logger.LogWarning(
             "Job {JobId} cannot hold its committed date after {Trigger}: {Reason}. Handing over to the date-change flow (BR-SCHED-011)",
             job.Id, notification.Trigger, outcome.Reason);
 
-        await _shortfall.HandleAsync(job, outcome.Reason ?? "No feasible slot after reschedule", cancellationToken);
+        await shortfall.HandleAsync(job, outcome.Reason ?? "No feasible slot after reschedule", cancellationToken);
     }
 }

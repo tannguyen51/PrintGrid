@@ -11,22 +11,13 @@ public record ApproveLabCommand(Guid LabId, Guid? ApprovedByUserId = null) : IRe
 
 public record RejectLabCommand(Guid LabId, string Reason) : IRequest<Result<LabDto>>;
 
-public class ApproveLabCommandHandler :
+public class ApproveLabCommandHandler(ILabRepository labs, IUnitOfWork unitOfWork) :
     IRequestHandler<ApproveLabCommand, Result<LabDto>>,
     IRequestHandler<RejectLabCommand, Result<LabDto>>
 {
-    private readonly ILabRepository _labs;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public ApproveLabCommandHandler(ILabRepository labs, IUnitOfWork unitOfWork)
-    {
-        _labs = labs;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result<LabDto>> Handle(ApproveLabCommand command, CancellationToken cancellationToken)
     {
-        var lab = await _labs.GetByIdAsync(command.LabId, cancellationToken);
+        var lab = await labs.GetByIdAsync(command.LabId, cancellationToken);
         if (lab is null)
             return Result.Failure<LabDto>(Error.NotFound("Lab", command.LabId));
 
@@ -34,13 +25,13 @@ public class ApproveLabCommandHandler :
         if (result.IsFailure)
             return Result.Failure<LabDto>(result.Error);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(LabMappings.ToDto(lab));
     }
 
     public async Task<Result<LabDto>> Handle(RejectLabCommand command, CancellationToken cancellationToken)
     {
-        var lab = await _labs.GetByIdAsync(command.LabId, cancellationToken);
+        var lab = await labs.GetByIdAsync(command.LabId, cancellationToken);
         if (lab is null)
             return Result.Failure<LabDto>(Error.NotFound("Lab", command.LabId));
 
@@ -48,7 +39,7 @@ public class ApproveLabCommandHandler :
         if (result.IsFailure)
             return Result.Failure<LabDto>(result.Error);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(LabMappings.ToDto(lab));
     }
 }

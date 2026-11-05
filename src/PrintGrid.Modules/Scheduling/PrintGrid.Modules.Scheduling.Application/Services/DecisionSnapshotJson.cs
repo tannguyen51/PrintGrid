@@ -4,7 +4,7 @@ using PrintGrid.Modules.Scheduling.Domain.Services;
 namespace PrintGrid.Modules.Scheduling.Application.Services;
 
 /// <summary>
-/// Serialises the decision snapshot stored on <see cref="Domain.Entities.AssignmentDecision"/>
+/// Serializes the decision snapshot stored on <see cref="Domain.Entities.AssignmentDecision"/>
 /// (FR-SCHED-009). The log has to reproduce a decision exactly as it was made, so the shapes
 /// below are the audit format — treat them as a contract, not an implementation detail.
 /// </summary>

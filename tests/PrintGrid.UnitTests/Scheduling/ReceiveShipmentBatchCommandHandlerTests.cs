@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PrintGrid.Modules.Scheduling.Application.Commands.ShipmentBatches;
@@ -70,7 +69,7 @@ public sealed class ReceiveShipmentBatchCommandHandlerTests
         Setup(batch, first, second);
 
         var result = await Handler().Handle(
-            new ReceiveShipmentBatchCommand(batch.Id, Guid.NewGuid(), [first.Id, second.Id]), default);
+            new ReceiveShipmentBatchCommand(batch.Id, Guid.NewGuid(), [first.Id, second.Id]), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.BatchId.Should().Be(batch.Id);
@@ -90,11 +89,11 @@ public sealed class ReceiveShipmentBatchCommandHandlerTests
         var batchId = Guid.NewGuid();
         _batches.GetByIdAsync(batchId, Arg.Any<CancellationToken>()).Returns((ShipmentBatch?)null);
 
-        var result = await Handler().Handle(new ReceiveShipmentBatchCommand(batchId, Guid.NewGuid()), default);
+        var result = await Handler().Handle(new ReceiveShipmentBatchCommand(batchId, Guid.NewGuid()), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("not_found");
-        await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+        await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync();
     }
 
     [Fact]
@@ -105,12 +104,12 @@ public sealed class ReceiveShipmentBatchCommandHandlerTests
         Setup(batch, job);
         batch.MarkReceived(_now.AddHours(-1)).IsSuccess.Should().BeTrue();
 
-        var result = await Handler().Handle(new ReceiveShipmentBatchCommand(batch.Id, Guid.NewGuid()), default);
+        var result = await Handler().Handle(new ReceiveShipmentBatchCommand(batch.Id, Guid.NewGuid()), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("conflict");
         job.Status.Should().Be(JobStatus.InTransit);
-        await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+        await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync();
     }
 
     [Fact]
@@ -122,7 +121,7 @@ public sealed class ReceiveShipmentBatchCommandHandlerTests
         Setup(batch, first, second);
 
         var result = await Handler().Handle(
-            new ReceiveShipmentBatchCommand(batch.Id, Guid.NewGuid(), [first.Id]), default);
+            new ReceiveShipmentBatchCommand(batch.Id, Guid.NewGuid(), [first.Id]), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("validation_error");
@@ -130,7 +129,7 @@ public sealed class ReceiveShipmentBatchCommandHandlerTests
         batch.Status.Should().Be(ShipmentBatchStatus.Sealed);
         first.Status.Should().Be(JobStatus.InTransit);
         second.Status.Should().Be(JobStatus.InTransit);
-        await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+        await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync();
     }
 
     [Fact]
@@ -141,7 +140,7 @@ public sealed class ReceiveShipmentBatchCommandHandlerTests
         Setup(batch, job);
 
         var result = await Handler().Handle(
-            new ReceiveShipmentBatchCommand(batch.Id, Guid.NewGuid(), [job.Id, Guid.NewGuid()]), default);
+            new ReceiveShipmentBatchCommand(batch.Id, Guid.NewGuid(), [job.Id, Guid.NewGuid()]), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("validation_error");
@@ -158,11 +157,11 @@ public sealed class ReceiveShipmentBatchCommandHandlerTests
             new DateOnly(2026, 10, 27));
         Setup(batch, notInTransit);
 
-        var result = await Handler().Handle(new ReceiveShipmentBatchCommand(batch.Id, Guid.NewGuid()), default);
+        var result = await Handler().Handle(new ReceiveShipmentBatchCommand(batch.Id, Guid.NewGuid()), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("conflict");
         notInTransit.Status.Should().Be(JobStatus.Pending);
-        await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+        await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync();
     }
 }

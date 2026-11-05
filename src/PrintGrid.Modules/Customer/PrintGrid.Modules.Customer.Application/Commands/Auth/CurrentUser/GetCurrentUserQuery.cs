@@ -13,17 +13,14 @@ namespace PrintGrid.Modules.Customer.Application.Commands.Auth.CurrentUser;
 /// </summary>
 public sealed record GetCurrentUserQuery(Guid UserId) : IRequest<Result<AuthUserDto>>;
 
-public class GetCurrentUserQueryHandler : IRequestHandler<GetCurrentUserQuery, Result<AuthUserDto>>
+public class GetCurrentUserQueryHandler(ICustomerRepository customers)
+    : IRequestHandler<GetCurrentUserQuery, Result<AuthUserDto>>
 {
-    private readonly ICustomerRepository _customers;
-
-    public GetCurrentUserQueryHandler(ICustomerRepository customers) => _customers = customers;
-
     public async Task<Result<AuthUserDto>> Handle(
         GetCurrentUserQuery request,
         CancellationToken cancellationToken)
     {
-        var customer = await _customers.GetByIdAsync(request.UserId, cancellationToken);
+        var customer = await customers.GetByIdAsync(request.UserId, cancellationToken);
         if (customer is null || !customer.IsActive)
             return Result.Failure<AuthUserDto>(Error.Unauthorized("Account no longer exists"));
 

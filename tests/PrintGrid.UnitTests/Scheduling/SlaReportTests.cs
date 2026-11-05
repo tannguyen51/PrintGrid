@@ -1,7 +1,6 @@
 using NSubstitute;
 using PrintGrid.Modules.Scheduling.Application.Queries;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
-using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
 using PrintGrid.SharedKernel.Interfaces;
 
@@ -10,7 +9,7 @@ namespace PrintGrid.UnitTests.Scheduling;
 /// <summary>FR-ANAL-002/003 / BR-PERF-001 SLA aggregation over the 90-day window.</summary>
 public class SlaReportTests
 {
-    private static readonly DateTime Now = DateTime.UtcNow;
+    private static readonly DateTime _now = DateTime.UtcNow;
 
     private static Job CompletedJob(
         Guid labId,
@@ -47,18 +46,18 @@ public class SlaReportTests
         var machineB = MachineBuilder.Default(labB.Id);
         labB.AddMachine(machineB);
 
-        var today = DateOnly.FromDateTime(Now);
-        var onTimeA = CompletedJob(labA.Id, machineA.Id, today, Now.AddMinutes(-10));
-        var lateA = CompletedJob(labA.Id, machineA.Id, today.AddDays(-1), Now.AddMinutes(-20));
-        var onTimeB = CompletedJob(labB.Id, machineB.Id, today, Now.AddMinutes(-30));
+        var today = DateOnly.FromDateTime(_now);
+        var onTimeA = CompletedJob(labA.Id, machineA.Id, today, _now.AddMinutes(-10));
+        var lateA = CompletedJob(labA.Id, machineA.Id, today.AddDays(-1), _now.AddMinutes(-20));
+        var onTimeB = CompletedJob(labB.Id, machineB.Id, today, _now.AddMinutes(-30));
 
         var labs = Substitute.For<ILabRepository>();
         var jobs = Substitute.For<IJobRepository>();
         var clock = Substitute.For<IDateTimeProvider>();
-        clock.UtcNow.Returns(Now);
-        labs.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new[] { labA, labB });
+        clock.UtcNow.Returns(_now);
+        labs.GetAllAsync(Arg.Any<CancellationToken>()).Returns([labA, labB]);
         jobs.GetAllAssignedToLabsAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { onTimeA, lateA, onTimeB });
+            .Returns([onTimeA, lateA, onTimeB]);
 
         var handler = new GetNetworkSlaReportQueryHandler(labs, jobs, clock);
         var result = await handler.Handle(new GetNetworkSlaReportQuery(), CancellationToken.None);
@@ -99,17 +98,17 @@ public class SlaReportTests
         var machineB = MachineBuilder.Default(labB.Id);
         labB.AddMachine(machineB);
 
-        var today = DateOnly.FromDateTime(Now);
-        var jobA = CompletedJob(labA.Id, machineA.Id, today, Now.AddMinutes(-10));
-        var jobB = CompletedJob(labB.Id, machineB.Id, today.AddDays(-1), Now.AddMinutes(-20));
+        var today = DateOnly.FromDateTime(_now);
+        var jobA = CompletedJob(labA.Id, machineA.Id, today, _now.AddMinutes(-10));
+        var jobB = CompletedJob(labB.Id, machineB.Id, today.AddDays(-1), _now.AddMinutes(-20));
 
         var labs = Substitute.For<ILabRepository>();
         var jobs = Substitute.For<IJobRepository>();
         var clock = Substitute.For<IDateTimeProvider>();
-        clock.UtcNow.Returns(Now);
-        labs.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new[] { labA, labB });
+        clock.UtcNow.Returns(_now);
+        labs.GetAllAsync(Arg.Any<CancellationToken>()).Returns([labA, labB]);
         jobs.GetAllAssignedToLabsAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { jobA, jobB });
+            .Returns([jobA, jobB]);
 
         var handler = new GetNetworkSlaReportQueryHandler(labs, jobs, clock);
         var result = await handler.Handle(new GetNetworkSlaReportQuery(labB.Id), CancellationToken.None);
@@ -127,7 +126,7 @@ public class SlaReportTests
         var labs = Substitute.For<ILabRepository>();
         var jobs = Substitute.For<IJobRepository>();
         var clock = Substitute.For<IDateTimeProvider>();
-        clock.UtcNow.Returns(Now);
+        clock.UtcNow.Returns(_now);
         labs.GetAllAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Lab>());
 
         var handler = new GetNetworkSlaReportQueryHandler(labs, jobs, clock);

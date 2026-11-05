@@ -15,17 +15,13 @@ namespace PrintGrid.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/hub/orders")]
-public class ShipmentController : ControllerBase
+public class ShipmentController(ISender sender) : ControllerBase
 {
-    private readonly ISender _sender;
-
-    public ShipmentController(ISender sender) => _sender = sender;
-
     [HttpGet("shipment-queue")]
     [Authorize(Policy = Policies.RequireHub)]
     public async Task<IActionResult> GetShipmentQueue(CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetShipmentQueueQuery(), cancellationToken);
+        var result = await sender.Send(new GetShipmentQueueQuery(), cancellationToken);
         return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
     }
 
@@ -33,7 +29,7 @@ public class ShipmentController : ControllerBase
     [Authorize(Policy = Policies.RequireHub)]
     public async Task<IActionResult> Ship(Guid orderId, [FromBody] ShipRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new ShipOrderCommand(orderId, request.TrackingNumber), cancellationToken);
+        var result = await sender.Send(new ShipOrderCommand(orderId, request.TrackingNumber), cancellationToken);
         return ToResult(result);
     }
 
@@ -41,7 +37,7 @@ public class ShipmentController : ControllerBase
     [Authorize(Policy = Policies.RequireHub)]
     public async Task<IActionResult> ShipConsolidated([FromBody] ShipConsolidatedRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(
+        var result = await sender.Send(
             new ShipConsolidatedOrdersCommand(request.OrderIds, request.TrackingNumber),
             cancellationToken);
 
@@ -53,7 +49,7 @@ public class ShipmentController : ControllerBase
     [Authorize(Policy = Policies.RequireHub)]
     public async Task<IActionResult> Deliver(Guid orderId, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new DeliverOrderCommand(orderId), cancellationToken);
+        var result = await sender.Send(new DeliverOrderCommand(orderId), cancellationToken);
         return ToResult(result);
     }
 
@@ -61,7 +57,7 @@ public class ShipmentController : ControllerBase
     [Authorize(Policy = Policies.RequireHub)]
     public async Task<IActionResult> DeliverConsolidated([FromBody] DeliverConsolidatedRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new DeliverConsolidatedOrdersCommand(request.OrderIds), cancellationToken);
+        var result = await sender.Send(new DeliverConsolidatedOrdersCommand(request.OrderIds), cancellationToken);
         return ToResult(result);
     }
 
@@ -71,7 +67,7 @@ public class ShipmentController : ControllerBase
     [Authorize(Policy = Policies.RequireOps)]
     public async Task<IActionResult> RefundOrder(Guid orderId, [FromBody] RefundOrderRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new RefundOrderWithinScopeCommand(orderId, request.Amount, request.Reason), cancellationToken);
+        var result = await sender.Send(new RefundOrderWithinScopeCommand(orderId, request.Amount), cancellationToken);
         return ToResult(result);
     }
 

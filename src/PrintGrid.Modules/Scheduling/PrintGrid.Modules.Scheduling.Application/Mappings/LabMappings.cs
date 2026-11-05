@@ -6,8 +6,6 @@ public static class LabMappings
 {
     public static MachineDto ToDto(Domain.Entities.Machine machine) => new(
         machine.Id,
-        machine.Name,
-        machine.Model,
         machine.Technology,
         machine.BuildVolume.WidthMm,
         machine.BuildVolume.DepthMm,
@@ -16,14 +14,12 @@ public static class LabMappings
         machine.AchievableToleranceMm,
         machine.SpeedFactor,
         machine.Status,
-        machine.SupportedMaterials.ToList(),
+        [.. machine.SupportedMaterials],
         machine.MaintenanceFromUtc,
         machine.MaintenanceUntilUtc,
         machine.MaintenanceReason,
         machine.PrinterConfiguration,
-        machine.ProfileStatus,
-        machine.CuraProfileIds,
-        machine.ProfileReviewReason);
+        machine.ProfileStatus);
 
     public static LabDto ToDto(Domain.Entities.Lab lab) => new(
         lab.Id,
@@ -41,7 +37,7 @@ public static class LabMappings
         lab.ClosingTime,
         lab.MaterialStocks.Count,
         lab.CreatedAt,
-        lab.Machines.Select(ToDto).ToList(),
+        [.. lab.Machines.Select(ToDto)],
         lab.Status.ToString(),
         lab.OperatingHours,
         lab.ContactPhone,

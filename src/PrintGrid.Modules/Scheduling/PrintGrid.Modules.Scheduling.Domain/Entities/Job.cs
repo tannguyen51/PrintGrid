@@ -8,8 +8,8 @@ namespace PrintGrid.Modules.Scheduling.Domain.Entities;
 
 public class Job : AggregateRoot<Guid>
 {
-    public Guid OrderItemId { get; private set; }
-    public Guid ModelId { get; private set; }
+    public Guid OrderItemId { get; private init; }
+    public Guid ModelId { get; private init; }
     public string? ProductionQuoteJson { get; private set; }
     public Guid? QuotedMachineId { get; private set; }
 
@@ -26,14 +26,14 @@ public class Job : AggregateRoot<Guid>
             c => c.GetProperty("ColorCode").GetString()!,
             c => decimal.Round(c.GetProperty("Grams").GetDecimal() * Quantity / originalQuantity, 2));
     }
-    public JobSpecification Specification { get; private set; } = null!;
+    public JobSpecification Specification { get; private init; } = null!;
     public JobStatus Status { get; private set; }
     public DateOnly InternalDueDate { get; private set; }
-    public int EstimatedPrintMinutes { get; private set; }
+    public int EstimatedPrintMinutes { get; private init; }
     public int? ActualPrintMinutes { get; private set; }
     public decimal? ActualMaterialGrams { get; private set; }
     public int AttemptNumber { get; private set; }
-    public int Quantity { get; private set; }
+    public int Quantity { get; private init; }
     public Guid? ParentJobId { get; private set; }
 
     public Guid? LabId { get; private set; }
@@ -63,7 +63,7 @@ public class Job : AggregateRoot<Guid>
     public JobPriority Priority { get; private set; } = JobPriority.Normal;
 
     /// <summary>Root job of a reprint chain; null when this job is the original (BR-RESCHED-003).</summary>
-    public Guid? OriginalJobId { get; private set; }
+    public Guid? OriginalJobId { get; private init; }
 
     /// <summary>0 for an original job, 1..N for successive reprints of it (BR-RESCHED-004 cap).</summary>
     public int ReprintIndex { get; private set; }
@@ -72,7 +72,7 @@ public class Job : AggregateRoot<Guid>
     public CostBearer CostBearer { get; private set; } = CostBearer.Customer;
 
     /// <summary>Lab held responsible for a reprint, when one can be identified.</summary>
-    public Guid? FaultLabId { get; private set; }
+    public Guid? FaultLabId { get; private init; }
 
     private Job() { }
 
@@ -85,7 +85,7 @@ public class Job : AggregateRoot<Guid>
     {
         if (estimatedPrintMinutes <= 0)
             throw new ArgumentOutOfRangeException(nameof(estimatedPrintMinutes), "Estimate must be positive");
-        if (quantity <= 0) throw new ArgumentOutOfRangeException(nameof(quantity));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(quantity);
 
         return new Job
         {
@@ -165,7 +165,7 @@ public class Job : AggregateRoot<Guid>
 
     /// <summary>
     /// Splits an unstarted job across labs to protect a committed date (BR-SCHED-010, the
-    /// first step of the FR-SCHED-007 repair order of preference). The original is cancelled
+    /// first step of the FR-SCHED-007 repair order of preference). The original is canceled
     /// and one child job per quantity is returned; pricing is untouched.
     /// </summary>
     public Result<IReadOnlyList<Job>> Split(IReadOnlyList<int> quantities)
@@ -256,8 +256,7 @@ public class Job : AggregateRoot<Guid>
         AddDomainEvent(new ReschedulingTriggeredEvent(
             Id,
             "lab_decline",
-            InternalDueDate,
-            ExcludedLabId: declinedLabId == Guid.Empty ? null : declinedLabId));
+            declinedLabId == Guid.Empty ? null : declinedLabId));
         return Result.Success();
     }
 
@@ -375,14 +374,15 @@ public class Job : AggregateRoot<Guid>
 
         // LabId/MachineId can legitimately be null (failing a job that was never placed);
         // Guid.Empty keeps the event well-formed instead of throwing.
-        AddDomainEvent(new JobFailedEvent(Id, LabId ?? Guid.Empty, MachineId ?? Guid.Empty, reason, AttemptNumber, OrderItemId));
-        AddDomainEvent(new ReschedulingTriggeredEvent(Id, "print_failure", InternalDueDate));
+        AddDomainEvent(new JobFailedEvent(
+            Id, LabId ?? Guid.Empty, MachineId ?? Guid.Empty, reason, AttemptNumber, OrderItemId));
+        AddDomainEvent(new ReschedulingTriggeredEvent(Id, "print_failure"));
         return Result.Success();
     }
 
     /// <summary>
     /// Returns a failed job to the placement queue so the SAME job can be printed again.
-    /// The automatic after-fault path does not use this any more: FR-HUB-003 / BR-RESCHED-003
+    /// The automatic after-fault path does not use this anymore: FR-HUB-003 / BR-RESCHED-003
     /// create a separate URGENT reprint job that inherits the original deadline. Kept as the
     /// manual/ops alternative (and the only producer of <see cref="JobStatus.Reassigned"/>).
     /// </summary>
@@ -432,7 +432,7 @@ public class Job : AggregateRoot<Guid>
             return Result.Failure(Error.Conflict("Lab QC proof must be approved before hub inspection"));
 
         Status = JobStatus.Completed;
-        AddDomainEvent(new JobInspectionPassedEvent(Id, photoUrls));
+        AddDomainEvent(new JobInspectionPassedEvent(Id));
         return Result.Success();
     }
 
@@ -471,10 +471,7 @@ public class Job : AggregateRoot<Guid>
         FailureReason = failureReason;
 
         AddDomainEvent(new CustomerFaultInspectionFailedEvent(
-            Id,
-            failureReason,
-            photoUrls,
-            customerNotificationMessage));
+            Id, failureReason, photoUrls, customerNotificationMessage));
 
         return Result.Success();
     }

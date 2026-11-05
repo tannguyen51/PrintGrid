@@ -8,7 +8,7 @@ namespace PrintGrid.Modules.Customer.Application;
 
 public static class CustomerApplicationExtensions
 {
-    public static IServiceCollection AddCustomerApplication(this IServiceCollection services)
+    public static void AddCustomerApplication(this IServiceCollection services)
     {
         var assembly = typeof(AssemblyMarker).Assembly;
 
@@ -16,7 +16,5 @@ public static class CustomerApplicationExtensions
         services.AddValidatorsFromAssembly(assembly);
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddScoped<ICommercialPolicyProvider, DefaultCommercialPolicyProvider>();
-
-        return services;
     }
 }

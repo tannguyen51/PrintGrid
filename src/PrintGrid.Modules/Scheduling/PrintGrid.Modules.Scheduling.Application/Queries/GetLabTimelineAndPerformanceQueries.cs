@@ -13,63 +13,50 @@ public record GetLabTimelineQuery(Guid LabId) : IRequest<Result<LabTimelineDto>>
 
 public record GetLabPerformanceQuery(Guid LabId) : IRequest<Result<LabPerformanceDto>>;
 
-public class GetLabTimelineAndPerformanceQueryHandler :
-    IRequestHandler<GetLabTimelineQuery, Result<LabTimelineDto>>,
-    IRequestHandler<GetLabPerformanceQuery, Result<LabPerformanceDto>>
+public class GetLabTimelineAndPerformanceQueryHandler(
+    ILabRepository labs,
+    IJobRepository jobs,
+    IOrderRepository orders,
+    IModelRepository models)
+    :
+        IRequestHandler<GetLabTimelineQuery, Result<LabTimelineDto>>,
+        IRequestHandler<GetLabPerformanceQuery, Result<LabPerformanceDto>>
 {
     private static readonly JobStatus[] _activeTimelineStatuses =
-    {
+    [
         JobStatus.Assigned,
         JobStatus.Accepted,
         JobStatus.InProgress
-    };
-
-    private readonly ILabRepository _labs;
-    private readonly IJobRepository _jobs;
-    private readonly IOrderRepository _orders;
-    private readonly IModelRepository _models;
-
-    public GetLabTimelineAndPerformanceQueryHandler(
-        ILabRepository labs,
-        IJobRepository jobs,
-        IOrderRepository orders,
-        IModelRepository models)
-    {
-        _labs = labs;
-        _jobs = jobs;
-        _orders = orders;
-        _models = models;
-    }
+    ];
 
     public async Task<Result<LabTimelineDto>> Handle(GetLabTimelineQuery query, CancellationToken cancellationToken)
     {
-        var lab = await _labs.GetByIdAsync(query.LabId, cancellationToken);
+        var lab = await labs.GetByIdAsync(query.LabId, cancellationToken);
         if (lab is null)
             return Result.Failure<LabTimelineDto>(Error.NotFound("Lab", query.LabId));
 
-        var labJobs = await _jobs.GetByLabIdAsync(lab.Id, cancellationToken);
+        var labJobs = await jobs.GetByLabIdAsync(lab.Id, cancellationToken);
 
         // AC01 (FR-LAB-006): Only active jobs (Assigned, Accepted, InProgress) occupy future timeline slots.
         // As soon as a job is completed (transitions to AwaitingInspection / Completed), its slot disappears from future timeline.
         var activeJobs = labJobs
             .Where(j => j.MachineId.HasValue
                         && _activeTimelineStatuses.Contains(j.Status)
-                        && j.PlannedStartUtc.HasValue
-                        && j.PlannedEndUtc.HasValue)
+                        && j is { PlannedStartUtc: not null, PlannedEndUtc: not null })
             .OrderBy(j => j.PlannedStartUtc)
             .ToList();
 
         var orderMap = new Dictionary<Guid, string?>();
         foreach (var itemId in activeJobs.Select(j => j.OrderItemId).Distinct())
         {
-            var order = await _orders.GetByItemIdAsync(itemId, cancellationToken);
+            var order = await orders.GetByItemIdAsync(itemId, cancellationToken);
             orderMap[itemId] = order?.OrderNumber;
         }
 
         var modelMap = new Dictionary<Guid, string?>();
         foreach (var modelId in activeJobs.Select(j => j.ModelId).Distinct())
         {
-            var model = await _models.GetByIdAsync(modelId, cancellationToken);
+            var model = await models.GetByIdAsync(modelId, cancellationToken);
             modelMap[modelId] = model?.FileName;
         }
 
@@ -121,15 +108,15 @@ public class GetLabTimelineAndPerformanceQueryHandler :
 
     public async Task<Result<LabPerformanceDto>> Handle(GetLabPerformanceQuery query, CancellationToken cancellationToken)
     {
-        var lab = await _labs.GetByIdAsync(query.LabId, cancellationToken);
+        var lab = await labs.GetByIdAsync(query.LabId, cancellationToken);
         if (lab is null)
             return Result.Failure<LabPerformanceDto>(Error.NotFound("Lab", query.LabId));
 
         var now = DateTime.UtcNow;
         var windowStart = now.AddDays(-90);
 
-        var allLabs = await _labs.GetAllAsync(cancellationToken);
-        var recentJobs = await _jobs.GetAllAssignedToLabsAsync(windowStart, cancellationToken);
+        var allLabs = await labs.GetAllAsync(cancellationToken);
+        var recentJobs = await jobs.GetAllAssignedToLabsAsync(windowStart, cancellationToken);
         var jobsByLab = recentJobs
             .Where(j => j.LabId.HasValue)
             .GroupBy(j => j.LabId!.Value)
@@ -139,7 +126,7 @@ public class GetLabTimelineAndPerformanceQueryHandler :
         var targetStats = LabMetricsCalculator.ComputeForLab(lab, targetJobs, now);
 
         var benchmarkLabs = allLabs
-            .Where(l => l.IsActive && l.Status == LabStatus.Active)
+            .Where(l => l is { IsActive: true, Status: LabStatus.Active })
             .ToList();
         if (benchmarkLabs.Count == 0)
             benchmarkLabs.Add(lab);
@@ -161,9 +148,7 @@ public class GetLabTimelineAndPerformanceQueryHandler :
             ? "Điểm tạm (< 10 job)"
             : StandingLabel(targetStanding);
 
-        return Result.Success(new LabPerformanceDto(
-            LabId: lab.Id,
-            LabName: lab.Name,
+        return Result.Success(new LabPerformanceDto(LabName: lab.Name,
             CompletedJobsCount: targetStats.CompletedCount,
             TotalAssignedJobsCount: targetStats.TotalAssignedCount,
             IsProvisional: targetStats.IsProvisional,

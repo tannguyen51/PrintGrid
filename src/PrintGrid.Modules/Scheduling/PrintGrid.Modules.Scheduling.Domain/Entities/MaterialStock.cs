@@ -19,8 +19,8 @@ public class MaterialStock : Entity<Guid>
 
     internal static MaterialStock Create(Guid labId, string materialCode, string colorCode, decimal availableGrams, decimal reorderPointGrams = 0m)
     {
-        if (availableGrams < 0) throw new ArgumentOutOfRangeException(nameof(availableGrams));
-        if (reorderPointGrams < 0) throw new ArgumentOutOfRangeException(nameof(reorderPointGrams));
+        ArgumentOutOfRangeException.ThrowIfNegative(availableGrams);
+        ArgumentOutOfRangeException.ThrowIfNegative(reorderPointGrams);
         return new MaterialStock
         {
             Id = Guid.NewGuid(),
@@ -35,7 +35,7 @@ public class MaterialStock : Entity<Guid>
 
     internal void ConfigureReorderPoint(decimal reorderPointGrams)
     {
-        if (reorderPointGrams < 0) throw new ArgumentOutOfRangeException(nameof(reorderPointGrams));
+        ArgumentOutOfRangeException.ThrowIfNegative(reorderPointGrams);
         ReorderPointGrams = reorderPointGrams;
         UpdatedAtUtc = DateTime.UtcNow;
     }

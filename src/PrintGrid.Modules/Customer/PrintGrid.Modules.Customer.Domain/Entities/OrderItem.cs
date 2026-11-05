@@ -8,12 +8,12 @@ public class OrderItem : Entity<Guid>
 {
     public Guid OrderId { get; private set; }
     public Guid ModelId { get; private set; }
-    public int Quantity { get; private set; }
+    public int Quantity { get; private init; }
     public PrintConfiguration Configuration { get; private set; } = null!;
-    public Money UnitPrice { get; private set; } = Money.Zero();
+    public Money UnitPrice { get; private init; } = Money.Zero();
     public string ItemStatus { get; private set; } = "Pending";
     public string? CalculationJson { get; private set; }
-    public decimal? BatchTotalAmount { get; private set; }
+    public decimal? BatchTotalAmount { get; private init; }
     public Guid? QuotedMachineId { get; private set; }
 
     /// <summary>Production estimates copied from the frozen quote — feeds real job decomposition (FR-SCHED-006).</summary>

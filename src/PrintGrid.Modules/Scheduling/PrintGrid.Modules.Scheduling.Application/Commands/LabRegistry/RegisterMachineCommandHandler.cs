@@ -11,22 +11,15 @@ using PrintGrid.Modules.Scheduling.Domain.Enums;
 
 namespace PrintGrid.Modules.Scheduling.Application.Commands.LabRegistry;
 
-public class RegisterMachineCommandHandler : IRequestHandler<RegisterMachineCommand, Result<MachineDto>>
+public class RegisterMachineCommandHandler(
+    ILabRepository labs,
+    IUnitOfWork unitOfWork,
+    Abstractions.IMachineProfileMatcher? profiles = null)
+    : IRequestHandler<RegisterMachineCommand, Result<MachineDto>>
 {
-    private readonly ILabRepository _labs;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly Abstractions.IMachineProfileMatcher? _profiles;
-
-    public RegisterMachineCommandHandler(ILabRepository labs, IUnitOfWork unitOfWork, Abstractions.IMachineProfileMatcher? profiles = null)
-    {
-        _labs = labs;
-        _unitOfWork = unitOfWork;
-        _profiles = profiles;
-    }
-
     public async Task<Result<MachineDto>> Handle(RegisterMachineCommand command, CancellationToken cancellationToken)
     {
-        var lab = await _labs.GetByIdAsync(command.LabId, cancellationToken);
+        var lab = await labs.GetByIdAsync(command.LabId, cancellationToken);
         if (lab is null)
             return Result.Failure<MachineDto>(Error.NotFound("Lab", command.LabId));
         if (command.RequestingUserId.HasValue)
@@ -69,11 +62,11 @@ public class RegisterMachineCommandHandler : IRequestHandler<RegisterMachineComm
         {
             try { machine.ConfigurePrinter(command.PrinterConfiguration); }
             catch (ArgumentException e) { return Result.Failure<MachineDto>(Error.Validation(e.Message)); }
-            if (_profiles is not null) await _profiles.MatchAsync(machine, cancellationToken);
+            if (profiles is not null) await profiles.MatchAsync(machine, cancellationToken);
         }
         lab.AddMachine(machine);
-        _labs.AddMachine(machine);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        labs.AddMachine(machine);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(LabMappings.ToDto(machine));
     }

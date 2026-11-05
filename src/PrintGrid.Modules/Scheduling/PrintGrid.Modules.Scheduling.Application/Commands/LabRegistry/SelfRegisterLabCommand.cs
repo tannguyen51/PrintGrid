@@ -18,17 +18,9 @@ public record SelfRegisterLabCommand(
     string? Address = null,
     string? District = null) : IRequest<Result<LabDto>>;
 
-public class SelfRegisterLabCommandHandler : IRequestHandler<SelfRegisterLabCommand, Result<LabDto>>
+public class SelfRegisterLabCommandHandler(ILabRepository labs, IUnitOfWork unitOfWork)
+    : IRequestHandler<SelfRegisterLabCommand, Result<LabDto>>
 {
-    private readonly ILabRepository _labs;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public SelfRegisterLabCommandHandler(ILabRepository labs, IUnitOfWork unitOfWork)
-    {
-        _labs = labs;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result<LabDto>> Handle(SelfRegisterLabCommand command, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.City))
@@ -42,7 +34,7 @@ public class SelfRegisterLabCommandHandler : IRequestHandler<SelfRegisterLabComm
 
         if (command.OwnerUserId.HasValue)
         {
-            var existing = await _labs.GetByOwnerUserIdAsync(command.OwnerUserId.Value, cancellationToken);
+            var existing = await labs.GetByOwnerUserIdAsync(command.OwnerUserId.Value, cancellationToken);
             if (existing is not null)
             {
                 existing.UpdateProfile(
@@ -54,7 +46,7 @@ public class SelfRegisterLabCommandHandler : IRequestHandler<SelfRegisterLabComm
                     command.Address,
                     command.District);
 
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await unitOfWork.SaveChangesAsync(cancellationToken);
                 return Result.Success(LabMappings.ToDto(existing));
             }
         }
@@ -69,8 +61,8 @@ public class SelfRegisterLabCommandHandler : IRequestHandler<SelfRegisterLabComm
             command.Address,
             command.District);
 
-        await _labs.AddAsync(lab, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await labs.AddAsync(lab, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(LabMappings.ToDto(lab));
     }

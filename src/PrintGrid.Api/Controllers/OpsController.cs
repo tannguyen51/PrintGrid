@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Scheduling.Application.Queries;
 using PrintGrid.Modules.Scheduling.Application.Commands.OpsWorkflow;
+using PrintGrid.Modules.Scheduling.Domain.Enums;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -14,17 +15,13 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/ops")]
 [Authorize(Policy = Policies.RequireOps)]
-public class OpsController : ControllerBase
+public class OpsController(ISender sender) : ControllerBase
 {
-    private readonly ISender _sender;
-
-    public OpsController(ISender sender) => _sender = sender;
-
     /// <summary>GET /ops/decisions/{jobId} — candidates, per-criterion scores, config version.</summary>
     [HttpGet("decisions/{jobId:guid}")]
     public async Task<IActionResult> GetDecisionTrace(Guid jobId, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetDecisionLogQuery(jobId), cancellationToken);
+        var result = await sender.Send(new GetDecisionLogQuery(jobId), cancellationToken);
 
         if (result.IsFailure)
             return NotFound(new { error = new { code = result.Error.Code, message = result.Error.Message } });
@@ -36,7 +33,7 @@ public class OpsController : ControllerBase
     [HttpGet("escalations")]
     public async Task<IActionResult> GetEscalations(CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetOpsEscalationsQuery(), cancellationToken);
+        var result = await sender.Send(new GetOpsEscalationsQuery(), cancellationToken);
 
         if (result.IsFailure)
             return BadRequest(new { error = new { code = result.Error.Code, message = result.Error.Message } });
@@ -46,21 +43,21 @@ public class OpsController : ControllerBase
 
     [HttpGet("monitor")]
     public async Task<IActionResult> GetMonitor(CancellationToken cancellationToken) =>
-        ToResult(await _sender.Send(new GetOpsMonitorQuery(), cancellationToken));
+        ToResult(await sender.Send(new GetOpsMonitorQuery(), cancellationToken));
 
     [HttpGet("jobs/{jobId:guid}/reassign-preview")]
     public async Task<IActionResult> PreviewReassign(Guid jobId, CancellationToken cancellationToken) =>
-        ToResult(await _sender.Send(new PreviewOpsReassignQuery(jobId), cancellationToken));
+        ToResult(await sender.Send(new PreviewOpsReassignQuery(jobId), cancellationToken));
 
     [HttpPost("jobs/{jobId:guid}/reassign")]
     public async Task<IActionResult> Reassign(Guid jobId, [FromBody] OpsReassignRequest request, CancellationToken cancellationToken)
     {
         var actorId = User.GetCustomerId();
         if (actorId is null) return Forbid();
-        PrintGrid.Modules.Scheduling.Domain.Enums.DateChangeReason? reasonCode = null;
-        if (Enum.TryParse<PrintGrid.Modules.Scheduling.Domain.Enums.DateChangeReason>(request.DateChangeReason, true, out var parsed))
+        DateChangeReason? reasonCode = null;
+        if (Enum.TryParse<DateChangeReason>(request.DateChangeReason, true, out var parsed))
             reasonCode = parsed;
-        return ToResult(await _sender.Send(new ReassignJobByOpsCommand(jobId, actorId.Value, request.Reason, request.ConfirmCustomerDateImpact, reasonCode), cancellationToken));
+        return ToResult(await sender.Send(new ReassignJobByOpsCommand(jobId, actorId.Value, request.Reason, request.ConfirmCustomerDateImpact, reasonCode), cancellationToken));
     }
 
     private IActionResult ToResult<T>(PrintGrid.SharedKernel.Results.Result<T> result)

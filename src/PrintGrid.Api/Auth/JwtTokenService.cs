@@ -1,7 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using PrintGrid.Api.Configuration;
@@ -18,16 +17,14 @@ namespace PrintGrid.Api.Auth;
 /// </summary>
 public class JwtTokenService : ITokenService
 {
-    private const string RefreshTokenType = "refresh";
+    private const string _refreshTokenType = "refresh";
 
     private readonly JwtOptions _options;
     private readonly TokenValidationParameters _validationParameters;
-    private readonly ILogger<JwtTokenService> _logger;
 
-    public JwtTokenService(IOptions<JwtOptions> options, ILogger<JwtTokenService> logger)
+    public JwtTokenService(IOptions<JwtOptions> options)
     {
         _options = options.Value;
-        _logger = logger;
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
         _validationParameters = new TokenValidationParameters
         {
@@ -44,7 +41,7 @@ public class JwtTokenService : ITokenService
 
     public AuthTokenPairDto CreateTokenPair(AuthUserDto user, int sessionVersion = 0)
     {
-        var key = Encoding.UTF8.GetBytes(_options.Key);
+        Encoding.UTF8.GetBytes(_options.Key);
 
         // One ClaimTypes.Role claim PER role — RequireRole matches individual values,
         // not a comma-joined string.
@@ -56,10 +53,7 @@ public class JwtTokenService : ITokenService
             new(JwtRegisteredClaimNames.UniqueName, user.FullName),
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
         };
-        foreach (var role in user.Roles)
-        {
-            claims.Add(new Claim(ClaimTypes.Role, role));
-        }
+        claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
         var accessToken = CreateToken(
             claims,
@@ -67,12 +61,11 @@ public class JwtTokenService : ITokenService
             DateTime.UtcNow.AddMinutes(_options.AccessTokenMinutes));
 
         var refreshToken = CreateToken(
-            new[]
-            {
+            [
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Typ, RefreshTokenType),
-                new Claim("session_version", sessionVersion.ToString()),
-            },
+                new Claim(JwtRegisteredClaimNames.Typ, _refreshTokenType),
+                new Claim("session_version", sessionVersion.ToString())
+            ],
             DateTime.UtcNow,
             DateTime.UtcNow.AddDays(_options.RefreshTokenDays));
 
@@ -96,7 +89,7 @@ public class JwtTokenService : ITokenService
             var principal = handler.ValidateToken(refreshToken, _validationParameters, out var validatedToken);
 
             var isRefresh = validatedToken is JwtSecurityToken jwt &&
-                            jwt.Claims.Any(c => c.Type == JwtRegisteredClaimNames.Typ && c.Value == RefreshTokenType);
+                            jwt.Claims.Any(c => c.Type == JwtRegisteredClaimNames.Typ && c.Value == _refreshTokenType);
             if (!isRefresh) return null;
 
             var sub = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);

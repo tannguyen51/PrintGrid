@@ -6,8 +6,7 @@ public sealed record TransportAllowanceQuote(
     decimal TotalWeightGrams,
     decimal ZoneRate,
     decimal WeightMultiplier,
-    decimal Allowance,
-    string Currency = "VND");
+    decimal Allowance);
 
 public sealed class TransportAllowancePolicy(
     IReadOnlyDictionary<string, decimal> zoneRates,
@@ -16,7 +15,7 @@ public sealed class TransportAllowancePolicy(
 {
     public TransportAllowanceQuote Quote(string zone, decimal totalWeightGrams)
     {
-        if (totalWeightGrams <= 0) throw new ArgumentOutOfRangeException(nameof(totalWeightGrams));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(totalWeightGrams);
         var normalizedZone = zone.Trim().ToUpperInvariant();
         if (!zoneRates.TryGetValue(normalizedZone, out var rate))
             throw new InvalidOperationException($"Transport zone '{normalizedZone}' has no configured rate");

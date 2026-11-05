@@ -12,7 +12,7 @@ public sealed class MachineProfileRegistry(PrintGridDbContext db, IConfiguration
     private string EngineVersion => configuration["QuoteSlicer:EngineVersion"] ?? "5.11.0";
     public async Task MatchAsync(Machine machine, CancellationToken cancellationToken)
     {
-        var candidates = await db.Set<CuraProfile>().Where(p => p.IsActive && p.EngineVersion == EngineVersion)
+        var candidates = await db.Set<CuraProfile>().Where(p => CuraProfile.IsActive && p.EngineVersion == EngineVersion)
             .OrderByDescending(p => p.CreatedAtUtc).ThenBy(p => p.Id).ToListAsync(cancellationToken);
         var matches = candidates.Where(p => p.Matches(machine)).GroupBy(p => p.MaterialCode)
             .Select(g => g.First()).ToList();
@@ -30,7 +30,7 @@ public sealed class MachineProfileRegistry(PrintGridDbContext db, IConfiguration
         if (machine?.ProfileStatus != "Approved" || machine.PrinterConfiguration is not { } config) return null;
         var profiles = await db.Set<CuraProfile>().AsNoTracking()
             .Where(p => machine.CuraProfileIds.Contains(p.Id)).ToListAsync(cancellationToken);
-        var profile = profiles.FirstOrDefault(p => p.EngineVersion == EngineVersion && p.MaterialCode == material.ToUpperInvariant() && p.Matches(machine));
-        return profile is null ? null : new(profile.SettingsJson, config.MaximumColorSlots, config.PricePerHour, config.FailureRate);
+        var profile = profiles.FirstOrDefault(p => p.EngineVersion == EngineVersion && p.MaterialCode.Equals(material, StringComparison.InvariantCultureIgnoreCase) && p.Matches(machine));
+        return profile is null ? null : new RegisteredCuraSettings(profile.SettingsJson, config.MaximumColorSlots, config.PricePerHour, config.FailureRate);
     }
 }

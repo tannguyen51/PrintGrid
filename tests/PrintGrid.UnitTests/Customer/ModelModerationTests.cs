@@ -15,10 +15,7 @@ public class ModelModerationTests
             tags: null, storageKey: storageKey, sha256: "ABCDEF0123456789");
 
     [Fact]
-    public void New_model_starts_pending()
-    {
-        NewModel().ReviewStatus.Should().Be(ModelReviewStatus.Pending);
-    }
+    public void New_model_starts_pending() => NewModel().ReviewStatus.Should().Be(ModelReviewStatus.Pending);
 
     [Fact]
     public void Approve_records_reviewer_time_and_the_reviewed_hash()

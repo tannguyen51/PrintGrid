@@ -45,18 +45,15 @@ public sealed class HubShipmentBatchesController(ISender sender, IShipmentBatchR
             new ReceiveShipmentBatchCommand(batchId, User.GetCustomerId(), request?.ScannedJobIds),
             ct);
 
-        if (result.IsFailure)
+        if (!result.IsFailure) return Ok(result.Value);
+        var status = result.Error.Code switch
         {
-            var status = result.Error.Code switch
-            {
-                "not_found" => StatusCodes.Status404NotFound,
-                "conflict" => StatusCodes.Status409Conflict,
-                _ => StatusCodes.Status400BadRequest
-            };
-            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
-        }
+            "not_found" => StatusCodes.Status404NotFound,
+            "conflict" => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status400BadRequest
+        };
+        return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
-        return Ok(result.Value);
     }
 }
 

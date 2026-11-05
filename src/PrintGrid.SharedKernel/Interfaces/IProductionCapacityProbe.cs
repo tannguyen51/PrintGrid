@@ -19,10 +19,7 @@ public sealed record TrialPlacementLine(
 /// <summary>Result of a speculative (trial-only, nothing committed) placement across the network.</summary>
 public sealed record TrialPlacementResult(
     DateOnly PromisedDeliveryDate,
-    Guid LabId,
-    Guid MachineId,
     string Basis,
-    /// <summary>Customer-safe summary: district/city only, never lab or machine identity.</summary>
     string? CustomerBasis = null);
 
 /// <summary>

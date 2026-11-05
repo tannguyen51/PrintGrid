@@ -32,7 +32,7 @@ export function NetworkStatsSection() {
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
             <Typography variant="h3" fontWeight={700} color="primary.main">
-              {isLoading ? <Skeleton width={80} sx={{ mx: 'auto' }} /> : `${((data?.averageOnTimeDeliveryRate || 1) * 100).toFixed(0)}%`}
+              {isLoading ? <Skeleton width={80} sx={{ mx: 'auto' }} /> : `${(data?.averageOnTimeDeliveryRate ?? 0).toFixed(0)}%`}
             </Typography>
             <Typography variant="subtitle1" color="text.secondary">Giao đúng cam kết</Typography>
           </Grid>

@@ -23,18 +23,9 @@ public sealed record CreateDesignRequestCommand(
     string Description,
     IReadOnlyList<string> ReferenceImageKeys) : IRequest<Result<DesignRequestDto>>;
 
-public sealed class CreateDesignRequestCommandHandler
+public sealed class CreateDesignRequestCommandHandler(IDesignRequestRepository requests, IUnitOfWork unitOfWork)
     : IRequestHandler<CreateDesignRequestCommand, Result<DesignRequestDto>>
 {
-    private readonly IDesignRequestRepository _requests;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public CreateDesignRequestCommandHandler(IDesignRequestRepository requests, IUnitOfWork unitOfWork)
-    {
-        _requests = requests;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result<DesignRequestDto>> Handle(
         CreateDesignRequestCommand command,
         CancellationToken cancellationToken)
@@ -45,8 +36,8 @@ public sealed class CreateDesignRequestCommandHandler
             command.Description,
             command.ReferenceImageKeys);
 
-        await _requests.AddAsync(request, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await requests.AddAsync(request, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(DesignRequestMapping.ToDto(request));
     }
 }
@@ -59,7 +50,7 @@ internal static class DesignRequestMapping
         request.Title,
         request.Description,
         request.Status,
-        request.QuoteId,
+        DesignRequest.QuoteId,
         request.ReferenceImageKeys,
         request.CreatedAtUtc);
 }

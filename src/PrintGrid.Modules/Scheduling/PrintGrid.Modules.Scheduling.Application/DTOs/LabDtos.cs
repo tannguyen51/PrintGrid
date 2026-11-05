@@ -4,8 +4,6 @@ namespace PrintGrid.Modules.Scheduling.Application.DTOs;
 
 public record MachineDto(
     Guid Id,
-    string Name,
-    string Model,
     PrintTechnology Technology,
     decimal BuildWidthMm,
     decimal BuildDepthMm,
@@ -19,9 +17,7 @@ public record MachineDto(
     DateTime? MaintenanceUntilUtc = null,
     string? MaintenanceReason = null,
     Domain.ValueObjects.PrinterConfiguration? PrinterConfiguration = null,
-    string ProfileStatus = "MissingProfile",
-    IReadOnlyList<Guid>? CuraProfileIds = null,
-    string? ProfileReviewReason = null);
+    string ProfileStatus = "MissingProfile");
 
 public record LabDto(
     Guid Id,
@@ -88,7 +84,6 @@ public record LabPerformanceMetricsDto(
     decimal UtilizationRate);
 
 public record LabPerformanceDto(
-    Guid LabId,
     string LabName,
     int CompletedJobsCount,
     int TotalAssignedJobsCount,
@@ -146,7 +141,6 @@ public record JobDto(
     int Quantity,
     Guid? ParentJobId,
     string QcProofStatus,
-    string? QcSelfReport,
     IReadOnlyList<string> QcProofPhotoKeys,
     Guid? QcReviewedBy,
     DateTime? QcReviewedAtUtc,
@@ -161,5 +155,4 @@ public record JobDto(
     string Technology,
     string? OrderNumber = null,
     string? ModelFileName = null,
-    string? Sha256 = null,
-    System.Text.Json.JsonElement? ProductionQuote = null);
+    string? Sha256 = null);

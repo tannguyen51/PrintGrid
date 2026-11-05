@@ -1,4 +1,3 @@
-using System.Text.Json;
 using NSubstitute;
 using PrintGrid.Modules.Admin.Application.QcKnowledge;
 using PrintGrid.Modules.Admin.Domain.Entities;
@@ -64,7 +63,7 @@ public sealed class QcKnowledgeTests
         var handler = new QcKnowledgeHandlers(repository);
 
         var result = await handler.Handle(new CreateInspectionChecklistVersionCommand(
-            "standard", [new(" surface ", " Bề mặt ", " Không rỗ ", true, 1)], Guid.NewGuid()), CancellationToken.None);
+            "standard", [new InspectionChecklistItemDto(" surface ", " Bề mặt ", " Không rỗ ", 1)], Guid.NewGuid()), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.VersionNumber.Should().Be(3);
@@ -111,7 +110,7 @@ public sealed class QcKnowledgeTests
     public void InspectionValidator_RequiresChecklistVersion()
     {
         var command = new InspectJobCommand(Guid.NewGuid(), true,
-            [new ChecklistItemResult("Bề mặt", "Pass", ItemCode: "SURFACE")], ["qc/photo.jpg"]);
+            [new ChecklistItemResult("Bề mặt", "Pass")], ["qc/photo.jpg"]);
 
         var result = new InspectJobCommandValidator().Validate(command);
 
@@ -123,7 +122,7 @@ public sealed class QcKnowledgeTests
     public void FailedInspectionValidator_RequiresDefectCode()
     {
         var command = new InspectJobCommand(Guid.NewGuid(), false,
-            [new ChecklistItemResult("Bề mặt", "Fail", ItemCode: "SURFACE")], ["qc/photo.jpg"],
+            [new ChecklistItemResult("Bề mặt", "Fail")], ["qc/photo.jpg"],
             FaultAttribution.Lab, ChecklistVersionId: Guid.NewGuid());
 
         var result = new InspectJobCommandValidator().Validate(command);
@@ -133,5 +132,5 @@ public sealed class QcKnowledgeTests
     }
 
     private static InspectionChecklistItemDto Item(string code, int order) =>
-        new(code, "Tên tiêu chí", "Điều kiện đạt", true, order);
+        new(code, "Tên tiêu chí", "Điều kiện đạt", order);
 }

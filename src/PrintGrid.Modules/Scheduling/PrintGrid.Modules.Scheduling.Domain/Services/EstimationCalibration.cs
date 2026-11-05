@@ -19,12 +19,13 @@ public static class EstimationCalibration
     /// <summary>BR-ESTIM-006: below this many valid samples the previous factor is retained.</summary>
     public const int MinimumSamples = 10;
 
-    public const decimal MinFactor = 0.5m;
-    public const decimal MaxFactor = 2.0m;
+    private const decimal _minFactor = 0.5m;
+    private const decimal _maxFactor = 2.0m;
 
     /// <summary>BR-ESTIM-003 (configurable in FR-ADMIN-002 later).</summary>
-    public const decimal HardMinRatio = 0.3m;
-    public const decimal HardMaxRatio = 3.0m;
+    private const decimal _hardMinRatio = 0.3m;
+
+    private const decimal _hardMaxRatio = 3.0m;
 
     /// <summary>BR-ESTIM-005: MAPE above 25 % is the alert threshold.</summary>
     public const decimal MapeAlertThreshold = 0.25m;
@@ -36,7 +37,7 @@ public static class EstimationCalibration
     public static IReadOnlyList<CalibrationSample> FilterOutliers(IEnumerable<CalibrationSample> samples)
     {
         var withinHardBounds = samples
-            .Where(s => s.Ratio >= HardMinRatio && s.Ratio <= HardMaxRatio)
+            .Where(s => s.Ratio is >= _hardMinRatio and <= _hardMaxRatio)
             .ToList();
 
         if (withinHardBounds.Count <= 2) return withinHardBounds;
@@ -51,9 +52,15 @@ public static class EstimationCalibration
 
         var lower = mean - 2 * standardDeviation;
         var upper = mean + 2 * standardDeviation;
-        return withinHardBounds
-            .Where(s => { var ratio = (double)s.Ratio; return ratio >= lower && ratio <= upper; })
-            .ToList();
+        return
+        [
+            .. withinHardBounds
+                .Where(s =>
+                {
+                    var ratio = (double)s.Ratio;
+                    return ratio >= lower && ratio <= upper;
+                })
+        ];
     }
 
     /// <summary>
@@ -65,15 +72,15 @@ public static class EstimationCalibration
     {
         var valid = FilterOutliers(samples);
         if (valid.Count < MinimumSamples)
-            return new CalibrationResult(false, 1.0m, valid.Count, 0m, valid);
+            return new CalibrationResult(false, 1.0m, valid.Count, 0m);
 
         var rawFactor = valid.Average(s => s.Ratio);
-        var factor = decimal.Round(Math.Clamp(rawFactor, MinFactor, MaxFactor), 3);
+        var factor = decimal.Round(Math.Clamp(rawFactor, _minFactor, _maxFactor), 3);
 
         // MAPE is stored as a 0..1 fraction: mean(|actual − estimated| / estimated).
         var mape = decimal.Round(valid.Average(s => Math.Abs(s.Ratio - 1m)), 4);
 
-        return new CalibrationResult(true, factor, valid.Count, mape, valid);
+        return new CalibrationResult(true, factor, valid.Count, mape);
     }
 
     /// <summary>Convenience for reporting/status: how many samples survive the outlier rules.</summary>
@@ -88,5 +95,4 @@ public sealed record CalibrationResult(
     bool IsSufficient,
     decimal Factor,
     int ValidSamples,
-    decimal Mape,
-    IReadOnlyList<CalibrationSample> Samples);
+    decimal Mape);

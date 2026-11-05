@@ -11,34 +11,18 @@ using PrintGrid.SharedKernel.ValueObjects;
 
 namespace PrintGrid.Modules.Customer.Application.Commands.PlaceOrder;
 
-public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Result<OrderDto>>
+public class PlaceOrderCommandHandler(
+    IQuoteRepository quotes,
+    IOrderRepository orders,
+    IModelRepository models,
+    IUnitOfWork unitOfWork,
+    IDateTimeProvider clock,
+    IConfiguration configuration)
+    : IRequestHandler<PlaceOrderCommand, Result<OrderDto>>
 {
-    private readonly IQuoteRepository _quotes;
-    private readonly IOrderRepository _orders;
-    private readonly IModelRepository _models;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IDateTimeProvider _clock;
-    private readonly IConfiguration _configuration;
-
-    public PlaceOrderCommandHandler(
-        IQuoteRepository quotes,
-        IOrderRepository orders,
-        IModelRepository models,
-        IUnitOfWork unitOfWork,
-        IDateTimeProvider clock,
-        IConfiguration configuration)
-    {
-        _quotes = quotes;
-        _orders = orders;
-        _models = models;
-        _unitOfWork = unitOfWork;
-        _clock = clock;
-        _configuration = configuration;
-    }
-
     public async Task<Result<OrderDto>> Handle(PlaceOrderCommand command, CancellationToken cancellationToken)
     {
-        var quote = await _quotes.GetByIdAsync(command.QuoteId, cancellationToken);
+        var quote = await quotes.GetByIdAsync(command.QuoteId, cancellationToken);
         if (quote is null)
             return Result.Failure<OrderDto>(Error.NotFound("Quote", command.QuoteId));
         if (quote.CustomerId != command.CustomerId)
@@ -48,25 +32,27 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
         // approval is re-checked at conversion time, before the quote is consumed.
         foreach (var modelId in quote.Items.Select(i => i.ModelId).Distinct())
         {
-            var model = await _models.GetByIdAsync(modelId, cancellationToken);
+            var model = await models.GetByIdAsync(modelId, cancellationToken);
             if (model is null || model.ReviewStatus != ModelReviewStatus.Approved)
+            {
                 return Result.Failure<OrderDto>(Error.Conflict(
                     "Một model trong báo giá chưa được duyệt nội dung hoặc đã bị từ chối."));
+            }
         }
 
-        var conversion = quote.MarkConverted(_clock.UtcNow);
+        var conversion = quote.MarkConverted(clock.UtcNow);
         if (conversion.IsFailure)
             return Result.Failure<OrderDto>(conversion.Error);
 
         var address = Address.Create(
             command.Street, command.Ward, command.District, command.City, command.PostalCode);
 
-        var sequence = await _orders.CountAsync(cancellationToken) + 1;
-        var orderNumber = $"PG-{_clock.Today:yyyyMMdd}-{sequence:D5}";
+        var sequence = await orders.CountAsync(cancellationToken) + 1;
+        var orderNumber = $"PG-{clock.Today:yyyyMMdd}-{sequence:D5}";
 
         var order = Order.CreateFromQuote(
             quote, address, orderNumber, DepositPercent(),
-            termsAccepted: command.AcceptTerms, termsAcceptedAtUtc: _clock.UtcNow);
+            termsAccepted: command.AcceptTerms, termsAcceptedAtUtc: clock.UtcNow);
 
         // Demo flow: record the full payment up front. ApplyPayment also raises
         // OrderConfirmedEvent (jobs are created immediately) and sets PaidAmount, so the
@@ -81,20 +67,20 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
 
         // When auto-confirm is disabled the order stays PaymentPending and no
         // OrderConfirmedEvent is raised until the deposit is recorded.
-        await _orders.AddAsync(order, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await orders.AddAsync(order, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(Map(order));
     }
 
     /// <summary>Defaults to true (demo): placement confirms the order without a separate payment step.</summary>
     private bool AutoConfirmOnPlace()
-        => !bool.TryParse(_configuration["Payment:AutoConfirmOnPlace"], out var enabled) || enabled;
+        => !bool.TryParse(configuration["Payment:AutoConfirmOnPlace"], out var enabled) || enabled;
 
     /// <summary>Reads "Payment:DepositPercent" (50 means 50%) and falls back to 50 when absent/invalid.</summary>
     private decimal DepositPercent()
     {
-        var raw = _configuration["Payment:DepositPercent"];
+        var raw = configuration["Payment:DepositPercent"];
         return decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var percent)
             ? Math.Clamp(percent, 0m, 100m)
             : 50m;
@@ -102,22 +88,5 @@ public class PlaceOrderCommandHandler : IRequestHandler<PlaceOrderCommand, Resul
 
     private static OrderDto Map(Order order) => new(
         order.Id,
-        order.OrderNumber,
-        order.Status.ToString(),
-        order.TotalPrice.Amount,
-        order.TotalPrice.Currency,
-        order.PromisedDeliveryDate,
-        order.CreatedAt,
-        order.DeliveredAt,
-        order.Items.Select(i => new OrderItemDto(
-            i.Id,
-            i.ModelId,
-            i.Quantity,
-            i.Configuration.MaterialCode,
-            i.Configuration.ColorCode,
-            i.Configuration.LayerHeightMm,
-            i.Configuration.InfillPercent,
-            i.UnitPrice.Amount)).ToList(),
-        order.ContractNumber,
-        order.TermsAcceptedAtUtc);
+        order.Status.ToString());
 }

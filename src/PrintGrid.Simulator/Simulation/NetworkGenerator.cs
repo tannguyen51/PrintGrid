@@ -14,14 +14,14 @@ namespace PrintGrid.Simulator.Simulation;
 /// </summary>
 public static class NetworkGenerator
 {
-    public static readonly DateTime EpochUtc = new(2026, 1, 5, 8, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime _epochUtc = new(2026, 1, 5, 8, 0, 0, DateTimeKind.Utc);
 
-    private static readonly string[] Cities =
+    private static readonly string[] _cities =
         ["Hanoi", "Ho Chi Minh City", "Da Nang", "Can Tho", "Hai Phong", "Hue", "Nha Trang", "Vung Tau"];
 
-    private static readonly string[] Colors = ["BLACK", "WHITE", "GREY", "RED", "BLUE"];
+    private static readonly string[] _colors = ["BLACK", "WHITE", "GREY", "RED", "BLUE"];
 
-    private static readonly IReadOnlyDictionary<PrintTechnology, string[]> MaterialsByTechnology =
+    private static readonly IReadOnlyDictionary<PrintTechnology, string[]> _materialsByTechnology =
         new Dictionary<PrintTechnology, string[]>
         {
             [PrintTechnology.Fdm] = ["PLA", "PETG", "ABS"],
@@ -42,7 +42,7 @@ public static class NetworkGenerator
         return new GeneratedNetwork
         {
             Seed = options.Seed,
-            EpochUtc = EpochUtc,
+            EpochUtc = _epochUtc,
             Labs = labs,
             Machines = machines,
             Orders = orders,
@@ -55,7 +55,7 @@ public static class NetworkGenerator
         var labs = new List<Lab>(count);
         for (var i = 0; i < count; i++)
         {
-            var city = Cities[random.Next(Cities.Length)];
+            var city = _cities[random.Next(_cities.Length)];
             // Reliability / transit / speed are random but seed-stable (RUN-04).
             var transitDays = random.Next(0, 4);
             var onTime = 0.70m + (decimal)random.NextDouble() * 0.29m;
@@ -112,7 +112,7 @@ public static class NetworkGenerator
                 buildVolume,
                 minLayer,
                 decimal.Round(tolerance, 2),
-                MaterialsByTechnology[technology]);
+                _materialsByTechnology[technology]);
 
             machine.AdjustSpeedFactor(decimal.Round(speedFactor, 3));
             lab.AddMachine(machine);
@@ -125,12 +125,12 @@ public static class NetworkGenerator
     private static void SeedMaterialStock(List<Lab> labs)
     {
         // The stock ledger is opt-in; seeding it lets HasStock enforce the same materials the
-        // machine supports while never blocking a colour mix (ample grams of every combo).
+        // machine supports while never blocking a color mix (ample grams of every combo).
         foreach (var lab in labs)
         {
-            foreach (var material in MaterialsByTechnology.Values.SelectMany(x => x).Distinct())
+            foreach (var material in _materialsByTechnology.Values.SelectMany(x => x).Distinct())
             {
-                foreach (var color in Colors)
+                foreach (var color in _colors)
                 {
                     lab.SetMaterialStock(material, color, 500_000m, reorderPointGrams: 1_000m);
                 }
@@ -154,7 +154,7 @@ public static class NetworkGenerator
         // stream inside roughly one 2-day window regardless of k, so the queue has real
         // contention and the four strategies produce different schedules.
         var meanGapMinutes = Math.Max(1.0, 2.0 * 24.0 * 60.0 / Math.Max(1, count));
-        var arrival = EpochUtc;
+        var arrival = _epochUtc;
 
         for (var i = 0; i < count; i++)
         {
@@ -162,9 +162,9 @@ public static class NetworkGenerator
             arrival = arrival.AddMinutes(Math.Round(gap, 3));
 
             var technology = DrawTechnology(random, availableTechnologies);
-            var materials = MaterialsByTechnology[technology];
+            var materials = _materialsByTechnology[technology];
             var material = materials[random.Next(materials.Length)];
-            var color = Colors[random.Next(Colors.Length)];
+            var color = _colors[random.Next(_colors.Length)];
 
             var techLimit = Math.Min(260m, maxDimensionByTechnology[technology]);
             var sizeClass = random.NextDouble();
@@ -250,11 +250,16 @@ public static class NetworkGenerator
         var roll = random.NextDouble();
         if (available.Contains(PrintTechnology.Fdm))
         {
-            if (roll < 0.80) return PrintTechnology.Fdm;
-            if (roll < 0.90 && available.Contains(PrintTechnology.Sla)) return PrintTechnology.Sla;
+            switch (roll)
+            {
+                case < 0.80:
+                    return PrintTechnology.Fdm;
+                case < 0.90 when available.Contains(PrintTechnology.Sla):
+                    return PrintTechnology.Sla;
+            }
+
             if (available.Contains(PrintTechnology.Sls)) return PrintTechnology.Sls;
-            if (available.Contains(PrintTechnology.Sla)) return PrintTechnology.Sla;
-            return PrintTechnology.Fdm;
+            return available.Contains(PrintTechnology.Sla) ? PrintTechnology.Sla : PrintTechnology.Fdm;
         }
 
         var ordered = available.Order().ToList();
@@ -277,7 +282,7 @@ public static class NetworkGenerator
     /// Canonical, GUID-free text for every order. This is the "exact generated order list hash"
     /// printed by <c>generate</c>; two runs with the same seed produce the same hash.
     /// </summary>
-    public static string ComputeOrderListHash(IReadOnlyList<SimOrder> orders)
+    private static string ComputeOrderListHash(IReadOnlyList<SimOrder> orders)
     {
         var builder = new StringBuilder();
         foreach (var order in orders)

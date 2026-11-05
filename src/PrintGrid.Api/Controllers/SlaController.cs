@@ -15,38 +15,31 @@ namespace PrintGrid.Api.Controllers;
 /// network is written as "no data" rather than a table of zeroes (FR-ANAL-003 AC).
 /// </summary>
 [ApiController]
-[Route("api/v1/sla")]
+[Route("api/v1/sla/report")]
 [Authorize(Policy = Policies.RequireOps)]
-public sealed class SlaController : ControllerBase
+public sealed class SlaController(ISender sender) : ControllerBase
 {
-    private const string CsvHeader =
+    private const string _csvHeader =
         "lab_name,on_time_delivery_rate,first_pass_yield,acceptance_rate,utilization_rate,completed_jobs,assigned_jobs,late_jobs";
 
-    private readonly ISender _sender;
-
-    public SlaController(ISender sender) => _sender = sender;
-
     /// <summary>GET /sla/report?labId= — JSON report; omit labId for every lab.</summary>
-    [HttpGet("report")]
+    [HttpGet("")]
     public async Task<IActionResult> GetReport([FromQuery] Guid? labId, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetNetworkSlaReportQuery(labId), cancellationToken);
-        if (result.IsFailure)
-        {
-            var status = result.Error.Code == "not_found"
-                ? StatusCodes.Status404NotFound
-                : StatusCodes.Status400BadRequest;
-            return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
-        }
+        var result = await sender.Send(new GetNetworkSlaReportQuery(labId), cancellationToken);
+        if (!result.IsFailure) return Ok(result.Value);
+        var status = result.Error.Code == "not_found"
+            ? StatusCodes.Status404NotFound
+            : StatusCodes.Status400BadRequest;
+        return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
-        return Ok(result.Value);
     }
 
     /// <summary>GET /sla/report/export?labId= — text/csv with BOM.</summary>
-    [HttpGet("report/export")]
+    [HttpGet("export")]
     public async Task<IActionResult> Export([FromQuery] Guid? labId, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetNetworkSlaReportQuery(labId), cancellationToken);
+        var result = await sender.Send(new GetNetworkSlaReportQuery(labId), cancellationToken);
         if (result.IsFailure)
         {
             var status = result.Error.Code == "not_found"
@@ -57,7 +50,7 @@ public sealed class SlaController : ControllerBase
 
         var report = result.Value;
         var csv = new StringBuilder();
-        csv.Append(CsvHeader).Append("\r\n");
+        csv.Append(_csvHeader).Append("\r\n");
 
         if (report.Labs.Count == 0)
         {
@@ -70,7 +63,7 @@ public sealed class SlaController : ControllerBase
         }
 
         return File(
-            Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(),
+            [.. Encoding.UTF8.GetPreamble(), .. Encoding.UTF8.GetBytes(csv.ToString())],
             "text/csv; charset=utf-8",
             $"printgrid-sla-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv");
     }

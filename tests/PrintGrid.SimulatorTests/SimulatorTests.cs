@@ -62,6 +62,7 @@ public sealed class SimulatorTests
         inspectionOnly.Declines.Should().Be(0);
         inspectionOnly.PrintFailures.Should().Be(0);
         inspectionOnly.Breakdowns.Should().Be(0);
+        return;
 
         SimulationMetrics RunWith(FaultConfig faults)
         {

@@ -13,28 +13,16 @@ namespace PrintGrid.Modules.Customer.Infrastructure.Slicing;
 
 public sealed class CuraQuoteOptions
 {
-    public string ExecutablePath { get; set; } = "";
-    public int TimeoutSeconds { get; set; } = 120;
-    // ConfigurationBinder does not reliably bind object keys into Guid-keyed dictionaries.
-    // Keep JSON machine ids as strings and validate/parse them at the service boundary.
-    public Dictionary<string, CuraMachineProfile> Machines { get; set; } =
+    public string ExecutablePath { get; init; } = "";
+    public int TimeoutSeconds { get; init; } = 120;
+    public Dictionary<string, RegisteredCuraSettings> Machines { get; init; } =
         new(StringComparer.OrdinalIgnoreCase);
 }
-public sealed class CuraMachineProfile
-{
-    // A resolved Cura settings JSON: global + extruder.0, extruder.1, ...
-    public string SettingsPath { get; set; } = "";
-    public Dictionary<string, string> SettingsByMaterial { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-    public string[] Materials { get; set; } = [];
-    public string[] Colors { get; set; } = [];
-    public decimal? PricePerHour { get; set; }
-    public decimal? FailureRate { get; set; }
-}
 
-public sealed class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuoteOptions> options,
+public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuoteOptions> options,
     ILogger<CuraQuoteSlicer> logger, ICuraProfileRegistry registry) : IQuoteSlicer
 {
-    private static readonly SemaphoreSlim Slots = new(2);
+    private static readonly SemaphoreSlim _slots = new(2);
     public Task<IReadOnlyList<Guid>> GetConfiguredMachineIdsAsync(CancellationToken cancellationToken) =>
         registry.GetApprovedMachineIdsAsync(cancellationToken);
     public async Task<QuoteSliceResult> SliceAsync(QuoteSliceRequest request, CancellationToken cancellationToken)
@@ -48,7 +36,7 @@ public sealed class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuoteOption
             throw new InvalidOperationException("Số màu yêu cầu vượt khả năng máy.");
         if (request.MaterialCode.Equals("RESIN", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("CuraEngine phục vụ in sợi FDM; resin cần slicer riêng.");
-        await Slots.WaitAsync(cancellationToken);
+        await _slots.WaitAsync(cancellationToken);
         var directory = Directory.CreateTempSubdirectory("printgrid-quote-");
         try
         {
@@ -86,7 +74,11 @@ public sealed class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuoteOption
             ApplyQuoteSettings(global, request.LayerHeightMm, request.InfillPercent);
             global["machine_extruder_count"] = request.Colors.Count;
             foreach (var key in settings.Select(p => p.Key).Where(k => k.StartsWith("extruder.") &&
-                int.TryParse(k[9..], out var number) && number >= request.Colors.Count).ToList()) settings.Remove(key);
+                int.TryParse(k[9..], out var number) && number >= request.Colors.Count).ToList())
+            {
+                settings.Remove(key);
+            }
+
             for (var index = 0; index < request.Colors.Count; index++)
             {
                 if (settings[$"extruder.{index}"] is not JsonObject extruder)
@@ -102,29 +94,23 @@ public sealed class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuoteOption
             var output = Path.Combine(directory.FullName, "quote.gcode");
             var start = new ProcessStartInfo(config.ExecutablePath) { UseShellExecute = false, CreateNoWindow = true,
                 WorkingDirectory = directory.FullName, RedirectStandardError = true, RedirectStandardOutput = true };
-            // Turn resolved settings into definition JSONs with literal default_value fields.
-            // Standard -j/-e/-l works with released CuraEngine versions; no GUI or -r required.
-            async Task<string> Definition(string name, JsonObject values)
-            {
-                var literalSettings = new JsonObject();
-                foreach (var pair in values)
-                    literalSettings[pair.Key] = new JsonObject { ["default_value"] = pair.Value?.DeepClone() };
-                var path = Path.Combine(directory.FullName, name);
-                await File.WriteAllTextAsync(path, new JsonObject { ["settings"] = literalSettings }.ToJsonString(), cancellationToken);
-                return path;
-            }
+
             foreach (var a in new[] { "slice", "-j", await Definition("global.def.json", global), "-o", output }) start.ArgumentList.Add(a);
             for (var i = 0; i < request.Colors.Count; i++)
             {
                 foreach (var a in new[] { $"-e{i}", "-j", await Definition($"extruder-{i}.def.json", settings[$"extruder.{i}"]!.AsObject()),
                     "-l", Path.Combine(directory.FullName, $"part-{i}.stl"), "-s", "center_object=false",
-                    "-s", "mesh_position_x=0", "-s", "mesh_position_y=0", "-s", "mesh_position_z=0" }) start.ArgumentList.Add(a);
+                    "-s", "mesh_position_x=0", "-s", "mesh_position_y=0", "-s", "mesh_position_z=0" })
+                {
+                    start.ArgumentList.Add(a);
+                }
             }
-            using var process = new Process { StartInfo = start };
+            using var process = new Process();
+            process.StartInfo = start;
             var started = false;
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(config.TimeoutSeconds, 10, 600)));
-            string summary = "";
+            string summary;
             try
             {
                 started = process.Start();
@@ -145,10 +131,22 @@ public sealed class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuoteOption
             var result = ParseEngineSummary(summary, request.Colors, request.Density, request.Quantity)
                 ?? ParseGcodeHeader(File.ReadLines(output).Take(10000), request.Colors, request.Density, request.Quantity, diameters);
             return result with { PricePerHour = profile.PricePerHour, FailureRate = profile.FailureRate };
+
+            // Turn resolved settings into definition JSONs with literal default_value fields.
+            // Standard -j/-e/-l works with released CuraEngine versions; no GUI or -r required.
+            async Task<string> Definition(string name, JsonObject values)
+            {
+                var literalSettings = new JsonObject();
+                foreach (var pair in values)
+                    literalSettings[pair.Key] = new JsonObject { ["default_value"] = pair.Value?.DeepClone() };
+                var path = Path.Combine(directory.FullName, name);
+                await File.WriteAllTextAsync(path, new JsonObject { ["settings"] = literalSettings }.ToJsonString(), cancellationToken);
+                return path;
+            }
         }
         catch (Exception e) when (e is IOException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException or FormatException or IndexOutOfRangeException)
         { logger.LogWarning(e, "Cura quote configuration/input failure"); throw new InvalidOperationException("Không thể chạy slicer. Kiểm tra file, đường dẫn CuraEngine và profile máy."); }
-        finally { try { directory.Delete(recursive: true); } finally { Slots.Release(); } }
+        finally { try { directory.Delete(recursive: true); } finally { _slots.Release(); } }
     }
 
     private static async Task<string> Drain(StreamReader reader, CancellationToken token)
@@ -161,8 +159,6 @@ public sealed class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuoteOption
 
     public static void ApplyQuoteSettings(JsonObject settings, decimal layerHeight, int infillPercent)
     {
-        decimal? Number(string key) => decimal.TryParse(settings[key]?.ToString(), NumberStyles.Float,
-            CultureInfo.InvariantCulture, out var n) ? n : null;
         var previousLayer = Number("layer_height");
         var previousDensity = Number("infill_sparse_density");
         var previousDistance = Number("infill_line_distance");
@@ -175,12 +171,16 @@ public sealed class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuoteOption
         settings["layer_height"] = layerHeight;
         settings["layer_height_0"] = layerHeight;
         settings["infill_sparse_density"] = infillPercent;
+        return;
+
+        decimal? Number(string key) => decimal.TryParse(settings[key]?.ToString(), NumberStyles.Float,
+            CultureInfo.InvariantCulture, out var n) ? n : null;
     }
 
     public static QuoteSliceResult? ParseEngineSummary(string summary, IReadOnlyList<string> colors, decimal density, int quantity)
     {
-        var time = System.Text.RegularExpressions.Regex.Matches(summary, @"(?:Print time \(s\)|Total print time):\s*([\d.eE+\-]+)").LastOrDefault();
-        var first = System.Text.RegularExpressions.Regex.Matches(summary, @"Filament \(mm\^3\):\s*([\d.eE+\-]+)").LastOrDefault();
+        var time = MyRegex().Matches(summary).LastOrDefault();
+        var first = MyRegex1().Matches(summary).LastOrDefault();
         if (time is null || first is null) return null;
         var volumes = new decimal[colors.Count];
         volumes[0] = decimal.Parse(first.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture);
@@ -190,8 +190,10 @@ public sealed class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuoteOption
             if (index >= 0 && index < volumes.Length) volumes[index] = decimal.Parse(match.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture);
         }
         // Reuse strict validation; CLI summaries are always mm³, never filament length.
-        return ParseGcodeHeader(new[] { ";TIME:" + time.Groups[1].Value,
-            ";Filament used: " + string.Join(",", volumes.Select(v => v.ToString(CultureInfo.InvariantCulture) + "mm3")) }, colors, density, quantity);
+        return ParseGcodeHeader([
+            ";TIME:" + time.Groups[1].Value,
+            ";Filament used: " + string.Join(",", volumes.Select(v => v.ToString(CultureInfo.InvariantCulture) + "mm3"))
+        ], colors, density, quantity);
     }
 
     public static QuoteSliceResult ParseGcodeHeader(IEnumerable<string> lines, IReadOnlyList<string> colors, decimal density, int quantity,
@@ -204,30 +206,51 @@ public sealed class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuoteOption
         {
             if (line.StartsWith(";TIME:", StringComparison.Ordinal)) seconds = decimal.Parse(line[6..].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture);
             if (line.StartsWith(";PRINT.TIME:", StringComparison.Ordinal)) seconds = decimal.Parse(line[12..].Trim(), CultureInfo.InvariantCulture);
-            var match = System.Text.RegularExpressions.Regex.Match(line, @"^;EXTRUDER_TRAIN\.(\d+)\.MATERIAL\.VOLUME_USED:([\d.]+)");
+            var match = MyRegex2().Match(line);
             if (match.Success) griffin[int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture)] = decimal.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
-            if (line.StartsWith(";Filament used:", StringComparison.Ordinal))
-            {
-                var raw = line[15..].Trim();
-                volumes = raw.Split(',').Select((v, i) =>
+            if (!line.StartsWith(";Filament used:", StringComparison.Ordinal)) continue;
+            var raw = line[15..].Trim();
+            volumes =
+            [
+                .. raw.Split(',').Select((v, i) =>
                 {
                     v = v.Trim();
-                    if (v.EndsWith("mm3", StringComparison.Ordinal)) return decimal.Parse(v[..^3], CultureInfo.InvariantCulture);
-                    if (v.EndsWith('m') && filamentDiameters is not null && i < filamentDiameters.Count && filamentDiameters[i] > 0)
+                    if (v.EndsWith("mm3", StringComparison.Ordinal))
+                        return decimal.Parse(v[..^3], CultureInfo.InvariantCulture);
+                    if (!v.EndsWith('m') || filamentDiameters is null || i >= filamentDiameters.Count ||
+                        filamentDiameters[i] <= 0)
                     {
-                        var lengthMm = decimal.Parse(v[..^1], CultureInfo.InvariantCulture) * 1000m;
-                        var diameter = filamentDiameters[i];
-                        return lengthMm * (decimal)Math.PI * diameter * diameter / 4m;
+                        throw new InvalidDataException(
+                            "Slicer trả đơn vị vật liệu không hỗ trợ hoặc profile thiếu đường kính sợi nhựa.");
                     }
-                    throw new InvalidDataException("Slicer trả đơn vị vật liệu không hỗ trợ hoặc profile thiếu đường kính sợi nhựa.");
-                }).ToArray();
-            }
+
+                    var lengthMm = decimal.Parse(v[..^1], CultureInfo.InvariantCulture) * 1000m;
+                    var diameter = filamentDiameters[i];
+                    return lengthMm * (decimal)Math.PI * diameter * diameter / 4m;
+                })
+            ];
         }
-        if (volumes is null && griffin.Count > 0) volumes = Enumerable.Range(0, griffin.Keys.Max() + 1).Select(i => griffin.GetValueOrDefault(i)).ToArray();
+        if (volumes is null && griffin.Count > 0)
+        {
+            volumes =
+                [.. Enumerable.Range(0, griffin.Keys.Max() + 1).Select(i => griffin.GetValueOrDefault(i))];
+        }
+
         if (density <= 0 || quantity <= 0 || seconds is null or <= 0 || volumes is null || volumes.Length < colors.Count ||
             volumes.Take(colors.Count).Any(v => v <= 0) || volumes.Skip(colors.Count).Any(v => v != 0))
+        {
             throw new InvalidDataException("Slicer chưa trả đủ thời gian hoặc vật liệu từng màu.");
-        return new(colors.Select((c, i) => new QuoteColorUsage(c, volumes[i] / 1000m * density * quantity)).ToList(),
-            seconds.Value / 60m * quantity, "CuraEngine · in từng bản nối tiếp");
+        }
+
+        return new QuoteSliceResult(
+            [.. colors.Select((c, i) => new QuoteColorUsage(c, volumes[i] / 1000m * density * quantity))],
+            seconds.Value / 60m * quantity);
     }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"(?:Print time \(s\)|Total print time):\s*([\d.eE+\-]+)")]
+    private static partial System.Text.RegularExpressions.Regex MyRegex();
+    [System.Text.RegularExpressions.GeneratedRegex(@"Filament \(mm\^3\):\s*([\d.eE+\-]+)")]
+    private static partial System.Text.RegularExpressions.Regex MyRegex1();
+    [System.Text.RegularExpressions.GeneratedRegex(@"^;EXTRUDER_TRAIN\.(\d+)\.MATERIAL\.VOLUME_USED:([\d.]+)")]
+    private static partial System.Text.RegularExpressions.Regex MyRegex2();
 }

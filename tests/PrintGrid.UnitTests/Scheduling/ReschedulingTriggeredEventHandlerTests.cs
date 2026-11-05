@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PrintGrid.Modules.Scheduling.Application.Abstractions;
@@ -61,11 +60,11 @@ public class ReschedulingTriggeredEventHandlerTests
         var job = PrintingJob();
         _jobs.GetByIdAsync(job.Id, Arg.Any<CancellationToken>()).Returns(job);
 
-        await Handler().Handle(new ReschedulingTriggeredEvent(job.Id, "lab_decline", job.InternalDueDate), default);
+        await Handler().Handle(new ReschedulingTriggeredEvent(job.Id, "lab_decline"), CancellationToken.None);
 
         await _engine.DidNotReceiveWithAnyArgs()
-            .AssignAsync(default!, default!, default);
-        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!, default);
+            .AssignAsync(null!, null!);
+        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(null!, null!);
         job.Status.Should().Be(JobStatus.InProgress,
             "BR-SCHED-007 locks jobs with status IN_PROGRESS");
     }
@@ -76,10 +75,10 @@ public class ReschedulingTriggeredEventHandlerTests
         var job = FailedJob();
         _jobs.GetByIdAsync(job.Id, Arg.Any<CancellationToken>()).Returns(job);
 
-        await Handler().Handle(new ReschedulingTriggeredEvent(job.Id, "print_failure", job.InternalDueDate), default);
+        await Handler().Handle(new ReschedulingTriggeredEvent(job.Id, "print_failure"), CancellationToken.None);
 
-        await _engine.DidNotReceiveWithAnyArgs().AssignAsync(default!, default!, default);
-        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!, default);
+        await _engine.DidNotReceiveWithAnyArgs().AssignAsync(null!, null!);
+        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(null!, null!);
     }
 
     [Fact]
@@ -91,7 +90,7 @@ public class ReschedulingTriggeredEventHandlerTests
         var declinedLabId = Guid.NewGuid();
 
         await Handler().Handle(
-            new ReschedulingTriggeredEvent(job.Id, "lab_decline", job.InternalDueDate, declinedLabId), default);
+            new ReschedulingTriggeredEvent(job.Id, "lab_decline", declinedLabId), CancellationToken.None);
 
         await _engine.Received(1).AssignAsync(
             job,
@@ -100,7 +99,7 @@ public class ReschedulingTriggeredEventHandlerTests
                 r.TimeBudget == TimeSpan.FromSeconds(AssignmentEngine.DefaultTimeBudgetSeconds) &&
                 r.ExcludeLabId == declinedLabId),
             Arg.Any<CancellationToken>());
-        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!, default);
+        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(null!, null!);
     }
 
     [Fact]
@@ -110,7 +109,7 @@ public class ReschedulingTriggeredEventHandlerTests
         _jobs.GetByIdAsync(job.Id, Arg.Any<CancellationToken>()).Returns(job);
         EngineReturns(Outcome(false, AssignmentOutcomes.NoFeasibleSlot, "No capable machine has capacity"));
 
-        await Handler().Handle(new ReschedulingTriggeredEvent(job.Id, "lab_decline", job.InternalDueDate), default);
+        await Handler().Handle(new ReschedulingTriggeredEvent(job.Id, "lab_decline"), CancellationToken.None);
 
         await _shortfall.Received(1).HandleAsync(
             job, "No capable machine has capacity", Arg.Any<CancellationToken>());
@@ -123,9 +122,9 @@ public class ReschedulingTriggeredEventHandlerTests
         _jobs.GetByIdAsync(job.Id, Arg.Any<CancellationToken>()).Returns(job);
         EngineReturns(Outcome(false, AssignmentOutcomes.PlacementRace, "boom"));
 
-        await Handler().Handle(new ReschedulingTriggeredEvent(job.Id, "lab_decline", job.InternalDueDate), default);
+        await Handler().Handle(new ReschedulingTriggeredEvent(job.Id, "lab_decline"), CancellationToken.None);
 
-        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!, default);
+        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(null!, null!);
     }
 
     [Fact]
@@ -133,8 +132,8 @@ public class ReschedulingTriggeredEventHandlerTests
     {
         _jobs.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Job?)null);
 
-        await Handler().Handle(new ReschedulingTriggeredEvent(Guid.NewGuid(), "lab_decline", DateOnly.FromDateTime(DateTime.UtcNow)), default);
+        await Handler().Handle(new ReschedulingTriggeredEvent(Guid.NewGuid(), "lab_decline"), CancellationToken.None);
 
-        await _engine.DidNotReceiveWithAnyArgs().AssignAsync(default!, default!, default);
+        await _engine.DidNotReceiveWithAnyArgs().AssignAsync(null!, null!);
     }
 }

@@ -1,4 +1,3 @@
-using FluentAssertions;
 using MediatR;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -43,7 +42,7 @@ public sealed class JobStatusIntegrationPublisherTests
     {
         _jobs.GetByIdAsync(passed.Id, Arg.Any<CancellationToken>()).Returns(passed);
         _jobs.GetByOrderItemIdAsync(passed.OrderItemId, Arg.Any<CancellationToken>())
-            .Returns(new[] { passed }.Concat(siblingJobs).ToList());
+            .Returns([passed, .. siblingJobs]);
     }
 
     [Fact]
@@ -54,7 +53,7 @@ public sealed class JobStatusIntegrationPublisherTests
         var pendingSibling = NewJob(orderItemId);
         PublishFrom(passed, pendingSibling);
 
-        await Publisher().Handle(new JobInspectionPassedEvent(passed.Id, []), default);
+        await Publisher().Handle(new JobInspectionPassedEvent(passed.Id), CancellationToken.None);
 
         await _publisher.DidNotReceive()
             .Publish(Arg.Any<ProductionStatusChangedIntegrationEvent>(), Arg.Any<CancellationToken>());
@@ -72,7 +71,7 @@ public sealed class JobStatusIntegrationPublisherTests
         printing.Start(now);
         PublishFrom(passed, printing);
 
-        await Publisher().Handle(new JobInspectionPassedEvent(passed.Id, []), default);
+        await Publisher().Handle(new JobInspectionPassedEvent(passed.Id), CancellationToken.None);
 
         await _publisher.DidNotReceive()
             .Publish(Arg.Any<ProductionStatusChangedIntegrationEvent>(), Arg.Any<CancellationToken>());
@@ -86,7 +85,7 @@ public sealed class JobStatusIntegrationPublisherTests
         var second = CompletedJob(orderItemId);
         PublishFrom(first, second);
 
-        await Publisher().Handle(new JobInspectionPassedEvent(first.Id, []), default);
+        await Publisher().Handle(new JobInspectionPassedEvent(first.Id), CancellationToken.None);
 
         await _publisher.Received(1).Publish(
             Arg.Is<ProductionStatusChangedIntegrationEvent>(integrationEvent =>
@@ -104,7 +103,7 @@ public sealed class JobStatusIntegrationPublisherTests
         cancelledOriginal.Split([1, 1]).IsSuccess.Should().BeTrue();
         PublishFrom(passedChild, cancelledOriginal);
 
-        await Publisher().Handle(new JobInspectionPassedEvent(passedChild.Id, []), default);
+        await Publisher().Handle(new JobInspectionPassedEvent(passedChild.Id), CancellationToken.None);
 
         await _publisher.Received(1).Publish(
             Arg.Is<ProductionStatusChangedIntegrationEvent>(integrationEvent =>
@@ -117,10 +116,10 @@ public sealed class JobStatusIntegrationPublisherTests
     {
         _jobs.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Job?)null);
 
-        await Publisher().Handle(new JobInspectionPassedEvent(Guid.NewGuid(), []), default);
+        await Publisher().Handle(new JobInspectionPassedEvent(Guid.NewGuid()), CancellationToken.None);
 
         await _publisher.DidNotReceive()
             .Publish(Arg.Any<ProductionStatusChangedIntegrationEvent>(), Arg.Any<CancellationToken>());
-        await _jobs.DidNotReceiveWithAnyArgs().GetByOrderItemIdAsync(default, default);
+        await _jobs.DidNotReceiveWithAnyArgs().GetByOrderItemIdAsync(Guid.Empty);
     }
 }

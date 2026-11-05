@@ -14,7 +14,7 @@ public class AssignmentScorerTests
         var tight = Placement(reliability: 0.9m, endOffsetHours: 160, utilization: 0.5m, cost: 50m);
         var roomy = Placement(reliability: 0.9m, endOffsetHours: 24, utilization: 0.5m, cost: 50m);
 
-        var ranked = _scorer.Rank(job, new[] { tight, roomy }, maxCostAcrossPlacements: 50m);
+        var ranked = _scorer.Rank(job, [tight, roomy], maxCostAcrossPlacements: 50m);
 
         ranked[0].Placement.Should().BeSameAs(roomy);
         ranked[0].Breakdown["due_date_slack"].Should().BeGreaterThan(ranked[1].Breakdown["due_date_slack"]);
@@ -56,10 +56,7 @@ public class AssignmentScorerTests
     }
 
     [Fact]
-    public void Weights_sum_to_one()
-    {
-        ScoringWeights.Default.Total.Should().Be(1.0m);
-    }
+    public void Weights_sum_to_one() => ScoringWeights.Default.Total.Should().Be(1.0m);
 
     [Fact]
     public void Changing_the_weight_period_changes_the_next_ranking()

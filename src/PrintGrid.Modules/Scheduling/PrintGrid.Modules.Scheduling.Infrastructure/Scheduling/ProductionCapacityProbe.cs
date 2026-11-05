@@ -13,19 +13,15 @@ namespace PrintGrid.Modules.Scheduling.Infrastructure.Scheduling;
 /// booked windows, then adds lab→hub transit and a hub processing buffer (BR-SCHED-001
 /// backward scheduling basis). Null result = no machine in the network can produce it.
 /// </summary>
-public class ProductionCapacityProbe : IProductionCapacityProbe
+public abstract class ProductionCapacityProbe(PrintGridDbContext context) : IProductionCapacityProbe
 {
     /// <summary>Hub days for QC + consolidation between arrival and ship-out (cfg in FR-ADMIN-002 later).</summary>
-    public const int HubProcessingDays = 1;
+    private const int _hubProcessingDays = 1;
 
     private static readonly JobStatus[] _blockingStatuses =
-    {
+    [
         JobStatus.Assigned, JobStatus.Accepted, JobStatus.InProgress
-    };
-
-    private readonly PrintGridDbContext _context;
-
-    public ProductionCapacityProbe(PrintGridDbContext context) => _context = context;
+    ];
 
     public async Task<TrialPlacementResult?> FindEarliestFeasibleDeliveryAsync(
         IReadOnlyList<TrialPlacementLine> lines,
@@ -41,7 +37,7 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
             specs.Add(spec);
         }
 
-        var labs = await _context.Set<Lab>()
+        var labs = await context.Set<Lab>()
             .Include(l => l.Machines)
             .Where(l => l.IsActive && l.Status == LabStatus.Active && l.IsInGoodStanding)
             .ToListAsync(cancellationToken);
@@ -52,7 +48,7 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
             .ToList();
         if (cappedLabIds.Count > 0)
         {
-            var activeCounts = await _context.Set<Job>()
+            var activeCounts = await context.Set<Job>()
                 .Where(j => j.LabId != null
                             && cappedLabIds.Contains(j.LabId.Value)
                             && _blockingStatuses.Contains(j.Status))
@@ -68,7 +64,7 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
         }
 
         var candidates = labs
-            .Where(l => l.IsDeclarationComplete && l.IsInGoodStanding)
+            .Where(l => l is { IsDeclarationComplete: true, IsInGoodStanding: true })
             .SelectMany(l => l.Machines.Select(m => (Lab: l, Machine: m)))
             .Where(x => (x.Machine.Status is MachineStatus.Idle or MachineStatus.Printing)
                         && !x.Machine.IsInMaintenanceAt(notBeforeUtc))
@@ -77,7 +73,7 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
         if (candidates.Count == 0) return null;
 
         var machineIds = candidates.Select(x => x.Machine.Id).ToList();
-        var bookedRows = await _context.Set<Job>()
+        var bookedRows = await context.Set<Job>()
             .Where(j => j.MachineId != null
                         && machineIds.Contains(j.MachineId.Value)
                         && _blockingStatuses.Contains(j.Status)
@@ -102,35 +98,35 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
             if (!specs.All(machine.Supports)) continue;
 
             var windows = bookedByMachine.TryGetValue(machine.Id, out var w)
-                ? new List<(DateTime Start, DateTime End)>(w)
+                ? [.. w]
                 : new List<(DateTime Start, DateTime End)>();
-            if (machine.MaintenanceFromUtc.HasValue && machine.MaintenanceUntilUtc.HasValue && machine.MaintenanceUntilUtc.Value > notBeforeUtc)
+            if (machine is { MaintenanceFromUtc: not null, MaintenanceUntilUtc: not null } && machine.MaintenanceUntilUtc.Value > notBeforeUtc)
             {
                 windows.Add((machine.MaintenanceFromUtc.Value, machine.MaintenanceUntilUtc.Value));
                 windows.Sort((a, b) => a.Start.CompareTo(b.Start));
             }
             var cursor = notBeforeUtc;
 
-            foreach (var (line, spec) in lines.Zip(specs))
+            foreach (var (line, _) in lines.Zip(specs))
             {
                 var duration = TimeSpan.FromMinutes(line.RequiredMachineId.HasValue ? line.TotalMinutes
                     : line.TotalMinutes / (double)machine.SpeedFactor);
-                foreach (var booked in windows)
+                foreach (var (start, end) in windows)
                 {
-                    if (booked.Start - cursor >= duration) break;   // fits in this gap
-                    if (booked.End > cursor) cursor = booked.End;   // pushed past it
+                    if (start - cursor >= duration) break;   // fits in this gap
+                    if (end > cursor) cursor = end;   // pushed past it
                 }
                 cursor = cursor.Add(duration);                      // serial production per machine
             }
 
-            var promised = DateOnly.FromDateTime(cursor).AddDays(lab.TransitDaysToHub + HubProcessingDays);
+            var promised = DateOnly.FromDateTime(cursor).AddDays(lab.TransitDaysToHub + _hubProcessingDays);
 
             if (best is null || promised < best.PromisedDeliveryDate)
             {
                 // Internal basis keeps the lab/machine identity for Ops and the decision log.
                 var internalBasis =
                     $"In xong ước tính {cursor:dd/MM HH:mm} UTC tại {lab.Name} · máy {machine.Name}, " +
-                    $"cộng {lab.TransitDaysToHub} ngày vận chuyển về hub + {HubProcessingDays} ngày hub xử lý";
+                    $"cộng {lab.TransitDaysToHub} ngày vận chuyển về hub + {_hubProcessingDays} ngày hub xử lý";
 
                 // Customer-facing summary: district/city only — never the lab name, machine
                 // name or street address (the customer must not be able to identify the shop).
@@ -143,8 +139,6 @@ public class ProductionCapacityProbe : IProductionCapacityProbe
 
                 best = new TrialPlacementResult(
                     promised,
-                    lab.Id,
-                    machine.Id,
                     internalBasis,
                     customerBasis);
             }

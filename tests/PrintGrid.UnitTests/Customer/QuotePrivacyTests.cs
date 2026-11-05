@@ -7,9 +7,9 @@ namespace PrintGrid.UnitTests.Customer;
 
 public class QuotePrivacyTests
 {
-    private const string InternalBasis =
+    private const string _internalBasis =
         "In xong ước tính 05/11 10:00 UTC tại Xưởng In Bí Mật · máy Prusa MK4, cộng 1 ngày vận chuyển về hub";
-    private const string CustomerSummary =
+    private const string _customerSummary =
         "In tại Quận Tân Bình, TP. Hồ Chí Minh — hoàn tất dự kiến 05/11 10:00 UTC; cộng 1 ngày vận chuyển về hub";
 
     [Fact]
@@ -20,7 +20,7 @@ public class QuotePrivacyTests
         var dto = QuoteMappings.ToCustomerDto(quote);
 
         dto.PlacementBasis.Should().BeNull("the lab and machine identity must never reach the customer");
-        dto.CustomerPlacementSummary.Should().Be(CustomerSummary);
+        dto.CustomerPlacementSummary.Should().Be(_customerSummary);
     }
 
     [Fact]
@@ -38,8 +38,8 @@ public class QuotePrivacyTests
     {
         var dto = QuoteMappings.ToDto(DraftQuoteWithPlacement());
 
-        dto.PlacementBasis.Should().Be(InternalBasis);
-        dto.CustomerPlacementSummary.Should().Be(CustomerSummary);
+        dto.PlacementBasis.Should().Be(_internalBasis);
+        dto.CustomerPlacementSummary.Should().Be(_customerSummary);
     }
 
     private static Quote DraftQuoteWithPlacement()
@@ -61,8 +61,8 @@ public class QuotePrivacyTests
         quote.MarkDraft(
             DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
             "v1",
-            InternalBasis,
-            CustomerSummary);
+            _internalBasis,
+            _customerSummary);
 
         return quote;
     }

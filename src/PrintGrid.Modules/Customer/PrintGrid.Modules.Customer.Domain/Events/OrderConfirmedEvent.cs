@@ -3,10 +3,9 @@ using PrintGrid.SharedKernel.Common;
 namespace PrintGrid.Modules.Customer.Domain.Events;
 
 public sealed record OrderConfirmedEvent(
-    Guid OrderId,
-    Guid CustomerId,
-    DateOnly PromisedDeliveryDate,
-    IReadOnlyCollection<OrderConfirmedItem> Items) : DomainEvent;
+    Guid OrderId = default,
+    IReadOnlyList<OrderConfirmedItem>? Items = null,
+    DateOnly PromisedDeliveryDate = default) : DomainEvent;
 
 public sealed record OrderConfirmedItem(
     Guid OrderItemId,
@@ -15,12 +14,11 @@ public sealed record OrderConfirmedItem(
     string MaterialCode,
     string ColorCode,
     decimal LayerHeightMm,
-    int InfillPercent,
-    decimal ToleranceMm,
     int EstimatedPrintMinutes,
     decimal EstimatedMaterialGrams,
     decimal? BoundingWidthMm,
     decimal? BoundingDepthMm,
     decimal? BoundingHeightMm,
     string? CalculationJson = null,
-    Guid? QuotedMachineId = null);
+    Guid? QuotedMachineId = null,
+    decimal ToleranceMm = 0.2m);

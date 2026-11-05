@@ -6,32 +6,25 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Customer.Application.Commands.Auth.ResetPassword;
 
-public sealed class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand, Result>
+public sealed class ResetPasswordCommandHandler(
+    ICustomerRepository customers,
+    IUnitOfWork unitOfWork,
+    IPasswordHasher passwordHasher)
+    : IRequestHandler<ResetPasswordCommand, Result>
 {
-    private readonly ICustomerRepository _customers;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IPasswordHasher _passwordHasher;
-
-    public ResetPasswordCommandHandler(ICustomerRepository customers, IUnitOfWork unitOfWork, IPasswordHasher passwordHasher)
-    {
-        _customers = customers;
-        _unitOfWork = unitOfWork;
-        _passwordHasher = passwordHasher;
-    }
-
     public async Task<Result> Handle(ResetPasswordCommand command, CancellationToken cancellationToken)
     {
-        var customer = await _customers.GetByEmailAsync(command.Email, cancellationToken);
+        var customer = await customers.GetByEmailAsync(command.Email, cancellationToken);
         if (customer is null ||
             !customer.IsPasswordResetTokenValid(DateTime.UtcNow) ||
             customer.PasswordResetTokenHash is null ||
-            !_passwordHasher.Verify(command.Token, customer.PasswordResetTokenHash))
+            !passwordHasher.Verify(command.Token, customer.PasswordResetTokenHash))
         {
             return Result.Failure(new Error("invalid_reset_token", "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn"));
         }
 
-        customer.ResetPassword(_passwordHasher.Hash(command.NewPassword.Trim()));
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        customer.ResetPassword(passwordHasher.Hash(command.NewPassword.Trim()));
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
 }

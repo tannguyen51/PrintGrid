@@ -4,12 +4,12 @@ namespace PrintGrid.Api.Models;
 
 public static class ModelFileInspector
 {
-    private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> _allowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".stl", ".obj", ".3mf", ".glb"
     };
 
-    public static bool IsAllowedExtension(string extension) => AllowedExtensions.Contains(extension);
+    public static bool IsAllowedExtension(string extension) => _allowedExtensions.Contains(extension);
 
     public static async Task<string?> ValidateContentAsync(
         Stream content,

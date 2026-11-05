@@ -6,23 +6,23 @@ namespace PrintGrid.Modules.Scheduling.Domain.Entities;
 public sealed class CuraProfile : Entity<Guid>
 {
     public string Name { get; private set; } = "";
-    public string Manufacturer { get; private set; } = "";
-    public string MachineModel { get; private set; } = "";
-    public string MaterialCode { get; private set; } = "";
+    public string Manufacturer { get; private init; } = "";
+    public string MachineModel { get; private init; } = "";
+    public string MaterialCode { get; private init; } = "";
     public string Version { get; private set; } = "";
     public string EngineVersion { get; private set; } = "";
-    public decimal NozzleDiameterMm { get; private set; }
-    public decimal FilamentDiameterMm { get; private set; }
-    public int ExtruderCount { get; private set; }
-    public int MaximumColorSlots { get; private set; }
-    public decimal WidthMm { get; private set; }
-    public decimal DepthMm { get; private set; }
-    public decimal HeightMm { get; private set; }
-    public bool HeatedBed { get; private set; }
-    public decimal RequiredNozzleTemperatureC { get; private set; }
-    public decimal RequiredBedTemperatureC { get; private set; }
+    public decimal NozzleDiameterMm { get; private init; }
+    public decimal FilamentDiameterMm { get; private init; }
+    public int ExtruderCount { get; private init; }
+    public int MaximumColorSlots { get; private init; }
+    public decimal WidthMm { get; private init; }
+    public decimal DepthMm { get; private init; }
+    public decimal HeightMm { get; private init; }
+    public bool HeatedBed { get; private init; }
+    public decimal RequiredNozzleTemperatureC { get; private init; }
+    public decimal RequiredBedTemperatureC { get; private init; }
     public string SettingsJson { get; private set; } = "";
-    public bool IsActive { get; private set; } = true;
+    public static bool IsActive => true;
     public DateTime CreatedAtUtc { get; private set; }
 
     private CuraProfile() { }
@@ -41,12 +41,11 @@ public sealed class CuraProfile : Entity<Guid>
             SettingsJson = settingsJson, CreatedAtUtc = DateTime.UtcNow
         };
 
-    public bool Matches(Machine m) => IsActive && m.Technology == Enums.PrintTechnology.Fdm &&
-        m.PrinterConfiguration is { } c &&
-        Manufacturer == c.Manufacturer.Trim().ToUpperInvariant() && MachineModel == m.Model.Trim().ToUpperInvariant() &&
-        NozzleDiameterMm == c.NozzleDiameterMm && FilamentDiameterMm == c.FilamentDiameterMm &&
-        ExtruderCount == c.ExtruderCount && MaximumColorSlots == c.MaximumColorSlots &&
-        WidthMm == m.BuildVolume.WidthMm && DepthMm == m.BuildVolume.DepthMm && HeightMm == m.BuildVolume.HeightMm &&
-        HeatedBed == c.HeatedBed && RequiredNozzleTemperatureC <= c.MaxNozzleTemperatureC &&
-        RequiredBedTemperatureC <= c.MaxBedTemperatureC && m.SupportedMaterials.Contains(MaterialCode);
+    public bool Matches(Machine m) => IsActive && m is { Technology: Enums.PrintTechnology.Fdm, PrinterConfiguration: { } c } &&
+                                      Manufacturer.Equals(c.Manufacturer.Trim(), StringComparison.InvariantCultureIgnoreCase) && MachineModel.Equals(m.Model.Trim(), StringComparison.InvariantCultureIgnoreCase) &&
+                                      NozzleDiameterMm == c.NozzleDiameterMm && FilamentDiameterMm == c.FilamentDiameterMm &&
+                                      ExtruderCount == c.ExtruderCount && MaximumColorSlots == c.MaximumColorSlots &&
+                                      WidthMm == m.BuildVolume.WidthMm && DepthMm == m.BuildVolume.DepthMm && HeightMm == m.BuildVolume.HeightMm &&
+                                      HeatedBed == c.HeatedBed && RequiredNozzleTemperatureC <= c.MaxNozzleTemperatureC &&
+                                      RequiredBedTemperatureC <= c.MaxBedTemperatureC && m.SupportedMaterials.Contains(MaterialCode);
 }

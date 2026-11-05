@@ -29,8 +29,7 @@ public sealed record ReceiveShipmentBatchResultDto(
     Guid BatchId,
     string Status,
     int ReceivedJobCount,
-    DateTime ReceivedAtUtc,
-    Guid? ReceivedByUserId);
+    DateTime ReceivedAtUtc);
 
 public sealed class ReceiveShipmentBatchCommandHandler(
     IShipmentBatchRepository batches,
@@ -108,8 +107,7 @@ public sealed class ReceiveShipmentBatchCommandHandler(
             batch.Id,
             batch.Status.ToString(),
             batchJobs.Count,
-            now,
-            request.ReceivedByUserId));
+            now));
     }
 
     private static string Format(IReadOnlyList<Guid> ids) =>

@@ -1,5 +1,4 @@
 using FluentValidation;
-using PrintGrid.Modules.Scheduling.Domain.Enums;
 
 namespace PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 
@@ -19,7 +18,7 @@ public class InspectJobCommandValidator : AbstractValidator<InspectJobCommand>
         // AC01 (FR-HUB-002, BR-QC-003): Photographic evidence required
         RuleFor(c => c.PhotoUrls)
             .NotNull()
-            .Must(photos => photos != null && photos.Count > 0)
+            .Must(photos => photos is { Count: > 0 })
             .WithMessage("Photographic evidence is required for inspection (không ảnh => không lưu kết luận).");
 
         // AC02 (FR-HUB-002, BR-QC-002): Every checklist item must have PASS / FAIL / NA

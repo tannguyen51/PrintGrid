@@ -5,16 +5,13 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Customer.Application.Quotes;
 
-public class GetQuotesQueryHandler : IRequestHandler<GetQuotesQuery, Result<IReadOnlyList<QuoteDto>>>
+public class GetQuotesQueryHandler(IQuoteRepository quotes)
+    : IRequestHandler<GetQuotesQuery, Result<IReadOnlyList<QuoteDto>>>
 {
-    private readonly IQuoteRepository _quotes;
-
-    public GetQuotesQueryHandler(IQuoteRepository quotes) => _quotes = quotes;
-
     public async Task<Result<IReadOnlyList<QuoteDto>>> Handle(GetQuotesQuery query, CancellationToken cancellationToken)
     {
-        var quotes = await _quotes.GetByCustomerAsync(query.CustomerId, cancellationToken);
-        var dtos = quotes
+        var quotes1 = await quotes.GetByCustomerAsync(query.CustomerId, cancellationToken);
+        var dtos = quotes1
             .OrderByDescending(q => q.CreatedAt)
             .Select(QuoteMappings.ToCustomerDto)
             .ToList();

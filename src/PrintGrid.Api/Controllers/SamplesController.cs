@@ -17,24 +17,15 @@ namespace PrintGrid.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/samples")]
-public sealed class SamplesController : ControllerBase
+public sealed class SamplesController(
+    ISender sender,
+    IFileStorage files,
+    IOptions<MinioOptions> minio,
+    IOptions<ModelUploadOptions> uploadOptions)
+    : ControllerBase
 {
-    private readonly ISender _sender;
-    private readonly IFileStorage _files;
-    private readonly MinioOptions _minio;
-    private readonly ModelUploadOptions _uploadOptions;
-
-    public SamplesController(
-        ISender sender,
-        IFileStorage files,
-        IOptions<MinioOptions> minio,
-        IOptions<ModelUploadOptions> uploadOptions)
-    {
-        _sender = sender;
-        _files = files;
-        _minio = minio.Value;
-        _uploadOptions = uploadOptions.Value;
-    }
+    private readonly MinioOptions _minio = minio.Value;
+    private readonly ModelUploadOptions _uploadOptions = uploadOptions.Value;
 
     [HttpGet]
     [AllowAnonymous]
@@ -43,7 +34,7 @@ public sealed class SamplesController : ControllerBase
         [FromQuery] string? category,
         CancellationToken cancellationToken)
     {
-        var samples = await _sender.Send(new GetPublicSamplesQuery(search, category), cancellationToken);
+        var samples = await sender.Send(new GetPublicSamplesQuery(search, category), cancellationToken);
         return Ok(samples);
     }
 
@@ -51,7 +42,7 @@ public sealed class SamplesController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetSample(string slug, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetPublicSampleQuery(slug), cancellationToken);
+        var result = await sender.Send(new GetPublicSampleQuery(slug), cancellationToken);
         return result.IsFailure ? NotFound(ErrorBody(result.Error)) : Ok(result.Value);
     }
 
@@ -63,7 +54,7 @@ public sealed class SamplesController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> DownloadSampleFile(string slug, CancellationToken cancellationToken)
     {
-        var source = await _sender.Send(new GetSampleSourceQuery(slug), cancellationToken);
+        var source = await sender.Send(new GetSampleSourceQuery(slug), cancellationToken);
         if (source.IsFailure) return NotFound(ErrorBody(source.Error));
 
         var storageKey = source.Value.StorageKey;
@@ -71,7 +62,7 @@ public sealed class SamplesController : ControllerBase
         if (separator <= 0 || separator == storageKey.Length - 1)
             return NotFound(ErrorBody("file_not_stored", "Mẫu này chưa có file lưu trữ."));
 
-        var stream = await _files.DownloadAsync(
+        var stream = await files.DownloadAsync(
             storageKey[..separator], storageKey[(separator + 1)..], cancellationToken);
 
         Response.Headers.CacheControl = "public,max-age=300";
@@ -90,19 +81,22 @@ public sealed class SamplesController : ControllerBase
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
-        var source = await _sender.Send(new GetSampleSourceQuery(slug), cancellationToken);
+        var source = await sender.Send(new GetSampleSourceQuery(slug), cancellationToken);
         if (source.IsFailure) return NotFound(ErrorBody(source.Error));
         var sample = source.Value;
 
         if (sample.VolumeCm3 is null || sample.EstimatedPrintMinutes is null || sample.EstimatedMaterialGrams is null
             || sample.BoundingWidthMm is null || sample.BoundingDepthMm is null || sample.BoundingHeightMm is null)
+        {
             return Conflict(ErrorBody("sample_not_ready", "Mẫu này chưa có phân tích hình học. Hãy thử lại sau."));
+        }
 
-        var quota = (await _sender.Send(new GetModelQuotaQuery(
+        var quota = (await sender.Send(new GetModelQuotaQuery(
             customerId.Value, _uploadOptions.MaxModelsPerCustomer, _uploadOptions.MaxStorageBytesPerCustomer),
             cancellationToken)).Value;
 
         if (quota.UsedModels >= quota.MaxModels || quota.UsedBytes + sample.SizeBytes > quota.MaxBytes)
+        {
             return Conflict(new
             {
                 error = new
@@ -112,6 +106,7 @@ public sealed class SamplesController : ControllerBase
                     details = quota
                 }
             });
+        }
 
         var separator = sample.StorageKey.IndexOf('/');
         if (separator <= 0 || separator == sample.StorageKey.Length - 1)
@@ -120,7 +115,7 @@ public sealed class SamplesController : ControllerBase
         var extension = Path.GetExtension(sample.FileName).ToLowerInvariant();
         var newObjectName = $"{customerId}/{Guid.NewGuid()}{extension}";
 
-        await using var sourceStream = await _files.DownloadAsync(
+        await using var sourceStream = await files.DownloadAsync(
             sample.StorageKey[..separator], sample.StorageKey[(separator + 1)..], cancellationToken);
         await using var buffer = new MemoryStream();
         await sourceStream.CopyToAsync(buffer, cancellationToken);
@@ -128,11 +123,11 @@ public sealed class SamplesController : ControllerBase
 
         var sha256 = Convert.ToHexString(await SHA256.HashDataAsync(buffer, cancellationToken)).ToLowerInvariant();
         buffer.Position = 0;
-        await _files.UploadAsync(_minio.ModelBucket, newObjectName, buffer, ContentTypeFor(extension), cancellationToken);
+        await files.UploadAsync(_minio.ModelBucket, newObjectName, buffer, ContentTypeFor(extension), cancellationToken);
 
         try
         {
-            var result = await _sender.Send(new CreateModelFromSampleCommand(
+            var result = await sender.Send(new CreateModelFromSampleCommand(
                 customerId.Value,
                 sample.Name,
                 sample.Description,
@@ -150,17 +145,14 @@ public sealed class SamplesController : ControllerBase
                 sample.EstimatedMaterialGrams.Value),
                 cancellationToken);
 
-            if (result.IsFailure)
-            {
-                await _files.DeleteAsync(_minio.ModelBucket, newObjectName, CancellationToken.None);
-                return BadRequest(ErrorBody(result.Error));
-            }
+            if (!result.IsFailure) return Created($"/api/v1/models/{result.Value.Id}", result.Value);
+            await files.DeleteAsync(_minio.ModelBucket, newObjectName, CancellationToken.None);
+            return BadRequest(ErrorBody(result.Error));
 
-            return Created($"/api/v1/models/{result.Value.Id}", result.Value);
         }
         catch
         {
-            await _files.DeleteAsync(_minio.ModelBucket, newObjectName, CancellationToken.None);
+            await files.DeleteAsync(_minio.ModelBucket, newObjectName, CancellationToken.None);
             throw;
         }
     }

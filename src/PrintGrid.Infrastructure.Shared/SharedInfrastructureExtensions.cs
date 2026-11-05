@@ -13,8 +13,7 @@ namespace PrintGrid.Infrastructure.Shared;
 
 public static class SharedInfrastructureExtensions
 {
-    public static IServiceCollection AddSharedInfrastructure(
-        this IServiceCollection services,
+    public static void AddSharedInfrastructure(this IServiceCollection services,
         IConfiguration configuration)
     {
         services.AddDbContext<PrintGridDbContext>(options =>
@@ -38,7 +37,5 @@ public static class SharedInfrastructureExtensions
             services.AddScoped<IEmailService, SmtpEmailService>();
         else
             services.AddScoped<IEmailService, DummyEmailService>();
-
-        return services;
     }
 }

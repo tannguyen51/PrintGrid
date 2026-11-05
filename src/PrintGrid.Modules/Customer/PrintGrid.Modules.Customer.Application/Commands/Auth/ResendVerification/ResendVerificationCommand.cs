@@ -5,4 +5,4 @@ namespace PrintGrid.Modules.Customer.Application.Commands.Auth.ResendVerificatio
 
 public record ResendVerificationCommand(string Email) : IRequest<Result<ResendVerificationResponse>>;
 
-public record ResendVerificationResponse(int WaitTimeSeconds);
+public record ResendVerificationResponse;

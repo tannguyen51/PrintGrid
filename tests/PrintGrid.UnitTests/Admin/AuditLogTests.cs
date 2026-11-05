@@ -1,4 +1,3 @@
-using FluentAssertions;
 using PrintGrid.Modules.Admin.Domain.Entities;
 
 namespace PrintGrid.UnitTests.Admin;

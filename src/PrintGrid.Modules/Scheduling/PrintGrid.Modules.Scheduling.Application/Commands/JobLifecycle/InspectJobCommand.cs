@@ -4,7 +4,7 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 
-public record ChecklistItemResult(string ItemName, string Status, string? Note = null, string? ItemCode = null);
+public record ChecklistItemResult(string ItemName, string Status, string? ItemCode = null);
 
 public record InspectJobCommand(
     Guid JobId,

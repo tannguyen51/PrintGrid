@@ -32,7 +32,7 @@ public class CalibrationTests
     {
         var samples = Enumerable.Range(0, 10)
             .Select(_ => Sample(1.0m))
-            .Concat(new[] { Sample(0.1m), Sample(5.0m), Sample(2.5m) })
+            .Concat([Sample(0.1m), Sample(5.0m), Sample(2.5m)])
             .ToList();
 
         var valid = EstimationCalibration.FilterOutliers(samples);
@@ -66,7 +66,7 @@ public class CalibrationTests
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var clock = Substitute.For<IDateTimeProvider>();
         clock.UtcNow.Returns(DateTime.UtcNow);
-        labs.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new[] { lab });
+        labs.GetAllAsync(Arg.Any<CancellationToken>()).Returns([lab]);
         samples.GetByMachineIdAsync(machine.Id, Arg.Any<CancellationToken>())
             .Returns(Enumerable.Range(0, 9).Select(_ => Sample(2.0m, machine.Id)).ToList());
 
@@ -95,7 +95,7 @@ public class CalibrationTests
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var clock = Substitute.For<IDateTimeProvider>();
         clock.UtcNow.Returns(DateTime.UtcNow);
-        labs.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new[] { lab });
+        labs.GetAllAsync(Arg.Any<CancellationToken>()).Returns([lab]);
         samples.GetByMachineIdAsync(machine.Id, Arg.Any<CancellationToken>())
             .Returns(Enumerable.Range(0, 10).Select(_ => Sample(2.5m, machine.Id)).ToList());
 

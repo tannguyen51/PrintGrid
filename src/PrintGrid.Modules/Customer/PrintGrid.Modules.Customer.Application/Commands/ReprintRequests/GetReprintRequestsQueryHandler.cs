@@ -4,19 +4,17 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Customer.Application.Commands.ReprintRequests;
 
-public class GetReprintRequestsQueryHandler : IRequestHandler<GetReprintRequestsQuery, Result<IReadOnlyList<ReprintRequestDto>>>
+public class GetReprintRequestsQueryHandler(IOrderRepository orders, IReprintRequestRepository requests)
+    : IRequestHandler<GetReprintRequestsQuery, Result<IReadOnlyList<ReprintRequestDto>>>
 {
-    private readonly IOrderRepository _orders;
-    private readonly IReprintRequestRepository _requests;
-    public GetReprintRequestsQueryHandler(IOrderRepository orders, IReprintRequestRepository requests)
-    { _orders = orders; _requests = requests; }
-
     public async Task<Result<IReadOnlyList<ReprintRequestDto>>> Handle(GetReprintRequestsQuery query, CancellationToken cancellationToken)
     {
-        var order = await _orders.GetByIdAsync(query.OrderId, cancellationToken);
+        var order = await orders.GetByIdAsync(query.OrderId, cancellationToken);
         if (order is null || order.CustomerId != query.CustomerId)
             return Result.Failure<IReadOnlyList<ReprintRequestDto>>(Error.NotFound("Order", query.OrderId));
-        var requests = await _requests.GetByOrderAsync(query.OrderId, query.CustomerId, cancellationToken);
-        return Result.Success<IReadOnlyList<ReprintRequestDto>>(requests.Select(CreateReprintRequestCommandHandler.Map).ToList());
+        var requests1 = await requests.GetByOrderAsync(query.OrderId, query.CustomerId, cancellationToken);
+        return Result.Success<IReadOnlyList<ReprintRequestDto>>([
+            .. requests1.Select(CreateReprintRequestCommandHandler.Map)
+        ]);
     }
 }

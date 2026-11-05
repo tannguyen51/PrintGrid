@@ -57,13 +57,13 @@ public partial class AddCustomerReprintRequests : Migration
             name: "IX_reprint_requests_CustomerId_Status",
             schema: "customer",
             table: "reprint_requests",
-            columns: new[] { "CustomerId", "Status" });
+            columns: ["CustomerId", "Status"]);
 
         migrationBuilder.CreateIndex(
             name: "IX_reprint_requests_OrderId_CreatedAt",
             schema: "customer",
             table: "reprint_requests",
-            columns: new[] { "OrderId", "CreatedAt" });
+            columns: ["OrderId", "CreatedAt"]);
     }
 
     /// <inheritdoc />

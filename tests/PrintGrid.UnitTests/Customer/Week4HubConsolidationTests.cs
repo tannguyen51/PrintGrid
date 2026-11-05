@@ -147,14 +147,14 @@ public class Week4HubConsolidationTests
         await handler.Handle(new ShipConsolidatedOrdersCommand([order1.Id, order2.Id], "GHN-BUNDLE-01"), CancellationToken.None);
 
         // Attempting to refund 250,000 VND on order1 (whose original TotalPrice is 200,000 VND, even though the bundle total is 700,000 VND) must FAIL (AC02 / BR-LOG-002)
-        var exceedScope = await handler.Handle(new RefundOrderWithinScopeCommand(order1.Id, 250_000m, "Hoàn vượt đơn gốc"), CancellationToken.None);
+        var exceedScope = await handler.Handle(new RefundOrderWithinScopeCommand(order1.Id, 250_000m), CancellationToken.None);
         exceedScope.IsFailure.Should().BeTrue("refund cannot exceed the original order's price even when shipped in a consolidated package (AC02)");
         exceedScope.Error.Code.Should().Be("conflict");
         order1.RefundedAmount.Should().Be(0m);
         order2.RefundedAmount.Should().Be(0m);
 
         // Refunding within order1's original scope succeeds and leaves order2 untouched
-        var validRefund = await handler.Handle(new RefundOrderWithinScopeCommand(order1.Id, 200_000m, "Hoàn đúng phạm vi đơn gốc"), CancellationToken.None);
+        var validRefund = await handler.Handle(new RefundOrderWithinScopeCommand(order1.Id, 200_000m), CancellationToken.None);
         validRefund.IsSuccess.Should().BeTrue();
         order1.RefundedAmount.Should().Be(200_000m);
         order2.RefundedAmount.Should().Be(0m);

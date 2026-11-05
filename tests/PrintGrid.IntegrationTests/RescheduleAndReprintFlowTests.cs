@@ -1,4 +1,3 @@
-using FluentAssertions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -32,6 +31,11 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
         .Build();
 
     private WebApplicationFactory<Program> _factory = null!;
+    private static readonly string[] _stringArray =
+    [
+        "UPDATE scheduling.assignment_decisions SET \"Outcome\" = 'tampered'",
+                         "DELETE FROM scheduling.assignment_decisions"
+    ];
 
     public async Task InitializeAsync()
     {
@@ -80,13 +84,13 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
             var labA = Lab.Onboard("Integration Lab A", "HCM", transitDaysToHub: 1);
             var machineA = Machine.Register(
                 labA.Id, "M-A", "Prusa MK4", PrintTechnology.Fdm,
-                BuildVolume.Create(250, 210, 220), 0.1m, 0.2m, new[] { "PLA", "PETG" });
+                BuildVolume.Create(250, 210, 220), 0.1m, 0.2m, ["PLA", "PETG"]);
             labA.AddMachine(machineA);
 
             var labB = Lab.Onboard("Integration Lab B", "HCM", transitDaysToHub: 1);
             var machineB = Machine.Register(
                 labB.Id, "M-B", "Prusa MK4", PrintTechnology.Fdm,
-                BuildVolume.Create(250, 210, 220), 0.1m, 0.2m, new[] { "PLA", "PETG" });
+                BuildVolume.Create(250, 210, 220), 0.1m, 0.2m, ["PLA", "PETG"]);
             labB.AddMachine(machineB);
 
             var job = Job.Create(
@@ -203,7 +207,7 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
             await sender.Send(new AssignJobCommand(jobId));
             await sender.Send(new AcceptJobCommand(jobId));
             await sender.Send(new StartJobCommand(jobId));
-            await sender.Send(new CompleteJobCommand(jobId, 58, "Layer adhesion OK", new[] { "lab-qc/photo-1.jpg" }));
+            await sender.Send(new CompleteJobCommand(jobId, 58, "Layer adhesion OK", ["lab-qc/photo-1.jpg"]));
             return 0;
         });
 
@@ -219,12 +223,12 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
             sp.GetRequiredService<ISender>().Send(new InspectJobCommand(
                 jobId,
                 Passed: false,
-                ChecklistResults: new[]
-                {
-                    new ChecklistItemResult("SURFACE", "fail", "Layer shift", ItemCode: "SURFACE"),
-                    new ChecklistItemResult("DIMENSIONS", "pass", null, ItemCode: "DIMENSIONS"),
-                },
-                PhotoUrls: new[] { "qc/defect.jpg" },
+                ChecklistResults:
+                [
+                    new ChecklistItemResult("SURFACE", "fail"),
+                    new ChecklistItemResult("DIMENSIONS", "pass")
+                ],
+                PhotoUrls: ["qc/defect.jpg"],
                 FaultAttribution: FaultAttribution.Lab,
                 Note: "Layer shift",
                 ChecklistVersionId: checklistVersionId,
@@ -286,7 +290,7 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
         await InScope(async sp =>
         {
             await sp.GetRequiredService<IPublisher>().Publish(
-                new ReschedulingTriggeredEvent(jobId, "machine_breakdown", before.InternalDueDate));
+                new ReschedulingTriggeredEvent(jobId, "machine_breakdown"));
             return 0;
         });
 
@@ -320,11 +324,7 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
             var db = sp.GetRequiredService<PrintGridDbContext>();
             var results = new List<string>();
 
-            foreach (var sql in new[]
-                     {
-                         "UPDATE scheduling.assignment_decisions SET \"Outcome\" = 'tampered'",
-                         "DELETE FROM scheduling.assignment_decisions"
-                     })
+            foreach (var sql in _stringArray)
             {
                 try
                 {
@@ -355,7 +355,7 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
             await sender.Send(new AssignJobCommand(jobId));
             await sender.Send(new AcceptJobCommand(jobId));
             await sender.Send(new StartJobCommand(jobId));
-            await sender.Send(new CompleteJobCommand(jobId, 58, "Layer adhesion OK", new[] { "lab-qc/photo-1.jpg" }));
+            await sender.Send(new CompleteJobCommand(jobId, 58, "Layer adhesion OK", ["lab-qc/photo-1.jpg"]));
 
             var db = sp.GetRequiredService<PrintGridDbContext>();
             return (await db.Set<Job>().FirstAsync(j => j.Id == jobId)).LabId!.Value;
@@ -366,12 +366,12 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
             sp.GetRequiredService<ISender>().Send(new InspectJobCommand(
                 jobId,
                 Passed: false,
-                ChecklistResults: new[]
-                {
-                    new ChecklistItemResult("SURFACE", "pass", null, ItemCode: "SURFACE"),
-                    new ChecklistItemResult("DIMENSIONS", "fail", "Crushed at the hub", ItemCode: "DIMENSIONS"),
-                },
-                PhotoUrls: new[] { "qc/defect.jpg" },
+                ChecklistResults:
+                [
+                    new ChecklistItemResult("SURFACE", "pass"),
+                    new ChecklistItemResult("DIMENSIONS", "fail")
+                ],
+                PhotoUrls: ["qc/defect.jpg"],
                 FaultAttribution: FaultAttribution.Hub,
                 Note: "Crushed in hub handling",
                 ChecklistVersionId: checklistVersionId,
@@ -417,7 +417,7 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
             sp.GetRequiredService<ISender>().Send(new CreateUrgentReprintCommand(lastAllowedReprintId, "third failure")));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.EscalatedToOps.Should().BeTrue();
+        result.Value.EscalatedToOps.Should().BeTrue();
         result.Value.ReprintJobId.Should().BeNull();
 
         var state = await InScope(async sp =>

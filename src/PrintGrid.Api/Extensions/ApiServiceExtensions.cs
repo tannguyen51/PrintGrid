@@ -11,8 +11,7 @@ namespace PrintGrid.Api.Extensions;
 
 public static class ApiServiceExtensions
 {
-    public static IServiceCollection AddApiSecurity(
-        this IServiceCollection services,
+    public static void AddApiSecurity(this IServiceCollection services,
         IConfiguration configuration)
     {
         var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
@@ -65,11 +64,9 @@ public static class ApiServiceExtensions
             .AddPolicy(Policies.RequireProduction, p => p.RequireRole(
                 Roles.LabManager, Roles.LabOperator, Roles.HubQc, Roles.HubFulfillment,
                 Roles.OpsManager, Roles.Admin));
-
-        return services;
     }
 
-    public static IServiceCollection AddApiDocumentation(this IServiceCollection services)
+    public static void AddApiDocumentation(this IServiceCollection services)
     {
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
@@ -106,7 +103,5 @@ public static class ApiServiceExtensions
                 }
             });
         });
-
-        return services;
     }
 }

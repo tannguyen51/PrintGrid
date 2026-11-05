@@ -7,7 +7,7 @@ namespace PrintGrid.Simulator.Simulation;
 /// <summary>Seed-stable text rendering for the CLI. No GUIDs, no wall-clock values.</summary>
 public static class ReportWriter
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true
     };
@@ -77,7 +77,7 @@ public static class ReportWriter
             })
         };
 
-        return JsonSerializer.Serialize(document, JsonOptions);
+        return JsonSerializer.Serialize(document, _jsonOptions);
     }
 
     public static string RenderRun(SimulationReport report, FaultConfig faults)
@@ -132,10 +132,8 @@ public static class ReportWriter
         builder.AppendLine(impactHeader);
         builder.AppendLine(new string('-', impactHeader.Length));
 
-        foreach (var comparison in strategies)
+        foreach (var (baseline, faulted) in strategies)
         {
-            var baseline = comparison.Baseline;
-            var faulted = comparison.WithFaults;
             var faultTotal = faulted.Declines + faulted.PrintFailures + faulted.Breakdowns + faulted.InspectionFailures;
             builder.AppendLine(
                 faulted.Strategy.PadRight(12)
@@ -148,11 +146,9 @@ public static class ReportWriter
         builder.AppendLine();
         builder.AppendLine("Ran with the virtual clock; same seed + same flags reproduce these metrics.");
 
-        if (report.Stress)
-        {
-            builder.AppendLine($"STRESS MODE: 50/300/1000 preset, completed in {report.ElapsedMs} ms.");
-            builder.AppendLine($"30s wall-clock target: {(report.ElapsedMs <= 30_000 ? "PASS" : "EXCEEDED")}.");
-        }
+        if (!report.Stress) return builder.ToString();
+        builder.AppendLine($"STRESS MODE: 50/300/1000 preset, completed in {report.ElapsedMs} ms.");
+        builder.AppendLine($"30s wall-clock target: {(report.ElapsedMs <= 30_000 ? "PASS" : "EXCEEDED")}.");
 
         return builder.ToString();
     }

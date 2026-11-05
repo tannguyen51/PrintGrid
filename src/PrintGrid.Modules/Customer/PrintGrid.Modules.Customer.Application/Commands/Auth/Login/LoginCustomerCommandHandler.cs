@@ -8,25 +8,13 @@ using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Modules.Customer.Application.Commands.Auth.Login;
 
-public class LoginCustomerCommandHandler : IRequestHandler<LoginCustomerCommand, Result<AuthSessionDto>>
+public class LoginCustomerCommandHandler(
+    ICustomerRepository customers,
+    IUnitOfWork unitOfWork,
+    IPasswordHasher passwordHasher,
+    ITokenService tokenService)
+    : IRequestHandler<LoginCustomerCommand, Result<AuthSessionDto>>
 {
-    private readonly ICustomerRepository _customers;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IPasswordHasher _passwordHasher;
-    private readonly ITokenService _tokenService;
-
-    public LoginCustomerCommandHandler(
-        ICustomerRepository customers,
-        IUnitOfWork unitOfWork,
-        IPasswordHasher passwordHasher,
-        ITokenService tokenService)
-    {
-        _customers = customers;
-        _unitOfWork = unitOfWork;
-        _passwordHasher = passwordHasher;
-        _tokenService = tokenService;
-    }
-
     public async Task<Result<AuthSessionDto>> Handle(
         LoginCustomerCommand command,
         CancellationToken cancellationToken)
@@ -36,18 +24,18 @@ public class LoginCustomerCommandHandler : IRequestHandler<LoginCustomerCommand,
         var email = command.Email.Trim();
         var password = command.Password.Trim();
 
-        var customer = await _customers.GetByEmailAsync(email, cancellationToken);
+        var customer = await customers.GetByEmailAsync(email, cancellationToken);
 
         // Same message for "no such account" and "wrong password" to avoid
         // leaking which emails exist.
-        if (customer is null || !customer.IsActive || !_passwordHasher.Verify(password, customer.PasswordHash))
+        if (customer is null || !customer.IsActive || !passwordHasher.Verify(password, customer.PasswordHash))
             return Result.Failure<AuthSessionDto>(Error.Unauthorized("Invalid email or password"));
 
         customer.RecordLogin();
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         var user = ToUserDto(customer);
-        var tokens = _tokenService.CreateTokenPair(user, customer.SessionVersion);
+        var tokens = tokenService.CreateTokenPair(user, customer.SessionVersion);
         return Result.Success(new AuthSessionDto(tokens.AccessToken, tokens.RefreshToken, user));
     }
 

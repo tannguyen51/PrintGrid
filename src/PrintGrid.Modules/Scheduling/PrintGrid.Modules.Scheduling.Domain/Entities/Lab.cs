@@ -32,7 +32,7 @@ public class Lab : AggregateRoot<Guid>
     public string OpeningTime { get; private set; } = "08:00";
     public string ClosingTime { get; private set; } = "17:00";
     public string TransportZone { get; private set; } = "LOCAL";
-    public string TransferDaysOfWeek { get; private set; } = "Monday,Wednesday,Friday";
+    public string TransferDaysOfWeek { get; private init; } = "Monday,Wednesday,Friday";
     public bool IsInGoodStanding { get; private set; } = true;
     public int? MaxConcurrentJobs { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -154,18 +154,12 @@ public class Lab : AggregateRoot<Guid>
         ContactPhone = string.IsNullOrWhiteSpace(contactPhone) ? null : contactPhone.Trim();
         Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
 
-        if (Status == LabStatus.Rejected)
-        {
-            Status = LabStatus.Pending;
-            RejectionReason = null;
-        }
+        if (Status != LabStatus.Rejected) return;
+        Status = LabStatus.Pending;
+        RejectionReason = null;
     }
 
-    public void ClaimOwnership(Guid ownerUserId)
-    {
-        if (OwnerUserId is null)
-            OwnerUserId = ownerUserId;
-    }
+    public void ClaimOwnership(Guid ownerUserId) => OwnerUserId ??= ownerUserId;
 
     public Result Approve(Guid? approvedByUserId = null)
     {
@@ -277,7 +271,10 @@ public class Lab : AggregateRoot<Guid>
             existing = MaterialStock.Create(Id, material, color, 0m, reorderPointGrams);
             _materialStocks.Add(existing);
         }
-        else existing.ConfigureReorderPoint(reorderPointGrams);
+        else
+        {
+            existing.ConfigureReorderPoint(reorderPointGrams);
+        }
 
         var delta = availableGrams - existing.AvailableGrams;
         if (delta != 0) AdjustMaterialStock(material, color, delta, "Stock count adjustment");
@@ -402,7 +399,6 @@ public class Lab : AggregateRoot<Guid>
                 : throw new ArgumentException($"Invalid transfer day: {day}"))
             .Distinct()
             .ToArray();
-        if (days.Length == 0) throw new ArgumentException("At least one transfer day is required");
-        return string.Join(',', days);
+        return days.Length == 0 ? throw new ArgumentException("At least one transfer day is required") : string.Join(',', days);
     }
 }

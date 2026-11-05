@@ -18,7 +18,7 @@ public sealed class InspectionChecklistVersion : Entity<Guid>
         Guid createdBy, DateTime? createdAtUtc = null)
     {
         if (string.IsNullOrWhiteSpace(qualityGradeCode)) throw new ArgumentException("Quality grade is required.");
-        if (versionNumber <= 0) throw new ArgumentOutOfRangeException(nameof(versionNumber));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(versionNumber);
         if (string.IsNullOrWhiteSpace(itemsJson)) throw new ArgumentException("Checklist items are required.");
 
         return new InspectionChecklistVersion

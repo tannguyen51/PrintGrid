@@ -14,12 +14,12 @@ public record CapabilityFilterResult(
 
 public class CapabilityFilter
 {
-    public CapabilityFilterResult Filter(JobSpecification spec, IEnumerable<Lab> labs)
+    public static CapabilityFilterResult Filter(JobSpecification spec, IEnumerable<Lab> labs)
     {
         var candidates = new List<CapabilityCandidate>();
         var rejections = new List<CapabilityRejection>();
 
-        foreach (var lab in labs.Where(l => l.IsActive && l.Status == LabStatus.Active && l.IsDeclarationComplete))
+        foreach (var lab in labs.Where(l => l is { IsActive: true, Status: LabStatus.Active, IsDeclarationComplete: true }))
         {
             if (!lab.IsInGoodStanding)
             {
@@ -54,7 +54,6 @@ public class CapabilityFilter
         if (machine.MinLayerHeightMm > spec.LayerHeightMm) return "layer_height_unachievable";
         if (machine.AchievableToleranceMm > spec.ToleranceMm) return "tolerance_unachievable";
         if (!machine.SupportedMaterials.Contains(spec.MaterialCode)) return "material_unsupported";
-        if (!lab.HasStock(spec.MaterialCode, spec.ColorCode, spec.MaterialGrams)) return "material_or_color_out_of_stock";
-        return null;
+        return !lab.HasStock(spec.MaterialCode, spec.ColorCode, spec.MaterialGrams) ? "material_or_color_out_of_stock" : null;
     }
 }

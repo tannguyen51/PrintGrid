@@ -6,32 +6,24 @@ using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
 
-public class CompleteJobCommandHandler : IRequestHandler<CompleteJobCommand, Result>
+public class CompleteJobCommandHandler(
+    IJobRepository jobs,
+    ILabRepository labs,
+    IUnitOfWork unitOfWork,
+    IDateTimeProvider clock)
+    : IRequestHandler<CompleteJobCommand, Result>
 {
-    private readonly IJobRepository _jobs;
-    private readonly ILabRepository _labs;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IDateTimeProvider _clock;
-
-    public CompleteJobCommandHandler(IJobRepository jobs, ILabRepository labs, IUnitOfWork unitOfWork, IDateTimeProvider clock)
-    {
-        _jobs = jobs;
-        _labs = labs;
-        _unitOfWork = unitOfWork;
-        _clock = clock;
-    }
-
     public async Task<Result> Handle(CompleteJobCommand command, CancellationToken cancellationToken)
     {
-        var job = await _jobs.GetByIdAsync(command.JobId, cancellationToken);
+        var job = await jobs.GetByIdAsync(command.JobId, cancellationToken);
         if (job is null) return Result.Failure(Error.NotFound("Job", command.JobId));
 
         if (job.LabId is null) return Result.Failure(Error.Conflict("Job has no assigned lab"));
-        var lab = await _labs.GetByIdAsync(job.LabId.Value, cancellationToken);
+        var lab = await labs.GetByIdAsync(job.LabId.Value, cancellationToken);
         if (lab is null) return Result.Failure(Error.NotFound("Lab", job.LabId.Value));
 
         var result = job.Complete(
-            _clock.UtcNow,
+            clock.UtcNow,
             command.ActualPrintMinutes,
             command.SelfReport,
             command.PhotoKeys,
@@ -58,11 +50,13 @@ public class CompleteJobCommandHandler : IRequestHandler<CompleteJobCommand, Res
             var colors = job.MaterialByColor();
             var total = colors.Values.Sum();
             foreach (var color in colors)
+            {
                 lab.CompensateMaterial(job.Id, job.Specification.MaterialCode, color.Key,
                     compensated * color.Value / total, "Bồi hoàn do lỗi hub (hệ thống chịu phí)");
+            }
         }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
 }

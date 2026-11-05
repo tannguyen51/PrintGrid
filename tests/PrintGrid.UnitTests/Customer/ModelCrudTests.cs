@@ -35,7 +35,7 @@ public class ModelCrudTests
         var model = ModelsEntity.Create(_customerId, "x", null, "a.obj", "obj", 1, new[] { "Pla", "Pla", "", "PETG" });
 
         model.FileFormat.Should().Be("OBJ");
-        model.Tags.Should().BeEquivalentTo(new[] { "Pla", "PETG" });
+        model.Tags.Should().BeEquivalentTo("Pla", "PETG");
     }
 
     [Fact]
@@ -101,13 +101,13 @@ public class ModelCrudTests
         var m1 = ModelsEntity.Create(_customerId, "Bình hoa", "decor", "vase.stl", "stl", 1, new[] { "pla" });
         var m2 = ModelsEntity.Create(_customerId, "Tượng", null, "fig.obj", "obj", 2, null);
         _models.GetForCustomerAsync(_customerId, "bình", Arg.Any<CancellationToken>())
-            .Returns(new[] { m1, m2 });
+            .Returns([m1, m2]);
         var handler = new GetModelsQueryHandler(_models);
 
         var result = await handler.Handle(new GetModelsQuery(_customerId, "bình"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(2);
-        result.Value.First().Tags.Should().Contain("pla");
+        result.Value[0].Tags.Should().Contain("pla");
     }
 }

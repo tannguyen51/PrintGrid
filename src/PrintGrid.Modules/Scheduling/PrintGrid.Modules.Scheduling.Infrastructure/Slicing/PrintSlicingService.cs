@@ -41,7 +41,7 @@ public class PrintSlicingService : ISlicingService
 
         try
         {
-            var format = (fileFormat ?? string.Empty).Trim().ToUpperInvariant();
+            var format = fileFormat.Trim().ToUpperInvariant();
             var mesh = format switch
             {
                 "STL" or ".STL" => StlMeshParser.Parse(fileStream),
@@ -61,7 +61,7 @@ public class PrintSlicingService : ISlicingService
                 mesh.FaceCount,
                 mesh.IsWatertight,
                 mesh.IsManifold,
-                mesh.IsWatertight && mesh.IsManifold
+                mesh is { IsWatertight: true, IsManifold: true }
                     ? null
                     : string.Join("; ", new[]
                     {
@@ -87,7 +87,7 @@ public class PrintSlicingService : ISlicingService
         if (!geometry.IsValid)
             throw new ArgumentException("Cannot estimate over invalid geometry", nameof(geometry));
 
-        var minutes = ComputeMinutes(geometry.VolumeCm3, geometry.HeightMm, materialCode, layerHeightMm, infillPercent, technology);
+        var minutes = ComputeMinutes(geometry.VolumeCm3, geometry.HeightMm, layerHeightMm, infillPercent, technology);
         var grams = ComputeGrams(geometry.VolumeCm3, materialCode, infillPercent);
         return new PrintEstimate(minutes, decimal.Round(grams, 2));
     }
@@ -123,7 +123,6 @@ public class PrintSlicingService : ISlicingService
     private static int ComputeMinutes(
         decimal volumeCm3,
         decimal heightMm,
-        string materialCode,
         decimal layerHeightMm,
         int infillPercent,
         PrintTechnology technology)

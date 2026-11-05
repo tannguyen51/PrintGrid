@@ -14,7 +14,7 @@ public class GetModelQuotaQueryHandler(IModelRepository models)
 {
     public async Task<Result<ModelQuotaDto>> Handle(GetModelQuotaQuery request, CancellationToken cancellationToken)
     {
-        var usage = await models.GetStorageUsageAsync(request.CustomerId, cancellationToken);
-        return Result.Success(new ModelQuotaDto(usage.ModelCount, request.MaxModels, usage.UsedBytes, request.MaxBytes));
+        var (modelCount, usedBytes) = await models.GetStorageUsageAsync(request.CustomerId, cancellationToken);
+        return Result.Success(new ModelQuotaDto(modelCount, request.MaxModels, usedBytes, request.MaxBytes));
     }
 }

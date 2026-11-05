@@ -52,14 +52,14 @@ public class Week4LabFeaturesTests
             BuildVolume.Create(256, 256, 256),
             0.08m,
             0.15m,
-            new[] { "PLA", "PETG" });
+            ["PLA", "PETG"]);
         capturedLab.AddMachine(machine);
         ApprovePrinter(machine);
         // BR-OPS-006: approval also requires a material declaration, otherwise the lab would
         // pass every capability check and then fail at reservation.
         capturedLab.SetMaterialStock("PLA", "BLACK", 1_000m);
 
-        var filter = new CapabilityFilter();
+        var unused = new CapabilityFilter();
         var spec = JobSpecification.Create(
             BuildVolume.Create(100, 100, 100),
             "PLA",
@@ -69,7 +69,7 @@ public class Week4LabFeaturesTests
             PrintTechnology.Fdm,
             50m);
 
-        var beforeApproval = filter.Filter(spec, new[] { capturedLab });
+        var beforeApproval = CapabilityFilter.Filter(spec, [capturedLab]);
         beforeApproval.Candidates.Should().BeEmpty("pending labs must not receive jobs before admin approval (AC01)");
 
         // Admin approves the lab -> PENDING -> ACTIVE
@@ -81,7 +81,7 @@ public class Week4LabFeaturesTests
         approveResult.Value.Status.Should().Be("Active");
         approveResult.Value.IsActive.Should().BeTrue();
 
-        var afterApproval = filter.Filter(spec, new[] { capturedLab });
+        var afterApproval = CapabilityFilter.Filter(spec, [capturedLab]);
         afterApproval.Candidates.Should().ContainSingle("approved lab with complete profile and machine enters filter");
     }
 
@@ -119,7 +119,7 @@ public class Week4LabFeaturesTests
             BuildVolume.Create(250, 210, 220),
             0.05m,
             0.15m,
-            new[] { "PLA" });
+            ["PLA"]);
         lab.AddMachine(machine);
         _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
 
@@ -143,11 +143,10 @@ public class Week4LabFeaturesTests
             0.2m,
             PrintTechnology.Fdm,
             40m);
-        var filter = new CapabilityFilter();
-        filter.Filter(spec, new[] { lab }).Candidates.Should().ContainSingle();
+        CapabilityFilter.Filter(spec, [lab]).Candidates.Should().ContainSingle();
 
         machine.SetStatus(MachineStatus.Offline);
-        var offlineFiltered = filter.Filter(spec, new[] { lab });
+        var offlineFiltered = CapabilityFilter.Filter(spec, [lab]);
         offlineFiltered.Candidates.Should().BeEmpty("offline machine is filtered out immediately (AC01)");
         offlineFiltered.Rejections.Single().Reason.Should().Be("machine_offline");
 
@@ -165,13 +164,13 @@ public class Week4LabFeaturesTests
                 RequestingUserId: ownerId,
                 IsAdminOrOps: false),
             CancellationToken.None);
-        filter.Filter(spec, new[] { lab }).Candidates.Should().BeEmpty("machine in maintenance window is filtered out");
+        CapabilityFilter.Filter(spec, [lab]).Candidates.Should().BeEmpty("machine in maintenance window is filtered out");
 
         // 3. AC02: Deleting a machine that still has an active job is blocked
         var activeJob = Job.Create(Guid.NewGuid(), Guid.NewGuid(), spec, 120, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3)));
         activeJob.AssignTo(lab.Id, machine.Id, DateTime.UtcNow, DateTime.UtcNow.AddHours(2), 0.90m, DateTime.UtcNow);
         _jobs.GetActiveByMachineAsync(machine.Id, Arg.Any<CancellationToken>())
-            .Returns(new List<Job> { activeJob });
+            .Returns([activeJob]);
 
         var blockedDelete = await crudHandler.Handle(
             new DeleteMachineCommand(lab.Id, machine.Id, RequestingUserId: ownerId, IsAdminOrOps: false),
@@ -182,7 +181,7 @@ public class Week4LabFeaturesTests
 
         // Once active jobs are cleared, owner can delete the machine
         _jobs.GetActiveByMachineAsync(machine.Id, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Job>());
+            .Returns([]);
         var allowedDelete = await crudHandler.Handle(
             new DeleteMachineCommand(lab.Id, machine.Id, RequestingUserId: ownerId, IsAdminOrOps: false),
             CancellationToken.None);
@@ -202,7 +201,7 @@ public class Week4LabFeaturesTests
             BuildVolume.Create(300, 300, 300),
             0.05m,
             0.1m,
-            new[] { "PLA", "ABS" });
+            ["PLA", "ABS"]);
         lab.AddMachine(machine);
         _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
 
@@ -230,7 +229,7 @@ public class Week4LabFeaturesTests
         beforeComplete.Value.Machines.Single().Slots.Should().ContainSingle(s => s.JobId == job.Id);
 
         // Complete the job -> AC01: slot must disappear from future Gantt timeline
-        job.Complete(now, 170, "In đạt chuẩn", new[] { "proof-1.jpg" }, 35m);
+        job.Complete(now, 170, "In đạt chuẩn", ["proof-1.jpg"], 35m);
 
         var afterComplete = await queryHandler.Handle(new GetLabTimelineQuery(lab.Id), CancellationToken.None);
         afterComplete.IsSuccess.Should().BeTrue();
@@ -251,7 +250,7 @@ public class Week4LabFeaturesTests
             BuildVolume.Create(250, 210, 210),
             0.05m,
             0.15m,
-            new[] { "PLA" });
+            ["PLA"]);
         lab.AddMachine(machine);
 
         _labs.GetByIdAsync(lab.Id, Arg.Any<CancellationToken>()).Returns(lab);
@@ -273,7 +272,7 @@ public class Week4LabFeaturesTests
             j.AssignTo(lab.Id, machine.Id, now.AddMinutes(-90), now.AddMinutes(-30), 0.90m, now.AddMinutes(-100));
             j.Accept(now.AddMinutes(-95));
             j.Start(now.AddMinutes(-90));
-            j.Complete(now.AddMinutes(-30), 58, "OK", new[] { "ok.jpg" }, 20m);
+            j.Complete(now.AddMinutes(-30), 58, "OK", ["ok.jpg"], 20m);
             return j;
         }).ToList();
 
@@ -301,7 +300,7 @@ public class Week4LabFeaturesTests
             j.AssignTo(lab.Id, machine.Id, now.AddMinutes(-90), now.AddMinutes(-30), 0.90m, now.AddMinutes(-100));
             j.Accept(now.AddMinutes(-95));
             j.Start(now.AddMinutes(-90));
-            j.Complete(now.AddMinutes(-30), 58, "OK", new[] { "ok.jpg" }, 20m);
+            j.Complete(now.AddMinutes(-30), 58, "OK", ["ok.jpg"], 20m);
             return j;
         }).ToList();
 

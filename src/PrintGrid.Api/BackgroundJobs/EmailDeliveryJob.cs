@@ -7,21 +7,12 @@ namespace PrintGrid.Api.BackgroundJobs;
 /// Runs every minute so the customer receipt for an upload arrives well within the ≤1 min
 /// acceptance target. Dev channel = EmailOutboxStore logs; swap to SMTP in T7.
 /// </summary>
-public class EmailDeliveryJob
+public class EmailDeliveryJob(IEmailOutbox outbox, ILogger<EmailDeliveryJob> logger)
 {
-    private readonly IEmailOutbox _outbox;
-    private readonly ILogger<EmailDeliveryJob> _logger;
-
-    public EmailDeliveryJob(IEmailOutbox outbox, ILogger<EmailDeliveryJob> logger)
-    {
-        _outbox = outbox;
-        _logger = logger;
-    }
-
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        var sent = await _outbox.DeliverPendingAsync(cancellationToken);
+        var sent = await outbox.DeliverPendingAsync(cancellationToken);
         if (sent > 0)
-            _logger.LogInformation("Email outbox delivered {Count} message(s)", sent);
+            logger.LogInformation("Email outbox delivered {Count} message(s)", sent);
     }
 }
