@@ -46,15 +46,7 @@ public class ProductionStatusChangedHandler(IOrderRepository orders, IUnitOfWork
                     break;
             }
             await unitOfWork.SaveChangesAsync(cancellationToken);
-            await publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
-            else if (notification.NewStatus == "Completed")
-            {
-                // "Completed" = job finished + hub inspection passed + proof approved. It is an ITEM-level
-                // signal only: the order must NOT jump forward here. When the order is already QualityCheck
-                // it stays QualityCheck until the hub ships it, which is gated on every item being Completed.
-            }
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            await _publisher.Publish(
+            await publisher.Publish(
                 new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId, notification.NewStatus),
                 cancellationToken);
         }
@@ -67,9 +59,7 @@ public class ProductionStatusChangedHandler(IOrderRepository orders, IUnitOfWork
 
         order.MarkAsDelayed();
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _publisher.Publish(
+        await publisher.Publish(
             new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId, "Delayed"),
             cancellationToken);
     }

@@ -4,7 +4,7 @@ using PrintGrid.Modules.Customer.Domain.Repositories;
 
 namespace PrintGrid.Modules.Customer.Infrastructure.Persistence.Repositories;
 
-public abstract class ModelRepository(PrintGridDbContext context) : IModelRepository
+public class ModelRepository(PrintGridDbContext context) : IModelRepository
 {
     public async Task<IReadOnlyList<Domain.Entities.Model>> GetForCustomerAsync(
         Guid customerId,

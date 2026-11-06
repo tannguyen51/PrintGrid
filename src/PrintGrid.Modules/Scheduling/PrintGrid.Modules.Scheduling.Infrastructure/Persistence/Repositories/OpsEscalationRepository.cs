@@ -6,7 +6,7 @@ using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Repositories;
 
-public abstract class OpsEscalationRepository(PrintGridDbContext context) : IOpsEscalationRepository
+public class OpsEscalationRepository(PrintGridDbContext context) : IOpsEscalationRepository
 {
     public async Task AddAsync(OpsEscalation escalation, CancellationToken cancellationToken = default) =>
         await context.Set<OpsEscalation>().AddAsync(escalation, cancellationToken);

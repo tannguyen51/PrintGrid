@@ -6,7 +6,7 @@ using PrintGrid.Modules.Customer.Domain.Repositories;
 
 namespace PrintGrid.Modules.Customer.Infrastructure.Persistence.Repositories;
 
-public abstract class ReprintRequestRepository(PrintGridDbContext context) : IReprintRequestRepository
+public class ReprintRequestRepository(PrintGridDbContext context) : IReprintRequestRepository
 {
     public Task<bool> HasOpenRequestAsync(Guid orderId, CancellationToken cancellationToken = default) =>
         context.Set<ReprintRequest>().AnyAsync(x => x.OrderId == orderId &&

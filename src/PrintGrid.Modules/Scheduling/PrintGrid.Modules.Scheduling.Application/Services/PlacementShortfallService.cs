@@ -14,7 +14,7 @@ namespace PrintGrid.Modules.Scheduling.Application.Services;
 /// committed delivery date cannot be met, the platform states the earliest date it CAN meet,
 /// asks the customer to approve, and flags the case for operations — it is never late silently.
 /// </summary>
-public abstract class PlacementShortfallService(
+public class PlacementShortfallService(
     IAssignmentEngine engine,
     IDateChangeRequestRepository dateChanges,
     IOpsEscalationRepository escalations,

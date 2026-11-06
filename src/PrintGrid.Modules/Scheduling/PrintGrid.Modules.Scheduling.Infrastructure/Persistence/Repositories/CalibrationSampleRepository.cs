@@ -5,7 +5,7 @@ using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Repositories;
 
-public abstract class CalibrationSampleRepository(PrintGridDbContext context) : ICalibrationSampleRepository
+public class CalibrationSampleRepository(PrintGridDbContext context) : ICalibrationSampleRepository
 {
     public async Task<IReadOnlyList<CalibrationSample>> GetAllAsync(CancellationToken cancellationToken = default) =>
         await context.Set<CalibrationSample>()

@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { apiClient } from '../api/apiClient'
 import { getAccessToken } from '../api/tokenStore'
+import { startHubConnection } from '../api/hubLifecycle'
 
 interface NotificationItem {
   id: string
@@ -88,24 +89,16 @@ export function NotificationBell() {
       .configureLogging(LogLevel.Warning)
       .build()
 
-    connection.on('NotificationsUpdated', () => {
+    const refreshNotifications = () => {
       void queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
-    })
-
-    let disposed = false
-    void connection.start()
-      .then(() => {
-        if (!disposed) {
-          void queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
-        }
-      })
-      .catch((error: unknown) => {
-        if (!disposed) console.error('Unable to connect to the notifications hub.', error)
-      })
+    }
+    connection.on('NotificationsUpdated', refreshNotifications)
+    const stopConnection = startHubConnection(connection, refreshNotifications,
+      (error) => console.error('Unable to connect to the notifications hub.', error))
 
     return () => {
-      disposed = true
-      void connection.stop()
+      connection.off('NotificationsUpdated', refreshNotifications)
+      stopConnection()
     }
   }, [isAuthenticated, queryClient, userId])
 

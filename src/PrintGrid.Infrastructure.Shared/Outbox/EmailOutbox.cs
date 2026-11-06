@@ -18,7 +18,7 @@ public class EmailOutboxItem
     public DateTime? SentAtUtc { get; set; }
 }
 
-public abstract class EmailOutboxStore(Persistence.PrintGridDbContext context, ILogger<EmailOutboxStore> logger)
+public class EmailOutboxStore(Persistence.PrintGridDbContext context, ILogger<EmailOutboxStore> logger)
     : IEmailOutbox
 {
     public async Task QueueAsync(string toEmail, string subject, string body, CancellationToken cancellationToken = default)

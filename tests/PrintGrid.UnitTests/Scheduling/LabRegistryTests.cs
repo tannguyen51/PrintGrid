@@ -48,6 +48,8 @@ public class LabRegistryTests
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
+        result.Value.Name.Should().Be("Prusa #1");
+        result.Value.Model.Should().Be("Prusa i3 MK3S");
         result.Value.BuildWidthMm.Should().Be(250);
         result.Value.Technology.Should().Be(PrintTechnology.Fdm);
         result.Value.SupportedMaterials.Should().Contain("PLA");

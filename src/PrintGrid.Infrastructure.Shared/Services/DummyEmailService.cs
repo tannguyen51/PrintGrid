@@ -3,7 +3,7 @@ using PrintGrid.SharedKernel.Interfaces;
 
 namespace PrintGrid.Infrastructure.Shared.Services;
 
-public abstract class DummyEmailService(ILogger<DummyEmailService> logger) : IEmailService
+public class DummyEmailService(ILogger<DummyEmailService> logger) : IEmailService
 {
     public Task SendEmailAsync(string toEmail, string subject, string htmlBody, CancellationToken cancellationToken = default)
     {

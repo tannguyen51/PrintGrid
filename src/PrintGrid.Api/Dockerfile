@@ -11,6 +11,7 @@ RUN dotnet publish src/PrintGrid.Api/PrintGrid.Api.csproj -c Release -o /app/pub
 RUN dotnet tool install --global dotnet-ef --version 9.0.0 \
     && export PATH="$PATH:/root/.dotnet/tools" \
     && dotnet ef migrations script --idempotent \
+        --no-build --configuration Release \
         --project src/PrintGrid.Infrastructure.Shared/PrintGrid.Infrastructure.Shared.csproj \
         --startup-project src/PrintGrid.Api/PrintGrid.Api.csproj \
         -o /app/migrations.sql

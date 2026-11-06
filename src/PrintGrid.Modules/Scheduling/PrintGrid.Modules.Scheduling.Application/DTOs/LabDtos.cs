@@ -4,6 +4,8 @@ namespace PrintGrid.Modules.Scheduling.Application.DTOs;
 
 public record MachineDto(
     Guid Id,
+    string Name,
+    string Model,
     PrintTechnology Technology,
     decimal BuildWidthMm,
     decimal BuildDepthMm,
@@ -13,11 +15,13 @@ public record MachineDto(
     decimal SpeedFactor,
     MachineStatus Status,
     IReadOnlyCollection<string> SupportedMaterials,
+    IReadOnlyCollection<Guid> CuraProfileIds,
     DateTime? MaintenanceFromUtc = null,
     DateTime? MaintenanceUntilUtc = null,
     string? MaintenanceReason = null,
     Domain.ValueObjects.PrinterConfiguration? PrinterConfiguration = null,
-    string ProfileStatus = "MissingProfile");
+    string ProfileStatus = "MissingProfile",
+    string? ProfileReviewReason = null);
 
 public record LabDto(
     Guid Id,

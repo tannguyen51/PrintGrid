@@ -106,15 +106,15 @@ export default function LabMachinesPage() {
   function openEditDialog(m: Machine) {
     setEditingMachine(m)
     setMachineForm({
-      name: m.name,
-      model: m.model,
+      name: m.name ?? '',
+      model: m.model ?? '',
       technology: m.technology,
       buildWidthMm: m.buildWidthMm,
       buildDepthMm: m.buildDepthMm,
       buildHeightMm: m.buildHeightMm,
       minLayerHeightMm: m.minLayerHeightMm,
       achievableToleranceMm: m.achievableToleranceMm,
-      materials: m.supportedMaterials.join(', '),
+      materials: (m.supportedMaterials ?? []).join(', '),
       printerConfiguration: m.printerConfiguration ?? defaultPrinterConfiguration,
     })
     setFormError(null)
@@ -136,6 +136,10 @@ export default function LabMachinesPage() {
     if (!myLab) return
     setFormError(null)
     setBannerError(null)
+    if (!machineForm.name?.trim() || !machineForm.model?.trim()) {
+      setFormError('Tên máy và model không được để trống.')
+      return
+    }
     const supportedMaterials = machineForm.materials
       .split(',')
       .map((s) => s.trim().toUpperCase())
@@ -532,7 +536,7 @@ export default function LabMachinesPage() {
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   label="Tên máy"
-                  value={machineForm.name}
+                  value={machineForm.name ?? ''}
                   onChange={(e) => setMachineForm((f) => ({ ...f, name: e.target.value }))}
                   required
                   fullWidth
@@ -541,7 +545,7 @@ export default function LabMachinesPage() {
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   label="Model"
-                  value={machineForm.model}
+                  value={machineForm.model ?? ''}
                   onChange={(e) => setMachineForm((f) => ({ ...f, model: e.target.value }))}
                   required
                   fullWidth
@@ -634,8 +638,8 @@ export default function LabMachinesPage() {
             disabled={
               addMachine.isPending ||
               updateMachine.isPending ||
-              !machineForm.name.trim() ||
-              !machineForm.model.trim()
+              !machineForm.name?.trim() ||
+              !machineForm.model?.trim()
             }
           >
             {editingMachine ? 'Lưu thay đổi' : 'Thêm máy'}

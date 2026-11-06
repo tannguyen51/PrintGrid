@@ -13,6 +13,9 @@ public sealed class JobSpecification : ValueObject
     public PrintTechnology Technology { get; }
     public decimal MaterialGrams { get; }
 
+    // EF materializes RequiredVolume as an owned navigation after constructing this object.
+    private JobSpecification() : this(null!, string.Empty, string.Empty, 0m, 0m, default, 0m) { }
+
     private JobSpecification(
         BuildVolume requiredVolume,
         string materialCode,

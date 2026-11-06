@@ -4,7 +4,7 @@ using PrintGrid.Modules.Customer.Domain.Repositories;
 
 namespace PrintGrid.Modules.Customer.Infrastructure.Persistence.Repositories;
 
-public abstract class CustomerRepository(PrintGridDbContext context) : ICustomerRepository
+public class CustomerRepository(PrintGridDbContext context) : ICustomerRepository
 {
     public Task<Domain.Entities.Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         context.Set<Domain.Entities.Customer>().FirstOrDefaultAsync(c => c.Id == id, cancellationToken);

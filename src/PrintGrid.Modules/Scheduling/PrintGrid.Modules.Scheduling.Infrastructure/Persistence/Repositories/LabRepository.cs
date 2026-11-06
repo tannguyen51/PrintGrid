@@ -6,7 +6,7 @@ using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Repositories;
 
-public abstract class LabRepository(PrintGridDbContext context) : ILabRepository
+public class LabRepository(PrintGridDbContext context) : ILabRepository
 {
     public Task<Lab?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         context.Set<Lab>()

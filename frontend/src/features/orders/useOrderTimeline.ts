@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as signalR from '@microsoft/signalr'
 import { apiClient } from '../../shared/api/apiClient'
 import { getAccessToken } from '../../shared/api/tokenStore'
+import { startHubConnection } from '../../shared/api/hubLifecycle'
 
 export interface OrderStage {
   stageName: string
@@ -49,7 +50,9 @@ export function useOrderTimeline(orderId: string | null) {
   })
 
   useEffect(() => {
+    setIsConnected(false)
     if (!orderId) return
+    let disposed = false
 
     const connection = new signalR.HubConnectionBuilder()
       .withUrl('/hubs/orders', {
@@ -58,22 +61,30 @@ export function useOrderTimeline(orderId: string | null) {
       .withAutomaticReconnect()
       .build()
 
-    connection.on('TimelineUpdated', (updatedOrderId: string) => {
-      if (updatedOrderId === orderId) {
+    const onTimelineUpdated = (updatedOrderId: string) => {
+      if (!disposed && updatedOrderId === orderId) {
         queryClient.invalidateQueries({ queryKey: ['order-timeline', orderId] })
       }
+    }
+    connection.on('TimelineUpdated', onTimelineUpdated)
+
+    connection.onreconnecting(() => { if (!disposed) setIsConnected(false) })
+    connection.onreconnected(() => {
+      if (!disposed) {
+        setIsConnected(true)
+        void queryClient.invalidateQueries({ queryKey: ['order-timeline', orderId] })
+      }
     })
+    connection.onclose(() => { if (!disposed) setIsConnected(false) })
 
-    connection.onreconnecting(() => setIsConnected(false))
-    connection.onreconnected(() => setIsConnected(true))
-    connection.onclose(() => setIsConnected(false))
-
-    connection.start()
-      .then(() => setIsConnected(true))
-      .catch(console.error)
+    const stopConnection = startHubConnection(connection,
+      () => setIsConnected(true),
+      (error) => console.error('Unable to connect to the order timeline hub.', error))
 
     return () => {
-      connection.stop()
+      disposed = true
+      connection.off('TimelineUpdated', onTimelineUpdated)
+      stopConnection()
     }
   }, [orderId, queryClient])
 
