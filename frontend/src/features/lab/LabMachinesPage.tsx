@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Alert,
@@ -30,7 +30,12 @@ import {
   ScheduleRounded,
 } from '@mui/icons-material'
 import { PageBackButton } from '../../shared/components/PageBackButton'
-import { defaultPrinterConfiguration, PrinterConfigurationFields, ProfilePresetField } from './PrinterConfigurationFields'
+import {
+  defaultPrinterConfiguration,
+  PrinterConfigurationFields,
+  ProfilePresetField,
+  type CuraProfileSummary,
+} from './PrinterConfigurationFields'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import {
   useAddMachine,
@@ -62,6 +67,24 @@ const emptyMachineForm = {
   printerConfiguration: defaultPrinterConfiguration,
 }
 
+function MachineFormSection({ number, title, description, children }: {
+  number: number
+  title: string
+  description: string
+  children: ReactNode
+}) {
+  return (
+    <Box sx={{ p: { xs: 1.75, sm: 2.25 }, border: '1px solid', borderColor: 'divider', borderRadius: 2.5 }}>
+      <Stack spacing={0.5} sx={{ mb: 2 }}>
+        <Typography variant="overline" color="primary.main" fontWeight={800}>Mục {number}</Typography>
+        <Typography variant="subtitle1" fontWeight={750}>{title}</Typography>
+        <Typography variant="body2" color="text.secondary">{description}</Typography>
+      </Stack>
+      {children}
+    </Box>
+  )
+}
+
 /**
  * Lab Manager's own Machine Registry & Maintenance screen (FR-LAB-002 · BR-OPS-006):
  * - Scoped strictly to the current LabManager's own lab ("chỉ máy mình").
@@ -86,6 +109,7 @@ export default function LabMachinesPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null)
   const [machineForm, setMachineForm] = useState(emptyMachineForm)
+  const [profilePresetId, setProfilePresetId] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
 
   // Maintenance schedule dialog state
@@ -99,6 +123,7 @@ export default function LabMachinesPage() {
   function openAddDialog() {
     setEditingMachine(null)
     setMachineForm(emptyMachineForm)
+    setProfilePresetId('')
     setFormError(null)
     setFormOpen(true)
   }
@@ -117,8 +142,34 @@ export default function LabMachinesPage() {
       materials: m.supportedMaterials.join(', '),
       printerConfiguration: m.printerConfiguration ?? defaultPrinterConfiguration,
     })
+    setProfilePresetId(m.curaProfileIds[0] ?? '')
     setFormError(null)
     setFormOpen(true)
+  }
+
+  function applyProfilePreset(profile: CuraProfileSummary) {
+    setProfilePresetId(profile.id)
+    setMachineForm(f => ({
+      ...f,
+      model: profile.machineModel,
+      technology: 0,
+      buildWidthMm: profile.widthMm,
+      buildDepthMm: profile.depthMm,
+      buildHeightMm: profile.heightMm,
+      materials: profile.materialCode,
+      printerConfiguration: {
+        ...f.printerConfiguration,
+        manufacturer: profile.manufacturer,
+        extruderCount: profile.extruderCount,
+        maximumColorSlots: profile.maximumColorSlots,
+        nozzleDiameterMm: profile.nozzleDiameterMm,
+        filamentDiameterMm: profile.filamentDiameterMm,
+        heatedBed: profile.heatedBed,
+        maxBedTemperatureC: profile.heatedBed
+          ? f.printerConfiguration.maxBedTemperatureC || 100
+          : 0,
+      },
+    }))
   }
 
   function openMaintenanceDialog(m: Machine) {
@@ -506,7 +557,7 @@ export default function LabMachinesPage() {
         open={formOpen}
         onClose={() => setFormOpen(false)}
         fullWidth
-        maxWidth="sm"
+        maxWidth="md"
         PaperProps={{
           sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' },
         }}
@@ -518,110 +569,125 @@ export default function LabMachinesPage() {
           <Stack spacing={2} sx={{ mt: 1 }}>
             {formError && <Alert severity="error">{formError}</Alert>}
             {editingMachine && <Alert severity="info">Lưu thông số máy sẽ tìm lại profile và chuyển hồ sơ sang chờ duyệt lại.</Alert>}
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12 }}>
-                <ProfilePresetField onSelect={p => setMachineForm(f => ({ ...f, model: p.machineModel, technology: 0,
-                  buildWidthMm: p.widthMm, buildDepthMm: p.depthMm, buildHeightMm: p.heightMm, materials: p.materialCode,
-                  printerConfiguration: { ...f.printerConfiguration, manufacturer: p.manufacturer,
-                    extruderCount: p.extruderCount, maximumColorSlots: p.maximumColorSlots,
-                    nozzleDiameterMm: p.nozzleDiameterMm, filamentDiameterMm: p.filamentDiameterMm,
-                    heatedBed: p.heatedBed, maxNozzleTemperatureC: Math.max(p.requiredNozzleTemperatureC, 260),
-                    maxBedTemperatureC: p.heatedBed ? Math.max(p.requiredBedTemperatureC, 100) : 0 },
-                }))} />
+            <MachineFormSection number={1} title="Thông tin máy" description="Mã máy giúp lab nhận diện đúng thiết bị; khai đúng hãng và model thực tế.">
+              <Grid container spacing={1.5}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField label="Mã máy của lab" value={machineForm.name}
+                    onChange={e => setMachineForm(f => ({ ...f, name: e.target.value }))} required fullWidth />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField label="Hãng và model" value={machineForm.model}
+                    onChange={e => setMachineForm(f => ({ ...f, model: e.target.value }))} required fullWidth />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <FormControl fullWidth>
+                    <InputLabel id="lab-machine-tech-label">Công nghệ</InputLabel>
+                    <Select labelId="lab-machine-tech-label" label="Công nghệ" value={machineForm.technology}
+                      onChange={e => setMachineForm(f => ({ ...f, technology: Number(e.target.value) as PrintTechnology }))}>
+                      {PRINT_TECHNOLOGY_LABELS.map((label, idx) => <MenuItem key={label} value={idx}>{label}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Grid container spacing={1}>
+                    <PrinterConfigurationFields groups={['machine']} value={machineForm.printerConfiguration}
+                      onChange={printerConfiguration => setMachineForm(f => ({ ...f, printerConfiguration }))} />
+                  </Grid>
+                </Grid>
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Tên máy"
-                  value={machineForm.name}
-                  onChange={(e) => setMachineForm((f) => ({ ...f, name: e.target.value }))}
-                  required
-                  fullWidth
-                />
+            </MachineFormSection>
+
+            <MachineFormSection number={2} title="Kích thước vùng in" description="Nhập vùng in hữu dụng theo X × Y × Z; thông số phải khớp với profile máy.">
+              <Grid container spacing={1.5}>
+                {([
+                  ['buildWidthMm', 'Khổ in X (mm)'],
+                  ['buildDepthMm', 'Khổ in Y (mm)'],
+                  ['buildHeightMm', 'Khổ in Z (mm)'],
+                ] as const).map(([key, label]) => <Grid key={key} size={{ xs: 12, sm: 4 }}>
+                  <TextField label={label} type="number" value={machineForm[key]} required fullWidth
+                    slotProps={{ htmlInput: { min: 1, step: 1 } }}
+                    onChange={e => setMachineForm(f => ({ ...f, [key]: Number(e.target.value) }))} />
+                </Grid>)}
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Model"
-                  value={machineForm.model}
-                  onChange={(e) => setMachineForm((f) => ({ ...f, model: e.target.value }))}
-                  required
-                  fullWidth
-                />
+            </MachineFormSection>
+
+            <MachineFormSection number={3} title="Cấu hình đầu đùn" description="Thông số phần cứng phải khớp đầu phun và sợi nhựa lab đang sử dụng.">
+              <Grid container spacing={1.5}>
+                <PrinterConfigurationFields groups={['extrusion']} value={machineForm.printerConfiguration}
+                  onChange={printerConfiguration => setMachineForm(f => ({ ...f, printerConfiguration }))} />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControl fullWidth>
-                  <InputLabel id="lab-machine-tech-label">Công nghệ</InputLabel>
-                  <Select
-                    labelId="lab-machine-tech-label"
-                    label="Công nghệ"
-                    value={machineForm.technology}
-                    onChange={(e) =>
-                      setMachineForm((f) => ({ ...f, technology: Number(e.target.value) as PrintTechnology }))
-                    }
-                  >
-                    {PRINT_TECHNOLOGY_LABELS.map((label, idx) => (
-                      <MenuItem key={label} value={idx}>
-                        {label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Vật liệu hỗ trợ (phân cách dấu phẩy)"
+            </MachineFormSection>
+
+            <MachineFormSection number={4} title="Vật liệu và màu sắc" description="Chỉ khai báo mã vật liệu máy thực sự hỗ trợ. Màu sắc và lượng tồn kho được ghi nhận riêng trong kho lab.">
+              <Stack spacing={1.5}>
+                <TextField label="Vật liệu hỗ trợ (mã, phân cách bằng dấu phẩy)"
                   value={machineForm.materials}
-                  onChange={(e) => setMachineForm((f) => ({ ...f, materials: e.target.value }))}
-                  fullWidth
-                />
+                  onChange={e => setMachineForm(f => ({ ...f, materials: e.target.value }))}
+                  helperText="Ví dụ: PLA, PETG. Chỉ vật liệu có profile CuraEngine phù hợp mới được xét duyệt báo giá."
+                  required fullWidth />
+                {myLab && <Button variant="outlined" sx={{ alignSelf: 'flex-start' }}
+                  onClick={() => { setFormOpen(false); navigate(`/lab/${myLab.id}/inventory`) }}>
+                  Khai báo màu và tồn kho vật liệu
+                </Button>}
+              </Stack>
+            </MachineFormSection>
+
+            <MachineFormSection number={5} title="Cấu hình chất lượng mặc định" description="Thông số khả năng tối thiểu của máy dùng để lọc đơn; profile CuraEngine cung cấp chất lượng in tiêu chuẩn.">
+              <Grid container spacing={1.5}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField label="Độ dày lớp nhỏ nhất máy hỗ trợ (mm)" type="number"
+                    value={machineForm.minLayerHeightMm} required fullWidth
+                    slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }}
+                    onChange={e => setMachineForm(f => ({ ...f, minLayerHeightMm: Number(e.target.value) }))} />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField label="Dung sai đạt được (mm)" type="number"
+                    value={machineForm.achievableToleranceMm} required fullWidth
+                    slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }}
+                    onChange={e => setMachineForm(f => ({ ...f, achievableToleranceMm: Number(e.target.value) }))} />
+                </Grid>
               </Grid>
-              <Grid size={{ xs: 4 }}>
-                <TextField
-                  label="Khổ in X (mm)"
-                  type="number"
-                  value={machineForm.buildWidthMm}
-                  onChange={(e) => setMachineForm((f) => ({ ...f, buildWidthMm: Number(e.target.value) }))}
-                  fullWidth
-                />
+            </MachineFormSection>
+
+            <MachineFormSection number={6} title="Tốc độ máy" description="Không nhập một con số tốc độ tối đa: CuraEngine dùng tốc độ in/di chuyển và các giới hạn trong profile đã duyệt.">
+              <Alert severity="info">Tốc độ theo từng loại đường in và giới hạn chuyển động được lấy từ profile CuraEngine tương ứng.</Alert>
+            </MachineFormSection>
+
+            <MachineFormSection number={7} title="Rút nhựa" description="Không cần lab tự nhập retraction, jerk hay prime tower.">
+              <Alert severity="info">Các thông số rút nhựa, đổi đầu đùn và prime tower được giữ trong profile CuraEngine; không chỉnh riêng trên biểu mẫu máy.</Alert>
+            </MachineFormSection>
+
+            <MachineFormSection number={8} title="Support và bám bàn" description="Dùng thiết lập thống nhất trong profile chất lượng, không khai báo lại ở cấp máy.">
+              <Alert severity="info">Support, kiểu support và kiểu bám bàn được lấy từ profile CuraEngine khi slicer tính báo giá.</Alert>
+            </MachineFormSection>
+
+            <MachineFormSection number={9} title="In nhiều màu" description="Khai đúng số đầu đùn vật lý và số màu tối đa mà máy có thể đổi trong một sản phẩm.">
+              <Grid container spacing={1.5}>
+                <PrinterConfigurationFields groups={['multicolor']} value={machineForm.printerConfiguration}
+                  onChange={printerConfiguration => setMachineForm(f => ({ ...f, printerConfiguration }))} />
               </Grid>
-              <Grid size={{ xs: 4 }}>
-                <TextField
-                  label="Khổ in Y (mm)"
-                  type="number"
-                  value={machineForm.buildDepthMm}
-                  onChange={(e) => setMachineForm((f) => ({ ...f, buildDepthMm: Number(e.target.value) }))}
-                  fullWidth
-                />
+            </MachineFormSection>
+
+            <MachineFormSection number={10} title="Thông tin tính giá" description="Đơn giá máy áp dụng theo giờ; giá vật liệu, màu, đánh bóng và dịch vụ khác theo thỏa thuận riêng.">
+              <Grid container spacing={1.5}>
+                <PrinterConfigurationFields groups={['pricing']} value={machineForm.printerConfiguration}
+                  onChange={printerConfiguration => setMachineForm(f => ({ ...f, printerConfiguration }))} />
+                <Grid size={{ xs: 12 }}>
+                  <Alert severity="info">Giá vật liệu theo kg và phí dịch vụ chưa được cấu hình trong hồ sơ máy; lab tiếp tục quản lý theo hợp đồng và tồn kho đã khai báo.</Alert>
+                </Grid>
               </Grid>
-              <Grid size={{ xs: 4 }}>
-                <TextField
-                  label="Khổ in Z (mm)"
-                  type="number"
-                  value={machineForm.buildHeightMm}
-                  onChange={(e) => setMachineForm((f) => ({ ...f, buildHeightMm: Number(e.target.value) }))}
-                  fullWidth
-                />
+            </MachineFormSection>
+
+            <MachineFormSection number={11} title="Profile CuraEngine" description="Chọn profile tham chiếu để điền nhanh model, khổ in, đầu phun, số màu và vật liệu; hệ thống sẽ đối chiếu lại khi lưu.">
+              <Grid container spacing={1.5}>
+                <ProfilePresetField value={profilePresetId} onSelect={applyProfilePreset} />
+                <Grid size={{ xs: 12 }}>
+                  <Alert severity="info">
+                    Profile phải do quản trị viên nhập và duyệt trước khi máy tham gia báo giá. Việc chọn profile ở đây chỉ điền thông số tham chiếu; hồ sơ máy được tự đối chiếu theo hãng, model, khổ in, đầu phun, đầu đùn, số màu và vật liệu.
+                  </Alert>
+                </Grid>
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Layer height nhỏ nhất (mm)"
-                  type="number"
-                  value={machineForm.minLayerHeightMm}
-                  onChange={(e) => setMachineForm((f) => ({ ...f, minLayerHeightMm: Number(e.target.value) }))}
-                  fullWidth
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Dung sai đạt được (mm)"
-                  type="number"
-                  value={machineForm.achievableToleranceMm}
-                  onChange={(e) => setMachineForm((f) => ({ ...f, achievableToleranceMm: Number(e.target.value) }))}
-                  fullWidth
-                />
-              </Grid>
-              <PrinterConfigurationFields value={machineForm.printerConfiguration}
-                onChange={printerConfiguration => setMachineForm(f => ({ ...f, printerConfiguration }))} />
-            </Grid>
+            </MachineFormSection>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
@@ -635,7 +701,23 @@ export default function LabMachinesPage() {
               addMachine.isPending ||
               updateMachine.isPending ||
               !machineForm.name.trim() ||
-              !machineForm.model.trim()
+              !machineForm.model.trim() ||
+              !machineForm.printerConfiguration.manufacturer.trim() ||
+              !machineForm.materials.trim() ||
+              machineForm.buildWidthMm <= 0 ||
+              machineForm.buildDepthMm <= 0 ||
+              machineForm.buildHeightMm <= 0 ||
+              machineForm.minLayerHeightMm <= 0 ||
+              machineForm.achievableToleranceMm <= 0 ||
+              machineForm.printerConfiguration.nozzleDiameterMm <= 0 ||
+              machineForm.printerConfiguration.filamentDiameterMm <= 0 ||
+              machineForm.printerConfiguration.extruderCount < 1 ||
+              machineForm.printerConfiguration.maximumColorSlots < machineForm.printerConfiguration.extruderCount ||
+              machineForm.printerConfiguration.maxNozzleTemperatureC <= 0 ||
+              (machineForm.printerConfiguration.heatedBed && machineForm.printerConfiguration.maxBedTemperatureC <= 0) ||
+              machineForm.printerConfiguration.pricePerHour <= 0 ||
+              machineForm.printerConfiguration.failureRate < 0 ||
+              machineForm.printerConfiguration.failureRate >= 1
             }
           >
             {editingMachine ? 'Lưu thay đổi' : 'Thêm máy'}
@@ -710,4 +792,3 @@ export default function LabMachinesPage() {
     </Box>
   )
 }
-
