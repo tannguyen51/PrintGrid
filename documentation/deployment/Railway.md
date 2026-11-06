@@ -95,10 +95,38 @@ Thêm **Authorized JavaScript origins**:
 
 Nếu frontend đổi domain, phải cập nhật cả origin lẫn `App__FrontendUrl`.
 
-## 5. Chuẩn bị database (một lần, sau khi Postgres chạy)
+## 5. Database & migrations
 
-Container runtime không có `dotnet ef`, nên chạy migration từ máy local qua **TCP Proxy** của
-Postgres (Railway → Postgres → Settings → Networking → TCP Proxy → lấy `DATABASE_PUBLIC_URL`).
+### 5.1 Tự động bằng pre-deploy (khuyến nghị)
+
+`src/PrintGrid.Api/Dockerfile` đã:
+- sinh `/app/migrations.sql` ở **build stage** bằng `dotnet ef migrations script --idempotent`;
+- cài `psql` trong runtime image (chỉ để chạy bước này).
+
+Cấu hình trên Railway:
+
+1. Service **`api` → Variables**, thêm biến tham chiếu:
+   ```
+   DATABASE_URL=${{Postgres.DATABASE_URL}}
+   ```
+2. Service **`api` → Settings → Deploy → Pre-deploy Command**:
+   ```
+   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/migrations.sql
+   ```
+3. Deploy lại.
+
+Kết quả: **mỗi lần deploy**, Railway chạy script một lần trước khi container mới nhận traffic.
+Script là idempotent — không có migration mới thì không làm gì; migration lỗi thì deployment bị
+chặn, container cũ vẫn chạy.
+
+> Migration là một chiều: rollback app **không** rollback schema. Vì vậy mỗi migration nên
+> backward-compatible (thêm cột/bảng trước, xoá/đổi tên ở lần deploy sau) để cửa sổ rolling
+> deploy không làm container cũ vỡ.
+
+### 5.2 Thủ công (fallback / lần đầu trước khi bật pre-deploy)
+
+Container runtime không có `dotnet ef`, nên chạy từ máy local qua **TCP Proxy** của Postgres
+(Railway → Postgres → Settings → Networking → TCP Proxy → lấy `DATABASE_PUBLIC_URL`).
 
 PowerShell:
 ```powershell
@@ -106,7 +134,13 @@ $env:ConnectionStrings__DefaultConnection = "Host=<host>;Port=<port>;Database=ra
 dotnet ef database update --project src/PrintGrid.Infrastructure.Shared --startup-project src/PrintGrid.Api
 ```
 
-Nạp dữ liệu demo (4 tài khoản demo, lab, máy in):
+Hoặc áp thẳng SQL đã chuẩn bị (idempotent, dùng khi không có `dotnet ef`):
+```powershell
+psql "<DATABASE_PUBLIC_URL>" -f documentation/deployment/sql/20261104_apply_pending_migrations.sql
+```
+
+### 5.3 Nạp dữ liệu demo
+
 ```powershell
 # nếu máy có psql
 psql "<DATABASE_PUBLIC_URL>" -f seed_demo.sql
@@ -117,9 +151,8 @@ docker run --rm -i -v "${PWD}:/w" postgres:16-alpine psql "<DATABASE_PUBLIC_URL>
 
 Tài khoản demo sau khi seed: `demo@`, `lab@`, `qc@`, `ops@printgrid.dev`, mật khẩu `Demo@123`.
 
-> Lưu ý: dashboard Hangfire ở `/jobs` dùng filter riêng; API hiện **không tự chạy migration**
-> lúc khởi động. Nếu muốn tự động hoá, có thể thêm bước chạy migration trong CI hoặc một service
-> one-off — đừng bật auto-migrate mù trên production.
+> Dashboard Hangfire ở `/jobs` dùng filter riêng. API **không** tự migrate lúc khởi động —
+> migration chỉ chạy ở bước pre-deploy (5.1) hoặc thủ công (5.2).
 
 ## 6. MinIO
 

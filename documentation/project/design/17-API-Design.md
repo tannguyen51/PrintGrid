@@ -1011,6 +1011,42 @@ Update configuration (creates new version).
 
 ## WebSocket (SignalR)
 
+### User notifications
+Notifications are persisted per user and are delivered to the signed-in user's connections.
+The notification content and action link are selected for the receiving role (Customer,
+LabManager/LabOperator, HubQC, HubFulfillment, OpsManager, or Admin).
+
+#### GET /notifications
+Get the latest 30 notifications and the total unread count for the signed-in account.
+
+**Response:** `200 OK`
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "title": "Có sản phẩm chờ kiểm tra",
+      "message": "Một sản phẩm đã chuyển sang bước kiểm tra chất lượng.",
+      "type": "work-queue",
+      "link": "/hub/qc",
+      "createdAtUtc": "2026-11-04T13:00:00Z",
+      "readAtUtc": null
+    }
+  ],
+  "unreadCount": 1
+}
+```
+
+#### PATCH /notifications/{id}/read
+Mark one of the signed-in user's notifications as read. Returns `204 No Content`, or
+`404 Not Found` when the notification does not belong to that user.
+
+#### POST /notifications/read-all
+Mark all notifications belonging to the signed-in user as read. Returns `204 No Content`.
+
+The SignalR hub below sends `NotificationsUpdated` to that user's active connections after a
+new notification is saved or read state changes. Clients then refetch `GET /notifications`.
+
 ### Connection
 ```
 wss://api.printgrid.com/hubs/notifications
@@ -1025,31 +1061,8 @@ wss://api.printgrid.com/hubs/notifications?access_token=jwt_token
 
 ### Server → Client Events
 
-**QuoteReady**
-```json
-{
-  "quoteId": "uuid",
-  "status": "completed"
-}
-```
-
-**OrderStatusChanged**
-```json
-{
-  "orderId": "uuid",
-  "newStatus": "in_production",
-  "timestamp": "2026-09-01T14:00:00Z"
-}
-```
-
-**JobAssigned** (Lab)
-```json
-{
-  "jobId": "uuid",
-  "machineId": "uuid",
-  "responseDeadline": "2026-09-01T12:00:00Z"
-}
-```
+**NotificationsUpdated** — invalidation signal; fetch the latest notification list via
+`GET /notifications`.
 
 ---
 

@@ -20,6 +20,7 @@ tags:
   - name: customer
   - name: quotes
   - name: orders
+  - name: notifications
   - name: payments
   - name: lab
   - name: hub
@@ -88,6 +89,41 @@ paths:
       x-milestone: T1
       summary: Xác minh email bằng token
       responses: { '200': { description: Verified=true }, '410': { description: Token hết hạn } }
+
+  # ============ THÔNG BÁO THEO TÀI KHOẢN / ROLE ============
+  /notifications:
+    get:
+      tags: [notifications]
+      summary: Lấy 30 thông báo gần nhất và số thông báo chưa đọc của tài khoản hiện tại
+      responses:
+        '200':
+          description: NotificationListDto
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, unreadCount]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/NotificationDto' } }
+                  unreadCount: { type: integer, minimum: 0 }
+  /notifications/{id}/read:
+    patch:
+      tags: [notifications]
+      summary: Đánh dấu thông báo của tài khoản hiện tại đã đọc
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Đã đánh dấu đã đọc }
+        '404': { description: Không tìm thấy thông báo của tài khoản hiện tại }
+  /notifications/read-all:
+    post:
+      tags: [notifications]
+      summary: Đánh dấu tất cả thông báo của tài khoản hiện tại đã đọc
+      responses:
+        '204': { description: Đã đánh dấu tất cả đã đọc }
 
   # ============ KHÁCH: MODEL & CẤU HÌNH (ghế Đơn hàng — T1..T3) ============
   /models:
@@ -428,6 +464,17 @@ components:
     jobId:     { name: jobId,     in: path, required: true, schema: { type: string, format: uuid } }
     orderId:   { name: orderId,   in: path, required: true, schema: { type: string, format: uuid } }
   schemas:
+    NotificationDto:
+      type: object
+      required: [id, title, message, type, createdAtUtc]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        message: { type: string }
+        type: { type: string }
+        link: { type: string, nullable: true }
+        createdAtUtc: { type: string, format: date-time }
+        readAtUtc: { type: string, format: date-time, nullable: true }
     RegisterRequest:
       type: object
       required: [email, password, fullName]
