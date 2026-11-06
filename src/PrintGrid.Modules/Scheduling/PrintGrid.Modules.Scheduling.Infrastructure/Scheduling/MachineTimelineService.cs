@@ -6,7 +6,7 @@ using PrintGrid.Modules.Scheduling.Domain.Enums;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Scheduling;
 
-public abstract class MachineTimelineService(PrintGridDbContext context) : IMachineTimelineService
+public class MachineTimelineService(PrintGridDbContext context) : IMachineTimelineService
 {
     private static readonly JobStatus[] _blockingStatuses =
     [

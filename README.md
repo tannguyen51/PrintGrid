@@ -97,6 +97,10 @@ docker compose up -d --build                  # SPA on :3000, API on :5000
 The Vite dev server proxies `/api` and `/hubs` to `localhost:5000`, so the SPA needs no CORS
 configuration in development.
 
+If port 5000 is served by the API container, rebuild it after backend changes with
+`docker compose up -d --build api`. Vite serves the current frontend source while the container
+keeps its last built backend; new API routes and SignalR hubs return 404 until it is rebuilt.
+
 ## Verify
 
 ```bash

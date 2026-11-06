@@ -13,7 +13,7 @@ namespace PrintGrid.Modules.Scheduling.Infrastructure.Scheduling;
 /// booked windows, then adds lab→hub transit and a hub processing buffer (BR-SCHED-001
 /// backward scheduling basis). Null result = no machine in the network can produce it.
 /// </summary>
-public abstract class ProductionCapacityProbe(PrintGridDbContext context) : IProductionCapacityProbe
+public class ProductionCapacityProbe(PrintGridDbContext context) : IProductionCapacityProbe
 {
     /// <summary>Hub days for QC + consolidation between arrival and ship-out (cfg in FR-ADMIN-002 later).</summary>
     private const int _hubProcessingDays = 1;

@@ -6,7 +6,7 @@ using PrintGrid.Modules.Scheduling.Domain.Repositories;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Repositories;
 
-public abstract class JobRepository(PrintGridDbContext context) : IJobRepository
+public class JobRepository(PrintGridDbContext context) : IJobRepository
 {
     private static readonly JobStatus[] _activeStatuses =
     [

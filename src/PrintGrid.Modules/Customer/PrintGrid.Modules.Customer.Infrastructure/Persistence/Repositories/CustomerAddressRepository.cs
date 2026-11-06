@@ -6,7 +6,7 @@ using PrintGrid.Modules.Customer.Domain.Enums;
 
 namespace PrintGrid.Modules.Customer.Infrastructure.Persistence.Repositories;
 
-public abstract class CustomerAddressRepository(PrintGridDbContext context) : ICustomerAddressRepository
+public class CustomerAddressRepository(PrintGridDbContext context) : ICustomerAddressRepository
 {
     public async Task<IReadOnlyList<CustomerAddress>> ListAsync(Guid customerId, CancellationToken cancellationToken = default) =>
         await context.Set<CustomerAddress>().Where(x => x.CustomerId == customerId)

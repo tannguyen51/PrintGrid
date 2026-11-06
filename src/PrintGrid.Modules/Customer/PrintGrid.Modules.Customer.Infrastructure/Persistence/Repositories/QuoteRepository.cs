@@ -5,7 +5,7 @@ using PrintGrid.Modules.Customer.Domain.Repositories;
 
 namespace PrintGrid.Modules.Customer.Infrastructure.Persistence.Repositories;
 
-public abstract class QuoteRepository(PrintGridDbContext context) : IQuoteRepository
+public class QuoteRepository(PrintGridDbContext context) : IQuoteRepository
 {
     public Task<Quote?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         context.Set<Quote>()

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Caching.Distributed;
 
 namespace PrintGrid.Infrastructure.Shared.Caching;
 
-public abstract class RedisCacheService(IDistributedCache cache) : ICacheService
+public class RedisCacheService(IDistributedCache cache) : ICacheService
 {
     private static readonly JsonSerializerOptions _serializerOptions = new(JsonSerializerDefaults.Web);
 

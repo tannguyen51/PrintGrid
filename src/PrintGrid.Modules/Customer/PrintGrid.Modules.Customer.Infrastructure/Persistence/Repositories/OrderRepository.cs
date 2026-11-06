@@ -6,7 +6,7 @@ using PrintGrid.Modules.Customer.Domain.Repositories;
 
 namespace PrintGrid.Modules.Customer.Infrastructure.Persistence.Repositories;
 
-public abstract class OrderRepository(PrintGridDbContext context) : IOrderRepository
+public class OrderRepository(PrintGridDbContext context) : IOrderRepository
 {
     public Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         context.Set<Order>()
