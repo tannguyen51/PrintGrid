@@ -2,19 +2,27 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # ---------------------------------------------------------------------------
-# CuraEngine — extracted from the official Linux AppImage via 7z (no FUSE).
+# CuraEngine — extracted from the official Linux AppImage via dd+bsdtar.
+# An AppImage is a binary prefix + a SquashFS filesystem. We locate the
+# ISO-9660 "CD001" magic (offset 32769) to find where SquashFS begins,
+# then extract just that payload with bsdtar. No FUSE needed.
 # Pin to the version matching our local test rig profiles (5.11.0).
 # ---------------------------------------------------------------------------
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl p7zip-full ca-certificates \
+    && apt-get install -y --no-install-recommends curl ca-certificates p7zip-full coreutils \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /opt/cura/extract \
     && curl -sL --retry 3 -o /tmp/Cura.AppImage \
        https://github.com/Ultimaker/Cura/releases/download/5.11.0/UltiMaker-Cura-5.11.0-linux-X64.AppImage \
-    && 7z x /tmp/Cura.AppImage -o/tmp/Cura.extract > /dev/null 2>&1 \
-    && cp /tmp/Cura.extract/usr/bin/CuraEngine /opt/cura/CuraEngine \
+    && SQUASH_OFFSET=$(grep -boa 'CD001' /tmp/Cura.AppImage | tail -n1 | cut -d: -f1) \
+    && if [ -z "$SQUASH_OFFSET" ]; then echo "FATAL: CD001 not found in AppImage"; exit 1; fi \
+    && echo "SquashFS offset: $SQUASH_OFFSET" \
+    && SQUASH_SIZE=$(stat --printf='%s' /tmp/Cura.AppImage) \
+    && dd if=/tmp/Cura.AppImage of=/tmp/squash.img bs=1 skip=$((SQUASH_OFFSET)) count=$((SQUASH_SIZE - SQUASH_OFFSET)) status=none \
+    && bsdtar -xvf /tmp/squash.img -C /tmp/Cura.extract squashfs-root/usr/bin/CuraEngine > /dev/null 2>&1 \
+    && cp /tmp/Cura.extract/squashfs-root/usr/bin/CuraEngine /opt/cura/CuraEngine \
     && chmod 755 /opt/cura/CuraEngine \
-    && rm -rf /tmp/Cura.AppImage /tmp/Cura.extract
+    && rm -rf /tmp/Cura.AppImage /tmp/Cura.extract /tmp/squash.img
 
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
