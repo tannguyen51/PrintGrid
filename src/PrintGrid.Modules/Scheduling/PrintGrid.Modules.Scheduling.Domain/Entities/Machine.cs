@@ -25,6 +25,9 @@ public class Machine : Entity<Guid>
     public Guid? ProfileReviewedBy { get; private set; }
     public DateTime? ProfileReviewedAtUtc { get; private set; }
 
+    /// <summary>BR-04/Section 4.1: whether this model allows customer pinning (doc §6.5). Admin can disable per model.</summary>
+    public bool AllowsCustomerPinning { get; private set; } = true;
+
     public void ConfigurePrinter(PrinterConfiguration configuration)
     {
         configuration.Validate();
@@ -222,4 +225,7 @@ public class Machine : Entity<Guid>
     /// against and no existing job is ever rewritten.
     /// </summary>
     public int ApplyToEstimate(int rawEstimatedMinutes) => rawEstimatedMinutes <= 0 ? rawEstimatedMinutes : Math.Max(1, (int)Math.Round(rawEstimatedMinutes * CalibrationFactor, MidpointRounding.AwayFromZero));
+
+    /// <summary>BR-04/§6.5: Admin toggles whether customers can pin this model (doc §6).</summary>
+    public void ToggleCustomerPinning(bool allow) => AllowsCustomerPinning = allow;
 }

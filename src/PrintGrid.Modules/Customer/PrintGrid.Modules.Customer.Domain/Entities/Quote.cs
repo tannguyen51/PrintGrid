@@ -37,6 +37,20 @@ public class Quote : AggregateRoot<Guid>
     public DateOnly? EnginePromisedDeliveryDate { get; private set; }
     public string? AdjustmentReason { get; private set; }
 
+    /// <summary>Section 4/6: Profile ID + version used for this quote (for price recall).</summary>
+    public Guid? ProfileId { get; internal set; }
+    public string? ProfileVersion { get; internal set; }
+
+    /// <summary>Section 4: Surcharge coefficient h_chỉ_định when customer pins a model (BR-05).</summary>
+    public decimal? PinSurchargeCoefficient { get; internal set; }
+
+    /// <summary>Section 4.4: Comparison pricing — unpinned price & delivery day for comparison.</summary>
+    public long? UnpinnedPriceVnd { get; internal set; }
+    public DateOnly? UnpinnedDeliveryDay { get; internal set; }
+
+    /// <summary>Pinned machine model GUID used in the slicer run, if any (Section 4).</summary>
+    public Guid? PinnedModelMachineId { get; internal set; }
+
     public IReadOnlyCollection<QuoteItem> Items => _items.AsReadOnly();
 
     private bool IsExpired(DateTime asOfUtc) => ExpiresAt.HasValue && asOfUtc >= ExpiresAt.Value;
@@ -139,6 +153,15 @@ public class Quote : AggregateRoot<Guid>
     {
         Status = QuoteStatus.Failed;
         FailureReason = reason;
+    }
+
+    /// <summary>Set pinned model context for quote (Section 4/6).</summary>
+    public void SetPinnedModelContext(decimal? pinCoefficient, Guid? machineId, long? unpinnedPriceVnd, DateOnly? unpinnedDay)
+    {
+        PinSurchargeCoefficient = pinCoefficient;
+        PinnedModelMachineId = machineId;
+        UnpinnedPriceVnd = unpinnedPriceVnd;
+        UnpinnedDeliveryDay = unpinnedDay;
     }
 
     public Result MarkConverted(DateTime asOfUtc)

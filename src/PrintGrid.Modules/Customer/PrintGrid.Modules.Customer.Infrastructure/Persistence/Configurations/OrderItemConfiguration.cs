@@ -20,6 +20,11 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.Property(i => i.BoundingDepthMm).HasPrecision(8, 2);
         builder.Property(i => i.BoundingHeightMm).HasPrecision(8, 2);
         builder.Property(i => i.ItemStatus).HasMaxLength(32).IsRequired();
+        builder.Property(i => i.ModelBindingKind).HasMaxLength(16).HasDefaultValue("không");
+        builder.Property(i => i.BindingLevel).HasMaxLength(16).HasDefaultValue("bắt_buộc");
+        builder.Property(i => i.TechConstraintsJson).HasColumnType("jsonb");
+        builder.Property(i => i.PinnedModelId);
+        builder.Property(i => i.ReferenceOrderLineId);
         builder.HasIndex(i => i.OrderId);
 
         builder.OwnsOne(i => i.UnitPrice, price =>

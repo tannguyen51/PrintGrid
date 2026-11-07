@@ -21,6 +21,26 @@ public class QuoteItem : Entity<Guid>
     public decimal? BatchTotalAmount { get; private set; }
     public Guid? QuotedMachineId { get; private set; }
 
+    /// <summary>Part bounding box (mm) from geometry analysis — carried to order/jobs for real placement (FR-SCHED-006).</summary>
+    public decimal? BoundingWidthMm { get; private set; }
+    public decimal? BoundingDepthMm { get; private set; }
+    public decimal? BoundingHeightMm { get; private set; }
+
+    /// <summary>Profile used for slicer estimation when customer pins a model (Section 4.2).</summary>
+    public Guid? ProfileId { get; internal set; }
+
+    /// <summary>Version string of the frozen profile (for re-quote traceability).</summary>
+    public string? ProfileVersion { get; internal set; }
+
+    /// <summary>Model-pinch surcharge coefficient: null = 1.0 (unpinned), otherwise e.g. 1.15 (BR-05).</summary>
+    public decimal? SurchargePinchCoef { get; internal set; }
+
+    /// <summary>Alternative unpinned price for display comparison (Section 4.4). Stored in VND.</summary>
+    public long? AlternativePriceVnd { get; internal set; }
+
+    /// <summary>Alternative unpinned estimated delivery date (Section 4.4).</summary>
+    public DateOnly? AlternativeDeliveryDate { get; internal set; }
+
     public void FreezeCalculation(string json, decimal batchTotal, Guid? machineId = null)
     {
         if (CalculationJson is not null || batchTotal <= 0) throw new InvalidOperationException("Invalid or already frozen calculation");
@@ -29,10 +49,16 @@ public class QuoteItem : Entity<Guid>
         QuotedMachineId = machineId;
     }
 
-    /// <summary>Part bounding box (mm) from geometry analysis — carried to order/jobs for real placement (FR-SCHED-006).</summary>
-    public decimal? BoundingWidthMm { get; private set; }
-    public decimal? BoundingDepthMm { get; private set; }
-    public decimal? BoundingHeightMm { get; private set; }
+    /// <summary>Freeze model-pinch data per Section 4.2–4.4 (doc requirement §6 Quote entity).</summary>
+    public void FreezePinchData(Guid profileId, string profileVersion, decimal surchargeCoef,
+        long alternativePriceVnd, DateOnly alternativeDeliveryDate)
+    {
+        ProfileId = profileId;
+        ProfileVersion = profileVersion;
+        SurchargePinchCoef = surchargeCoef;
+        AlternativePriceVnd = alternativePriceVnd;
+        AlternativeDeliveryDate = alternativeDeliveryDate;
+    }
 
     private QuoteItem() { }
 

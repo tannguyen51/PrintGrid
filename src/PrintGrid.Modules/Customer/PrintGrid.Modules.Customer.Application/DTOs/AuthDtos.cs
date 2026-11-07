@@ -53,7 +53,12 @@ public record QuoteDto(
     decimal? EngineTotalAmount,
     DateOnly? EnginePromisedDeliveryDate,
     string? AdjustmentReason,
-    IReadOnlyList<QuoteItemDto> Items);
+    IReadOnlyList<QuoteItemDto> Items,
+    // Section 4: Pinned model comparison pricing (BR-05, BR-06)
+    long? UnpinnedPriceVnd = null,
+    DateOnly? UnpinnedDeliveryDay = null,
+    decimal? PinSurchargeCoefficient = null,
+    bool IsPinnedModelQuote = false);
 
 public record QuoteItemDto(
     Guid Id,

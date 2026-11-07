@@ -14,7 +14,9 @@ public sealed record PricingParameterSet(
     IReadOnlyDictionary<decimal, decimal> TimeMultiplierByLayer,
     IReadOnlyDictionary<string, decimal>? ColorPricePerKg = null,
     decimal FailureRate = 0m,
-    decimal PolishingPerUnit = 0m)
+    decimal PolishingPerUnit = 0m,
+    /// <summary>Section 4 BR-05: Surcharge coefficient when customer pins a machine model (default 1.15).</summary>
+    decimal PinSurchargeCoefficient = 1.15m)
 {
     /// <summary>Rates as they stood when the register was approved (legacy constants).</summary>
     public static readonly PricingParameterSet V202609 = new(
@@ -30,7 +32,8 @@ public sealed record PricingParameterSet(
         new Dictionary<string, decimal> { ["PLA"] = 470m, ["PETG"] = 575m, ["ABS"] = 520m, ["TPU"] = 680m, ["RESIN"] = 1550m },
         V202609.DensityGramsPerCm3,
         94_500m,
-        V202609.TimeMultiplierByLayer);
+        V202609.TimeMultiplierByLayer,
+        PinSurchargeCoefficient: 1.15m);
 
     /// <summary>Append-only history; newest entry is what new quotes use (FR-ADMIN-002 will extend this into DB config).</summary>
     private static IReadOnlyList<PricingParameterSet> All { get; } = [V202609, V202610];

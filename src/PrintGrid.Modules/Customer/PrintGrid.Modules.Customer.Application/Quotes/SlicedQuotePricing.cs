@@ -68,4 +68,30 @@ public static class SlicedQuotePricing
         return new QuotePriceBreakdown(slice.Colors, slice.PrintMinutes, materialAmount, machine, service,
             failureAllowance, total, widthMm, depthMm, heightMm);
     }
+
+    /// <summary>Section 4 BR-05: Calculate quoted price for a pinned model, applying surcharge coefficient.</summary>
+    public static QuotePriceBreakdown CalculateWithPinSurcharge(PricingParameterSet rates, string material, int quantity,
+        QuoteSliceResult slice, bool polishing, decimal pinCoefficient, decimal widthMm = 0, decimal depthMm = 0, decimal heightMm = 0)
+    {
+        // Use unrounded total before surcharge, then multiply by h_chỉ_định as per doc formula
+        var baseTotal = decimal.Round(slice.Colors.Sum(c =>
+        {
+            var key = $"{material.ToUpperInvariant()}:{c.ColorCode.ToUpperInvariant()}";
+            var perKg = rates.ColorPricePerKg != null && rates.ColorPricePerKg.TryGetValue(key, out var r) ? r
+                : (rates.PricePerGram.TryGetValue(material, out var pg) ? pg * 1000m : 0m);
+            return c.Grams / 1000m * perKg;
+        }), 2, MidpointRounding.AwayFromZero);
+
+        var hourly = slice.PricePerHour ?? rates.PricePerPrintHour;
+        var machineCost = slice.PrintMinutes / 60m * hourly;
+        var serviceCost = polishing ? quantity * rates.PolishingPerUnit : 0m;
+        var failureRate = slice.FailureRate ?? rates.FailureRate;
+        var allowance = (baseTotal + machineCost) * failureRate / (1 - failureRate);
+
+        var subtotal = baseTotal + machineCost + serviceCost + allowance;
+        var withSurcharge = Math.Round(subtotal * pinCoefficient, 0, MidpointRounding.AwayFromZero);
+
+        return new QuotePriceBreakdown(slice.Colors, slice.PrintMinutes, baseTotal, machineCost, serviceCost, allowance,
+            withSurcharge, widthMm, depthMm, heightMm);
+    }
 }

@@ -43,5 +43,10 @@ public static class QuoteMappings
             i.MachineTimeCostAmount,
             i.EstimatedPrintMinutes,
             i.EstimatedMaterialGrams,
-            i.CalculationJson is null ? null : System.Text.Json.JsonSerializer.Deserialize<QuotePriceBreakdown>(i.CalculationJson))).ToList());
+            i.CalculationJson is null ? null : System.Text.Json.JsonSerializer.Deserialize<QuotePriceBreakdown>(i.CalculationJson))).ToList(),
+        // Section 4 pinned model comparison pricing (BR-06)
+        quote.UnpinnedPriceVnd,
+        quote.UnpinnedDeliveryDay,
+        quote.PinSurchargeCoefficient,
+        quote.PinnedModelMachineId.HasValue);
 }

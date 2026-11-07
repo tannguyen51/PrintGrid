@@ -21,6 +21,12 @@ public class QuoteItemConfiguration : IEntityTypeConfiguration<QuoteItem>
         builder.Property(i => i.BoundingWidthMm).HasPrecision(8, 2);
         builder.Property(i => i.BoundingDepthMm).HasPrecision(8, 2);
         builder.Property(i => i.BoundingHeightMm).HasPrecision(8, 2);
+        builder.Property(i => i.ProfileId).HasColumnName("profile_id");
+        builder.Property(i => i.ProfileVersion).HasMaxLength(100);
+        builder.Property(i => i.SurchargePinchCoef).HasPrecision(5, 3);
+        builder.Property(i => i.AlternativePriceVnd).HasPrecision(18, 0);
+        builder.Property(i => i.AlternativeDeliveryDate).HasColumnType("date");
+
         builder.HasIndex(i => i.QuoteId);
 
         builder.OwnsOne(i => i.UnitPrice, price =>

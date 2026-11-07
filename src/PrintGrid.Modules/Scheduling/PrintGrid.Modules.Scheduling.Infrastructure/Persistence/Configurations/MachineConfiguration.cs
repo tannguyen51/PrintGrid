@@ -24,6 +24,7 @@ public class MachineConfiguration : IEntityTypeConfiguration<Machine>
         builder.Property(m => m.MaintenanceReason).HasMaxLength(300);
         builder.Property(m => m.ProfileStatus).HasMaxLength(30).IsRequired();
         builder.Property(m => m.ProfileReviewReason).HasMaxLength(1000);
+        builder.Property(m => m.AllowsCustomerPinning).IsRequired();
         builder.Property(m => m.CuraProfileIds).HasColumnType("uuid[]").IsRequired();
         builder.OwnsOne(m => m.PrinterConfiguration, c =>
         {

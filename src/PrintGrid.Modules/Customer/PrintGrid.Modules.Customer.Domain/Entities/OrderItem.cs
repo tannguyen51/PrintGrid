@@ -23,9 +23,48 @@ public class OrderItem : Entity<Guid>
     public decimal? BoundingDepthMm { get; private set; }
     public decimal? BoundingHeightMm { get; private set; }
 
+    /// <summary>Hard technical constraints from Section 3 (doc §6.1). Stored as JSONB.</summary>
+    public string? TechConstraintsJson { get; private set; }
+
+    /// <summary>Machine-binding mode from doc Section 4/5 (doc §6.2): "không" | "theo_model" | "như_đơn_cũ".</summary>
+    public string ModelBindingKind { get; private set; } = "không";
+
+    /// <summary>Pinned machine model GUID when binding is "theo_model".</summary>
+    public Guid? PinnedModelId { get; private set; }
+
+    /// <summary>Binding level: "bắt_buộc" or "ưu_tiên" (default "bắt_buộc").</summary>
+    public string BindingLevel { get; private set; } = "bắt_buộc";
+
+    /// <summary>Reference order line ID when binding is "như_đơn_cũ".</summary>
+    public Guid? ReferenceOrderLineId { get; private set; }
+
     public Money LineTotal => BatchTotalAmount.HasValue ? Money.Of(BatchTotalAmount.Value, UnitPrice.Currency) : UnitPrice.Multiply(Quantity);
 
     public void UpdateStatus(string newStatus) => ItemStatus = newStatus;
+
+    /// <summary>Freeze tech constraints per Section 3 (doc §6).</summary>
+    public void FreezeTechConstraints(string json)
+    {
+        TechConstraintsJson = json;
+    }
+
+    /// <summary>Set machine-binding mode per doc Sections 4 & 5 (doc §6).</summary>
+    public void SetModelBinding(string kind, Guid? modelId, Guid? referenceLineId)
+    {
+        ModelBindingKind = kind; // "không" | "theo_model" | "như_đơn_cũ"
+        PinnedModelId = modelId;
+        if (kind == "theo_model") BindingLevel = "bắt_buộc";
+        if (kind == "như_đơn_cũ")
+        {
+            BindingLevel = "ưu_tiên";
+            ReferenceOrderLineId = referenceLineId;
+        }
+        else
+        {
+            BindingLevel = "bắt_buộc";
+            ReferenceOrderLineId = null;
+        }
+    }
 
     private OrderItem() { }
 
