@@ -1,25 +1,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# ---------------------------------------------------------------------------
-# CuraEngine — extracted via Python script.
-# Cura 5.x AppImages use the "v3 compressed" format: an ELF loader header
-# whose size varies, followed by a zstd-compressed squashfs stream.
-# Python reads the binary header to find the exact payload offset.
-# Pin to the version matching our local test rig profiles (5.11.0).
-# ---------------------------------------------------------------------------
-COPY tools/docker/extract_cura.py /opt/docker/extract_cura.py
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates python3 libarchive-tools zstd \
-    && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /opt/cura \
-    && curl -sL --retry 3 --output /tmp/Cura.AppImage \
-       https://github.com/Ultimaker/Cura/releases/download/5.11.0/UltiMaker-Cura-5.11.0-linux-X64.AppImage \
-    && echo "Downloaded $(stat --printf='%s' /tmp/Cura.AppImage) bytes" \
-    && python3 /opt/docker/extract_cura.py /tmp/Cura.AppImage /opt/cura/CuraEngine \
-    && chmod 755 /opt/cura/CuraEngine \
-    && rm -f /tmp/Cura.AppImage
+# Note: CuraEngine multi-color quoting is temporarily disabled until we can
+# reliably extract the binary from the Cura 5.x New Gen (compressed) AppImage.
+# When enabled, set QuoteSlicer__ExecutablePath=/opt/cura/CuraEngine on Railway.
+# See tools/docker/extract_cura.py and infra/slicer/README.md for implementation details.
 
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
@@ -50,10 +35,6 @@ RUN groupadd --system --gid 2000 printgrid \
 
 COPY --from=build --chown=printgrid:printgrid /app/publish ./
 COPY --from=build --chown=printgrid:printgrid /app/migrations.sql ./migrations.sql
-
-# Copy CuraEngine binary; keep it executable for the unprivileged user.
-COPY --from=build /opt/cura/CuraEngine /opt/cura/CuraEngine
-RUN chmod 755 /opt/cura/CuraEngine
 
 USER printgrid
 EXPOSE 8080
