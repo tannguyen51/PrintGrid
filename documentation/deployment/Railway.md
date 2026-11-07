@@ -68,6 +68,10 @@ Cors__AllowedOrigins__0=https://<frontend-domain>
 # Cọc
 Payment__AutoConfirmOnPlace=false
 Payment__DepositPercent=50
+
+# CuraEngine — slicer cho báo giá đa màu FDM.
+# Binary đã được build vào Dockerfile ở build stage; biến này chỉ trỏ đường dẫn tại runtime.
+QuoteSlicer__ExecutablePath=/opt/cura/CuraEngine
 ```
 
 `ASPNETCORE_HTTP_PORTS=8080` đã nằm trong Dockerfile. Trong **Settings → Networking → Public
@@ -111,8 +115,10 @@ Cấu hình trên Railway:
    ```
 2. Service **`api` → Settings → Deploy → Pre-deploy Command**:
    ```
-   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/migrations.sql
+   sh -c 'psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/migrations.sql'
    ```
+   Phải bọc trong `sh -c '...'`: Railway chạy lệnh không qua shell, nên nếu viết trực tiếp
+   `psql "$DATABASE_URL" ...` thì biến không được expand và `psql` rơi về socket local (không tồn tại).
 3. Deploy lại.
 
 Kết quả: **mỗi lần deploy**, Railway chạy script một lần trước khi container mới nhận traffic.
@@ -122,6 +128,28 @@ chặn, container cũ vẫn chạy.
 > Migration là một chiều: rollback app **không** rollback schema. Vì vậy mỗi migration nên
 > backward-compatible (thêm cột/bảng trước, xoá/đổi tên ở lần deploy sau) để cửa sổ rolling
 > deploy không làm container cũ vỡ.
+
+### 5.1b Slicer — CuraEngine & profile máy
+
+**Binary**: đã build tự động trong Dockerfile `src/PrintGrid.Api/Dockerfile` từ source
+(`Ultimaker/CuraEngine@2.7.0`). Không cần download thêm file nào.
+
+**Biến môi trường**: chỉ cần `QuoteSlicer__ExecutablePath=/opt/cura/CuraEngine` (đã liệt kê ở mục 2).
+Không cần `QuoteSlicer__Machines__*` — tất cả profile lưu trong database (`cura_profiles`) và được
+Admin upload qua giao diện `/admin/cura-profiles`. Mỗi profile chứa resolved JSON + metadata
+(manufacturer, model, material, nozzle diameter…) và dùng khi khách đặt hàng có multi-color.
+
+**Quy trình admin upload profile**:
+
+1. Mở `/admin/cura-profiles`, nhập form (tên profile, hãng, model, vật liệu, số đầu đùn).
+2. Upload file `.resolved.json` (720 settings đã evaluate formula) hoặc paste nội dung JSON.
+3. Lưu → hệ thống tự đối chiếu với các máy in trong lab. Máy khớp sẽ chuyển trạng thái
+   `PendingReview`. Admin bấm **Duyệt báo giá** trên trang này.
+4. Khi khách chọn màu nhiều hơn khả năng máy (`extruderCount`), API tự reject quotation.
+
+> Profile test mẫu (virtual) có sẵn tại `infra/slicer/profiles/local-standard-pla.resolved.json`
+> và `local-fast-pla.resolved.json`. Đây là hồ sơ giả lập cho local smoke test; production cần
+> profile từ nhà sản xuất máy thật (extract từ bản Cura desktop tương thích).
 
 ### 5.2 Thủ công (fallback / lần đầu trước khi bật pre-deploy)
 
@@ -179,6 +207,7 @@ URL HTTPS, cần tách thêm `PublicUseSsl` trong `MinioFileStorage` — chưa c
 6. Upload một model ở `/models` → file lưu vào MinIO; tải lại được.
 7. Đặt một đơn → job tự gán cho lab → trang `/ops/payments` (Ops) hiển thị đơn chờ cọc nếu tắt
    `Payment__AutoConfirmOnPlace`.
+8. Chọn máy đã có profile được duyệt → báo giá đa màu → file slicing thành công (thời gian + vật liệu từng màu).
 
 ## 8. Sự cố thường gặp
 
@@ -192,3 +221,5 @@ URL HTTPS, cần tách thêm `PublicUseSsl` trong `MinioFileStorage` — chưa c
 | Quên mật khẩu 500 | Redis chưa cấu hình | đặt `ConnectionStrings__Redis` đúng |
 | File upload mất sau redeploy | MinIO không có volume | gắn volume `/data` |
 | Email không gửi | Railway chặn SMTP ra ngoài (một số plan) | kiểm tra log; nếu bị chặn dùng Resend/SendGrid SMTP |
+| Quotation slice thất bại 500 | thiếu `QuoteSlicer__ExecutablePath` hoặc binary không executable | đặt biến = `/opt/cura/CuraEngine`; kiểm tra `chmod 755` trong container |
+| Slice reject "profile máy chưa có profile phù hợp" | máy chưa được admin duyệt trên `/admin/cura-profiles` | bấm **Tìm lại profile** → **Duyệt báo giá** cho máy đó |

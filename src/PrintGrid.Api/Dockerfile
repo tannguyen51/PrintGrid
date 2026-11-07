@@ -1,6 +1,22 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
+# ---------------------------------------------------------------------------
+# CuraEngine — built from source in the SDK image so it is available at runtime.
+# The .NET SDK 9.0 image ships GCC / Make; we only need CMake + Git on top.
+# Pin to the tag that matches the local test rig (5.11.0).
+# ---------------------------------------------------------------------------
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git cmake g++ make pkg-config \
+    && rm -rf /var/lib/apt/lists/* \
+    && git clone --depth 1 --branch 2.7.0 https://github.com/Ultimaker/CuraEngine.git /opt/cura-src \
+    && mkdir -p /opt/cura/build \
+    && cd /opt/cura/build \
+    && cmake .. -DCMAKE_BUILD_TYPE=Release \
+    && make -j$(nproc) \
+    && cp CuraEngine /opt/cura/CuraEngine \
+    && rm -rf /opt/cura-src /opt/cura/build
+
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
 RUN dotnet restore src/PrintGrid.Api/PrintGrid.Api.csproj
@@ -30,6 +46,10 @@ RUN groupadd --system --gid 2000 printgrid \
 
 COPY --from=build --chown=printgrid:printgrid /app/publish ./
 COPY --from=build --chown=printgrid:printgrid /app/migrations.sql ./migrations.sql
+
+# Copy CuraEngine binary; keep it executable for the unprivileged user.
+COPY --from=build /opt/cura/CuraEngine /opt/cura/CuraEngine
+RUN chmod 755 /opt/cura/CuraEngine
 
 USER printgrid
 EXPOSE 8080
