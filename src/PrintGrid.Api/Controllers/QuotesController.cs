@@ -48,7 +48,9 @@ public class QuotesController(ISender sender) : ControllerBase
                 request.LayerHeightMm,
                 request.InfillPercent,
                 request.Quantity,
-                request.ToleranceMm, request.SizeCode ?? "ORIGINAL", request.ColorCodes, request.Polishing),
+                request.ToleranceMm, request.SizeCode ?? "ORIGINAL", request.ColorCodes, request.Polishing,
+                request.MaxColors, request.EnclosedChamber, request.NozzleDiameterMm, request.MaxToleranceMm, request.MinLayerHeightMm,
+                request.BindingType, request.PinnedMachineId, true, request.PreviousOrderLineId),
             cancellationToken);
 
         if (!result.IsFailure) return CreatedAtAction(nameof(GetQuotes), new { }, result.Value);
@@ -70,4 +72,14 @@ public record CreateQuoteRequest(
     decimal ToleranceMm,
     string? SizeCode = null,
     IReadOnlyList<string>? ColorCodes = null,
-    bool Polishing = false);
+    bool Polishing = false,
+    // BR-03: Tech constraints (hard filters, no surcharge)
+    int? MaxColors = null,
+    bool? EnclosedChamber = null,
+    decimal? NozzleDiameterMm = null,
+    decimal? MaxToleranceMm = null,
+    decimal? MinLayerHeightMm = null,
+    // Section 4/5: Machine binding type — BR-04, BR-05, BR-09
+    int? BindingType = null,   // 0=None, 1=ByModel, 2=LikeOldOrder
+    Guid? PinnedMachineId = null,
+    Guid? PreviousOrderLineId = null);
