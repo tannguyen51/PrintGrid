@@ -9,18 +9,30 @@ WORKDIR /src
 # Pin to the version matching our local test rig profiles (5.11.0).
 # ---------------------------------------------------------------------------
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates zstd binutils coreutils \
+    && apt-get install -y --no-install-recommends curl ca-certificates zstd binutils coreutils bsdtar \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /opt/cura/extract \
-    && curl -sL --retry 3 -o /tmp/Cura.AppImage \
+    && echo "[1/8] Downloading Cura 5.11.0 AppImage..." \
+    && curl -sL --retry 3 --output /tmp/Cura.AppImage \
        https://github.com/Ultimaker/Cura/releases/download/5.11.0/UltiMaker-Cura-5.11.0-linux-X64.AppImage \
+    && echo "[2/8] AppImage size: $(stat --printf='%s' /tmp/Cura.AppImage) bytes" \
+    && xxd -l 8 /tmp/Cura.AppImage | head -1 \
+    && echo "[3/8] Stripping 16-byte ELF loader prefix..." \
     && dd if=/tmp/Cura.AppImage of=/tmp/payload.bin bs=1 skip=16 status=none \
+    && echo "[4/8] Decompressing zstd payload..." \
     && zstdcat /tmp/payload.bin > /tmp/squash.img 2>/tmp/zstd.log || true \
     && if [ ! -s /tmp/squash.img ]; then echo "zstdcat failed:"; cat /tmp/zstd.log; exit 1; fi \
+    && echo "[5/8] SquashFS image size: $(stat --printf='%s' /tmp/squash.img) bytes" \
+    && echo "[6/8] Extracting CuraEngine from squashfs..." \
+    && bsdtar -tvf /tmp/squash.img 2>&1 | grep -i cura || echo "No CuraEngine in squashfs!" \
     && bsdtar -xvf /tmp/squash.img -C /opt/cura/extract squashfs-root/usr/bin/CuraEngine > /dev/null 2>&1 \
+    && echo "[7/8] Copying binary to runtime location..." \
     && cp /opt/cura/extract/squashfs-root/usr/bin/CuraEngine /opt/cura/CuraEngine \
     && chmod 755 /opt/cura/CuraEngine \
-    && rm -rf /tmp/Cura.AppImage /tmp/payload.bin /tmp/squash.img /tmp/zstd.log /opt/cura/extract
+    && /opt/cura/CuraEngine --version 2>&1 || true \
+    && echo "[8/8] Cleaning up temporary files..." \
+    && rm -rf /tmp/Cura.AppImage /tmp/payload.bin /tmp/squash.img /tmp/zstd.log /opt/cura/extract \
+    && echo "CuraEngine extraction complete."
 
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
