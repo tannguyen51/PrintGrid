@@ -1,4 +1,5 @@
 using MediatR;
+using PrintGrid.Modules.Customer.Application.Abstractions;
 using PrintGrid.Modules.Customer.Application.DTOs;
 using PrintGrid.Modules.Customer.Domain.Entities;
 using PrintGrid.Modules.Customer.Domain.Repositories;
@@ -15,6 +16,7 @@ public class CreateQuoteCommandHandler(
     IUnitOfWork unitOfWork,
     IDateTimeProvider clock,
     IProductionCapacityProbe capacity,
+    IMachineFilterService machineFilter,
     ICommercialPolicyProvider? commercialPolicy = null,
     IQuoteSlicer? quoteSlicer = null)
     : IRequestHandler<CreateQuoteCommand, Result<QuoteDto>>
@@ -154,67 +156,92 @@ public class CreateQuoteCommandHandler(
         var machineIds = quoteSlicer is null ? [] : await quoteSlicer.GetConfiguredMachineIdsAsync(cancellationToken);
         if (quoteSlicer is null || machineIds.Count == 0)
             return Result.Failure<QuoteDto>(Error.Conflict("Chưa cấu hình CuraEngine và profile máy để báo giá tự động. Vui lòng liên hệ PrintGrid."));
-        var colors = (command.ColorCodes ?? [command.ColorCode])
-            .Select(c => c.Trim().ToUpperInvariant()).ToList();
-        if (colors.Count is < 1 or > 8 || colors.Distinct().Count() != colors.Count)
-            return Result.Failure<QuoteDto>(Error.Validation("Chọn từ 1 đến 8 màu khác nhau."));
-        if (command.Polishing && policy.Pricing.PolishingPerUnit <= 0)
-            return Result.Failure<QuoteDto>(Error.Conflict("Chưa cấu hình đơn giá dịch vụ đánh bóng."));
-        var size = command.SizeCode ?? "ORIGINAL";
-        decimal scale;
-        try { scale = SlicedQuotePricing.ScaleFor(size, model.BoundingWidthMm ?? 0, model.BoundingDepthMm ?? 0, model.BoundingHeightMm ?? 0); }
-        catch (ArgumentException e) { return Result.Failure<QuoteDto>(Error.Validation(e.Message)); }
-        var width = model.BoundingWidthMm!.Value;
-        var depth = model.BoundingDepthMm!.Value;
-        var height = model.BoundingHeightMm!.Value;
-        QuotePriceBreakdown? best = null;
-        TrialPlacementResult? placement = null;
-        Guid? placementMachineId = null;
-        string? failure = null;
-        foreach (var machineId in machineIds)
+
+        // BR-03: Filter by tech constraints (hard filter — no surcharge)
+        var techConstraints = TechConstraints.From(command.MaxColors, command.EnclosedChamber,
+            command.NozzleDiameterMm, command.MaxToleranceMm, command.MinLayerHeightMm);
+        if (techConstraints.HasValue)
         {
-            // Cheap dimensional/capacity check before starting an external engine process.
-            var feasible = await capacity.FindEarliestFeasibleDeliveryAsync(
-                colors.Select((color, index) => new TrialPlacementLine(width * scale, depth * scale, height * scale,
-                    command.MaterialCode, color, command.LayerHeightMm, command.ToleranceMm,
-                    index == 0 ? 1 : 0, 0.1m, machineId)).ToList(), clock.UtcNow, cancellationToken);
-            if (feasible is null) continue;
-            try
-            {
-                var density = policy.Pricing.DensityGramsPerCm3[command.MaterialCode];
-                var slice = await quoteSlicer.SliceAsync(new QuoteSliceRequest(model.StorageKey!, model.FileFormat, scale,
-                    command.MaterialCode, colors, density, command.LayerHeightMm, command.InfillPercent,
-                    command.Quantity, machineId), cancellationToken);
-                if (!slice.Colors.Select(c => c.ColorCode).Order().SequenceEqual(colors.Order()))
-                    throw new InvalidDataException("Kết quả slicer không khớp các màu đã chọn.");
-                var price = SlicedQuotePricing.Calculate(policy.Pricing, command.MaterialCode, command.Quantity, slice,
-                    command.Polishing, width * scale, depth * scale, height * scale);
-                var trial = await capacity.FindEarliestFeasibleDeliveryAsync(
-                    [
-                        .. slice.Colors.Select((color, index) => new TrialPlacementLine(price.WidthMm, price.DepthMm,
-                            price.HeightMm,
-                            command.MaterialCode, color.ColorCode, command.LayerHeightMm, command.ToleranceMm,
-                            index == 0 ? (int)decimal.Ceiling(slice.PrintMinutes) : 0, color.Grams, machineId))
-                    ],
-                    clock.UtcNow, cancellationToken);
-                if (trial is not null && (best is null || price.TotalAmount < best.TotalAmount ||
-                    (price.TotalAmount == best.TotalAmount && trial.PromisedDeliveryDate < placement!.PromisedDeliveryDate)))
-                { best = price; placement = trial; placementMachineId = machineId; }
-            }
-            catch (Exception e) when (e is InvalidDataException or ArgumentException or InvalidOperationException)
-            { failure = e.Message; }
+            machineIds = await machineFilter.FilterByTechConstraintsAsync(machineIds, techConstraints.Value, cancellationToken);
+            if (machineIds.Count == 0)
+                return Result.Failure<QuoteDto>(Error.Validation("Không có máy nào đáp ứng các ràng buộc kỹ thuật đã chọn"));
         }
+
+        // Section 4: Pinned model handling (BR-04, BR-05, BR-06)
+        decimal surchargeCoefficient = 1.0m;
+        IReadOnlyList<Guid> allCandidateIds = machineIds;
+        IReadOnlyList<Guid> pinnedCandidateIds = machineIds;
+
+        if (command.BindingType == 1 && command.PinnedModelId.HasValue)
+        {
+            var result = await machineFilter.FilterByPinModelAsync(command.PinnedModelId.Value, machineIds, cancellationToken);
+            pinnedCandidateIds = result.pinnedIds;
+            allCandidateIds = result.unpinnedFallback;
+            surchargeCoefficient = 1.15m; // Default h_chỉ_định per design doc section 4.2
+        }
+
+        // Compute both pricing options for comparison display (BR-06)
+        QuotePriceBreakdown? bestPinned = null;
+        QuotePriceBreakdown? bestUnpinned = null;
+        Guid? pinnedMachineId = null;
+        Guid? unpinnedMachineId = null;
+        TrialPlacementResult? pinnedPlacement = null;
+        TrialPlacementResult? unpinnedPlacement = null;
+
+        (bestUnpinned, unpinnedMachineId, unpinnedPlacement) = await SliceOnCandidates(policy, allCandidateIds, cancellationToken, command, model);
+
+        if (surchargeCoefficient > 1.0m && !pinnedCandidateIds.SequenceEqual(allCandidateIds))
+        {
+            (bestPinned, pinnedMachineId, pinnedPlacement) = await SliceOnCandidates(policy, pinnedCandidateIds, cancellationToken, command, model);
+        }
+
+        // Determine which option to use as final quote
+        QuotePriceBreakdown? best = bestPinned ?? bestUnpinned;
+        Guid? placementMachineId = bestPinned is not null ? pinnedMachineId : unpinnedMachineId;
+        TrialPlacementResult? placement = bestPinned is not null ? pinnedPlacement : unpinnedPlacement;
+
+        long? alternativePriceVnd = null;
+        DateOnly? alternativeDeliveryDate = null;
+        if (bestPinned is not null && bestUnpinned is not null)
+        {
+            var pinnedAfterSurcharge = bestPinned.TotalAmount * surchargeCoefficient;
+            if (pinnedAfterSurcharge <= bestUnpinned.TotalAmount * 1.1m)
+            { best = bestPinned; placementMachineId = pinnedMachineId; placement = pinnedPlacement; }
+            else
+            { best = bestUnpinned; placementMachineId = unpinnedMachineId; placement = unpinnedPlacement; }
+            alternativePriceVnd = (long)bestUnpinned.TotalAmount;
+            alternativeDeliveryDate = unpinnedPlacement?.PromisedDeliveryDate;
+        }
+        else if (bestUnpinned is not null)
+        {
+            alternativePriceVnd = (long)bestUnpinned.TotalAmount;
+            alternativeDeliveryDate = unpinnedPlacement?.PromisedDeliveryDate;
+        }
+
         if (best is null || placement is null)
-            return Result.Failure<QuoteDto>(Error.Conflict(failure ?? "Không có máy phù hợp với kích thước, vật liệu và màu đã chọn."));
+            return Result.Failure<QuoteDto>(Error.Validation(
+                "Không tìm thấy máy khả thi với các điều kiện đã chọn. Hãy thử thay đổi vật liệu hoặc màu sắc."));
+
         var quote = Quote.CreatePending(command.CustomerId, _quoteValidity);
-        var config = PrintConfiguration.Create(command.MaterialCode, colors[0], command.LayerHeightMm,
+        var config = PrintConfiguration.Create(command.MaterialCode,
+            command.ColorCodes?.FirstOrDefault() ?? command.ColorCode, command.LayerHeightMm,
             command.InfillPercent, command.ToleranceMm);
         var item = quote.AddItem(model.Id, command.Quantity, config, Money.Of(best.TotalAmount / command.Quantity),
             (int)decimal.Ceiling(best.PrintMinutes / command.Quantity),
             best.Colors.Sum(c => c.Grams) / command.Quantity,
             best.MaterialAmount / command.Quantity, best.MachineAmount / command.Quantity,
             best.WidthMm, best.DepthMm, best.HeightMm);
-        item.FreezeCalculation(System.Text.Json.JsonSerializer.Serialize(best), best.TotalAmount, placementMachineId!.Value);
+
+        if (surchargeCoefficient > 1.0m && bestPinned is not null && alternativePriceVnd.HasValue)
+        {
+            item.FreezeCalculation(System.Text.Json.JsonSerializer.Serialize(best), best.TotalAmount, placementMachineId);
+            quote.SetPinnedModelContext(surchargeCoefficient, command.PinnedModelId, alternativePriceVnd.Value, alternativeDeliveryDate);
+        }
+        else
+        {
+            item.FreezeCalculation(System.Text.Json.JsonSerializer.Serialize(best), best.TotalAmount, placementMachineId);
+        }
+
         quote.MarkDraft(placement.PromisedDeliveryDate, policy.Pricing.Version, placement.Basis, placement.CustomerBasis);
         if (policy.AutoLaneThreshold > 0 && best.TotalAmount < policy.AutoLaneThreshold)
         {
@@ -225,5 +252,38 @@ public class CreateQuoteCommandHandler(
         await quotes.AddAsync(quote, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(QuoteMappings.ToCustomerDto(quote));
+    }
+
+    private async Task<(QuotePriceBreakdown? Best, Guid? MachineId, TrialPlacementResult? Placement)> SliceOnCandidates(CommercialPolicy policy, IReadOnlyList<Guid> candidateIds,
+        CancellationToken ct, CreateQuoteCommand command, Domain.Entities.Model model)
+    {
+        QuotePriceBreakdown? best = null;
+        Guid? bestMachineId = null;
+        TrialPlacementResult? bestPlacement = null;
+        foreach (var machineId in candidateIds)
+        {
+            try
+            {
+                var width = model.BoundingWidthMm!.Value;
+                var depth = model.BoundingDepthMm!.Value;
+                var height = model.BoundingHeightMm!.Value;
+                decimal scale = SlicedQuotePricing.ScaleFor(command.SizeCode ?? "ORIGINAL", width, depth, height);
+                var density = policy.Pricing.DensityGramsPerCm3[command.MaterialCode];
+                var slice = await quoteSlicer!.SliceAsync(new QuoteSliceRequest(model.StorageKey!, model.FileFormat, scale,
+                    command.MaterialCode, command.ColorCodes ?? [command.ColorCode], density,
+                    command.LayerHeightMm, command.InfillPercent, command.Quantity, machineId), ct);
+                var price = SlicedQuotePricing.Calculate(policy.Pricing, command.MaterialCode, command.Quantity, slice,
+                    command.Polishing, width * scale, depth * scale, height * scale);
+                var trial = await capacity.FindEarliestFeasibleDeliveryAsync(
+                    slice.Colors.Select((c, i) => new TrialPlacementLine(price.WidthMm, price.DepthMm, price.HeightMm,
+                        command.MaterialCode, c.ColorCode, command.LayerHeightMm, command.ToleranceMm,
+                        i == 0 ? (int)decimal.Ceiling(slice.PrintMinutes) : 0, c.Grams, machineId)).ToList(),
+                    clock.UtcNow, ct);
+                if (trial is not null && (best is null || price.TotalAmount < best.TotalAmount))
+                { best = price; bestMachineId = machineId; bestPlacement = trial; }
+            }
+            catch { /* Skip machines that fail */ }
+        }
+        return (best, bestMachineId, bestPlacement);
     }
 }

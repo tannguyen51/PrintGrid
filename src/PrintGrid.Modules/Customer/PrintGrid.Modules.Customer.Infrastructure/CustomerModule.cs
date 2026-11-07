@@ -2,7 +2,9 @@ using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PrintGrid.Infrastructure.Shared.Persistence;
+using PrintGrid.Modules.Customer.Application.Abstractions;
 using PrintGrid.Modules.Customer.Application;
+using PrintGrid.Modules.Customer.Infrastructure.Services;
 using PrintGrid.SharedKernel.Modules;
 
 namespace PrintGrid.Modules.Customer.Infrastructure;
@@ -18,7 +20,7 @@ public class CustomerModule : IModule
         ModuleAssemblyRegistry.Register(InfrastructureAssembly);
         services.AddCustomerApplication();
         CustomerModuleRegistration.AddRepositories(services);
-        services.Configure<Slicing.CuraQuoteOptions>(configuration.GetSection("QuoteSlicer"));
         services.AddScoped<Application.Quotes.IQuoteSlicer, Slicing.CuraQuoteSlicer>();
+        services.AddScoped<IMachineFilterService, EfMachineFilterService>();
     }
 }

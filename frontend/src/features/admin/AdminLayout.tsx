@@ -14,6 +14,7 @@ import {
   HistoryRounded,
   InsightsRounded,
   PeopleRounded,
+  SettingsRounded,
   StorefrontRounded,
   TuneRounded,
   ViewInArRounded,
@@ -39,6 +40,7 @@ const SECTIONS: AdminSection[] = [
   { label: 'Kho mẫu 3D', href: '/admin/samples', icon: <ViewInArRounded fontSize="small" /> },
   { label: 'Trọng số chấm điểm', href: '/admin/scoring-configurations', icon: <InsightsRounded fontSize="small" /> },
   { label: 'Nhật ký kiểm toán', href: '/admin/audit-logs', icon: <HistoryRounded fontSize="small" /> },
+  { label: 'Thông số hệ thống', href: '/admin/system-parameters', icon: <SettingsRounded fontSize="small" /> },
 ]
 
 function isActive(pathname: string, href: string): boolean {
