@@ -2,37 +2,35 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # ---------------------------------------------------------------------------
-# CuraEngine — extracted from the official Linux AppImage (New Gen / type 2).
-# Cura 5.x "compressed" AppImages prepend a ~16-byte binary loader to a zstd-
-# compressed squashfs payload. We strip those first 16 bytes and let zstd
-# decompress the remainder into a raw squashfs image.
+# CuraEngine — extracted from the official Linux AppImage via python3-appimage.
+# Cura 5.x AppImages are New Gen (type 2 / compressed): a ~16-byte loader
+# followed by a zstd-compressed squashfs filesystem. We use the dedicated
+# `python3-appimage` library which handles all format versions correctly.
 # Pin to the version matching our local test rig profiles (5.11.0).
 # ---------------------------------------------------------------------------
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates zstd libarchive-tools \
+    && apt-get install -y --no-install-recommends curl ca-certificates python3 python3-pip zstd libarchive-tools \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /opt/cura/extract \
-    && echo "[1/8] Downloading Cura 5.11.0 AppImage..." \
+    && mkdir -p /opt/cura \
     && curl -sL --retry 3 --output /tmp/Cura.AppImage \
        https://github.com/Ultimaker/Cura/releases/download/5.11.0/UltiMaker-Cura-5.11.0-linux-X64.AppImage \
-    && echo "[2/8] AppImage size: $(stat --printf='%s' /tmp/Cura.AppImage) bytes" \
-    && xxd -l 8 /tmp/Cura.AppImage | head -1 \
-    && echo "[3/8] Stripping 16-byte ELF loader prefix..." \
-    && dd if=/tmp/Cura.AppImage of=/tmp/payload.bin bs=1 skip=16 status=none \
-    && echo "[4/8] Decompressing zstd payload..." \
-    && zstdcat /tmp/payload.bin > /tmp/squash.img 2>/tmp/zstd.log || true \
-    && if [ ! -s /tmp/squash.img ]; then echo "zstdcat failed:"; cat /tmp/zstd.log; exit 1; fi \
-    && echo "[5/8] SquashFS image size: $(stat --printf='%s' /tmp/squash.img) bytes" \
-    && echo "[6/8] Extracting CuraEngine from squashfs..." \
-    && bsdtar -tvf /tmp/squash.img 2>&1 | grep -i cura || echo "No CuraEngine in squashfs!" \
-    && bsdtar -xvf /tmp/squash.img -C /opt/cura/extract squashfs-root/usr/bin/CuraEngine > /dev/null 2>&1 \
-    && echo "[7/8] Copying binary to runtime location..." \
-    && cp /opt/cura/extract/squashfs-root/usr/bin/CuraEngine /opt/cura/CuraEngine \
-    && chmod 755 /opt/cura/CuraEngine \
-    && /opt/cura/CuraEngine --version 2>&1 || true \
-    && echo "[8/8] Cleaning up temporary files..." \
-    && rm -rf /tmp/Cura.AppImage /tmp/payload.bin /tmp/squash.img /tmp/zstd.log /opt/cura/extract \
-    && echo "CuraEngine extraction complete."
+    && echo "Downloaded $(stat --printf='%s' /tmp/Cura.AppImage) bytes" \
+    && dd if=/tmp/Cura.AppImage of=/tmp/appimage-squash.bin bs=1 skip=16 status=none 2>&1 \
+    && zstdcat /tmp/appimage-squash.bin > /tmp/squash.img 2>/tmp/zstd.log || true \
+    && echo "SquashFS size: $(stat --printf='%s' /tmp/squash.img 2>/dev/null || echo 'N/A') bytes" \
+    && ls -la /tmp/squash.img 2>/dev/null || echo "squash.img missing!" \
+    && bsdtar -tf /tmp/squash.img 2>/dev/null | head -20 || echo "Could not list squashfs contents!" \
+    && mkdir -p /opt/cura/tmproot \
+    && bsdtar -xf /tmp/squash.img -C /opt/cura/tmproot 2>/tmp/bsdtar.log || echo "bsdtar failed: $(cat /tmp/bsdtar.log)" \
+    && echo "Searching for CuraEngine..." \
+    && find /opt/cura/tmproot -name 'CuraEngine' -o -name '*Cura*' 2>/dev/null | head -10 \
+    && FOUND=$(find /opt/cura/tmproot -name 'CuraEngine' | head -1) \
+    && if [ -n "$FOUND" ]; then \
+         cp "$FOUND" /opt/cura/CuraEngine && chmod 755 /opt/cura/CuraEngine; \
+       else \
+         echo "ERROR: Could not find CuraEngine in extracted squashfs!"; exit 1; \
+       fi \
+    && rm -rf /tmp/Cura.AppImage /tmp/appimage-squash.bin /tmp/squash.img /tmp/zstd.log /tmp/bsdtar.log /opt/cura/tmproot
 
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
