@@ -130,11 +130,14 @@ export function CustomerNavbar() {
             ))}
           </Stack>
 
-          <NotificationBell />
-
-          {/* Account actions */}
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
-            <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0.5 }} aria-label="Menu tài khoản">
+          {/* Notifications and account controls form one action cluster. */}
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+            <NotificationBell />
+            <IconButton
+              onClick={(e) => setAnchorEl(e.currentTarget)}
+              sx={{ p: 0.5, display: { xs: 'none', md: 'inline-flex' } }}
+              aria-label="Menu tài khoản"
+            >
               <Avatar sx={{ width: 34, height: 34, fontSize: 14 }}>
                 {user?.email?.charAt(0).toUpperCase() || 'U'}
               </Avatar>
@@ -155,12 +158,11 @@ export function CustomerNavbar() {
                 Đăng xuất
               </MenuItem>
             </Menu>
+            {/* Mobile hamburger */}
+            <IconButton onClick={() => setDrawerOpen(true)} sx={{ display: { md: 'none' }, color: 'text.primary' }} aria-label="Mở menu">
+              <MenuRounded />
+            </IconButton>
           </Stack>
-
-          {/* Mobile hamburger */}
-          <IconButton onClick={() => setDrawerOpen(true)} sx={{ display: { md: 'none' }, color: 'text.primary' }} aria-label="Mở menu">
-            <MenuRounded />
-          </IconButton>
         </Stack>
       </Container>
 
