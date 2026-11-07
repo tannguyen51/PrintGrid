@@ -2,20 +2,19 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # ---------------------------------------------------------------------------
-# CuraEngine — built from source in the SDK image so it is available at runtime.
-# The .NET SDK 9.0 image ships GCC / Make; we only need CMake + Git on top.
-# Pin to the tag that matches the local test rig (5.11.0).
+# CuraEngine — extracted from the official Linux AppImage via 7z (no FUSE).
+# Pin to the version matching our local test rig profiles (5.11.0).
 # ---------------------------------------------------------------------------
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git cmake g++ make pkg-config \
+    && apt-get install -y --no-install-recommends curl p7zip-full ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && git clone --depth 1 --branch 2.7.0 https://github.com/Ultimaker/CuraEngine.git /opt/cura-src \
-    && mkdir -p /opt/cura/build \
-    && cd /opt/cura/build \
-    && cmake /opt/cura-src -DCMAKE_BUILD_TYPE=Release \
-    && make -j$(nproc) \
-    && cp CuraEngine /opt/cura/CuraEngine \
-    && rm -rf /opt/cura-src /opt/cura/build
+    && mkdir -p /opt/cura/extract \
+    && curl -sL --retry 3 -o /tmp/Cura.AppImage \
+       https://github.com/Ultimaker/Cura/releases/download/5.11.0/UltiMaker-Cura-5.11.0-linux-X64.AppImage \
+    && 7z x /tmp/Cura.AppImage -o/tmp/Cura.extract > /dev/null 2>&1 \
+    && cp /tmp/Cura.extract/usr/bin/CuraEngine /opt/cura/CuraEngine \
+    && chmod 755 /opt/cura/CuraEngine \
+    && rm -rf /tmp/Cura.AppImage /tmp/Cura.extract
 
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
