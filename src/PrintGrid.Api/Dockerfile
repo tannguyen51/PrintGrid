@@ -12,7 +12,7 @@ RUN apt-get update \
     && git clone --depth 1 --branch 2.7.0 https://github.com/Ultimaker/CuraEngine.git /opt/cura-src \
     && mkdir -p /opt/cura/build \
     && cd /opt/cura/build \
-    && cmake .. -DCMAKE_BUILD_TYPE=Release \
+    && cmake /opt/cura-src -DCMAKE_BUILD_TYPE=Release \
     && make -j$(nproc) \
     && cp CuraEngine /opt/cura/CuraEngine \
     && rm -rf /opt/cura-src /opt/cura/build
