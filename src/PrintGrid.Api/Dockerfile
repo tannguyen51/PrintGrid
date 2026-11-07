@@ -5,35 +5,40 @@ WORKDIR /src
 # Build CuraEngine + Arcus from source — matches design doc 18-Slicer-Quotation.md
 # Arcus is Ultimaker's message-bus library; CuraEngine depends on it.
 # Both use CMake; build order must be: Arcus → CuraEngine.
-# Pin versions known to work together for Cura 5.11.0 compatibility.
+# Use tarball downloads (not git clone) to avoid auth/proxy issues on CI/CD.
 # ---------------------------------------------------------------------------
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        git cmake g++ make pkg-config \
+        git cmake g++ make pkg-config wget \
         libboost-all-dev libssl-dev zlib1g-dev libprotobuf-dev protobuf-compiler \
         && rm -rf /var/lib/apt/lists/* \
-    # --- Step 1: build & install Arcus (Ultimaker's message bus) --- \
+    # --- Step 1: download & build Arcus (Ultimaker's message bus) --- \
     && mkdir -p /opt/build && cd /opt/build \
-    && echo "[1/6] Cloning Arcus..." \
-    && git clone --depth 1 --branch release-4.1.0 https://github.com/Ultimaker/Arcus.git arcus-src \
+    && echo "[1/7] Downloading Arcus..." \
+    && wget -q -O arcus.tar.gz https://github.com/Ultimaker/Arcus/archive/refs/tags/release-4.1.0.tar.gz \
+    && tar xzf arcus.tar.gz && mv Arcus-release-4.1.0 arcus-src \
     && mkdir -p arcus-build && cd arcus-build \
-    && echo "[2/6] Building Arcus..." \
+    && echo "[2/7] Building Arcus..." \
     && cmake ../arcus-src -DCMAKE_BUILD_TYPE=Release \
     && make -j$(nproc) \
     && make install PREFIX=/usr/local \
     && ldconfig \
-    # --- Step 2: build CuraEngine --- \
-    && echo "[3/6] Cloning CuraEngine..." \
-    && git clone --depth 1 --branch main https://github.com/Ultimaker/CuraEngine.git cura-src \
+    # --- Step 2: download & build CuraEngine --- \
+    && echo "[3/7] Downloading CuraEngine..." \
+    && cd /opt/build \
+    && wget -q -O cura.tar.gz https://github.com/Ultimaker/CuraEngine/archive/refs/heads/main.tar.gz \
+    && tar xzf cura.tar.gz && mv CuraEngine-main cura-src \
     && mkdir -p cura-build && cd cura-build \
-    && echo "[4/6] Configuring CuraEngine..." \
+    && echo "[4/7] Configuring CuraEngine..." \
     && cmake ../cura-src -DCMAKE_BUILD_TYPE=Release \
-    && echo "[5/6] Building CuraEngine..." \
+    && echo "[5/7] Building CuraEngine..." \
     && make -j$(nproc) \
-    && echo "[6/6] Copying binary..." \
+    && echo "[6/7] Copying binary..." \
     && cp CuraEngine /opt/cura/CuraEngine \
     && chmod 755 /opt/cura/CuraEngine \
-    && rm -rf /opt/build
+    && echo "[7/7] Cleaning up..." \
+    && rm -rf /opt/build \
+    && echo "CuraEngine build complete."
 
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
