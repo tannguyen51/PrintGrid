@@ -9,7 +9,7 @@ WORKDIR /src
 # Pin to the version matching our local test rig profiles (5.11.0).
 # ---------------------------------------------------------------------------
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates zstd binutils coreutils bsdtar \
+    && apt-get install -y --no-install-recommends curl ca-certificates zstd libarchive-tools \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /opt/cura/extract \
     && echo "[1/8] Downloading Cura 5.11.0 AppImage..." \
