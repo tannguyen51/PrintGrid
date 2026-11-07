@@ -207,10 +207,14 @@ export function StaffNavbar() {
             ))}
           </Stack>
 
-          <NotificationBell />
-
-          <Stack direction="row" spacing={1.25} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
-            <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0.5 }} aria-label="Menu tài khoản">
+          {/* Keep notifications beside the account instead of as a loose nav column. */}
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+            <NotificationBell />
+            <IconButton
+              onClick={(e) => setAnchorEl(e.currentTarget)}
+              sx={{ p: 0.5, display: { xs: 'none', md: 'inline-flex' } }}
+              aria-label="Menu tài khoản"
+            >
               <Avatar sx={{ width: 34, height: 34, fontSize: 14 }}>
                 {user?.email?.charAt(0).toUpperCase() || 'S'}
               </Avatar>
@@ -244,11 +248,10 @@ export function StaffNavbar() {
                 Đăng xuất
               </MenuItem>
             </Menu>
+            <IconButton onClick={() => setDrawerOpen(true)} sx={{ display: { md: 'none' }, color: 'text.primary' }} aria-label="Mở menu">
+              <MenuRounded />
+            </IconButton>
           </Stack>
-
-          <IconButton onClick={() => setDrawerOpen(true)} sx={{ display: { md: 'none' }, color: 'text.primary' }} aria-label="Mở menu">
-            <MenuRounded />
-          </IconButton>
         </Stack>
       </Container>
 
