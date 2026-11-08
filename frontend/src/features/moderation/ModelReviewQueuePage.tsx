@@ -103,9 +103,6 @@ export function ModelReviewQueuePage() {
                 </TableHead>
                 <TableBody>
                   {reviews.data!.map((m) => {
-                    const fmt = (m.fileFormat ?? '').toUpperCase()
-                    const previewable = PREVIEWABLE_FORMATS.includes(fmt)
-                    const { url, failed } = useModelFileUrl(m.modelId, previewable, '/model-reviews')
                     return (
                       <TableRow key={m.modelId} hover>
                         <TableCell>

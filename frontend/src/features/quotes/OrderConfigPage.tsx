@@ -107,7 +107,7 @@ export default function OrderConfigPage() {
     setQuote(null)
     const submittedConfig = configKey
     try {
-      const q = await createQuote.mutateAsync({
+      await createQuote.mutateAsync({
         modelId,
         materialCode: material,
         colorCode: colors[0] ?? color,
