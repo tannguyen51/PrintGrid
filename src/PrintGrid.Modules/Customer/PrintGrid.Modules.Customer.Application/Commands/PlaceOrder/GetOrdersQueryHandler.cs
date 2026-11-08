@@ -16,6 +16,22 @@ public class GetOrdersQueryHandler(IOrderRepository orders)
     }
 
     private static OrderDto Map(Domain.Entities.Order order) => new(
-        order.Id,
-        order.Status.ToString());
+        Id: order.Id,
+        OrderNumber: order.OrderNumber,
+        Status: order.Status.ToString(),
+        TotalAmount: order.TotalPrice.Amount,
+        Currency: order.TotalPrice.Currency,
+        PromisedDeliveryDate: order.PromisedDeliveryDate,
+        CreatedAt: order.CreatedAt,
+        DepositAmount: order.DepositAmount,
+        RefundedAmount: order.RefundedAmount,
+        Items: order.Items.Select(i => new OrderItemDto(
+            i.Id,
+            i.ModelId,
+            i.Quantity,
+            i.Configuration.MaterialCode,
+            i.Configuration.ColorCode,
+            i.Configuration.LayerHeightMm,
+            i.Configuration.InfillPercent,
+            i.UnitPrice.Amount)).ToList());
 }

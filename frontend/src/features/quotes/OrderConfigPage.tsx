@@ -117,7 +117,11 @@ export default function OrderConfigPage() {
         toleranceMm: 0.2,
         sizeCode, colorCodes: colors, polishing,
       })
-      if (currentConfig.current === submittedConfig) setQuote(q)
+      if (currentConfig.current === submittedConfig) {
+        // After getting a quote, navigate back to library so the user
+        // can see model statuses including Pending Review.
+        navigate('/library', { replace: true })
+      }
     } catch (error) {
       const apiMessage = axios.isAxiosError(error)
         ? (error.response?.data as { error?: { message?: string } } | undefined)?.error?.message

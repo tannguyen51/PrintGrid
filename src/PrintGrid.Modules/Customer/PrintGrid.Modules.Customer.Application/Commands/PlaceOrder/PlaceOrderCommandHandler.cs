@@ -88,5 +88,21 @@ public class PlaceOrderCommandHandler(
 
     private static OrderDto Map(Order order) => new(
         order.Id,
-        order.Status.ToString());
+        order.OrderNumber,
+        order.Status.ToString(),
+        order.TotalPrice.Amount,
+        order.TotalPrice.Currency,
+        order.PromisedDeliveryDate,
+        order.CreatedAt,
+        order.DepositAmount,
+        order.RefundedAmount,
+        order.Items.Select(i => new OrderItemDto(
+            i.Id,
+            i.ModelId,
+            i.Quantity,
+            i.Configuration.MaterialCode,
+            i.Configuration.ColorCode,
+            i.Configuration.LayerHeightMm,
+            i.Configuration.InfillPercent,
+            i.UnitPrice.Amount)).ToList());
 }

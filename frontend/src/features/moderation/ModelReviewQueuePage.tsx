@@ -1,35 +1,40 @@
 import { useState } from 'react'
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
+  DialogTitle, Paper, Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TextField, ToggleButton, ToggleButtonGroup, Typography,
 } from '@mui/material'
-import { CheckCircleRounded, CancelRounded, OpenInNewRounded } from '@mui/icons-material'
+import { CheckCircleRounded, CancelRounded, OpenInNewRounded, ThreeDRotationRounded } from '@mui/icons-material'
 import { getApiErrorMessage } from '../../shared/api/apiError'
-import {
-  openModelFile, useApproveModel, useModelReviews, useRejectModel,
-  type ModelReview, type ModelReviewStatus,
-} from './useModelReviews'
+import { useApproveModel, useModelReviews, useRejectModel } from './useModelReviews'
+import { useModelFileUrl } from '../models/useModelFile'
+import { ModelViewer } from '../../shared/components/ModelViewer'
 
-const FILTERS: Array<ModelReviewStatus | 'All'> = ['Pending', 'Approved', 'Rejected', 'All']
+const FILTERS: Array<'Pending' | 'Approved' | 'Rejected' | 'All'> = ['Pending', 'Approved', 'Rejected', 'All']
+const PREVIEWABLE_FORMATS = ['GLB', 'GLTF', 'STL', 'OBJ', '3MF']
 
-function statusChip(status: ModelReviewStatus) {
+function statusChip(status: string) {
   const color = status === 'Approved' ? 'success' : status === 'Rejected' ? 'error' : 'warning'
   const label = status === 'Approved' ? 'Đã duyệt' : status === 'Rejected' ? 'Bị từ chối' : 'Chờ duyệt'
   return <Chip size="small" color={color} label={label} sx={{ fontWeight: 600 }} />
 }
 
 export function ModelReviewQueuePage() {
-  const [filter, setFilter] = useState<ModelReviewStatus | 'All'>('Pending')
-  const [rejectTarget, setRejectTarget] = useState<ModelReview | null>(null)
+  const [filter, setFilter] = useState<'Pending' | 'Approved' | 'Rejected' | 'All'>('Pending')
+  const [rejectTarget, setRejectTarget] = useState<{ modelId: string; name: string } | null>(null)
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [snack, setSnack] = useState<{ open: boolean; msg: string; type: 'success' | 'error' }>({ open: false, msg: '', type: 'success' })
+  const [preview3d, setPreview3d] = useState<string | null>(null)
 
   const reviews = useModelReviews(filter)
   const approve = useApproveModel()
   const reject = useRejectModel()
 
-  const act = async (action: () => Promise<void>) => {
+  // Track which model we're viewing in 3D
+  const previewModelId = preview3d
+
+  async function act(action: () => Promise<void>) {
     setError(null)
     try {
       await action()
@@ -44,7 +49,13 @@ export function ModelReviewQueuePage() {
       await reject.mutateAsync({ modelId: rejectTarget.modelId, reason: reason.trim() })
       setRejectTarget(null)
       setReason('')
+      showSuccess('Đã từ chối model.')
     })
+  }
+
+  function showSuccess(msg: string) {
+    setSnack({ open: true, msg, type: 'success' })
+    setTimeout(() => setSnack(s => ({ ...s, open: false })), 4000)
   }
 
   return (
@@ -63,7 +74,7 @@ export function ModelReviewQueuePage() {
           value={filter}
           onChange={(_, value) => { if (value) setFilter(value) }}
         >
-          {FILTERS.map((f) => <ToggleButton key={f} value={f}>{f === 'All' ? 'Tất cả' : statusChip(f as ModelReviewStatus)}</ToggleButton>)}
+          {FILTERS.map((f) => <ToggleButton key={f} value={f}>{f === 'All' ? 'Tất cả' : statusChip(f)}</ToggleButton>)}
         </ToggleButtonGroup>
 
         {error && <Alert severity="error">{error}</Alert>}
@@ -91,58 +102,71 @@ export function ModelReviewQueuePage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {reviews.data!.map((m) => (
-                    <TableRow key={m.modelId} hover>
-                      <TableCell>
-                        <Typography fontWeight={600}>{m.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {new Date(m.createdAt).toLocaleString('vi-VN')}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>{m.customerEmail || m.customerId.slice(0, 8)}</TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{m.fileName}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {m.fileFormat} · {(m.sizeBytes / 1024 / 1024).toFixed(2)} MB
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{m.geometryStatus}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {m.isPrintable === false ? 'Không in được' : 'Có thể in'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        {statusChip(m.reviewStatus)}
-                        {m.reviewReason && (
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                            {m.reviewReason}
+                  {reviews.data!.map((m) => {
+                    const fmt = (m.fileFormat ?? '').toUpperCase()
+                    const previewable = PREVIEWABLE_FORMATS.includes(fmt)
+                    const { url, failed } = useModelFileUrl(m.modelId, previewable, '/model-reviews')
+                    return (
+                      <TableRow key={m.modelId} hover>
+                        <TableCell>
+                          <Typography fontWeight={600}>{m.name}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(m.createdAt).toLocaleString('vi-VN')}
                           </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell align="right">
-                        <Stack direction="row" spacing={1} justifyContent="flex-end">
-                          <Button size="small" startIcon={<OpenInNewRounded />}
-                            onClick={() => act(() => openModelFile(m.modelId))}>
-                            Xem file
-                          </Button>
-                          {m.reviewStatus === 'Pending' && (
-                            <>
-                              <Button size="small" color="success" startIcon={<CheckCircleRounded />}
-                                disabled={approve.isPending}
-                                onClick={() => act(async () => { await approve.mutateAsync({ modelId: m.modelId }) })}>
-                                Duyệt
-                              </Button>
-                              <Button size="small" color="error" startIcon={<CancelRounded />}
-                                onClick={() => { setRejectTarget(m); setReason('') }}>
-                                Từ chối
-                              </Button>
-                            </>
+                        </TableCell>
+                        <TableCell>{m.customerEmail || m.customerId.slice(0, 8)}</TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{m.fileName}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {m.fileFormat} · {(m.sizeBytes / 1024 / 1024).toFixed(2)} MB
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{m.geometryStatus}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {m.isPrintable === false ? 'Không in được' : 'Có thể in'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          {statusChip(m.reviewStatus)}
+                          {m.reviewReason && (
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                              {m.reviewReason}
+                            </Typography>
                           )}
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Stack direction="row" spacing={1} justifyContent="flex-end">
+                            <Button size="small" startIcon={<ThreeDRotationRounded />}
+                              disabled={!previewable}
+                              onClick={() => setPreview3d(preview3d === m.modelId ? null : m.modelId)}>
+                              Preview 3D
+                            </Button>
+                            <Button size="small" startIcon={<OpenInNewRounded />}
+                              onClick={() => window.open(`/api/v1/model-reviews/${m.modelId}/file`, '_blank', 'noopener,noreferrer')}>
+                              Xem file
+                            </Button>
+                            {m.reviewStatus === 'Pending' && (
+                              <>
+                                <Button size="small" color="success" startIcon={<CheckCircleRounded />}
+                                  disabled={approve.isPending}
+                                  onClick={() => act(async () => {
+                                    await approve.mutateAsync({ modelId: m.modelId })
+                                    showSuccess(`Đã duyệt model "${m.name}".`)
+                                  })}>
+                                  Duyệt
+                                </Button>
+                                <Button size="small" color="error" startIcon={<CancelRounded />}
+                                  onClick={() => { setRejectTarget({ modelId: m.modelId, name: m.name }); setReason('') }}>
+                                  Từ chối
+                                </Button>
+                              </>
+                            )}
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -150,6 +174,7 @@ export function ModelReviewQueuePage() {
         </Paper>
       </Stack>
 
+      {/* ── Reject dialog ── */}
       <Dialog open={rejectTarget !== null} onClose={() => setRejectTarget(null)} fullWidth maxWidth="sm">
         <DialogTitle>Từ chối model</DialogTitle>
         <DialogContent>
@@ -169,6 +194,57 @@ export function ModelReviewQueuePage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ── Inline 3D Preview dialog ── */}
+      <Dialog
+        open={preview3d !== null}
+        onClose={() => setPreview3d(null)}
+        fullWidth
+        maxWidth="lg"
+        fullScreen
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">Xem trước 3D</Typography>
+          <Button onClick={() => setPreview3d(null)}>Đóng</Button>
+        </DialogTitle>
+        <DialogContent sx={{ flex: 1, minHeight: 0, p: 2 }}>
+          {previewModelId && (() => {
+            const review = reviews.data?.find(r => r.modelId === previewModelId)
+            const format = (review?.fileFormat ?? '').toUpperCase()
+            const previewable = PREVIEWABLE_FORMATS.includes(format)
+            const { url, failed } = useModelFileUrl(previewModelId, previewable, '/model-reviews')
+            if (!review) return <Typography color="text.secondary">Loading...</Typography>
+            return (
+              <Box sx={{ height: '100%', bgcolor: '#F5F2FF', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
+                {!url ? (
+                  <Stack sx={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }} spacing={2}>
+                    <CircularProgress size={36} />
+                    <Typography color="text.secondary">Đang tải mô hình…</Typography>
+                  </Stack>
+                ) : failed ? (
+                  <Stack sx={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }} spacing={2} px={4}>
+                    <ThreeDRotationRounded sx={{ fontSize: 48, color: 'text.disabled' }} />
+                    <Typography color="text.secondary" align="center">Không tải được file để xem trước.</Typography>
+                  </Stack>
+                ) : (
+                  <ModelViewer url={url} format={format} fit background="#F5F2FF" sx={{ bgcolor: '#F5F2FF' }} />
+                )}
+              </Box>
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Toast notification ── */}
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={4000}
+        onClose={() => setSnack(s => ({ ...s, open: false }))}
+      >
+        <Alert severity={snack.type} onClose={() => setSnack(s => ({ ...s, open: false }))}>
+          {snack.msg}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }
