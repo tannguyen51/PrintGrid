@@ -103,6 +103,7 @@ export function ModelReviewQueuePage() {
                 </TableHead>
                 <TableBody>
                   {reviews.data!.map((m) => {
+                    const canPreview = PREVIEWABLE_FORMATS.includes((m.fileFormat ?? '').toUpperCase())
                     return (
                       <TableRow key={m.modelId} hover>
                         <TableCell>
@@ -135,7 +136,7 @@ export function ModelReviewQueuePage() {
                         <TableCell align="right">
                           <Stack direction="row" spacing={1} justifyContent="flex-end">
                             <Button size="small" startIcon={<ThreeDRotationRounded />}
-                              disabled={!previewable}
+                              disabled={!canPreview}
                               onClick={() => setPreview3d(preview3d === m.modelId ? null : m.modelId)}>
                               Preview 3D
                             </Button>
