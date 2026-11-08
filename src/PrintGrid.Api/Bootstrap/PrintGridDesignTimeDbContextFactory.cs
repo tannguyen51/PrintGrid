@@ -29,7 +29,9 @@ public sealed class PrintGridDesignTimeDbContextFactory : IDesignTimeDbContextFa
 
         var options = new DbContextOptionsBuilder<PrintGridDbContext>()
             .UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
-                npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "shared"))
+                npgsql => npgsql
+                    .MigrationsHistoryTable("__ef_migrations_history", "shared")
+                    .MigrationsAssembly("PrintGrid.Infrastructure.Shared"))
             .Options;
         return new PrintGridDbContext(options);
     }

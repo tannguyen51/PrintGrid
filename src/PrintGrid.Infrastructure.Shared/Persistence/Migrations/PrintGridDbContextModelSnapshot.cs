@@ -638,9 +638,6 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<Guid?>("QuoteId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(24)
@@ -895,6 +892,13 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("BindingLevel")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("bắt_buộc");
+
                     b.Property<decimal?>("BoundingDepthMm")
                         .HasPrecision(8, 2)
                         .HasColumnType("numeric(8,2)");
@@ -926,10 +930,20 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("ModelBindingKind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("không");
+
                     b.Property<Guid>("ModelId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PinnedModelId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("Quantity")
@@ -937,6 +951,12 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
                     b.Property<Guid?>("QuotedMachineId")
                         .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ReferenceOrderLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TechConstraintsJson")
+                        .HasColumnType("jsonb");
 
                     b.HasKey("Id");
 
@@ -985,6 +1005,12 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<decimal?>("PinSurchargeCoefficient")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid?>("PinnedModelMachineId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("PlacementBasis")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
@@ -996,6 +1022,12 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasColumnType("character varying(16)")
                         .HasDefaultValue("");
 
+                    b.Property<Guid?>("ProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ProfileVersion")
+                        .HasColumnType("text");
+
                     b.Property<DateOnly>("PromisedDeliveryDate")
                         .HasColumnType("date");
 
@@ -1006,6 +1038,12 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<DateOnly?>("UnpinnedDeliveryDay")
+                        .HasColumnType("date");
+
+                    b.Property<long?>("UnpinnedPriceVnd")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -1021,6 +1059,13 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("AlternativeDeliveryDate")
+                        .HasColumnType("date");
+
+                    b.Property<long?>("AlternativePriceVnd")
+                        .HasPrecision(18)
+                        .HasColumnType("bigint");
 
                     b.Property<decimal?>("BatchTotalAmount")
                         .HasPrecision(18, 2)
@@ -1063,6 +1108,14 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<Guid>("ModelId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("profile_id");
+
+                    b.Property<string>("ProfileVersion")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
 
@@ -1071,6 +1124,10 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
                     b.Property<Guid?>("QuotedMachineId")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal?>("SurchargePinchCoef")
+                        .HasPrecision(5, 3)
+                        .HasColumnType("numeric(5,3)");
 
                     b.HasKey("Id");
 
@@ -1339,9 +1396,6 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<decimal>("HeightMm")
                         .HasPrecision(10, 3)
                         .HasColumnType("numeric(10,3)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("MachineModel")
                         .IsRequired()
@@ -1770,6 +1824,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasPrecision(5, 3)
                         .HasColumnType("numeric(5,3)");
 
+                    b.Property<bool>("AllowsCustomerPinning")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime?>("CalibrationComputedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1854,6 +1911,37 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.HasIndex("LabId", "Status");
 
                     b.ToTable("machines", "scheduling");
+                });
+
+            modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.MachineAssignmentDecision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Decision")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MachineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId", "MachineId");
+
+                    b.ToTable("machine_assignment_decisions", "scheduling");
                 });
 
             modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.MaterialReservation", b =>
@@ -1954,9 +2042,6 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime?>("ResolvedAtUtc")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Status")
                         .IsRequired()

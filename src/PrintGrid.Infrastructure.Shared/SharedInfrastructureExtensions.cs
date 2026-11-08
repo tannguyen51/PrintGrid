@@ -19,7 +19,9 @@ public static class SharedInfrastructureExtensions
         services.AddDbContext<PrintGridDbContext>(options =>
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
-                npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "shared")));
+                npgsql => npgsql
+                    .MigrationsHistoryTable("__ef_migrations_history", "shared")
+                    .MigrationsAssembly("PrintGrid.Infrastructure.Shared")));
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
