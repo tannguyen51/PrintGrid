@@ -22,7 +22,7 @@ import {
   Typography,
 } from '@mui/material'
 import { ArrowBackRounded, ArrowForwardRounded, PriceCheckRounded } from '@mui/icons-material'
-import type { Quote, ModelSummary } from './quoteTypes'
+import type { Quote } from './quoteTypes'
 import { COLORS, INFILL_OPTIONS, MATERIALS, QUALITY_GRADES } from './quoteTypes'
 import { useCreateQuote, usePlaceOrder } from './useQuotes'
 import { useAuth } from '../../app/AuthContext'

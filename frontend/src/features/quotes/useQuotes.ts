@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { apiClient } from '../../shared/api/apiClient'
 import type { Quote, QuoteConfigInput, ModelSummary } from './quoteTypes'
 import type { Order } from '../../shared/types/order'

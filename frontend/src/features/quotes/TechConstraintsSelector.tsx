@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import {
   Box,
-  Button,
-  Checkbox,
   FormControl,
   FormLabel,
   InputLabel,
@@ -14,8 +12,8 @@ import {
   TextField,
   Typography,
   Collapse,
-  ExpandMoreRounded,
 } from '@mui/material'
+import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 
 /** Output shape matching doc §3 tech constraints (hard filters, no surcharge). */
 export interface TechConstraintsValue {
@@ -99,7 +97,8 @@ export default function TechConstraintsSelector({ defaultQualityLayerMm, onValue
               value={maxColors ?? ''}
               label="Số màu trong mô hình"
               onChange={(e) => {
-                const v = e.target.value === '' ? null : Number(e.target.value)
+                const raw = e.target.value as number | string
+                const v = raw === '' ? null : Number(raw)
                 setMaxColors(v)
               }}
             >
@@ -131,7 +130,8 @@ export default function TechConstraintsSelector({ defaultQualityLayerMm, onValue
               value={nozzleDiameter ?? ''}
               label="Đường kính đầu phun"
               onChange={(e) => {
-                const v = e.target.value === '' ? null : Number(e.target.value)
+                const raw = e.target.value as number | string
+                const v = raw === '' ? null : Number(raw)
                 setNozzleDiameter(v)
               }}
             >

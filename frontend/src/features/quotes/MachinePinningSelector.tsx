@@ -2,17 +2,12 @@ import { useState } from 'react'
 import {
   Box,
   Chip,
-  FormControl,
-  FormLabel,
-  InputLabel,
-  MenuItem,
-  Select,
   Stack,
   Typography,
   Collapse,
-  ExpandMoreRounded,
   Alert,
 } from '@mui/material'
+import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 
 /** Output matching doc Section 4 — "Chỉ định model máy" with surcharge. */
 export interface PinModelValue {
