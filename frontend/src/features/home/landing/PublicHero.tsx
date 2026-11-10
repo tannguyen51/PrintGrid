@@ -1,6 +1,6 @@
 import { Box } from '@mui/material'
+import { PrinterScene } from './PrinterScene'
 import { PillButton, landing } from './landingTheme'
-import { GeometricNetwork } from './GeometricNetwork'
 import { palette, ambient, gradients } from '../../../shared/theme/tokens'
 import './landing.css'
 
@@ -16,7 +16,7 @@ interface PublicHeroProps {
 
 /**
  * Hero — bright lavender-to-gold wash, a soft purple/gold ambient glow, and the
- * metallic Rubik scene on the right. The copy column keeps the same hierarchy:
+ * animated 3D printer on the right. The copy column keeps the same hierarchy:
  * eyebrow, oversized display headline, one supporting line, one gradient CTA.
  */
 export function PublicHero({ onRegister, cta }: PublicHeroProps) {
@@ -61,7 +61,7 @@ export function PublicHero({ onRegister, cta }: PublicHeroProps) {
       />
 
       {/* ── Copy ── */}
-      <Box sx={{ width: { xs: '100%', lg: 600 }, flexShrink: 0, position: 'relative', zIndex: 1 }}>
+      <Box sx={{ width: { xs: '100%', lg: '50%' }, maxWidth: 600, flexShrink: 0, position: 'relative', zIndex: 1 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
           <Box
             sx={{
@@ -132,21 +132,34 @@ export function PublicHero({ onRegister, cta }: PublicHeroProps) {
         </Box>
       </Box>
 
-      {/* ── Metallic artwork — transparent canvas over the light wash ── */}
+      {/* SPARKX i7 Nano reconstruction with animated print head and bed. */}
       <Box
+        component="figure"
         sx={{
-          position: { xs: 'relative', lg: 'absolute' },
-          left: { lg: 'auto' },
-          right: { lg: 60 },
-          top: { lg: 40 },
-          width: { xs: '100%', lg: 560 },
-          height: { xs: 360, lg: 560 },
-          flexShrink: 0,
+          position: 'relative',
+          width: '100%',
+          maxWidth: 560,
+          minWidth: 0,
+          height: { xs: 380, sm: 460, lg: 560 },
+          transform: { lg: 'translateX(200px)' },
+          flex: { lg: 1 },
+          m: 0,
           zIndex: 1,
         }}
       >
-        <Box sx={{ position: 'absolute', inset: 0 }}>
-          <GeometricNetwork />
+        <Box role="group" aria-label="Mô hình Creality SPARKX i7 Nano chuyển động. Kéo để xoay góc nhìn." sx={{ height: 'calc(100% - 28px)' }}>
+          <PrinterScene />
+        </Box>
+        <Box
+          component="figcaption"
+          sx={{
+            mt: 1,
+            textAlign: 'center',
+            fontSize: 12,
+            color: landing.textMuted,
+          }}
+        >
+
         </Box>
       </Box>
     </Box>

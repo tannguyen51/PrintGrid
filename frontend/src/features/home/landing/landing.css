@@ -1,6 +1,5 @@
 /* Landing (public homepage) — DOM-level effects for the light design system.
-   The hero artwork is the R3F cube scene (transparent canvas), so this file
-   only covers the scan line, network edges and reveal-on-scroll. */
+   Covers the scan line, network edges and reveal-on-scroll. */
 
 /* ── Section 01: mesh scan line over the model preview ── */
 .pg-scanline {
