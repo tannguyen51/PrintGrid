@@ -98,7 +98,12 @@ public class Order : AggregateRoot<Guid>
         string orderNumber,
         decimal depositPercent = 0m,
         bool termsAccepted = true,
-        DateTime? termsAcceptedAtUtc = null)
+        DateTime? termsAcceptedAtUtc = null,
+        // Doc §6.1 / §6.2: machine selection context from quote config
+        string? techConstraintsJson = null,
+        string modelBindingKind = "không",
+        Guid? pinnedModelId = null,
+        Guid? referenceLineId = null)
     {
         var depositPercentSafe = Math.Clamp(depositPercent, 0m, 100m);
         var order = new Order
@@ -123,7 +128,10 @@ public class Order : AggregateRoot<Guid>
 
         foreach (var quoteItem in quote.Items)
         {
-            order._items.Add(OrderItem.FromQuoteItem(order.Id, quoteItem));
+            var item = OrderItem.FromQuoteItemWithBinding(order.Id, quoteItem,
+                modelBindingKind, pinnedModelId, referenceLineId);
+            if (techConstraintsJson is not null) item.FreezeTechConstraints(techConstraintsJson);
+            order._items.Add(item);
         }
 
         return order;

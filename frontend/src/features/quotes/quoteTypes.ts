@@ -59,6 +59,24 @@ export interface QuoteConfigInput {
   sizeCode?: string
   colorCodes?: string[]
   polishing?: boolean
+  // Section 3: Tech constraints (hard filters, no surcharge) — BR-03
+  maxColors?: number
+  enclosedChamber?: boolean
+  nozzleDiameterMm?: number
+  maxToleranceMm?: string
+  minLayerHeightMm?: string
+  // Section 4/5: Machine binding type — BR-04, BR-05, BR-09
+  bindingType?: number   // 0=None, 1=ByModel, 2=LikeOldOrder
+  pinnedModelId?: string
+  referenceLineId?: string
+}
+
+/** Eligible machine model for pin dropdown per BR-04 thresholds. */
+export interface ModelSummary {
+  id: string
+  name: string
+  approvedMachineCount: number
+  labCount: number
 }
 
 // Selector labels only — actual rates live server-side in the versioned pricing

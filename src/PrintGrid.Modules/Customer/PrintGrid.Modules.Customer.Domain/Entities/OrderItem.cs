@@ -84,6 +84,20 @@ public class OrderItem : Entity<Guid>
         BoundingWidthMm = quoteItem.BoundingWidthMm,
         BoundingDepthMm = quoteItem.BoundingDepthMm,
         BoundingHeightMm = quoteItem.BoundingHeightMm,
-        ItemStatus = "Pending"
+        ItemStatus = "Pending",
+        // Propagate pin-model / reorder binding info from quote (doc Sections 4-5)
+        // Tech constraints, model binding kind/level set via SetModelBinding call if needed
+        TechConstraintsJson = null,       // freeze later via FreezeTechConstraints from command context
+        ModelBindingKind  = "không",       // default; overridden by FromQuoteItemWithBinding when customer pins model
+        BindingLevel      = "bắt_buộc"
     };
+
+    /// <summary>Create from quote + apply binding context per doc Sections 4 & 5.</summary>
+    internal static OrderItem FromQuoteItemWithBinding(Guid orderId, QuoteItem quoteItem,
+        string bindingKind, Guid? modelId, Guid? referenceLineId)
+    {
+        var item = FromQuoteItem(orderId, quoteItem);
+        item.SetModelBinding(bindingKind, modelId, referenceLineId);
+        return item;
+    }
 }

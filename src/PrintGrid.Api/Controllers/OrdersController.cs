@@ -73,7 +73,11 @@ public class OrdersController(ISender sender) : ControllerBase
                 request.District,
                 request.City,
                 request.PostalCode,
-                request.AcceptTerms),
+                request.AcceptTerms,
+                request.TechConstraintsJson,
+                request.ModelBindingKind,
+                request.PinnedModelId,
+                request.ReferenceLineId),
             cancellationToken);
 
         if (!result.IsFailure) return CreatedAtAction(nameof(PlaceOrder), new { id = result.Value.Id }, result.Value);
@@ -114,6 +118,11 @@ public record PlaceOrderRequest(
     string District,
     string City,
     string PostalCode,
-    bool AcceptTerms);
+    bool AcceptTerms,
+    // Doc §6.1 / §6.2 — machine selection context (BR-03/04/05/09)
+    string? TechConstraintsJson = null,
+    string ModelBindingKind = "không",
+    Guid? PinnedModelId = null,
+    Guid? ReferenceLineId = null);
 
 public record ReprintRequestBody(string Reason, string Description, IReadOnlyList<string> Photos);

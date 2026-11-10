@@ -3,16 +3,19 @@
   <ItemGroup>
     <ProjectReference Include="..\PrintGrid.Modules.Customer.Domain\PrintGrid.Modules.Customer.Domain.csproj" />
     <ProjectReference Include="..\Scheduling\PrintGrid.Modules.Scheduling.Domain\PrintGrid.Modules.Scheduling.Domain.csproj" />
+    <ProjectReference Include="..\..\..\PrintGrid.Infrastructure.Shared\PrintGrid.Infrastructure.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
 </Project>

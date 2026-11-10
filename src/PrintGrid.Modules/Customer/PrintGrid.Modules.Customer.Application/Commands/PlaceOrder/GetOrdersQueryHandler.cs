@@ -33,5 +33,10 @@ public class GetOrdersQueryHandler(IOrderRepository orders)
             i.Configuration.ColorCode,
             i.Configuration.LayerHeightMm,
             i.Configuration.InfillPercent,
-            i.UnitPrice.Amount)).ToList());
+            i.UnitPrice.Amount,
+            i.TechConstraintsJson,
+            i.ModelBindingKind,
+            i.PinnedModelId,
+            i.BindingLevel,
+            i.ReferenceOrderLineId)).ToList());
 }

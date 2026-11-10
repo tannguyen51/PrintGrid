@@ -22,10 +22,14 @@ import {
   Typography,
 } from '@mui/material'
 import { ArrowBackRounded, ArrowForwardRounded, PriceCheckRounded } from '@mui/icons-material'
-import type { Quote } from './quoteTypes'
+import type { Quote, ModelSummary } from './quoteTypes'
 import { COLORS, INFILL_OPTIONS, MATERIALS, QUALITY_GRADES } from './quoteTypes'
 import { useCreateQuote, usePlaceOrder } from './useQuotes'
 import { useAuth } from '../../app/AuthContext'
+import TechConstraintsSelector from './TechConstraintsSelector'
+import type { TechConstraintsValue } from './TechConstraintsSelector'
+import MachinePinningSelector from './MachinePinningSelector'
+import type { PinModelValue } from './MachinePinningSelector'
 
 /**
  * G3 — Print configuration & pre-order flow.
@@ -48,6 +52,11 @@ export default function OrderConfigPage() {
   const [infill, setInfill] = useState(30)
   const [quantity, setQuantity] = useState(1)
   const [configError, setConfigError] = useState<string | null>(null)
+
+  // Section 3: tech constraints (doc §3, BR-03)
+  const [techConstraints, setTechConstraints] = useState<TechConstraintsValue | null>(null)
+  // Section 4: machine pinning (doc §4, BR-04/BR-05)
+  const [pinnedModelId, setPinnedModelId] = useState<string | null>(null)
 
   // Quote + address state
   const [quote, setQuote] = useState<Quote | null>(null)
@@ -74,6 +83,17 @@ export default function OrderConfigPage() {
 
   const [resendCooldown, setResendCooldown] = useState(0)
   const { user } = useAuth()
+
+  // Listen to pin-model-selector changes (custom event pattern)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as PinModelValue | null
+      if (detail) setPinnedModelId(detail.pinnedModelId)
+      else setPinnedModelId(null)
+    }
+    window.addEventListener('pin-model-change', handler)
+    return () => window.removeEventListener('pin-model-change', handler)
+  }, [])
 
   useEffect(() => {
     let timer: any
@@ -116,6 +136,13 @@ export default function OrderConfigPage() {
         quantity,
         toleranceMm: 0.2,
         sizeCode, colorCodes: colors, polishing,
+        // Section 3: hard tech constraints (BR-03)
+        maxColors: techConstraints?.maxColors,
+        enclosedChamber: techConstraints?.enclosedChamber,
+        nozzleDiameterMm: techConstraints?.nozzleDiameterMm,
+        // Section 4: machine pinning (BR-04/BR-05)
+        bindingType: pinnedModelId ? 1 : undefined,
+        pinnedModelId: pinnedModelId ? pinnedModelId : undefined,
       })
       if (currentConfig.current === submittedConfig) {
         // After getting a quote, navigate back to library so the user
@@ -142,6 +169,10 @@ export default function OrderConfigPage() {
         city: city.trim(),
         postalCode: postalCode.trim(),
         acceptTerms,
+        // Doc §6.1 / §6.2 — pass machine selection context to backend (BR-03/04/05/09)
+        techConstraintsJson: techConstraints ? JSON.stringify(techConstraints) : null,
+        modelBindingKind: pinnedModelId ? 'theo_model' : 'không',
+        pinnedModelId: pinnedModelId,
       })
       navigate('/orders', { replace: true })
     } catch (e) {
@@ -256,6 +287,12 @@ export default function OrderConfigPage() {
                 ))}
               </Stack>
             </Box>
+
+            {/* Section 3: Tech constraints */}
+            <TechConstraintsSelector defaultQualityLayerMm={layer.layerMm} onValueChange={setTechConstraints} />
+
+            {/* Section 4: Machine pinning (BR-04/BR-05) */}
+            <MachinePinningSelector />
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5} alignItems="center">
               <TextField

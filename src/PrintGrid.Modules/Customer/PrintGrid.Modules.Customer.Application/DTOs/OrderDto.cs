@@ -20,4 +20,10 @@ public record OrderItemDto(
     string ColorCode,
     decimal LayerHeightMm,
     decimal InfillPercent,
-    decimal UnitPrice);
+    decimal UnitPrice,
+    // Machine-binding / pinch profile fields propagated from quote (doc Sections 4-5)
+    string? TechConstraintsJson = null,
+    string ModelBindingKind = "không",
+    Guid? PinnedModelId = null,
+    string BindingLevel = "bắt_buộc",
+    Guid? ReferenceOrderLineId = null);

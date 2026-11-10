@@ -52,7 +52,11 @@ public class PlaceOrderCommandHandler(
 
         var order = Order.CreateFromQuote(
             quote, address, orderNumber, DepositPercent(),
-            termsAccepted: command.AcceptTerms, termsAcceptedAtUtc: clock.UtcNow);
+            termsAccepted: command.AcceptTerms, termsAcceptedAtUtc: clock.UtcNow,
+            techConstraintsJson: command.TechConstraintsJson,
+            modelBindingKind: command.ModelBindingKind,
+            pinnedModelId: command.PinnedModelId,
+            referenceLineId: command.ReferenceLineId);
 
         // Demo flow: record the full payment up front. ApplyPayment also raises
         // OrderConfirmedEvent (jobs are created immediately) and sets PaidAmount, so the
@@ -104,5 +108,10 @@ public class PlaceOrderCommandHandler(
             i.Configuration.ColorCode,
             i.Configuration.LayerHeightMm,
             i.Configuration.InfillPercent,
-            i.UnitPrice.Amount)).ToList());
+            i.UnitPrice.Amount,
+            i.TechConstraintsJson,
+            i.ModelBindingKind,
+            i.PinnedModelId,
+            i.BindingLevel,
+            i.ReferenceOrderLineId)).ToList());
 }

@@ -235,11 +235,21 @@ public class CreateQuoteCommandHandler(
         if (surchargeCoefficient > 1.0m && bestPinned is not null && alternativePriceVnd.HasValue)
         {
             item.FreezeCalculation(System.Text.Json.JsonSerializer.Serialize(best), best.TotalAmount, placementMachineId);
+            // Freeze profile + surcharge pin data per Section 4.2 (BR-05) — used at reorder & job creation
+            // Delivery date to store = unpinned date when pinned selected, else current placement date
+            var deliveryDateForPinch = (bestPinned.TotalAmount <= bestUnpinned!.TotalAmount * 1.1m
+                ? alternativeDeliveryDate   // pinned won → use unpinned date as "alternative"
+                : placement.PromisedDeliveryDate) ?? placement.PromisedDeliveryDate;
+            item.FreezePinchData(placementMachineId!.Value, policy.Pricing.Version, surchargeCoefficient,
+                alternativePriceVnd!.Value, deliveryDateForPinch);
             quote.SetPinnedModelContext(surchargeCoefficient, command.PinnedModelId, alternativePriceVnd.Value, alternativeDeliveryDate);
         }
-        else
+        else if (placementMachineId.HasValue)
         {
             item.FreezeCalculation(System.Text.Json.JsonSerializer.Serialize(best), best.TotalAmount, placementMachineId);
+            // Even unpinned quotes store profile for traceability
+            item.FreezePinchData(placementMachineId.Value, policy.Pricing.Version, 1.0m,
+                (long)bestUnpinned!.TotalAmount, placement.PromisedDeliveryDate);
         }
 
         quote.MarkDraft(placement.PromisedDeliveryDate, policy.Pricing.Version, placement.Basis, placement.CustomerBasis);

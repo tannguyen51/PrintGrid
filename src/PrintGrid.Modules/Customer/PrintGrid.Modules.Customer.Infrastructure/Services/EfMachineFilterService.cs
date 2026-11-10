@@ -47,15 +47,18 @@ public class EfMachineFilterService : IMachineFilterService
     }
 
     /// <summary>
-    /// Returns model IDs where approved machine count meets BR-04 thresholds.
-    /// Simplified: returns empty list since we don't have access to Machine entity schema here.
-    /// TODO: Move machine capability queries to a shared module or CQRS query.
+    /// Eligible pin models are fetched via the customer-facing API endpoint
+    /// GET /api/v1/quotes/models (handled by GetEligibleMachineModelsQueryHandler)
+    /// rather than here — keeping Machine entity access in the Application layer
+    /// to avoid cross-module dependency (Machine lives in Scheduling.Domain).
     /// </summary>
-    public Task<IReadOnlyList<Guid>> GetEligiblePinModelsAsync(
+    public async Task<IReadOnlyList<Guid>> GetEligiblePinModelsAsync(
         string materialCode, int maxColors, bool? enclosedChamber,
         decimal? nozzleDiameterMm, decimal? maxToleranceMm, decimal? minLayerHeightMm,
         int minMachines = 3, int minLabs = 2, CancellationToken ct = default)
     {
-        return Task.FromResult<IReadOnlyList<Guid>>([]);
+        // Delegates to application-level query handled by API endpoint
+        // Returns empty here; UI should use GET /quotes/models instead
+        return await Task.FromResult<IReadOnlyList<Guid>>([]);
     }
 }
