@@ -22,7 +22,7 @@ public sealed class CuraProfile : Entity<Guid>
     public decimal RequiredNozzleTemperatureC { get; private init; }
     public decimal RequiredBedTemperatureC { get; private init; }
     public string SettingsJson { get; private set; } = "";
-    public static bool IsActive => true;
+    public bool IsActive { get; private set; } = true;
     public DateTime CreatedAtUtc { get; private set; }
 
     private CuraProfile() { }

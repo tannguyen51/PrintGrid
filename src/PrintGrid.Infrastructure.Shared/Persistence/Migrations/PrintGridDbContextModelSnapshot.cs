@@ -1398,6 +1398,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasPrecision(10, 3)
                         .HasColumnType("numeric(10,3)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("MachineModel")
                         .IsRequired()
                         .HasMaxLength(150)

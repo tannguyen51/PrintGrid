@@ -20,7 +20,7 @@ public sealed class CuraProfilesController(PrintGridDbContext db, IMachineProfil
 {
     [HttpGet]
     public async Task<IActionResult> List(CancellationToken ct) => Ok(await db.Set<CuraProfile>().AsNoTracking()
-        .Where(p => CuraProfile.IsActive).OrderBy(p => p.Manufacturer).ThenBy(p => p.MachineModel)
+        .Where(p => p.IsActive).OrderBy(p => p.Manufacturer).ThenBy(p => p.MachineModel)
         .Select(p => new { p.Id, p.Name, p.Manufacturer, p.MachineModel, p.MaterialCode, p.Version, p.EngineVersion,
             p.NozzleDiameterMm, p.FilamentDiameterMm, p.ExtruderCount, p.MaximumColorSlots,
             p.WidthMm, p.DepthMm, p.HeightMm, p.HeatedBed, p.RequiredNozzleTemperatureC, p.RequiredBedTemperatureC })

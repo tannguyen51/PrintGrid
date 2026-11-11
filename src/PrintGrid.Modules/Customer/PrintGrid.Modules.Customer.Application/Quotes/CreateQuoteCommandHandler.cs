@@ -153,9 +153,11 @@ public class CreateQuoteCommandHandler(
     private async Task<Result<QuoteDto>> CreateSlicedQuote(CreateQuoteCommand command, Model model,
         CommercialPolicy policy, CancellationToken cancellationToken)
     {
-        var machineIds = quoteSlicer is null ? [] : await quoteSlicer.GetConfiguredMachineIdsAsync(cancellationToken);
-        if (quoteSlicer is null || machineIds.Count == 0)
-            return Result.Failure<QuoteDto>(Error.Conflict("Chưa cấu hình CuraEngine và profile máy để báo giá tự động. Vui lòng liên hệ PrintGrid."));
+        if (quoteSlicer is null)
+            return Result.Failure<QuoteDto>(Error.Conflict("Dịch vụ báo giá tự động chưa sẵn sàng. Vui lòng liên hệ PrintGrid."));
+        var machineIds = await quoteSlicer.GetConfiguredMachineIdsAsync(cancellationToken);
+        if (machineIds.Count == 0)
+            return Result.Failure<QuoteDto>(Error.Conflict("Chưa có máy in được quản trị viên duyệt để báo giá tự động. Vui lòng liên hệ PrintGrid."));
 
         // BR-03: Filter by tech constraints (hard filter — no surcharge)
         var techConstraints = TechConstraints.From(command.MaxColors, command.EnclosedChamber,

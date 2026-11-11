@@ -12,7 +12,7 @@ public sealed class MachineProfileRegistry(PrintGridDbContext db, IConfiguration
     private string EngineVersion => configuration["QuoteSlicer:EngineVersion"] ?? "5.11.0";
     public async Task MatchAsync(Machine machine, CancellationToken cancellationToken)
     {
-        var candidates = await db.Set<CuraProfile>().Where(p => CuraProfile.IsActive && p.EngineVersion == EngineVersion)
+        var candidates = await db.Set<CuraProfile>().Where(p => p.IsActive && p.EngineVersion == EngineVersion)
             .OrderByDescending(p => p.CreatedAtUtc).ThenBy(p => p.Id).ToListAsync(cancellationToken);
         var matches = candidates.Where(p => p.Matches(machine)).GroupBy(p => p.MaterialCode)
             .Select(g => g.First()).ToList();
