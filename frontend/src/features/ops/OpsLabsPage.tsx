@@ -417,7 +417,7 @@ export default function OpsLabsPage() {
                               buildHeightMm: machine.buildHeightMm, minLayerHeightMm: machine.minLayerHeightMm,
                               achievableToleranceMm: machine.achievableToleranceMm,
                               materials: machine.supportedMaterials.join(', '),
-                              printerConfiguration: machine.printerConfiguration ?? defaultPrinterConfiguration,
+                              printerConfiguration: { ...defaultPrinterConfiguration, ...(machine.printerConfiguration ?? {}) },
                             })
                           }}
                           onDelete={async () => {

@@ -22,6 +22,10 @@ export interface PrinterConfiguration {
   maxBedTemperatureC: number
   pricePerHour: number
   failureRate: number
+  curaDefinitionId: string
+  curaExtruderDefinitionId: string
+  curaVariantId: string
+  curaQualityId: string
 }
 
 export const PROFILE_STATUS_LABELS: Record<string, string> = {

@@ -16,8 +16,12 @@ public sealed class MachineProfileRegistry(PrintGridDbContext db, IConfiguration
             .OrderByDescending(p => p.CreatedAtUtc).ThenBy(p => p.Id).ToListAsync(cancellationToken);
         var matches = candidates.Where(p => p.Matches(machine)).GroupBy(p => p.MaterialCode)
             .Select(g => g.First()).ToList();
-        machine.SetMatchedProfiles(matches.Select(p => p.Id), machine.SupportedMaterials.Count > 0 &&
-            machine.SupportedMaterials.All(m => matches.Any(p => p.MaterialCode == m)));
+        var complete = machine.SupportedMaterials.Count > 0 &&
+            machine.SupportedMaterials.All(m => matches.Any(p => p.MaterialCode == m));
+        var autoApprove = configuration.GetValue("CuraLibrary:AutoApproveVerifiedExactMatches", false)
+                          && complete && matches.All(p => p.IsVerified)
+                          && !string.IsNullOrWhiteSpace(machine.PrinterConfiguration?.CuraDefinitionId);
+        machine.SetVerifiedProfiles(matches.Select(p => p.Id), complete, autoApprove);
     }
 
     public async Task<IReadOnlyList<Guid>> GetApprovedMachineIdsAsync(CancellationToken cancellationToken) =>

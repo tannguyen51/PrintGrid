@@ -1,20 +1,24 @@
+FROM debian:bookworm-slim AS cura
+ARG CURA_VERSION=5.11.0
+ARG CURA_APPIMAGE_SHA256=bacdfbe60c55ac6a867a6d84b7654d466e93dfcf49c733e6d5349c7ab9626bd9
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl --fail --location --retry 5 \
+      "https://github.com/Ultimaker/Cura/releases/download/${CURA_VERSION}/UltiMaker-Cura-${CURA_VERSION}-linux-X64.AppImage" \
+      --output /tmp/cura.AppImage \
+    && echo "${CURA_APPIMAGE_SHA256}  /tmp/cura.AppImage" | sha256sum --check --strict \
+    && chmod 755 /tmp/cura.AppImage \
+    && cd /opt && /tmp/cura.AppImage --appimage-extract \
+    && test -x /opt/squashfs-root/CuraEngine
+
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# ---------------------------------------------------------------------------
-# Install CuraEngine from Debian bookworm package (cura-engine 4.13.0).
-# No external downloads — all deps come from cached Docker image layers.
-# CLI slice command is stable across 4.x/5.x; profiles are resolved JSON.
-# When multi-color slicing is ready, set QuoteSlicer__ExecutablePath=/usr/bin/CuraEngine
-# on Railway. See documentation/project/design/18-Slicer-Quotation.md for details.
-# ---------------------------------------------------------------------------
+# Build and migration tooling only; Cura comes from the checksum-pinned stage above.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends cura-engine postgresql-client wget \
-    && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /opt/cura \
-    && cp $(which CuraEngine) /opt/cura/CuraEngine \
-    && chmod 755 /opt/cura/CuraEngine \
-    && echo "CuraEngine installed: $($(/opt/cura/CuraEngine --version 2>&1 || true))"
+    && apt-get install -y --no-install-recommends postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
@@ -36,7 +40,7 @@ WORKDIR /app
 
 # psql is required only by the pre-deploy migration command.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-client \
+    && apt-get install -y --no-install-recommends postgresql-client python3 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system --gid 2000 printgrid \
@@ -45,12 +49,19 @@ RUN groupadd --system --gid 2000 printgrid \
 
 COPY --from=build --chown=printgrid:printgrid /app/publish ./
 COPY --from=build --chown=printgrid:printgrid /app/migrations.sql ./migrations.sql
-# Copy CuraEngine; runtime calls it during quote creation
-COPY --from=build /opt/cura/CuraEngine /opt/cura/CuraEngine
-RUN chmod 755 /opt/cura/CuraEngine
+# Copy the complete release runtime so its shared libraries stay aligned with the engine.
+COPY --from=cura /opt/squashfs-root/ /opt/cura/runtime/
+COPY infra/slicer/cura-resources/5.11.0/ /opt/cura/resources/
+COPY tools/cura-library/ /opt/cura/tools/
+RUN cp /opt/cura/tools/cura-engine.sh /opt/cura/CuraEngine \
+    && chmod 755 /opt/cura/CuraEngine /opt/cura/runtime/CuraEngine /opt/cura/tools/resolve_profile.py
 
 USER printgrid
 EXPOSE 8080
 ENV ASPNETCORE_HTTP_PORTS=8080
+ENV QuoteSlicer__EngineVersion=5.11.0
+ENV QuoteSlicer__ExecutablePath=/opt/cura/CuraEngine
+ENV CuraLibrary__ResourcesPath=/opt/cura/resources
+ENV CuraLibrary__ResolverPath=/opt/cura/tools/resolve_profile.py
 
 ENTRYPOINT ["dotnet", "PrintGrid.Api.dll"]

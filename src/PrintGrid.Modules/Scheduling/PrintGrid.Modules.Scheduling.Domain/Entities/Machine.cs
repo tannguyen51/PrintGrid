@@ -44,6 +44,15 @@ public class Machine : Entity<Guid>
         ProfileReviewedAtUtc = null;
     }
 
+    public void SetVerifiedProfiles(IEnumerable<Guid> ids, bool complete, bool autoApprove)
+    {
+        SetMatchedProfiles(ids, complete);
+        if (!complete || CuraProfileIds.Length == 0 || !autoApprove) return;
+        ProfileStatus = "Approved";
+        ProfileReviewReason = "Tự động duyệt: profile Cura đã được xác minh và khớp chính xác cấu hình máy.";
+        ProfileReviewedAtUtc = DateTime.UtcNow;
+    }
+
     public void ReviewProfile(bool approve, Guid reviewerId, string? reason)
     {
         switch (approve)

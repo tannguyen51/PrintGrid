@@ -1375,6 +1375,26 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CuraDefinitionId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CuraExtruderDefinitionId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CuraQualityId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CuraVariantId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<decimal>("DepthMm")
                         .HasPrecision(10, 3)
                         .HasColumnType("numeric(10,3)");
@@ -1399,6 +1419,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasColumnType("numeric(10,3)");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsVerified")
                         .HasColumnType("boolean");
 
                     b.Property<string>("MachineModel")
@@ -2697,6 +2720,26 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         {
                             b1.Property<Guid>("MachineId")
                                 .HasColumnType("uuid");
+
+                            b1.Property<string>("CuraDefinitionId")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)");
+
+                            b1.Property<string>("CuraExtruderDefinitionId")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)");
+
+                            b1.Property<string>("CuraQualityId")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)");
+
+                            b1.Property<string>("CuraVariantId")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)");
 
                             b1.Property<int>("ExtruderCount")
                                 .HasColumnType("integer");

@@ -5,9 +5,11 @@ using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Admin.Application.AuditLogs;
 using PrintGrid.Modules.Scheduling.Application.Commands.LabRegistry;
+using PrintGrid.Modules.Scheduling.Application.DTOs;
 using PrintGrid.Modules.Scheduling.Application.Queries;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
+using PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
 using PrintGrid.SharedKernel.Results;
 
 namespace PrintGrid.Api.Controllers;
@@ -21,7 +23,7 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/labs")]
 [Authorize]
-public class LabsController(ISender sender, IAuditLogWriter audit) : ControllerBase
+public class LabsController(ISender sender, IAuditLogWriter audit, CuraLibrarySyncService curaLibrarySync) : ControllerBase
 {
     private bool IsAdminOrOps => User.IsInRole(Roles.Admin) || User.IsInRole(Roles.OpsManager);
 
@@ -226,10 +228,11 @@ public class LabsController(ISender sender, IAuditLogWriter audit) : ControllerB
         if (result.IsFailure)
             return ToErrorResult(result.Error);
 
-        await WriteAudit("machine.registered", "Machine", result.Value.Id, null, result.Value,
+        var machine = await SyncCatalogMachine(result.Value, request.PrinterConfiguration, cancellationToken);
+        await WriteAudit("machine.registered", "Machine", machine.Id, null, machine,
             ["FR-LAB-002", "BR-OPS-006", "UC-014"], null, cancellationToken);
 
-        return CreatedAtAction(nameof(GetLab), new { labId }, result.Value);
+        return CreatedAtAction(nameof(GetLab), new { labId }, machine);
     }
 
     [HttpPut("{labId:guid}/machines/{machineId:guid}")]
@@ -261,10 +264,11 @@ public class LabsController(ISender sender, IAuditLogWriter audit) : ControllerB
         if (result.IsFailure)
             return ToErrorResult(result.Error);
 
-        await WriteAudit("machine.updated", "Machine", machineId, null, result.Value,
+        var machine = await SyncCatalogMachine(result.Value, request.PrinterConfiguration, cancellationToken);
+        await WriteAudit("machine.updated", "Machine", machineId, null, machine,
             ["FR-LAB-002", "BR-OPS-006", "UC-014"], null, cancellationToken);
 
-        return Ok(result.Value);
+        return Ok(machine);
     }
 
     [HttpDelete("{labId:guid}/machines/{machineId:guid}")]
@@ -392,6 +396,22 @@ public class LabsController(ISender sender, IAuditLogWriter audit) : ControllerB
             _ => StatusCodes.Status400BadRequest
         };
         return StatusCode(status, new { error = new { code = error.Code, message = error.Message } });
+    }
+
+    private async Task<MachineDto> SyncCatalogMachine(MachineDto machine, PrinterConfiguration? configuration,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(configuration?.CuraDefinitionId)) return machine;
+        try
+        {
+            var synced = await curaLibrarySync.SyncMachineAsync(machine.Id, cancellationToken);
+            return machine with { ProfileStatus = synced.Status, CuraProfileIds = synced.ProfileIds };
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException)
+        {
+            // Registration remains durable and MissingProfile when Cura is temporarily unavailable.
+            return machine;
+        }
     }
 
     private Task WriteAudit(

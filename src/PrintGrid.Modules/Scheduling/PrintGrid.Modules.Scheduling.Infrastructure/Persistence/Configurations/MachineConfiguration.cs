@@ -35,6 +35,10 @@ public class MachineConfiguration : IEntityTypeConfiguration<Machine>
             c.Property(p => p.MaxBedTemperatureC).HasPrecision(6, 2);
             c.Property(p => p.PricePerHour).HasPrecision(18, 2);
             c.Property(p => p.FailureRate).HasPrecision(7, 6);
+            c.Property(p => p.CuraDefinitionId).HasMaxLength(200);
+            c.Property(p => p.CuraExtruderDefinitionId).HasMaxLength(200);
+            c.Property(p => p.CuraVariantId).HasMaxLength(200);
+            c.Property(p => p.CuraQualityId).HasMaxLength(200);
         });
 
         builder.HasIndex(m => new { m.LabId, m.Status });

@@ -12,6 +12,8 @@ public sealed class CuraProfileConfiguration : IEntityTypeConfiguration<CuraProf
         builder.HasKey(p => p.Id);
         foreach (var name in new[] { "Name", "Manufacturer", "MachineModel", "MaterialCode", "Version", "EngineVersion" })
             builder.Property<string>(name).HasMaxLength(150).IsRequired();
+        foreach (var name in new[] { "CuraDefinitionId", "CuraExtruderDefinitionId", "CuraVariantId", "CuraQualityId" })
+            builder.Property<string>(name).HasMaxLength(200).IsRequired();
         foreach (var name in new[] { "NozzleDiameterMm", "FilamentDiameterMm", "WidthMm", "DepthMm", "HeightMm", "RequiredNozzleTemperatureC", "RequiredBedTemperatureC" })
             builder.Property<decimal>(name).HasPrecision(10, 3);
         builder.Property(p => p.SettingsJson).HasColumnType("jsonb").IsRequired();
