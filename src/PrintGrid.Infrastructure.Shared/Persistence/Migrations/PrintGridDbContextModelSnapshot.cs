@@ -1114,7 +1114,8 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
                     b.Property<string>("ProfileVersion")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("profile_version");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");

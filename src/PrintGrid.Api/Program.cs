@@ -7,6 +7,8 @@ using PrintGrid.Api.Extensions;
 using PrintGrid.Api.Hubs;
 using PrintGrid.Api.Middleware;
 using PrintGrid.Infrastructure.Shared;
+using PrintGrid.Infrastructure.Shared.Persistence;
+using Microsoft.EntityFrameworkCore;
 using PrintGrid.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -61,6 +63,16 @@ builder.Services.AddHealthChecks()
     .AddRedis(redisConnection, name: "redis");
 
 var app = builder.Build();
+
+// Railway runs this command before replacing the running deployment. Use the
+// same connection settings and module mappings as the API, without starting jobs.
+if (args.Contains("--migrate", StringComparer.Ordinal))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<PrintGridDbContext>();
+    await db.Database.MigrateAsync();
+    return;
+}
 
 var quoteSlicerOptions = app.Services
     .GetRequiredService<Microsoft.Extensions.Options.IOptions<PrintGrid.Modules.Customer.Infrastructure.Slicing.CuraQuoteOptions>>()

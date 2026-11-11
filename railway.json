@@ -5,6 +5,7 @@
     "dockerfilePath": "src/PrintGrid.Api/Dockerfile"
   },
   "deploy": {
+    "preDeployCommand": "dotnet PrintGrid.Api.dll --migrate",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",
