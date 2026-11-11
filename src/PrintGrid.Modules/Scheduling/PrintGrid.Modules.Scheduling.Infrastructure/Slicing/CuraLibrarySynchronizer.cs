@@ -116,10 +116,12 @@ public sealed class CuraLibrarySyncService(PrintGridDbContext db, CuraResourceCa
     {
         var values = qualities.Where(x => string.IsNullOrWhiteSpace(x.MaterialId) ||
                                            MaterialPresetMatches(x.MaterialId, materialId));
+        var nozzleText = nozzle.ToString("0.0#", CultureInfo.InvariantCulture);
+        values = values.Where(x => string.IsNullOrWhiteSpace(x.VariantId) ||
+                                   x.VariantId.Contains(nozzleText, StringComparison.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(requested))
             return values.FirstOrDefault(x => x.Id.Equals(requested, StringComparison.OrdinalIgnoreCase))
                    ?? throw new ArgumentException("Quality profile đã chọn không tương thích máy/vật liệu.");
-        var nozzleText = nozzle.ToString("0.0#", CultureInfo.InvariantCulture);
         return values.OrderByDescending(x => x.QualityType?.Equals(preferredType, StringComparison.OrdinalIgnoreCase) == true)
             .ThenByDescending(x => x.VariantId?.Contains(nozzleText, StringComparison.OrdinalIgnoreCase) == true)
             .FirstOrDefault() ?? throw new ArgumentException("Không có quality profile tương thích.");

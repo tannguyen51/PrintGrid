@@ -148,10 +148,13 @@ not install it on a deployed server, and customer/lab PCs do not need it for quo
   and definitions therefore cannot silently drift to different versions.
 
 Labs select a stable Cura definition ID from `GET /api/v1/cura-library/machines`.
-After machine creation the API resolves definition, extruder, material, variant
-and quality inheritance, smoke-slices a closed mesh, stores verified profiles in
-the database and rematches the machine. Exact verified matches can be auto-approved;
-partial or failed matches stay `PendingReview` or `MissingProfile`.
+The machine form fills manufacturer, model, build volume, extruder count, filament
+diameter and heated-bed capability from that catalog; a nozzle variant updates the
+configured nozzle diameter. After machine creation or update the API itself resolves
+definition, extruder, material, variant and quality inheritance, smoke-slices a closed
+mesh, stores verified profiles and rematches the machine. Complete matches stay
+`PendingReview` until the explicit review policy approves them; partial or failed
+matches stay `MissingProfile`.
 
 `.local/`, `.env`, database dumps and `appsettings.Local.json` are excluded from
 Git/Docker. Production does not load `appsettings.Local.json`; configure

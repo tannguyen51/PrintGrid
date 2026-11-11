@@ -94,13 +94,8 @@ export function useRejectLab() {
 export function useAddMachine() {
   const invalidate = useInvalidateLabs()
   return useMutation({
-    mutationFn: async ({ labId, ...input }: RegisterMachineInput) => {
-      const machine = (await apiClient.post<Machine>(`/labs/${labId}/machines`, input)).data
-      if (input.printerConfiguration?.curaDefinitionId) {
-        try { await apiClient.post(`/cura-library/machines/${machine.id}/sync`) } catch { /* machine remains MissingProfile */ }
-      }
-      return machine
-    },
+    mutationFn: ({ labId, ...input }: RegisterMachineInput) =>
+      apiClient.post<Machine>(`/labs/${labId}/machines`, input).then(r => r.data),
     onSuccess: invalidate,
   })
 }
@@ -108,13 +103,8 @@ export function useAddMachine() {
 export function useUpdateMachine() {
   const invalidate = useInvalidateLabs()
   return useMutation({
-    mutationFn: async ({ labId, machineId, ...input }: UpdateMachineInput) => {
-      const machine = (await apiClient.put<Machine>(`/labs/${labId}/machines/${machineId}`, input)).data
-      if (input.printerConfiguration?.curaDefinitionId) {
-        try { await apiClient.post(`/cura-library/machines/${machine.id}/sync`) } catch { /* surfaced by profile status */ }
-      }
-      return machine
-    },
+    mutationFn: ({ labId, machineId, ...input }: UpdateMachineInput) =>
+      apiClient.put<Machine>(`/labs/${labId}/machines/${machineId}`, input).then(r => r.data),
     onSuccess: invalidate,
   })
 }

@@ -7,11 +7,12 @@ namespace PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
 
 public sealed record CuraMachineDefinition(string Id, string Manufacturer, string Name,
     string ExtruderDefinitionId, string PreferredMaterialId, string PreferredQualityType,
-    decimal WidthMm, decimal DepthMm, decimal HeightMm, bool HeatedBed, decimal FilamentDiameterMm);
+    decimal WidthMm, decimal DepthMm, decimal HeightMm, bool HeatedBed, decimal FilamentDiameterMm,
+    int ExtruderCount);
 public sealed record CuraMaterialDefinition(string Id, string Brand, string Name, string MaterialCode,
     string Guid, decimal DiameterMm, decimal Density);
 public sealed record CuraPresetDefinition(string Id, string Name, string DefinitionId, string? MaterialId,
-    string? VariantId, string? QualityType);
+    string? VariantId, string? QualityType, decimal? NozzleDiameterMm);
 public sealed record CuraMachineOptions(CuraMachineDefinition Machine, IReadOnlyList<CuraMaterialDefinition> Materials,
     IReadOnlyList<CuraPresetDefinition> Variants, IReadOnlyList<CuraPresetDefinition> Qualities);
 
@@ -88,7 +89,7 @@ public sealed class CuraResourceCatalog
                 Text(metadata, "preferred_material", "generic_pla"), Text(metadata, "preferred_quality_type", "standard"),
                 DecimalSetting(overrides, "machine_width"), DecimalSetting(overrides, "machine_depth"),
                 DecimalSetting(overrides, "machine_height"), BoolSetting(overrides, "machine_heated_bed"),
-                DecimalSetting(overrides, "material_diameter", 1.75m)));
+                DecimalSetting(overrides, "material_diameter", 1.75m), trains.EnumerateObject().Count()));
         }
         return result.OrderBy(x => x.Manufacturer).ThenBy(x => x.Name).ToList();
     }
@@ -130,8 +131,13 @@ public sealed class CuraResourceCatalog
                     .Equals("true", StringComparison.OrdinalIgnoreCase)) continue;
             var definition = general.GetValueOrDefault("definition", "");
             if (definition.Length > 0 && !DefinitionApplies(definitionId, definition)) continue;
+            decimal? nozzle = null;
+            if (sections.TryGetValue("values", out var values) &&
+                decimal.TryParse(values.GetValueOrDefault("machine_nozzle_size"), System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var parsedNozzle)) nozzle = parsedNozzle;
             result.Add(new(PresetId(file), general.GetValueOrDefault("name", Path.GetFileName(file)),
-                definition, metadata.GetValueOrDefault("material"), metadata.GetValueOrDefault("variant"), metadata.GetValueOrDefault("quality_type")));
+                definition, metadata.GetValueOrDefault("material"), metadata.GetValueOrDefault("variant"),
+                metadata.GetValueOrDefault("quality_type"), nozzle));
         }
         return result.GroupBy(x => x.Id).Select(x => x.First()).OrderBy(x => x.Name).ToList();
     }

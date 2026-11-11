@@ -140,6 +140,10 @@ export default function LabMachinesPage() {
       setFormError('Tên máy và model không được để trống.')
       return
     }
+    if (machineForm.technology === 0 && !machineForm.printerConfiguration.curaDefinitionId) {
+      setFormError('Vui lòng chọn hãng/model FDM từ danh mục Cura trước khi lưu máy.')
+      return
+    }
     const supportedMaterials = machineForm.materials
       .split(',')
       .map((s) => s.trim().toUpperCase())
@@ -524,9 +528,15 @@ export default function LabMachinesPage() {
             {editingMachine && <Alert severity="info">Lưu thông số máy sẽ tìm lại profile và chuyển hồ sơ sang chờ duyệt lại.</Alert>}
             <Grid container spacing={2}>
               <Grid size={{ xs: 12 }}>
-                <ProfilePresetField onSelect={p => setMachineForm(f => ({ ...f, model: p.name, technology: 0,
+                <ProfilePresetField definitionId={machineForm.printerConfiguration.curaDefinitionId}
+                  onClear={() => setMachineForm(f => ({ ...f, model: '', printerConfiguration: {
+                    ...f.printerConfiguration, manufacturer: '', curaDefinitionId: '', curaExtruderDefinitionId: '',
+                    curaVariantId: '', curaQualityId: '',
+                  } }))}
+                  onSelect={p => setMachineForm(f => ({ ...f, model: p.name, technology: 0,
                   buildWidthMm: p.widthMm, buildDepthMm: p.depthMm, buildHeightMm: p.heightMm,
                   printerConfiguration: { ...f.printerConfiguration, manufacturer: p.manufacturer,
+                    extruderCount: p.extruderCount, maximumColorSlots: Math.max(p.extruderCount, f.printerConfiguration.maximumColorSlots),
                     filamentDiameterMm: p.filamentDiameterMm, heatedBed: p.heatedBed,
                     maxBedTemperatureC: p.heatedBed ? f.printerConfiguration.maxBedTemperatureC || 100 : 0,
                     curaDefinitionId: p.id, curaExtruderDefinitionId: p.extruderDefinitionId,
@@ -548,6 +558,7 @@ export default function LabMachinesPage() {
                   value={machineForm.model ?? ''}
                   onChange={(e) => setMachineForm((f) => ({ ...f, model: e.target.value }))}
                   required
+                  disabled={Boolean(machineForm.printerConfiguration.curaDefinitionId)}
                   fullWidth
                 />
               </Grid>
@@ -558,6 +569,7 @@ export default function LabMachinesPage() {
                     labelId="lab-machine-tech-label"
                     label="Công nghệ"
                     value={machineForm.technology}
+                    disabled={Boolean(machineForm.printerConfiguration.curaDefinitionId)}
                     onChange={(e) =>
                       setMachineForm((f) => ({ ...f, technology: Number(e.target.value) as PrintTechnology }))
                     }
@@ -583,6 +595,7 @@ export default function LabMachinesPage() {
                   label="Khổ in X (mm)"
                   type="number"
                   value={machineForm.buildWidthMm}
+                  disabled={Boolean(machineForm.printerConfiguration.curaDefinitionId)}
                   onChange={(e) => setMachineForm((f) => ({ ...f, buildWidthMm: Number(e.target.value) }))}
                   fullWidth
                 />
@@ -592,6 +605,7 @@ export default function LabMachinesPage() {
                   label="Khổ in Y (mm)"
                   type="number"
                   value={machineForm.buildDepthMm}
+                  disabled={Boolean(machineForm.printerConfiguration.curaDefinitionId)}
                   onChange={(e) => setMachineForm((f) => ({ ...f, buildDepthMm: Number(e.target.value) }))}
                   fullWidth
                 />
@@ -601,6 +615,7 @@ export default function LabMachinesPage() {
                   label="Khổ in Z (mm)"
                   type="number"
                   value={machineForm.buildHeightMm}
+                  disabled={Boolean(machineForm.printerConfiguration.curaDefinitionId)}
                   onChange={(e) => setMachineForm((f) => ({ ...f, buildHeightMm: Number(e.target.value) }))}
                   fullWidth
                 />
@@ -639,7 +654,8 @@ export default function LabMachinesPage() {
               addMachine.isPending ||
               updateMachine.isPending ||
               !machineForm.name?.trim() ||
-              !machineForm.model?.trim()
+              !machineForm.model?.trim() ||
+              (machineForm.technology === 0 && !machineForm.printerConfiguration.curaDefinitionId)
             }
           >
             {editingMachine ? 'Lưu thay đổi' : 'Thêm máy'}

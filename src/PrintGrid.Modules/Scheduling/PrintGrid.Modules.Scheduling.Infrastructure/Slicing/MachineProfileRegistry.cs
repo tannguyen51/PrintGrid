@@ -18,7 +18,7 @@ public sealed class MachineProfileRegistry(PrintGridDbContext db, IConfiguration
             .Select(g => g.First()).ToList();
         var complete = machine.SupportedMaterials.Count > 0 &&
             machine.SupportedMaterials.All(m => matches.Any(p => p.MaterialCode == m));
-        var autoApprove = configuration.GetValue("CuraLibrary:AutoApproveVerifiedExactMatches", true)
+        var autoApprove = configuration.GetValue("CuraLibrary:AutoApproveVerifiedExactMatches", false)
                           && complete && matches.All(p => p.IsVerified)
                           && !string.IsNullOrWhiteSpace(machine.PrinterConfiguration?.CuraDefinitionId);
         machine.SetVerifiedProfiles(matches.Select(p => p.Id), complete, autoApprove);

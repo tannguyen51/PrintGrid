@@ -25,7 +25,7 @@ public sealed class CuraLibraryController(CuraResourceCatalog catalog, CuraLibra
         if (!string.IsNullOrWhiteSpace(search)) values = values.Where(x =>
             x.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
             x.Manufacturer.Contains(search, StringComparison.OrdinalIgnoreCase));
-        return Ok(values.Take(250));
+        return Ok(values);
     }
 
     [HttpGet("materials")]

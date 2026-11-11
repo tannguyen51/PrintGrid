@@ -21,6 +21,7 @@ public sealed class CuraResourceCatalogTests
         machine.WidthMm.Should().Be(235);
         machine.HeightMm.Should().Be(250);
         machine.HeatedBed.Should().BeTrue();
+        machine.ExtruderCount.Should().Be(1);
     }
 
     [Fact]
@@ -31,5 +32,6 @@ public sealed class CuraResourceCatalogTests
         options.Qualities.Should().Contain(x => x.Id == "base_0.4_PLA_standard");
         options.Qualities.Should().NotContain(x => x.Id.EndsWith(".inst", StringComparison.OrdinalIgnoreCase));
         options.Qualities.Should().NotContain(x => x.Id == "base_global_standard");
+        options.Variants.Should().Contain(x => x.Id == "creality_base_0.4" && x.NozzleDiameterMm == 0.4m);
     }
 }
