@@ -23,6 +23,11 @@ public sealed class CuraProfile : Entity<Guid>
     public decimal RequiredBedTemperatureC { get; private init; }
     public string SettingsJson { get; private set; } = "";
     public bool IsActive { get; private set; } = true;
+    public bool IsVerified { get; private set; }
+    public string CuraDefinitionId { get; private set; } = "";
+    public string CuraExtruderDefinitionId { get; private set; } = "";
+    public string CuraVariantId { get; private set; } = "";
+    public string CuraQualityId { get; private set; } = "";
     public DateTime CreatedAtUtc { get; private set; }
 
     private CuraProfile() { }
@@ -41,7 +46,21 @@ public sealed class CuraProfile : Entity<Guid>
             SettingsJson = settingsJson, CreatedAtUtc = DateTime.UtcNow
         };
 
+    public void MarkVerified(string definitionId, string extruderDefinitionId, string variantId, string qualityId)
+    {
+        if (new[] { definitionId, extruderDefinitionId, qualityId }.Any(string.IsNullOrWhiteSpace))
+            throw new ArgumentException("Profile được xác minh phải có đủ definition, extruder và quality ID.");
+        IsVerified = true;
+        CuraDefinitionId = definitionId;
+        CuraExtruderDefinitionId = extruderDefinitionId;
+        CuraVariantId = variantId;
+        CuraQualityId = qualityId;
+    }
+
+    public void Deactivate() => IsActive = false;
+
     public bool Matches(Machine m) => IsActive && m is { Technology: Enums.PrintTechnology.Fdm, PrinterConfiguration: { } c } &&
+                                      (CuraDefinitionId.Length == 0 || CuraDefinitionId.Equals(c.CuraDefinitionId ?? "", StringComparison.OrdinalIgnoreCase)) &&
                                       Manufacturer.Equals(c.Manufacturer.Trim(), StringComparison.InvariantCultureIgnoreCase) && MachineModel.Equals(m.Model.Trim(), StringComparison.InvariantCultureIgnoreCase) &&
                                       NozzleDiameterMm == c.NozzleDiameterMm && FilamentDiameterMm == c.FilamentDiameterMm &&
                                       ExtruderCount == c.ExtruderCount && MaximumColorSlots == c.MaximumColorSlots &&

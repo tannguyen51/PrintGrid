@@ -7,7 +7,17 @@ export const defaultPrinterConfiguration: PrinterConfiguration = {
   manufacturer: '', extruderCount: 1, maximumColorSlots: 1, nozzleDiameterMm: 0.4,
   filamentDiameterMm: 1.75, heatedBed: true, maxNozzleTemperatureC: 260,
   maxBedTemperatureC: 100, pricePerHour: 6000, failureRate: 0.08,
+  curaDefinitionId: '', curaExtruderDefinitionId: '', curaVariantId: '', curaQualityId: '',
 }
+
+export interface CuraMachineDefinition {
+  id: string; manufacturer: string; name: string; extruderDefinitionId: string
+  preferredMaterialId: string; preferredQualityType: string; widthMm: number; depthMm: number
+  heightMm: number; heatedBed: boolean; filamentDiameterMm: number
+}
+
+interface CuraPresetDefinition { id: string; name: string; materialId?: string; variantId?: string; qualityType?: string }
+interface CuraMachineOptions { variants: CuraPresetDefinition[]; qualities: CuraPresetDefinition[] }
 
 export interface CuraProfileSummary {
   id: string; name: string; manufacturer: string; machineModel: string; materialCode: string
@@ -24,13 +34,26 @@ export function PrinterConfigurationFields({ value, onChange }: {
   value: PrinterConfiguration; onChange: (value: PrinterConfiguration) => void
 }) {
   const profiles = useCuraProfiles()
+  const options = useQuery({ queryKey: ['cura-machine-options', value.curaDefinitionId],
+    queryFn: () => apiClient.get<CuraMachineOptions>(`/cura-library/machines/${value.curaDefinitionId}/options`).then(r => r.data),
+    enabled: Boolean(value.curaDefinitionId) })
   const update = (key: keyof PrinterConfiguration, next: string | number | boolean) => onChange({ ...value, [key]: next })
   return <>
     <Grid size={{ xs: 12 }}>
-      <Autocomplete freeSolo options={[...new Set(profiles.data?.map(p => p.manufacturer) ?? [])]}
+      <Autocomplete freeSolo disabled={Boolean(value.curaDefinitionId)} options={[...new Set(profiles.data?.map(p => p.manufacturer) ?? [])]}
         inputValue={value.manufacturer} onInputChange={(_, next) => update('manufacturer', next)}
         renderInput={params => <TextField {...params} required label="Hãng sản xuất" />} />
     </Grid>
+    {value.curaDefinitionId && <>
+      <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Cura definition ID" value={value.curaDefinitionId} disabled /></Grid>
+      <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Extruder definition ID" value={value.curaExtruderDefinitionId} disabled /></Grid>
+      <Grid size={{ xs: 12, sm: 6 }}><TextField select fullWidth label="Nozzle variant (tùy chọn)" value={value.curaVariantId}
+        onChange={e => update('curaVariantId', e.target.value)}><MenuItem value="">Mặc định</MenuItem>
+        {(options.data?.variants ?? []).map(x => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</TextField></Grid>
+      <Grid size={{ xs: 12, sm: 6 }}><TextField select fullWidth label="Quality profile (tự chọn nếu để trống)" value={value.curaQualityId}
+        onChange={e => update('curaQualityId', e.target.value)}><MenuItem value="">Tự động · Standard</MenuItem>
+        {(options.data?.qualities ?? []).map(x => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</TextField></Grid>
+    </>}
     {([
       ['extruderCount', 'Số đầu đùn vật lý', 1], ['maximumColorSlots', 'Số màu tối đa / mô hình', 1],
       ['nozzleDiameterMm', 'Đường kính đầu phun (mm)', 0.1], ['filamentDiameterMm', 'Đường kính sợi nhựa (mm)', 0.01],
@@ -51,11 +74,10 @@ export function PrinterConfigurationFields({ value, onChange }: {
   </>
 }
 
-export function ProfilePresetField({ onSelect }: { onSelect: (profile: CuraProfileSummary) => void }) {
-  const profiles = useCuraProfiles()
-  return <TextField select fullWidth label="Điền cấu hình từ thư viện (tùy chọn)" value=""
-    onChange={e => { const p = profiles.data?.find(p => p.id === e.target.value); if (p) onSelect(p) }}>
-    {(profiles.data ?? []).map(p => <MenuItem key={p.id} value={p.id}>{p.manufacturer} · {p.machineModel} · {p.materialCode} · {p.nozzleDiameterMm} mm · {p.name}</MenuItem>)}
-    {!profiles.data?.length && <MenuItem disabled value="empty">Chưa có profile — có thể khai báo máy thủ công</MenuItem>}
-  </TextField>
+export function ProfilePresetField({ onSelect }: { onSelect: (machine: CuraMachineDefinition) => void }) {
+  const machines = useQuery({ queryKey: ['cura-library-machines'],
+    queryFn: () => apiClient.get<CuraMachineDefinition[]>('/cura-library/machines').then(r => r.data) })
+  return <Autocomplete options={machines.data ?? []} groupBy={x => x.manufacturer}
+    getOptionLabel={x => `${x.manufacturer} · ${x.name}`} onChange={(_, value) => { if (value) onSelect(value) }}
+    renderInput={params => <TextField {...params} label="Hãng / model từ thư viện Cura 5.11.0" required />} />
 }

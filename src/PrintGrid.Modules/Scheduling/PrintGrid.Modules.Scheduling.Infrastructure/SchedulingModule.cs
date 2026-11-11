@@ -28,6 +28,8 @@ public class SchedulingModule : IModule
         SchedulingModuleRegistration.AddRepositories(services);
         services.AddScoped<IMachineProfileMatcher, MachineProfileRegistry>();
         services.AddScoped<ICuraProfileRegistry, MachineProfileRegistry>();
+        services.AddSingleton<CuraResourceCatalog>();
+        services.AddScoped<CuraLibrarySynchronizer>();
         var rates = configuration.GetSection("ShipmentBatch:ZoneRates").GetChildren()
             .ToDictionary(
                 item => item.Key.ToUpperInvariant(),

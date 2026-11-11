@@ -1,0 +1,6 @@
+{
+  "curaVersion": "5.11.0",
+  "sourceArtifact": "UltiMaker-Cura-5.11.0-win64-X64.exe",
+  "sourceSha256": "294d4c3907137e789b16b15990bab64380eff5df7c7d9d0d06ec83966f36ffa0",
+  "directories": ["definitions", "extruders", "materials", "variants", "quality", "intent"]
+}

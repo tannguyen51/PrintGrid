@@ -142,29 +142,26 @@ not install it on a deployed server, and customer/lab PCs do not need it for quo
 - **Windows host:** install the matching CuraEngine runtime and its dependencies
   on that host, copy the resolved profiles, and configure paths accessible to the
   API service account.
-- **Linux/Docker host:** install a native Linux CuraEngine runtime matching the
-  server's CPU architecture. The Windows `CuraEngine.exe` cannot be used as the
-  native Linux executable. Build/install guidance is available in the
-  [official CuraEngine documentation](https://github.com/Ultimaker/CuraEngine/wiki/Building-CuraEngine-From-Source).
+- **Linux/Docker host:** the API Dockerfile downloads the official Cura 5.11.0
+  Linux AppImage, verifies SHA-256, extracts the complete runtime and copies the
+  pinned resource library from `infra/slicer/cura-resources/5.11.0`. The engine
+  and definitions therefore cannot silently drift to different versions.
 
-The current API Dockerfile packages only the .NET application; it does **not**
-install CuraEngine or copy `infra/slicer/profiles`. Deployment must explicitly
-package or mount both the Linux runtime/dependencies and the profiles. Pin the
-engine version to the version used to generate/verify the profiles (currently
-5.11.0), then verify slicing on the target OS.
+Labs select a stable Cura definition ID from `GET /api/v1/cura-library/machines`.
+After machine creation the API resolves definition, extruder, material, variant
+and quality inheritance, smoke-slices a closed mesh, stores verified profiles in
+the database and rematches the machine. Exact verified matches can be auto-approved;
+partial or failed matches stay `PendingReview` or `MissingProfile`.
 
 `.local/`, `.env`, database dumps and `appsettings.Local.json` are excluded from
 Git/Docker. Production does not load `appsettings.Local.json`; configure
 `QuoteSlicer` through deployment environment variables or production settings.
-For example, after installing the engine and copying the first profile:
+The container configures these defaults; they can be overridden if paths change:
 
 ```text
 QuoteSlicer__ExecutablePath=/opt/cura/CuraEngine
-QuoteSlicer__Machines__11111111-1111-4111-8111-111111111101__SettingsPath=/opt/printgrid/profiles/local-standard-pla.resolved.json
-QuoteSlicer__Machines__11111111-1111-4111-8111-111111111101__Materials__0=PLA
-QuoteSlicer__Machines__11111111-1111-4111-8111-111111111101__Colors__0=BLACK
-QuoteSlicer__Machines__11111111-1111-4111-8111-111111111101__PricePerHour=6000
-QuoteSlicer__Machines__11111111-1111-4111-8111-111111111101__FailureRate=0.08
+CuraLibrary__ResourcesPath=/opt/cura/resources
+CuraLibrary__ResolverPath=/opt/cura/tools/resolve_profile.py
 ```
 
 These remain virtual test profiles and example rates. Add the other required

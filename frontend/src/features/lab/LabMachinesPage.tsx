@@ -115,7 +115,7 @@ export default function LabMachinesPage() {
       minLayerHeightMm: m.minLayerHeightMm,
       achievableToleranceMm: m.achievableToleranceMm,
       materials: (m.supportedMaterials ?? []).join(', '),
-      printerConfiguration: m.printerConfiguration ?? defaultPrinterConfiguration,
+      printerConfiguration: { ...defaultPrinterConfiguration, ...(m.printerConfiguration ?? {}) },
     })
     setFormError(null)
     setFormOpen(true)
@@ -524,13 +524,13 @@ export default function LabMachinesPage() {
             {editingMachine && <Alert severity="info">Lưu thông số máy sẽ tìm lại profile và chuyển hồ sơ sang chờ duyệt lại.</Alert>}
             <Grid container spacing={2}>
               <Grid size={{ xs: 12 }}>
-                <ProfilePresetField onSelect={p => setMachineForm(f => ({ ...f, model: p.machineModel, technology: 0,
-                  buildWidthMm: p.widthMm, buildDepthMm: p.depthMm, buildHeightMm: p.heightMm, materials: p.materialCode,
+                <ProfilePresetField onSelect={p => setMachineForm(f => ({ ...f, model: p.name, technology: 0,
+                  buildWidthMm: p.widthMm, buildDepthMm: p.depthMm, buildHeightMm: p.heightMm,
                   printerConfiguration: { ...f.printerConfiguration, manufacturer: p.manufacturer,
-                    extruderCount: p.extruderCount, maximumColorSlots: p.maximumColorSlots,
-                    nozzleDiameterMm: p.nozzleDiameterMm, filamentDiameterMm: p.filamentDiameterMm,
-                    heatedBed: p.heatedBed, maxNozzleTemperatureC: Math.max(p.requiredNozzleTemperatureC, 260),
-                    maxBedTemperatureC: p.heatedBed ? Math.max(p.requiredBedTemperatureC, 100) : 0 },
+                    filamentDiameterMm: p.filamentDiameterMm, heatedBed: p.heatedBed,
+                    maxBedTemperatureC: p.heatedBed ? f.printerConfiguration.maxBedTemperatureC || 100 : 0,
+                    curaDefinitionId: p.id, curaExtruderDefinitionId: p.extruderDefinitionId,
+                    curaVariantId: '', curaQualityId: '' },
                 }))} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>

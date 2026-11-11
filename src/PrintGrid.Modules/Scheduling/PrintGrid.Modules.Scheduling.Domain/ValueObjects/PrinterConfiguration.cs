@@ -10,7 +10,11 @@ public sealed record PrinterConfiguration(
     decimal MaxNozzleTemperatureC,
     decimal MaxBedTemperatureC,
     decimal PricePerHour,
-    decimal FailureRate)
+    decimal FailureRate,
+    string CuraDefinitionId = "",
+    string CuraExtruderDefinitionId = "",
+    string CuraVariantId = "",
+    string CuraQualityId = "")
 {
     public void Validate()
     {
@@ -28,5 +32,8 @@ public sealed record PrinterConfiguration(
 
         if (PricePerHour is <= 0 or > 10000000 || FailureRate is < 0 or >= 1)
             throw new ArgumentException("Đơn giá máy phải lớn hơn 0; tỷ lệ lỗi từ 0% đến dưới 100%.");
+        foreach (var id in new[] { CuraDefinitionId, CuraExtruderDefinitionId, CuraVariantId, CuraQualityId }.Select(x => x ?? ""))
+            if (id.Length > 200 || id.IndexOfAny(['/', '\\']) >= 0 || id.Contains("..", StringComparison.Ordinal))
+                throw new ArgumentException("ID tài nguyên Cura không hợp lệ.");
     }
 }
