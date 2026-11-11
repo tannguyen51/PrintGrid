@@ -6,12 +6,35 @@ import {
 } from '@mui/material'
 import { CheckCircleRounded, CancelRounded, OpenInNewRounded, ThreeDRotationRounded } from '@mui/icons-material'
 import { getApiErrorMessage } from '../../shared/api/apiError'
-import { useApproveModel, useModelReviews, useRejectModel } from './useModelReviews'
+import { useApproveModel, useModelReviews, useRejectModel, type ModelReview } from './useModelReviews'
 import { useModelFileUrl } from '../models/useModelFile'
 import { ModelViewer } from '../../shared/components/ModelViewer'
 
 const FILTERS: Array<'Pending' | 'Approved' | 'Rejected' | 'All'> = ['Pending', 'Approved', 'Rejected', 'All']
 const PREVIEWABLE_FORMATS = ['GLB', 'GLTF', 'STL', 'OBJ', '3MF']
+
+function ModelReviewPreview({ review }: { review: ModelReview }) {
+  const format = (review.fileFormat ?? '').toUpperCase()
+  const { url, failed } = useModelFileUrl(review.modelId, PREVIEWABLE_FORMATS.includes(format), '/model-reviews')
+
+  return (
+    <Box sx={{ height: '100%', bgcolor: '#F5F2FF', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
+      {failed ? (
+        <Stack sx={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }} spacing={2} px={4}>
+          <ThreeDRotationRounded sx={{ fontSize: 48, color: 'text.disabled' }} />
+          <Typography color="text.secondary" align="center">Không tải được file để xem trước.</Typography>
+        </Stack>
+      ) : !url ? (
+        <Stack sx={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }} spacing={2}>
+          <CircularProgress size={36} />
+          <Typography color="text.secondary">Đang tải mô hình…</Typography>
+        </Stack>
+      ) : (
+        <ModelViewer url={url} format={format} fit background="#F5F2FF" sx={{ bgcolor: '#F5F2FF' }} />
+      )}
+    </Box>
+  )
+}
 
 function statusChip(status: string) {
   const color = status === 'Approved' ? 'success' : status === 'Rejected' ? 'error' : 'warning'
@@ -31,8 +54,7 @@ export function ModelReviewQueuePage() {
   const approve = useApproveModel()
   const reject = useRejectModel()
 
-  // Track which model we're viewing in 3D
-  const previewModelId = preview3d
+  const previewReview = reviews.data?.find(review => review.modelId === preview3d)
 
   async function act(action: () => Promise<void>) {
     setError(null)
@@ -206,30 +228,8 @@ export function ModelReviewQueuePage() {
           <Button onClick={() => setPreview3d(null)}>Đóng</Button>
         </DialogTitle>
         <DialogContent sx={{ flex: 1, minHeight: 0, p: 2 }}>
-          {previewModelId && (() => {
-            const review = reviews.data?.find(r => r.modelId === previewModelId)
-            const format = (review?.fileFormat ?? '').toUpperCase()
-            const previewable = PREVIEWABLE_FORMATS.includes(format)
-            const { url, failed } = useModelFileUrl(previewModelId, previewable, '/model-reviews')
-            if (!review) return <Typography color="text.secondary">Loading...</Typography>
-            return (
-              <Box sx={{ height: '100%', bgcolor: '#F5F2FF', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
-                {!url ? (
-                  <Stack sx={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }} spacing={2}>
-                    <CircularProgress size={36} />
-                    <Typography color="text.secondary">Đang tải mô hình…</Typography>
-                  </Stack>
-                ) : failed ? (
-                  <Stack sx={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }} spacing={2} px={4}>
-                    <ThreeDRotationRounded sx={{ fontSize: 48, color: 'text.disabled' }} />
-                    <Typography color="text.secondary" align="center">Không tải được file để xem trước.</Typography>
-                  </Stack>
-                ) : (
-                  <ModelViewer url={url} format={format} fit background="#F5F2FF" sx={{ bgcolor: '#F5F2FF' }} />
-                )}
-              </Box>
-            )
-          })()}
+          {previewReview ? <ModelReviewPreview key={previewReview.modelId} review={previewReview} />
+            : preview3d && <Typography color="text.secondary">Đang tải thông tin mô hình…</Typography>}
         </DialogContent>
       </Dialog>
 
