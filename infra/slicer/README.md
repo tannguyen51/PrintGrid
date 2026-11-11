@@ -164,6 +164,13 @@ CuraLibrary__ResourcesPath=/opt/cura/resources
 CuraLibrary__ResolverPath=/opt/cura/tools/resolve_profile.py
 ```
 
+Admin can run an idempotent database synchronization with
+`POST /api/v1/cura-library/sync`. The endpoint resolves and smoke-tests profiles for
+non-approved configured FDM machines, reuses identical active profiles, and never
+replaces profile IDs already attached to an `Approved` machine. A lab/ops user can
+still synchronize one machine through
+`POST /api/v1/cura-library/machines/{machineId}/sync`.
+
 These remain virtual test profiles and example rates. Add the other required
 colors and the second machine's configuration as needed. The corresponding
 machine/lab rows, inventory and commercial rates must also exist in the target

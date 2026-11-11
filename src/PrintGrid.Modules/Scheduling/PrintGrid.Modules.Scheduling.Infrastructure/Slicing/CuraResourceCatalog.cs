@@ -126,12 +126,21 @@ public sealed class CuraResourceCatalog
         {
             var sections = ParseIni(file);
             if (!sections.TryGetValue("general", out var general) || !sections.TryGetValue("metadata", out var metadata)) continue;
+            if (directory == "quality" && metadata.GetValueOrDefault("global_quality", "false")
+                    .Equals("true", StringComparison.OrdinalIgnoreCase)) continue;
             var definition = general.GetValueOrDefault("definition", "");
             if (definition.Length > 0 && !DefinitionApplies(definitionId, definition)) continue;
-            result.Add(new(Path.GetFileName(file)[..^Path.GetExtension(file).Length], general.GetValueOrDefault("name", Path.GetFileName(file)),
+            result.Add(new(PresetId(file), general.GetValueOrDefault("name", Path.GetFileName(file)),
                 definition, metadata.GetValueOrDefault("material"), metadata.GetValueOrDefault("variant"), metadata.GetValueOrDefault("quality_type")));
         }
         return result.GroupBy(x => x.Id).Select(x => x.First()).OrderBy(x => x.Name).ToList();
+    }
+
+    private static string PresetId(string path)
+    {
+        var name = Path.GetFileName(path);
+        return name.EndsWith(".inst.cfg", StringComparison.OrdinalIgnoreCase) ? name[..^".inst.cfg".Length] :
+            name.EndsWith(".cfg", StringComparison.OrdinalIgnoreCase) ? name[..^".cfg".Length] : name;
     }
 
     private bool DefinitionApplies(string child, string expected)

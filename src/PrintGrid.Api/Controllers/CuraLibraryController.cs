@@ -11,7 +11,7 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/cura-library")]
 [Authorize(Policy = Policies.RequireProduction)]
-public sealed class CuraLibraryController(CuraResourceCatalog catalog, CuraLibrarySynchronizer synchronizer,
+public sealed class CuraLibraryController(CuraResourceCatalog catalog, CuraLibrarySyncService synchronizer,
     PrintGridDbContext db) : ControllerBase
 {
     [HttpGet]
@@ -54,5 +54,14 @@ public sealed class CuraLibraryController(CuraResourceCatalog catalog, CuraLibra
         catch (KeyNotFoundException e) { return NotFound(new { error = new { code = "not_found", message = e.Message } }); }
         catch (ArgumentException e) { return BadRequest(new { error = new { code = "validation", message = e.Message } }); }
         catch (InvalidOperationException e) { return StatusCode(503, new { error = new { code = "cura_unavailable", message = e.Message } }); }
+    }
+
+    [HttpPost("sync")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> SyncLibrary(CancellationToken ct)
+    {
+        try { return Ok(await synchronizer.SyncAllAsync(ct)); }
+        catch (InvalidOperationException e)
+        { return StatusCode(503, new { error = new { code = "cura_unavailable", message = e.Message } }); }
     }
 }

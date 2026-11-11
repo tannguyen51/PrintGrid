@@ -29,5 +29,7 @@ public sealed class CuraResourceCatalogTests
         var options = Catalog().GetOptions("creality_ender3");
         options.Materials.Should().Contain(x => x.Id == "generic_pla_175" && x.MaterialCode == "PLA");
         options.Qualities.Should().Contain(x => x.Id == "base_0.4_PLA_standard");
+        options.Qualities.Should().NotContain(x => x.Id.EndsWith(".inst", StringComparison.OrdinalIgnoreCase));
+        options.Qualities.Should().NotContain(x => x.Id == "base_global_standard");
     }
 }

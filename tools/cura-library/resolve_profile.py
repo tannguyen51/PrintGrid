@@ -52,7 +52,8 @@ def definitions(root, machine_id, extruder_id):
     result = {}
     metadata = {}
     name = machine_id
-    for _, data in definition_chain(root, "definitions", machine_id, ".def.json"):
+    machine_chain = definition_chain(root, "definitions", machine_id, ".def.json")
+    for _, data in machine_chain:
         name = data.get("name", name)
         metadata.update(data.get("metadata", {}))
         for key, value in flatten(data.get("settings", {})).items():
@@ -64,7 +65,7 @@ def definitions(root, machine_id, extruder_id):
             merge_setting(result, key, value)
         for key, value in data.get("overrides", {}).items():
             merge_setting(result, key, value)
-    return result, metadata, name
+    return result, metadata, name, [item[0] for item in machine_chain]
 
 
 def cfg_values(root, directory, identifier):
@@ -80,15 +81,42 @@ def cfg_values(root, directory, identifier):
     return dict(parser.items("values")) if parser.has_section("values") else {}, dict(parser.items("metadata")) if parser.has_section("metadata") else {}
 
 
+def global_quality_values(root, machine_ids, quality_metadata):
+    """Apply Cura's global quality layer(s) before the material/variant quality file."""
+    quality_type = quality_metadata.get("quality_type", "")
+    layers = []
+    for path in (root / "quality").rglob("*.cfg"):
+        parser = configparser.ConfigParser(interpolation=None)
+        parser.optionxform = str
+        try: parser.read(path, encoding="utf-8")
+        except (configparser.Error, UnicodeError): continue
+        if not parser.has_section("metadata") or not parser.has_section("general"):
+            continue
+        metadata = dict(parser.items("metadata"))
+        if metadata.get("global_quality", "").lower() != "true" or metadata.get("quality_type") != quality_type:
+            continue
+        definition = parser.get("general", "definition", fallback="")
+        if definition not in machine_ids:
+            continue
+        layers.append((machine_ids.index(definition), dict(parser.items("values")) if parser.has_section("values") else {}))
+    result = {}
+    for _, values in sorted(layers, key=lambda item: item[0]):
+        result.update(values)
+    return result
+
+
 MATERIAL_KEYS = {
     "print temperature": "material_print_temperature",
     "heated bed temperature": "material_bed_temperature",
     "standby temperature": "material_standby_temperature",
     "print cooling": "cool_fan_speed",
+    "retraction amount": "retraction_amount",
+    "retraction speed": "retraction_speed",
+    "build volume temperature": "build_volume_temperature",
 }
 
 
-def material_values(root, identifier):
+def material_values(root, identifier, machine_ids, nozzle):
     safe_id(identifier)
     path = root / "materials" / f"{identifier}.xml.fdm_material"
     if not path.exists():
@@ -103,10 +131,27 @@ def material_values(root, identifier):
     diameter = tree.findtext("m:properties/m:diameter", namespaces=ns)
     if density: values["material_density"] = float(density)
     if diameter: values["material_diameter"] = float(diameter)
-    for setting in tree.findall("m:settings/m:setting", ns):
-        key = MATERIAL_KEYS.get(setting.attrib.get("key", ""))
-        if key and setting.text:
-            values[key] = parse_literal(setting.text)
+    def apply(settings):
+        for setting in list(settings):
+            if setting.tag not in {"{http://www.ultimaker.com/material}setting",
+                                   "{http://www.ultimaker.com/cura}setting"} or not setting.text:
+                continue
+            raw_key = setting.attrib.get("key", "")
+            key = raw_key if setting.tag.startswith("{http://www.ultimaker.com/cura}") else MATERIAL_KEYS.get(raw_key)
+            if key: values[key] = parse_literal(setting.text)
+
+    settings = tree.find("m:settings", ns)
+    if settings is not None:
+        apply(settings)
+        for machine in settings.findall("m:machine", ns):
+            products = {item.attrib.get("product", "") for item in machine.findall("m:machine_identifier", ns)}
+            if not products.intersection(machine_ids):
+                continue
+            apply(machine)
+            nozzle_text = format(nozzle, "g")
+            for hotend in machine.findall("m:hotend", ns):
+                if nozzle_text in hotend.attrib.get("id", ""):
+                    apply(hotend)
     if "material_print_temperature" in values:
         values.setdefault("material_print_temperature_layer_0", values["material_print_temperature"])
         values.setdefault("material_initial_print_temperature", values["material_print_temperature"])
@@ -196,11 +241,15 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.slots < 1 or args.slots > 8: raise ValueError("Color slots must be 1..8")
-    defs, metadata, machine_name = definitions(args.resources, args.definition, args.extruder)
+    defs, metadata, machine_name, machine_ids = definitions(args.resources, args.definition, args.extruder)
     variant, _ = cfg_values(args.resources, "variants", args.variant)
     quality, quality_meta = cfg_values(args.resources, "quality", args.quality)
-    overrides = {**material_values(args.resources, args.material),
-                 **{k: parse_literal(v) for k, v in variant.items()},
+    global_quality = global_quality_values(args.resources, machine_ids, quality_meta)
+    variant_values = {k: parse_literal(v) for k, v in variant.items()}
+    nozzle = float(variant_values.get("machine_nozzle_size", 0.4))
+    overrides = {**material_values(args.resources, args.material, machine_ids, nozzle),
+                 **variant_values,
+                 **{k: parse_literal(v) for k, v in global_quality.items()},
                  **{k: parse_literal(v) for k, v in quality.items()},
                  "machine_extruder_count": args.slots}
     resolver = Resolver(defs, overrides, args.slots)

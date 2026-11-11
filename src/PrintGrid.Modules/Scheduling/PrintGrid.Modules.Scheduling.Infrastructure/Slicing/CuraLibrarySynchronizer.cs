@@ -12,11 +12,39 @@ using PrintGrid.Modules.Scheduling.Domain.Entities;
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
 
 public sealed record CuraSyncResult(Guid MachineId, string Status, IReadOnlyList<Guid> ProfileIds,
-    IReadOnlyList<string> GeneratedMaterials, IReadOnlyList<string> Errors);
+    IReadOnlyList<string> GeneratedMaterials, IReadOnlyList<string> ReusedMaterials,
+    IReadOnlyList<string> Errors);
 
-public sealed class CuraLibrarySynchronizer(PrintGridDbContext db, CuraResourceCatalog catalog,
+public sealed record CuraLibrarySyncResult(int ProcessedMachines, int GeneratedProfiles, int ReusedProfiles,
+    IReadOnlyList<CuraSyncResult> Machines, IReadOnlyList<string> Errors);
+
+/// <summary>
+/// Converts pinned Cura resources into immutable PrintGrid profiles. The service is deliberately
+/// idempotent: an active profile with the same Cura coordinates and resolved JSON is reused.
+/// Approved machines are never rematched, so an administrator's reviewed attachment is preserved.
+/// </summary>
+public sealed class CuraLibrarySyncService(PrintGridDbContext db, CuraResourceCatalog catalog,
     IMachineProfileMatcher matcher, IConfiguration configuration)
 {
+    public async Task<CuraLibrarySyncResult> SyncAllAsync(CancellationToken ct)
+    {
+        var machineIds = await db.Set<Machine>().AsNoTracking()
+            .Where(x => x.Technology == Domain.Enums.PrintTechnology.Fdm && x.PrinterConfiguration != null &&
+                        x.PrinterConfiguration.CuraDefinitionId != null && x.PrinterConfiguration.CuraDefinitionId != "" &&
+                        x.ProfileStatus != "Approved")
+            .OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
+        var results = new List<CuraSyncResult>();
+        var errors = new List<string>();
+        foreach (var id in machineIds)
+        {
+            try { results.Add(await SyncMachineAsync(id, ct)); }
+            catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or JsonException)
+            { errors.Add($"{id}: {error.Message}"); }
+        }
+        return new(machineIds.Count, results.Sum(x => x.GeneratedMaterials.Count),
+            results.Sum(x => x.ReusedMaterials.Count), results, errors);
+    }
+
     public async Task<CuraSyncResult> SyncMachineAsync(Guid machineId, CancellationToken ct)
     {
         var machine = await db.Set<Machine>().SingleOrDefaultAsync(x => x.Id == machineId, ct)
@@ -29,6 +57,7 @@ public sealed class CuraLibrarySynchronizer(PrintGridDbContext db, CuraResourceC
             throw new ArgumentException("Extruder definition không thuộc machine definition đã chọn.");
 
         var generated = new List<string>();
+        var reused = new List<string>();
         var errors = new List<string>();
         foreach (var materialCode in machine.SupportedMaterials)
         {
@@ -43,25 +72,38 @@ public sealed class CuraLibrarySynchronizer(PrintGridDbContext db, CuraResourceC
                     $"{options.Machine.Name} · {materialCode} · {quality.Name}", options.Machine.Manufacturer,
                     options.Machine.Name, materialCode, catalog.Version, catalog.Version, config.ExtruderCount, json);
                 profile.MarkVerified(config.CuraDefinitionId, config.CuraExtruderDefinitionId, variant, quality.Id);
-                await SmokeTestAsync(json, ct);
-
                 var old = await db.Set<CuraProfile>().Where(x => x.IsActive && x.IsVerified &&
-                    x.CuraDefinitionId == config.CuraDefinitionId && x.MaterialCode == materialCode &&
+                    x.EngineVersion == catalog.Version && x.CuraDefinitionId == config.CuraDefinitionId &&
+                    x.CuraExtruderDefinitionId == config.CuraExtruderDefinitionId && x.CuraVariantId == variant &&
+                    x.CuraQualityId == quality.Id && x.MaterialCode == materialCode &&
                     x.NozzleDiameterMm == config.NozzleDiameterMm && x.MaximumColorSlots == config.MaximumColorSlots)
-                    .ToListAsync(ct);
-                foreach (var existing in old) existing.Deactivate();
+                    .OrderByDescending(x => x.CreatedAtUtc).ToListAsync(ct);
+                var identical = old.FirstOrDefault(x => x.SettingsJson == profile.SettingsJson);
+                if (identical is not null)
+                {
+                    reused.Add(materialCode);
+                    continue;
+                }
+
+                await SmokeTestAsync(json, ct);
+                var protectedProfileIds = await ApprovedProfileIdsAsync(ct);
+                foreach (var existing in old.Where(x => !protectedProfileIds.Contains(x.Id))) existing.Deactivate();
                 db.Set<CuraProfile>().Add(profile);
-                await db.SaveChangesAsync(ct);
                 generated.Add(materialCode);
             }
             catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or JsonException)
             { errors.Add($"{materialCode}: {error.Message}"); }
         }
 
-        await matcher.MatchAsync(machine, ct);
         await db.SaveChangesAsync(ct);
-        return new(machine.Id, machine.ProfileStatus, machine.CuraProfileIds, generated, errors);
+        if (machine.ProfileStatus != "Approved") await matcher.MatchAsync(machine, ct);
+        await db.SaveChangesAsync(ct);
+        return new(machine.Id, machine.ProfileStatus, machine.CuraProfileIds, generated, reused, errors);
     }
+
+    private async Task<HashSet<Guid>> ApprovedProfileIdsAsync(CancellationToken ct) =>
+        (await db.Set<Machine>().AsNoTracking().Where(x => x.ProfileStatus == "Approved")
+            .Select(x => x.CuraProfileIds).ToListAsync(ct)).SelectMany(x => x).ToHashSet();
 
     private static CuraMaterialDefinition ChooseMaterial(IEnumerable<CuraMaterialDefinition> materials,
         string code, decimal diameter) => materials
@@ -73,7 +115,7 @@ public sealed class CuraLibrarySynchronizer(PrintGridDbContext db, CuraResourceC
         string preferredType, decimal nozzle, string requested)
     {
         var values = qualities.Where(x => string.IsNullOrWhiteSpace(x.MaterialId) ||
-                                           x.MaterialId.Equals(materialId, StringComparison.OrdinalIgnoreCase));
+                                           MaterialPresetMatches(x.MaterialId, materialId));
         if (!string.IsNullOrWhiteSpace(requested))
             return values.FirstOrDefault(x => x.Id.Equals(requested, StringComparison.OrdinalIgnoreCase))
                    ?? throw new ArgumentException("Quality profile đã chọn không tương thích máy/vật liệu.");
@@ -81,6 +123,15 @@ public sealed class CuraLibrarySynchronizer(PrintGridDbContext db, CuraResourceC
         return values.OrderByDescending(x => x.QualityType?.Equals(preferredType, StringComparison.OrdinalIgnoreCase) == true)
             .ThenByDescending(x => x.VariantId?.Contains(nozzleText, StringComparison.OrdinalIgnoreCase) == true)
             .FirstOrDefault() ?? throw new ArgumentException("Không có quality profile tương thích.");
+    }
+
+    private static bool MaterialPresetMatches(string presetMaterialId, string materialId)
+    {
+        if (presetMaterialId.Equals(materialId, StringComparison.OrdinalIgnoreCase)) return true;
+        foreach (var suffix in new[] { "_175", "_285", "_300" })
+            if (materialId.EndsWith(suffix, StringComparison.OrdinalIgnoreCase) &&
+                presetMaterialId.Equals(materialId[..^suffix.Length], StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
     }
 
     private async Task<string> ResolveAsync(Domain.ValueObjects.PrinterConfiguration printer, string material,
