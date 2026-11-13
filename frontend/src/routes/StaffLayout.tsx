@@ -1,5 +1,5 @@
 import { Box } from '@mui/material'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { StaffNavbar } from '../features/home/components/StaffNavbar'
 import { pageWash } from '../shared/theme/tokens'
 
@@ -10,6 +10,10 @@ import { pageWash } from '../shared/theme/tokens'
  * no longer drops the user into a page with no navigation.
  */
 export function StaffLayout() {
+  const { pathname } = useLocation()
+  // Administration owns its responsive navigation and full-height workspace.
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) return <Outlet />
+
   return (
     <Box sx={{ minHeight: '100vh', background: pageWash }}>
       <StaffNavbar />

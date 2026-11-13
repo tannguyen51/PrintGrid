@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Chip,
@@ -12,7 +13,10 @@ import {
   FormControl,
   Grid,
   InputLabel,
+  InputAdornment,
+  IconButton,
   MenuItem,
+  Paper,
   Select,
   Stack,
   TextField,
@@ -20,9 +24,8 @@ import {
   Typography,
 } from '@mui/material'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
-import { BlockRounded, ManageAccountsRounded, PersonAddRounded } from '@mui/icons-material'
+import { BlockRounded, ManageAccountsRounded, PersonAddRounded, SearchRounded } from '@mui/icons-material'
 import { useAuth } from '../../app/AuthContext'
-import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import {
   ROLES,
@@ -60,6 +63,18 @@ export default function AdminUsersPage() {
   const [form, setForm] = useState(emptyForm)
   const [formError, setFormError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const filteredRows = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase('vi-VN')
+    return rows.filter((row) =>
+      (!term || `${row.fullName} ${row.email}`.toLocaleLowerCase('vi-VN').includes(term)) &&
+      (!roleFilter || row.roles.includes(roleFilter)) &&
+      (!statusFilter || row.isActive === (statusFilter === 'active')),
+    )
+  }, [rows, search, roleFilter, statusFilter])
+  const hasFilters = Boolean(search || roleFilter || statusFilter)
 
   const currentEmail = currentUser?.email
 
@@ -82,11 +97,16 @@ export default function AdminUsersPage() {
   }
 
   const columns: GridColDef<AdminUser>[] = [
-    { field: 'email', headerName: 'Email', flex: 1.4, minWidth: 200 },
-    { field: 'fullName', headerName: 'Họ tên', flex: 1, minWidth: 140 },
+    {
+      field: 'fullName', headerName: 'Người dùng', flex: 1.4, minWidth: 250,
+      renderCell: ({ row }) => <Stack direction="row" spacing={1.25} alignItems="center" sx={{ height: '100%', py: 1 }}>
+        <Avatar sx={{ width: 34, height: 34, fontSize: 12, bgcolor: '#F0EDFA', color: '#6550CE' }}>{(row.fullName || row.email).charAt(0).toUpperCase()}</Avatar>
+        <Box sx={{ minWidth: 0 }}><Typography noWrap sx={{ fontSize: 12, fontWeight: 650 }}>{row.fullName || 'Chưa có tên'}</Typography><Typography noWrap sx={{ fontSize: 11, color: 'text.secondary' }}>{row.email}</Typography></Box>
+      </Stack>,
+    },
     {
       field: 'roles',
-      headerName: 'Role',
+      headerName: 'Vai trò',
       flex: 1.2,
       minWidth: 170,
       sortable: false,
@@ -123,7 +143,7 @@ export default function AdminUsersPage() {
     { field: 'lastLoginAt', headerName: 'Đăng nhập cuối', width: 150, valueFormatter: (v: string | null) => fmtDate(v) },
     {
       field: 'actions',
-      headerName: '',
+      headerName: 'Thao tác',
       width: 210,
       sortable: false,
       filterable: false,
@@ -131,8 +151,9 @@ export default function AdminUsersPage() {
         const isSelf = params.row.email === currentEmail
         return (
           <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
-            <FormControl size="small" sx={{ minWidth: 130 }}>
+            <FormControl size="small" sx={{ width: 145, flexShrink: 0 }}>
               <Select
+                inputProps={{ 'aria-label': `Vai trò của ${params.row.email}` }}
                 displayEmpty
                 value={params.row.roles[0] ?? ''}
                 onChange={(e) => {
@@ -142,7 +163,7 @@ export default function AdminUsersPage() {
                     { onSuccess: () => setNotice(`Đã đổi role của ${params.row.email}.`) },
                   )
                 }}
-                disabled={isSelf}
+                disabled={isSelf || assignRole.isPending}
               >
                 <MenuItem value="" disabled>Chọn role…</MenuItem>
                 {ROLES.map((role) => (
@@ -152,15 +173,15 @@ export default function AdminUsersPage() {
             </FormControl>
             <Tooltip title={isSelf ? 'Không thể tự ngưng tài khoản đang đăng nhập' : 'Ngưng hoạt động'}>
               <span>
-                <Button
+                <IconButton
                   size="small"
                   color="error"
-                  startIcon={<BlockRounded fontSize="small" />}
+                  aria-label={`Ngưng hoạt động ${params.row.email}`}
                   disabled={isSelf || !params.row.isActive || deactivate.isPending}
                   onClick={() => deactivate.mutate(params.row.id, { onSuccess: () => setNotice(`Đã ngưng ${params.row.email}.`) })}
                 >
-                  Ngưng
-                </Button>
+                  <BlockRounded fontSize="small" />
+                </IconButton>
               </span>
             </Tooltip>
           </Stack>
@@ -170,13 +191,13 @@ export default function AdminUsersPage() {
   ]
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1200, mx: 'auto' }} spacing={2.5}>
+    <Box className="admin-page">
+      <Stack className="admin-page-body" spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
-            <PageBackButton />
+
             <Box>
-              <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
+              <Typography variant="h1" sx={{ color: 'text.primary' }}>
                 Người dùng &amp; phân quyền
               </Typography>
               <Typography color="text.secondary">
@@ -196,12 +217,37 @@ export default function AdminUsersPage() {
         {assignRole.isError ? <Alert severity="error">{getApiErrorMessage(assignRole.error, 'Không đổi được role.')}</Alert> : null}
         {deactivate.isError ? <Alert severity="error">{getApiErrorMessage(deactivate.error, 'Không ngưng được tài khoản.')}</Alert> : null}
 
+        <Grid container spacing={2}>
+          {[
+            ['Tổng tài khoản', rows.length],
+            ['Đang hoạt động', rows.filter((row) => row.isActive).length],
+            ['Đã ngưng hoạt động', rows.filter((row) => !row.isActive).length],
+          ].map(([label, count]) => <Grid key={label} size={{ xs: 12, sm: 4 }}><Paper variant="outlined" sx={{ px: 2.5, py: 2 }}>
+            <Typography variant="body2" color="text.secondary">{label}</Typography><Typography sx={{ mt: 0.75, fontSize: 25, fontWeight: 700 }}>{isLoading ? '…' : isError && !data ? '—' : Number(count).toLocaleString('vi-VN')}</Typography>
+          </Paper></Grid>)}
+        </Grid>
+
         <Box sx={{ border: '1px solid #E8EBF2', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} gap={1.5} useFlexGap flexWrap="wrap" sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <TextField size="small" placeholder="Tìm theo tên hoặc email…" value={search} onChange={(event) => setSearch(event.target.value)}
+              sx={{ flex: 1, minWidth: { sm: 220 } }} inputProps={{ 'aria-label': 'Tìm người dùng theo tên hoặc email' }}
+              InputProps={{ startAdornment: <InputAdornment position="start"><SearchRounded sx={{ fontSize: 19 }} /></InputAdornment> }} />
+            <TextField select size="small" label="Vai trò" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} sx={{ minWidth: 170 }}>
+              <MenuItem value="">Tất cả vai trò</MenuItem>{ROLES.map((role) => <MenuItem key={role} value={role}>{ROLE_LABELS[role]}</MenuItem>)}
+            </TextField>
+            <TextField select size="small" label="Trạng thái" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} sx={{ minWidth: 160 }}>
+              <MenuItem value="">Tất cả trạng thái</MenuItem><MenuItem value="active">Đang hoạt động</MenuItem><MenuItem value="inactive">Đã ngưng hoạt động</MenuItem>
+            </TextField>
+            {hasFilters && <Button onClick={() => { setSearch(''); setRoleFilter(''); setStatusFilter('') }}>Xóa bộ lọc</Button>}
+          </Stack>
+          <Typography role="status" sx={{ px: 2, py: 1.25, fontSize: 11, color: 'text.secondary' }}>{isLoading ? 'Đang tải danh sách…' : isError && !data ? 'Không tải được danh sách' : `${filteredRows.length} tài khoản${hasFilters ? ` phù hợp / ${rows.length} tài khoản` : ' trong hệ thống'}`}</Typography>
           <DataGrid
-            rows={rows}
+            rows={filteredRows}
             columns={columns}
             loading={isLoading}
             autoHeight
+            getRowHeight={() => 'auto'}
+            getEstimatedRowHeight={() => 76}
             disableRowSelectionOnClick
             initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
             pageSizeOptions={[25, 50, 100]}
@@ -214,20 +260,20 @@ export default function AdminUsersPage() {
               noRowsOverlay: () => (
                 <Stack sx={{ height: '100%', alignItems: 'center', justifyContent: 'center' }} spacing={1}>
                   <ManageAccountsRounded sx={{ fontSize: 40, color: 'text.disabled' }} />
-                  <Typography color="text.secondary">Chưa có tài khoản nào.</Typography>
+                  <Typography color="text.secondary">{hasFilters ? 'Không có tài khoản phù hợp với bộ lọc.' : isError ? 'Chưa tải được danh sách tài khoản.' : 'Chưa có tài khoản nào.'}</Typography>
                 </Stack>
               ),
             }}
             sx={{
               '&.MuiDataGrid-root': { border: 'none' },
               '& .MuiDataGrid-columnHeaders': { bgcolor: 'action.hover' },
-              '& .MuiDataGrid-row': { alignItems: 'center' },
+              '& .MuiDataGrid-cell': { display: 'flex', alignItems: 'center', minHeight: 72, py: 1.25 },
             }}
           />
         </Box>
 
         <Typography variant="caption" color="text.disabled">
-          Role quyết định toàn bộ quyền truy cập: ví dụ tài khoản cần vào màn duyệt báo giá phải là
+          Vai trò quyết định toàn bộ quyền truy cập: ví dụ tài khoản cần vào màn duyệt báo giá phải là
           Nhân viên duyệt đơn, Điều phối mạng lưới hoặc Quản trị hệ thống.
         </Typography>
       </Stack>
@@ -261,10 +307,10 @@ export default function AdminUsersPage() {
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <FormControl fullWidth>
-                  <InputLabel id="role-label">Role</InputLabel>
+                  <InputLabel id="role-label">Vai trò</InputLabel>
                   <Select
                     labelId="role-label"
-                    label="Role"
+                    label="Vai trò"
                     value={form.role}
                     onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as Role }))}
                   >

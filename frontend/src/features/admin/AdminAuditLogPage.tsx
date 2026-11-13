@@ -16,7 +16,6 @@ import {
 } from '@mui/material'
 import { DataGrid, type GridColDef, type GridPaginationModel } from '@mui/x-data-grid'
 import { DownloadRounded, FactCheckRounded, VisibilityRounded } from '@mui/icons-material'
-import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { exportAuditLogs, useAuditLogs, type AuditLogEntry, type AuditLogFilters } from './useAuditLogs'
 
@@ -82,13 +81,13 @@ export default function AdminAuditLogPage() {
   }
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1400, mx: 'auto' }} spacing={2.5}>
+    <Box className="admin-page">
+      <Stack className="admin-page-body" spacing={2.5}>
         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
-            <PageBackButton />
+
             <Box>
-              <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800 }}>Nhật ký hệ thống</Typography>
+              <Typography variant="h1">Nhật ký hệ thống</Typography>
               <Typography color="text.secondary">Theo dõi các hoạt động quan trọng phục vụ kiểm tra và điều tra</Typography>
             </Box>
           </Stack>
@@ -103,7 +102,7 @@ export default function AdminAuditLogPage() {
         {query.isError && <Alert severity="error">Không tải được nhật ký hệ thống.</Alert>}
         {exportError && <Alert severity="error" onClose={() => setExportError(null)}>{exportError}</Alert>}
 
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} useFlexGap flexWrap="wrap">
           <TextField label="Actor / email" size="small" value={filters.actor} onChange={(event) => setFilter('actor', event.target.value)} sx={{ minWidth: 240 }} />
           <FormControl size="small" sx={{ minWidth: 210 }}>
             <InputLabel id="action-class-label">Nhóm hành động</InputLabel>

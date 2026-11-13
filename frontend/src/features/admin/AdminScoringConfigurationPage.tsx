@@ -24,7 +24,6 @@ import {
 import { InsightsRounded } from '@mui/icons-material'
 import { apiClient } from '../../shared/api/apiClient'
 import { getApiErrorMessage } from '../../shared/api/apiError'
-import { PageBackButton } from '../../shared/components/PageBackButton'
 
 interface ScoringConfiguration {
   id?: string | null
@@ -119,9 +118,9 @@ export function AdminScoringConfigurationPage() {
     <Box>
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
         <Stack direction="row" spacing={1.5} alignItems="flex-start">
-          <PageBackButton />
+
           <Box>
-            <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800 }}>
+            <Typography variant="h1">
               Trọng số chấm điểm gán việc
             </Typography>
             <Typography color="text.secondary">
@@ -143,7 +142,7 @@ export function AdminScoringConfigurationPage() {
       {notice ? <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNotice(null)}>{notice}</Alert> : null}
       {configurations.isError ? <Alert severity="error" sx={{ mb: 2 }}>Không tải được danh sách phiên bản trọng số.</Alert> : null}
 
-      <Paper variant="outlined">
+      <Paper variant="outlined" sx={{ overflowX: 'auto' }}>
         {configurations.isLoading ? (
           <Box sx={{ p: 4, display: 'grid', placeItems: 'center' }}><CircularProgress /></Box>
         ) : (

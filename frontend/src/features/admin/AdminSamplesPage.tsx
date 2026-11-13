@@ -20,7 +20,6 @@ import {
   Typography,
 } from '@mui/material'
 import { AddRounded, DeleteOutlineRounded, EditRounded, VisibilityOffRounded, VisibilityRounded } from '@mui/icons-material'
-import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { landing } from '../../shared/theme/landing'
 import { SAMPLE_CATEGORIES, type AdminSample } from '../samples/sampleTypes'
@@ -118,13 +117,13 @@ export default function AdminSamplesPage() {
   }
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, py: 4 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3} gap={2}>
+    <Box className="admin-page">
+      <Box className="admin-page-body">
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} mb={3} gap={2}>
           <Stack direction="row" spacing={1.5} alignItems="center">
-            <PageBackButton />
+
             <Box>
-              <Typography variant="h4" fontWeight={800}>Kho mẫu 3D</Typography>
+              <Typography variant="h1">Kho mẫu 3D</Typography>
               <Typography color="text.secondary">
                 Mẫu công khai cho khách vãng lai xem và đặt in. Ngừng công khai thay vì xóa nếu mẫu đã được dùng.
               </Typography>
@@ -136,11 +135,12 @@ export default function AdminSamplesPage() {
         </Stack>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {query.isError && <Alert severity="error" sx={{ mb: 2 }} action={<Button onClick={() => { void query.refetch() }}>Thử lại</Button>}>Không tải được kho mẫu 3D.</Alert>}
 
         <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
           {query.isLoading ? (
             <Box p={5} textAlign="center"><CircularProgress /></Box>
-          ) : (query.data ?? []).length === 0 ? (
+          ) : query.isError && !query.data ? null : (query.data ?? []).length === 0 ? (
             <Box p={5} textAlign="center">
               <Typography color="text.secondary">Chưa có mẫu nào. Bấm “Thêm mẫu” để tải mẫu đầu tiên.</Typography>
             </Box>
