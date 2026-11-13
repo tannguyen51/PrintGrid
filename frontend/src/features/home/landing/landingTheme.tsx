@@ -4,4 +4,4 @@
  * under features/home/ working unchanged — new shared code should import from
  * '../../../shared/theme/landing' (or the shared path) instead.
  */
-export { landing, PillButton, scrollToSection, useReveal } from '../../../shared/theme/landing'
+export { landing, PillButton, GhostButton, scrollToSection, useReveal } from '../../../shared/theme/landing'

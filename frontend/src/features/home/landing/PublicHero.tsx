@@ -1,26 +1,35 @@
 import { Box } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
 import { PrinterScene } from './PrinterScene'
-import { PillButton, landing } from './landingTheme'
+import { PillButton, GhostButton, landing } from './landingTheme'
 import { palette, ambient, gradients } from '../../../shared/theme/tokens'
 import './landing.css'
 
 interface PublicHeroProps {
   onRegister?: () => void
   /**
-   * Overrides the hero CTA. Logged-in customers see the same landing as visitors
-   * but their action is to order, not to sign up; `null` removes the button
-   * for a role that has nowhere useful to send the visitor.
+   * Renders as the secondary CTA next to the primary "Tải model & báo giá".
+   * `null` hides the secondary button.
    */
   cta?: { label: string; onClick: () => void } | null
 }
 
+const HERO_STATS = [
+  { value: '±0.1mm', label: 'Độ chính xác' },
+  { value: '24-48h', label: 'Hoàn thành' },
+  { value: '5+', label: 'Vật liệu' },
+  { value: '4', label: 'Định dạng file' },
+]
+
 /**
  * Hero — bright lavender-to-gold wash, a soft purple/gold ambient glow, and the
  * animated 3D printer on the right. The copy column keeps the same hierarchy:
- * eyebrow, oversized display headline, one supporting line, one gradient CTA.
+ * eyebrow, oversized display headline, supporting line, dual CTAs and a stats grid.
  */
 export function PublicHero({ onRegister, cta }: PublicHeroProps) {
-  const action = cta === undefined ? { label: 'Bắt đầu ngay', onClick: () => onRegister?.() } : cta
+  const navigate = useNavigate()
+  const secondary = cta === undefined ? { label: 'Bắt đầu ngay', onClick: () => onRegister?.() } : cta
+
   return (
     <Box
       component="section"
@@ -61,7 +70,7 @@ export function PublicHero({ onRegister, cta }: PublicHeroProps) {
       />
 
       {/* ── Copy ── */}
-      <Box sx={{ width: { xs: '100%', lg: '50%' }, maxWidth: 600, flexShrink: 0, position: 'relative', zIndex: 1 }}>
+      <Box sx={{ width: { xs: '100%', lg: '50%' }, maxWidth: 620, flexShrink: 0, position: 'relative', zIndex: 1 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
           <Box
             sx={{
@@ -93,13 +102,13 @@ export function PublicHero({ onRegister, cta }: PublicHeroProps) {
               m: 0,
               fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
               fontWeight: 800,
-              fontSize: { xs: 'clamp(38px, 8vw, 52px)', lg: 'clamp(52px, 5.4vw, 78px)' },
-              lineHeight: 1.02,
+              fontSize: { xs: 'clamp(38px, 8vw, 52px)', lg: 'clamp(48px, 4.6vw, 72px)' },
+              lineHeight: 1.05,
               letterSpacing: '-0.04em',
               color: landing.text,
             }}
           >
-            3D printing,{' '}
+            In 3D theo mạng lưới xưởng —{' '}
             <Box
               component="span"
               sx={{
@@ -110,24 +119,66 @@ export function PublicHero({ onRegister, cta }: PublicHeroProps) {
                 color: 'transparent',
               }}
             >
-              simplified
+              một giá, ngày giao cam kết
             </Box>
           </Box>
           <Box
             component="p"
             sx={{
               m: 0,
-              maxWidth: 520,
+              maxWidth: 540,
               fontSize: 18,
               lineHeight: 1.6,
               color: landing.textMuted,
             }}
           >
-            Upload your model. Get a price and delivery date. We handle the rest.
+            Tải file STL/OBJ/3MF/GLB, nhận báo giá tức thì. Độ chính xác ±0.1mm, giao hàng 24-48h.
           </Box>
+
           {/* Hero actions */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-            {action && <PillButton onClick={action.onClick}>{action.label}</PillButton>}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <PillButton onClick={() => navigate('/models')}>Tải model &amp; báo giá</PillButton>
+            {secondary && <GhostButton onClick={secondary.onClick}>{secondary.label}</GhostButton>}
+          </Box>
+
+          {/* Stats grid */}
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+              gap: { xs: 1.5, md: 2 },
+              pt: { xs: 2, md: 3 },
+            }}
+          >
+            {HERO_STATS.map((stat) => (
+              <Box
+                key={stat.label}
+                sx={{
+                  p: { xs: 1.5, md: 2 },
+                  borderRadius: '14px',
+                  bgcolor: 'rgba(255,255,255,0.64)',
+                  border: `1px solid ${palette.border.hairline}`,
+                  backdropFilter: 'blur(8px)',
+                  textAlign: 'center',
+                }}
+              >
+                <Box
+                  sx={{
+                    fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
+                    fontSize: { xs: 20, md: 24 },
+                    fontWeight: 800,
+                    background: gradients.primary,
+                    WebkitBackgroundClip: 'text',
+                    backgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    color: 'transparent',
+                  }}
+                >
+                  {stat.value}
+                </Box>
+                <Box sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>{stat.label}</Box>
+              </Box>
+            ))}
           </Box>
         </Box>
       </Box>
@@ -138,9 +189,9 @@ export function PublicHero({ onRegister, cta }: PublicHeroProps) {
         sx={{
           position: 'relative',
           width: '100%',
-          maxWidth: 560,
+          maxWidth: { xs: 480, lg: 560 },
           minWidth: 0,
-          height: { xs: 380, sm: 460, lg: 560 },
+          height: { xs: 320, sm: 460, lg: 560 },
           transform: { lg: 'translateX(200px)' },
           flex: { lg: 1 },
           m: 0,
@@ -159,7 +210,7 @@ export function PublicHero({ onRegister, cta }: PublicHeroProps) {
             color: landing.textMuted,
           }}
         >
-
+          SPARKX i7 Nano — máy in 3D cỡ bàn nhỏ phổ biến trong mạng lưới PrintGrid
         </Box>
       </Box>
     </Box>
