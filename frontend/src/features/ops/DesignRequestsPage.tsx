@@ -16,7 +16,6 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { PageBackButton } from '../../shared/components/PageBackButton'
 import { DESIGN_STATUSES, useChangeDesignStatus, useDesignRequests } from '../design/useDesignRequests'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -56,12 +55,11 @@ export default function DesignRequestsPage() {
   }
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1180, mx: 'auto' }} spacing={2.5}>
+    <Box className="ops-page">
+      <Stack className="ops-page-body" spacing={2.5}>
         <Stack direction="row" spacing={1.5} alignItems="flex-start">
-          <PageBackButton />
           <Box>
-            <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
+            <Typography variant="h1">
               Hàng đợi yêu cầu thiết kế
             </Typography>
             <Typography color="text.secondary">
@@ -70,7 +68,7 @@ export default function DesignRequestsPage() {
           </Box>
         </Stack>
 
-        <Stack direction="row" spacing={2} alignItems="center">
+        <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" alignItems="center">
           <TextField
             select
             size="small"
@@ -93,7 +91,7 @@ export default function DesignRequestsPage() {
 
         {isLoading ? (
           <CircularProgress sx={{ alignSelf: 'center' }} />
-        ) : rows.length === 0 ? (
+        ) : isError && !data ? null : rows.length === 0 ? (
           <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <Typography color="text.secondary">Không có yêu cầu thiết kế nào ở trạng thái này.</Typography>
           </Box>

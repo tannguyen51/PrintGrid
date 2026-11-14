@@ -18,7 +18,6 @@ import {
   Typography,
 } from '@mui/material'
 import { FactCheckRounded, SearchRounded } from '@mui/icons-material'
-import { PageBackButton } from '../../shared/components/PageBackButton'
 import {
   useDecisionLog,
   type CandidatesSnapshot,
@@ -144,7 +143,7 @@ function DecisionCard({ decision: d }: { decision: DecisionEntry }) {
   }
 
   return (
-    <Paper variant="outlined" sx={{ p: 2.5 }}>
+    <Paper variant="outlined" className="ops-decision-card" sx={{ p: 2.5 }}>
       <Stack spacing={2}>
         {/* ── Header: outcome + trigger + time ── */}
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1}>
@@ -338,14 +337,13 @@ export default function DecisionTracePage() {
   }
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1000, mx: 'auto' }} spacing={2.5}>
+    <Box className="ops-page">
+      <Stack className="ops-page-body" spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
-            <PageBackButton />
             <Box>
-              <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
-                Vết quyết định — Ops
+              <Typography variant="h1">
+                Nhật ký quyết định
               </Typography>
               <Typography color="text.secondary">Nhật ký giải trình lý do hệ thống chọn xưởng và máy in cho từng đơn hàng — chỉ đọc</Typography>
             </Box>
@@ -369,7 +367,7 @@ export default function DecisionTracePage() {
             helperText="Lấy từ hàng đợi cảnh báo hoặc danh sách job"
           />
           <Button type="submit" variant="contained" startIcon={<SearchRounded />} disabled={!draft.trim()}>
-            Tra vết
+            Tra cứu
           </Button>
         </Stack>
 

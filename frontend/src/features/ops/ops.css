@@ -1,0 +1,104 @@
+.ops-workspace { --ops-border: #e5e9f1; --ops-muted: #657087; min-height: 100dvh; background: #f5f7fb; color: #202638; }
+.ops-sidebar { position: fixed; inset: 0 auto 0 0; width: 244px; background: #1b2337; z-index: 1100; }
+.ops-sidebar-inner { display: flex; flex-direction: column; height: 100%; }
+.ops-brand { min-height: 86px; padding: 24px 22px; display: flex; align-items: center; justify-content: space-between; }
+.ops-brand a { display: flex; align-items: center; gap: 11px; color: #fff; text-decoration: none; font-size: 21px; font-weight: 750; letter-spacing: -0.6px; }
+.ops-brand-caption { display: block; margin-top: 3px; color: #aab4cb; font-size: 7px; letter-spacing: 1.55px; font-weight: 500; }
+.ops-workspace-label { display: flex; align-items: center; gap: 8px; padding: 11px 12px; margin: 0 16px 24px; border: 1px solid #354059; border-radius: 8px; color: #d4daea; font-size: 11px; }
+.ops-role-badge { margin-left: auto; color: #b5a4ed; font-size: 8px; font-weight: 700; letter-spacing: 0.5px; }
+.ops-navigation { flex: 1; padding: 0 12px; overflow-y: auto; scrollbar-width: thin; }
+.ops-navigation .ops-nav-heading { margin-bottom: 9px; padding: 0 12px; font-size: 9px; letter-spacing: 0.85px; color: #9faac2; font-weight: 600; text-transform: uppercase; }
+.ops-navigation .ops-nav-link { min-height: 42px; padding: 7px 12px; border-radius: 7px; margin-bottom: 3px; color: #c0c8da; }
+.ops-navigation .ops-nav-link .MuiListItemIcon-root { min-width: 31px; color: #97a5bf; }
+.ops-navigation .ops-nav-link .MuiSvgIcon-root { font-size: 19px; }
+.ops-navigation .ops-nav-link .MuiListItemText-primary { font-size: 12px; font-weight: 500; }
+.ops-navigation .ops-nav-link:hover { background: #283249; color: white; }
+.ops-navigation .ops-nav-link.Mui-selected, .ops-navigation .ops-nav-link.Mui-selected:hover { background: #35334f; color: #e5dcff; box-shadow: inset 3px 0 #ac98f4; }
+.ops-navigation .ops-nav-link.Mui-selected .MuiListItemIcon-root { color: #b9a8f0; }
+.ops-navigation .ops-nav-link.Mui-selected .MuiListItemText-primary { font-weight: 650; }
+.ops-sidebar-footer { padding: 20px; border-top: 1px solid #303b52; }
+.ops-main { margin-left: 244px; display: flex; flex-direction: column; min-height: 100dvh; min-width: 0; }
+.ops-topbar { position: sticky; top: 0; z-index: 1090; height: 74px; padding: 0 30px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--ops-border); background: #fff; }
+.ops-topbar .MuiBreadcrumbs-ol { flex-wrap: nowrap; }
+.ops-topbar .MuiBreadcrumbs-li { white-space: nowrap; }
+.ops-breadcrumb-root { font-size: 12px; color: var(--ops-muted); text-decoration: none; }
+.ops-breadcrumb-root:hover { color: #6550ce; }
+.ops-content { flex: 1; padding: 30px; max-width: 1680px; width: 100%; min-width: 0; margin: 0 auto; outline: none; }
+.ops-content h1, .ops-content h4 { font-size: clamp(1.4rem, 2vw, 1.75rem); line-height: 1.35; font-weight: 750; letter-spacing: -0.7px; overflow-wrap: anywhere; }
+.ops-content h1 + p, .ops-content h4 + p { margin-top: 6px; }
+.ops-content .ops-page { min-height: 0; background: transparent; padding: 0; max-width: none; margin: 0; min-width: 0; }
+.ops-content .ops-page > .ops-page-body { padding: 0; max-width: none; margin: 0; min-width: 0; }
+.ops-content .MuiTableContainer-root { max-width: 100%; overflow-x: auto; }
+.ops-content .MuiTable-root { min-width: 700px; }
+.ops-content .MuiTableCell-root { font-size: 12px; padding-block: 16px; }
+.ops-content .MuiTableCell-head { background: #f8f9fc; }
+.ops-content .MuiAlert-root { font-size: 12px; }
+.ops-eyebrow { font-size: 10px; color: #78758c; font-weight: 650; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.ops-content .ops-stat-card { padding: 20px; height: 100%; border-color: var(--ops-border); border-radius: 12px; }
+.ops-stat-value { margin: 14px 0 7px; font-size: 31px; line-height: 1.25; letter-spacing: -0.9px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.ops-overview-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.ops-board-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); gap: 22px; align-items: start; }
+.ops-panel { min-width: 0; overflow: hidden; }
+.ops-panel-heading { padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--ops-border); }
+.ops-panel-heading h2 { margin: 0; font-size: 14px; font-weight: 700; }
+.ops-panel-heading p { margin: 5px 0 0; font-size: 11px; color: var(--ops-muted); }
+.ops-panel-heading .ops-panel-title { display: flex; align-items: center; gap: 9px; }
+.ops-empty-state { text-align: center; padding: 38px 24px; min-height: 205px; justify-content: center; }
+.ops-filter-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 16px 22px; border-bottom: 1px solid var(--ops-border); }
+.ops-risk-list { display: grid; }
+.ops-risk-row { padding: 19px 22px; border-bottom: 1px solid #edf0f5; display: flex; gap: 14px; align-items: flex-start; }
+.ops-risk-row:last-child { border-bottom: 0; }
+.ops-risk-indicator { margin-top: 5px; width: 8px; height: 8px; border-radius: 50%; background: #d49a3b; flex-shrink: 0; }
+.ops-risk-indicator.overdue { background: #cb6256; box-shadow: 0 0 0 4px #fdf1ef; }
+.ops-risk-content { flex: 1; min-width: 0; }
+.ops-risk-details { color: var(--ops-muted); font-size: 11px; line-height: 1.8; margin-top: 7px; }
+.ops-risk-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.ops-pending-job { padding: 20px 22px; border-bottom: 1px solid #edf0f5; }
+.ops-pending-job:last-child { border-bottom: 0; }
+.ops-lab-load { padding: 18px 22px; border-bottom: 1px solid #edf0f5; }
+.ops-lab-load:last-child { border-bottom: 0; }
+.ops-shortcut { display: flex; align-items: center; gap: 10px; padding: 16px 22px; color: inherit; text-decoration: none; border-bottom: 1px solid #edf0f5; font-size: 12px; }
+.ops-shortcut:last-child { border-bottom: 0; }
+.ops-shortcut:hover { background: #faf9fe; }
+.ops-shortcut > svg:first-child { color: #8e81b0; font-size: 19px; }
+.ops-shortcut > svg:last-child { margin-left: auto; color: #9aa2b2; font-size: 17px; }
+.ops-footer { padding: 18px 30px; border-top: 1px solid var(--ops-border); display: flex; justify-content: space-between; gap: 16px; color: var(--ops-muted); font-size: 10px; }
+.ops-skip-link { position: fixed; top: -80px; left: 260px; z-index: 1500; padding: 12px 20px; border-radius: 8px; background: white; color: #5540b7; }
+.ops-skip-link:focus { top: 12px; }
+@media (max-width: 1199px) {
+  .ops-content { padding: 24px; }
+  .ops-topbar { padding-inline: 24px; }
+  .ops-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ops-board-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 899px) {
+  .ops-sidebar { display: none; }
+  .ops-main { margin-left: 0; }
+  .ops-topbar { height: 68px; }
+  .ops-skip-link { left: 16px; }
+}
+@media (max-width: 599px) {
+  .ops-content { padding: 24px 16px; }
+  .ops-topbar { padding-inline: 8px; gap: 4px; }
+  .ops-topbar .MuiBreadcrumbs-li:first-child, .ops-topbar .MuiBreadcrumbs-separator { display: none; }
+  .ops-topbar .MuiBreadcrumbs-li:last-child { overflow: hidden; text-overflow: ellipsis; }
+  .ops-footer { padding: 16px; }
+  .ops-footer span:last-child { display: none; }
+  .ops-content .ops-stat-card { padding: 16px; }
+  .ops-stat-value { font-size: 28px; }
+  .ops-panel-heading, .ops-risk-row, .ops-lab-load, .ops-pending-job { padding: 18px; }
+  .ops-risk-row { flex-wrap: wrap; gap: 10px; }
+  .ops-risk-actions { width: 100%; justify-content: flex-end; }
+  .ops-filter-bar { padding: 14px 18px; }
+  .ops-content .MuiToggleButtonGroup-root { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ops-workspace *, .ops-workspace *::before, .ops-workspace *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+.ops-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.ops-summary-grid .ops-stat-value { font-size: clamp(22px, 2.2vw, 29px); overflow-wrap: anywhere; }
+.ops-content .ops-decision-card { overflow-x: auto; }
+.ops-content .ops-machine-actions { max-width: 100%; }
+.ops-content .ops-machine-actions .MuiFormControl-root { min-width: 140px; }
+.ops-content .ops-machine-actions .MuiButton-root { min-width: 40px; min-height: 36px; padding-inline: 8px; }
+@media (max-width: 599px) { .ops-summary-grid { grid-template-columns: minmax(0, 1fr); } }

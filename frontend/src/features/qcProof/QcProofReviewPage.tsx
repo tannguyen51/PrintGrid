@@ -6,7 +6,6 @@ import {
 import { CheckCircleRounded, CloseRounded, FactCheckRounded } from '@mui/icons-material'
 import type { QcProofQueueItem } from '../jobs/jobTypes'
 import { useQcProofQueue, useReviewQcProof } from '../jobs/useJobs'
-import { PageBackButton } from '../../shared/components/PageBackButton'
 
 export default function QcProofReviewPage() {
   const queue = useQcProofQueue()
@@ -30,13 +29,12 @@ export default function QcProofReviewPage() {
 
   const items = queue.data ?? []
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack spacing={2.5} sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1180, mx: 'auto' }}>
+    <Box className="ops-page">
+      <Stack className="ops-page-body" spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
-            <PageBackButton />
             <Box>
-              <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800 }}>Duyệt QC xưởng</Typography>
+              <Typography variant="h1">Duyệt QC xưởng</Typography>
               <Typography color="text.secondary">Kiểm tra ảnh và báo cáo trước khi cho phép bàn giao về hub</Typography>
             </Box>
           </Stack>
@@ -46,7 +44,7 @@ export default function QcProofReviewPage() {
         {queue.isError && <Alert severity="error">Không tải được hàng đợi QC.</Alert>}
         {queue.isLoading && <CircularProgress sx={{ alignSelf: 'center' }} />}
 
-        {!queue.isLoading && items.length === 0 && (
+        {!queue.isLoading && !queue.isError && items.length === 0 && (
           <Box sx={{ py: 8, textAlign: 'center', border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
             <FactCheckRounded sx={{ fontSize: 44, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">Không có bằng chứng QC đang chờ duyệt.</Typography>
@@ -66,7 +64,7 @@ export default function QcProofReviewPage() {
                     Job {item.job.id.slice(0, 8)} · {item.photoUrls.length} ảnh · In thực tế {item.job.actualPrintMinutes ?? '—'} phút
                   </Typography>
                 </Box>
-                <Stack direction="row" spacing={1}>
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                   <Button variant="outlined" onClick={() => setSelected(item)}>Xem bằng chứng</Button>
                   <Button variant="contained" color="success" startIcon={<CheckCircleRounded />} disabled={review.isPending} onClick={() => decide(item, true)}>Duyệt</Button>
                   <Button variant="outlined" color="error" startIcon={<CloseRounded />} onClick={() => setRejecting(item)}>Từ chối</Button>

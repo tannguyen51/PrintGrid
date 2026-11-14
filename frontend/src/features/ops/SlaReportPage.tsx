@@ -15,7 +15,6 @@ import {
   Typography,
 } from '@mui/material'
 import { DownloadRounded, InsightsRounded } from '@mui/icons-material'
-import { PageBackButton } from '../../shared/components/PageBackButton'
 import { useExportSlaReport, useSlaReport, type SlaLabRow } from './useSlaReport'
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`
@@ -45,13 +44,12 @@ export default function SlaReportPage() {
   const labs = data?.labs ?? []
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1180, mx: 'auto' }} spacing={2.5}>
+    <Box className="ops-page">
+      <Stack className="ops-page-body" spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
-            <PageBackButton />
             <Box>
-              <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
+              <Typography variant="h1">
                 Báo cáo SLA mạng lưới
               </Typography>
               <Typography color="text.secondary">

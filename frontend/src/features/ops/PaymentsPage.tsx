@@ -18,8 +18,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { CheckRounded, PaymentsRounded, RefreshRounded } from '@mui/icons-material'
-import { PageBackButton } from '../../shared/components/PageBackButton'
+import { CheckRounded, PaymentsRounded, RefreshRounded, ReceiptLongOutlined, AccountBalanceWalletOutlined } from '@mui/icons-material'
+import { OpsStatCard } from './OpsComponents'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { usePendingPayments, type PendingPaymentRow } from './usePendingPayments'
 import { useMarkPaid } from './useMarkPaid'
@@ -107,8 +107,8 @@ export default function PaymentsPage() {
     : null
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1180, mx: 'auto' }} spacing={2.5}>
+    <Box className="ops-page">
+      <Stack className="ops-page-body" spacing={2.5}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           justifyContent="space-between"
@@ -116,9 +116,8 @@ export default function PaymentsPage() {
           spacing={2}
         >
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
-            <PageBackButton />
             <Box>
-              <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
+              <Typography variant="h1">
                 Thanh toán & đặt cọc
               </Typography>
               <Typography color="text.secondary">
@@ -136,6 +135,11 @@ export default function PaymentsPage() {
           </Button>
         </Stack>
 
+        <Box className="ops-summary-grid">
+          <OpsStatCard label="Đơn chờ thanh toán" value={data ? rows.length : '—'} hint="Chưa nhận đủ khoản đặt cọc" icon={<ReceiptLongOutlined />} loading={isLoading} />
+          <OpsStatCard label="Còn cần đối soát" value={data ? fmtVnd(rows.reduce((sum, row) => sum + row.remaining, 0)) : '—'} hint="Tổng số tiền còn lại của các đơn chờ" icon={<PaymentsRounded />} loading={isLoading} tone="warning" />
+          <OpsStatCard label="Đã ghi nhận" value={data ? fmtVnd(rows.reduce((sum, row) => sum + row.paidAmount, 0)) : '—'} hint="Thanh toán đã nhận cho các đơn chờ" icon={<AccountBalanceWalletOutlined />} loading={isLoading} tone="success" />
+        </Box>
         {notice && (
           <Alert severity="success" onClose={() => setNotice(null)}>
             {notice}
@@ -150,7 +154,7 @@ export default function PaymentsPage() {
 
         {isLoading ? (
           <CircularProgress sx={{ alignSelf: 'center' }} />
-        ) : rows.length === 0 ? (
+        ) : isError && !data ? null : rows.length === 0 ? (
           <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <PaymentsRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">Không có đơn nào đang chờ thanh toán cọc.</Typography>

@@ -14,6 +14,7 @@ import {
   FormControlLabel,
   Grid,
   InputLabel,
+  InputAdornment,
   MenuItem,
   Select,
   Stack,
@@ -29,12 +30,14 @@ import {
   EditRounded,
   FactoryRounded,
   PrecisionManufacturingRounded,
+  SearchRounded,
 } from '@mui/icons-material'
 import { Link as RouterLink } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { defaultPrinterConfiguration, PrinterConfigurationFields } from '../lab/PrinterConfigurationFields'
 import { getApiErrorMessage } from '../../shared/api/apiError'
+import { OpsStatCard } from './OpsComponents'
 import {
   useAddMachine,
   useApproveLab,
@@ -101,6 +104,8 @@ export default function OpsLabsPage() {
   const [includeInactive, setIncludeInactive] = useState(true)
   const { data, isLoading, isError } = useLabs(includeInactive)
   const labs = useMemo(() => data ?? [], [data])
+  const [labSearch, setLabSearch] = useState('')
+  const visibleLabs = labs.filter((lab) => isLabManager || [lab.name, lab.city, ...lab.machines.map((machine) => machine.name + ' ' + machine.model)].join(' ').toLocaleLowerCase('vi-VN').includes(labSearch.trim().toLocaleLowerCase('vi-VN')))
 
   const createLab = useCreateLab()
   const addMachine = useAddMachine()
@@ -221,14 +226,14 @@ export default function OpsLabsPage() {
   }
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1100, mx: 'auto' }} spacing={2.5}>
+    <Box className="ops-page" sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
+      <Stack className="ops-page-body" sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1100, mx: 'auto' }} spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
-            <PageBackButton />
+            {isLabManager && <PageBackButton />}
             <Box>
               <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
-                {isLabManager ? 'Xưởng & máy của tôi' : 'Duyệt xưởng & mạng lưới máy — Ops'}
+                {isLabManager ? 'Xưởng & máy của tôi' : 'Xưởng & mạng lưới máy in'}
               </Typography>
               <Typography color="text.secondary">
                 {isLabManager
@@ -253,6 +258,12 @@ export default function OpsLabsPage() {
           )}
         </Stack>
 
+        {!isLabManager && <Box className="ops-summary-grid">
+          <OpsStatCard label="Xưởng hoạt động" value={data ? labs.filter((lab) => lab.isActive).length : '—'} hint="Trong danh sách đang hiển thị" icon={<FactoryRounded />} loading={isLoading} />
+          <OpsStatCard label="Máy in đăng ký" value={data ? labs.reduce((sum, lab) => sum + lab.machines.length, 0) : '—'} hint="Năng lực từ các xưởng trong danh sách" icon={<PrecisionManufacturingRounded />} loading={isLoading} />
+          <OpsStatCard label="Hồ sơ chờ duyệt" value={data ? labs.filter((lab) => lab.status === 'Pending').length : '—'} hint="Cần kiểm tra năng lực trước khi kích hoạt" icon={<CheckCircleOutlineRounded />} loading={isLoading} tone="warning" />
+        </Box>}
+        {!isLabManager && <TextField size="small" placeholder="Tìm xưởng, thành phố hoặc máy in…" value={labSearch} onChange={(event) => setLabSearch(event.target.value)} inputProps={{ 'aria-label': 'Tìm xưởng hoặc máy in' }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRounded sx={{ fontSize: 19 }} /></InputAdornment> }} />}
         <FormControlLabel
           control={<Switch checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} />}
           label={<Typography color="text.secondary">Hiện cả xưởng chờ duyệt &amp; xưởng đã tắt</Typography>}
@@ -271,16 +282,16 @@ export default function OpsLabsPage() {
 
         {isLoading ? (
           <CircularProgress sx={{ alignSelf: 'center' }} />
-        ) : labs.length === 0 ? (
+        ) : isError && !data ? null : visibleLabs.length === 0 ? (
           <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <FactoryRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">
-              Chưa có xưởng nào. Không có xưởng thì mọi yêu cầu báo giá sẽ bị từ chối vì không có máy khả thi.
+              {labSearch ? 'Không có xưởng hoặc máy in phù hợp với từ khóa tìm kiếm.' : 'Chưa có xưởng trong danh sách. Hồ sơ xưởng mới sẽ xuất hiện tại đây.'}
             </Typography>
           </Box>
         ) : (
           <Stack spacing={2.5}>
-            {labs.map((lab) => {
+            {visibleLabs.map((lab) => {
               const statusChip = labStatusChip(lab)
               const missingMachines = lab.machines.length === 0
               return (
@@ -610,7 +621,7 @@ function MachineRow({ machine, editable, onChangeStatus, onEdit, onDelete }: { m
           </Stack>
         </Box>
       </Stack>
-      <Stack direction="row" spacing={0.75} alignItems="center">
+      <Stack className="ops-machine-actions" direction="row" spacing={0.75} alignItems="center" useFlexGap flexWrap="wrap">
         <FormControl size="small" sx={{ minWidth: 150 }} disabled={!editable}>
           <Select value={machine.status} onChange={(e) => onChangeStatus(Number(e.target.value) as Machine['status'])}>
             {MACHINE_STATUS_LABELS.map((label, index) => (

@@ -81,10 +81,10 @@ export function ModelReviewQueuePage() {
   }
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, md: 4 }, py: 4 }}>
+    <Box className="ops-page">
       <Stack spacing={3}>
         <Box>
-          <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800 }}>Kiểm duyệt model</Typography>
+          <Typography variant="h1">Kiểm duyệt model</Typography>
           <Typography color="text.secondary">
             Duyệt nội dung trước khi model được báo giá và đưa vào sản xuất. File xem tại đây được ghi audit.
           </Typography>
