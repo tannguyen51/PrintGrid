@@ -57,6 +57,7 @@ const PricingPage = lazy(() => import('../features/pricing/PricingPage'))
 const NetworkPage = lazy(() => import('../features/network/NetworkPage'))
 const GuidesPage = lazy(() => import('../features/guides/GuidesPage'))
 const AdminSamplesPage = lazy(() => import('../features/admin/AdminSamplesPage'))
+const AdminSystemParametersPage = lazy(() => import('../features/admin/AdminSystemParametersPage'))
 
 function RouteFallback() {
   return (
@@ -339,6 +340,10 @@ export function AppRoutes() {
           }
         />
         <Route element={<AdminLayout />}>
+        <Route
+          path="/admin/system-parameters"
+          element={<ProtectedRoute allowedRoles={['Admin']}><AdminSystemParametersPage /></ProtectedRoute>}
+        />
         <Route
           path="/admin/users"
           element={

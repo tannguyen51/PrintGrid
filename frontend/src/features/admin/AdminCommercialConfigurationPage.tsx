@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Paper, Stack, TextField, Typography } from '@mui/material'
 import { AddRounded, CheckCircleRounded } from '@mui/icons-material'
-import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { type CommercialParameters, useActivateCommercialConfiguration, useCatalogItems, useCommercialConfigurations, useCreateCommercialConfiguration } from './useAdminConfiguration'
 
@@ -45,13 +44,15 @@ export default function AdminCommercialConfigurationPage() {
   } catch (e) { setError(getApiErrorMessage(e, 'Không thể tạo phiên bản.')) } }
   const doActivate = async (id: string) => { setError(''); try { await activate.mutateAsync(id) } catch (e) { setError(getApiErrorMessage(e, 'Không thể kích hoạt phiên bản.')) } }
 
-  return <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-    <Box sx={{ maxWidth: 1180, mx: 'auto', px: 3, py: 4 }}>
-    <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-      <Stack direction="row" spacing={1.5} alignItems="center"><PageBackButton /><Box><Typography variant="h4" fontWeight={800}>Cấu hình thương mại</Typography><Typography color="text.secondary">Mỗi lần thay đổi tạo một phiên bản mới; chỉ phiên bản đang hoạt động áp dụng cho báo giá mới.</Typography></Box></Stack>
+  return <Box className="admin-page">
+    <Box className="admin-page-body">
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} mb={3}>
+      <Stack direction="row" spacing={1.5} alignItems="center"><Box><Typography variant="h1">Cấu hình thương mại</Typography><Typography color="text.secondary">Mỗi lần thay đổi tạo một phiên bản mới; chỉ phiên bản đang hoạt động áp dụng cho báo giá mới.</Typography></Box></Stack>
       <Button variant="contained" startIcon={<AddRounded />} onClick={startCreate}>Tạo phiên bản</Button>
     </Stack>
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+    {query.isError && <Alert severity="error" sx={{ mb: 2 }} action={<Button onClick={() => { void query.refetch() }}>Thử lại</Button>}>Không tải được cấu hình thương mại.</Alert>}
+    {!query.isLoading && !query.isError && !query.data?.length && <Paper variant="outlined" sx={{ p: 5, textAlign: 'center' }}><Typography fontWeight={650}>Chưa có phiên bản cấu hình</Typography><Typography color="text.secondary" sx={{ mt: 1 }}>Chọn “Tạo phiên bản” để thiết lập cấu hình thương mại đầu tiên.</Typography></Paper>}
     {query.isLoading ? <CircularProgress /> : <Stack spacing={2}>{query.data?.map(item => <Paper key={item.id} variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
       <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={2}>
         <Box><Stack direction="row" spacing={1} alignItems="center"><Typography variant="h6" fontWeight={750}>v{item.versionNumber} · {item.name}</Typography><Chip size="small" color={item.status === 'Active' ? 'success' : item.status === 'Draft' ? 'warning' : 'default'} label={item.status === 'Active' ? 'Đang hoạt động' : item.status === 'Draft' ? 'Bản nháp' : 'Đã lưu trữ'} /></Stack><Typography color="text.secondary" mt={0.5}>{item.changeSummary}</Typography><Typography variant="caption" color="text.secondary">Tạo lúc {new Date(item.createdAtUtc).toLocaleString('vi-VN')}</Typography></Box>

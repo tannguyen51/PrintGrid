@@ -1,6 +1,5 @@
 import { Alert, Box, Button, Chip, CircularProgress, Paper, Stack, Typography } from '@mui/material'
 import { CheckCircleRounded, FactoryRounded } from '@mui/icons-material'
-import { PageBackButton } from '../../shared/components/PageBackButton'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { useApproveLab, useLabs } from '../ops/useLabs'
 
@@ -11,12 +10,12 @@ export default function AdminLabApprovalPage() {
   const pendingCount = items.filter((lab) => lab.status === 'Pending').length
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack sx={{ maxWidth: 1180, mx: 'auto', px: 3, py: 4 }} spacing={3}>
+    <Box className="admin-page">
+      <Stack className="admin-page-body" spacing={3}>
         <Stack direction="row" spacing={1.5} alignItems="center">
-          <PageBackButton />
+
           <Box>
-            <Typography variant="h4" fontWeight={800}>Duyệt kích hoạt xưởng</Typography>
+            <Typography variant="h1">Duyệt kích hoạt xưởng</Typography>
             <Typography color="text.secondary">Kiểm tra hồ sơ, máy in và vật liệu trước khi cho phép xưởng nhận job từ hệ thống.</Typography>
           </Box>
         </Stack>
@@ -30,7 +29,7 @@ export default function AdminLabApprovalPage() {
         {labs.isError && <Alert severity="error">Không tải được danh sách xưởng.</Alert>}
         {approve.isError && <Alert severity="error">{getApiErrorMessage(approve.error, 'Không thể duyệt xưởng.')}</Alert>}
 
-        {!labs.isLoading && items.length === 0 && (
+        {!labs.isLoading && !labs.isError && items.length === 0 && (
           <Paper variant="outlined" sx={{ p: 6, textAlign: 'center', borderStyle: 'dashed' }}>
             <FactoryRounded sx={{ fontSize: 44, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">Chưa có xưởng nào gửi hồ sơ đăng ký.</Typography>

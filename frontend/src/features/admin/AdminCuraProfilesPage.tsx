@@ -46,7 +46,7 @@ export default function AdminCuraProfilesPage() {
     } catch (e) { setError(getApiErrorMessage(e, 'Không tải được profile.')) }
   }
   return <Stack spacing={3}>
-    <Box><Typography variant="h4" fontWeight={800}>Profile CuraEngine & duyệt máy</Typography>
+    <Box><Typography variant="h1">Profile CuraEngine & duyệt máy</Typography>
       <Typography color="text.secondary">Quản lý thư viện cấu hình in và cho phép máy tham gia báo giá.</Typography></Box>
     {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
     {message && <Alert severity="success" onClose={() => setMessage('')}>{message}</Alert>}
@@ -74,7 +74,7 @@ export default function AdminCuraProfilesPage() {
       <Typography variant="h6" mb={2}>Thư viện profile</Typography>
       {profiles.isLoading && <CircularProgress />}
       {profiles.isError && <Alert severity="error">Không tải được thư viện profile.</Alert>}
-      {!profiles.isLoading && !profiles.data?.length && <Typography color="text.secondary">Chưa có profile. Nhập profile để máy đăng ký mới được tự đối chiếu.</Typography>}
+      {!profiles.isLoading && !profiles.isError && !profiles.data?.length && <Typography color="text.secondary">Chưa có profile. Nhập profile để máy đăng ký mới được tự đối chiếu.</Typography>}
       <Stack spacing={1}>{profiles.data?.map(p => <Box key={p.id} sx={{ borderBottom: 1, borderColor: 'divider', pb: 1 }}>
         <Typography fontWeight={700}>{p.name} · v{p.version}</Typography>
         <Typography variant="body2">{p.manufacturer} · {p.machineModel} · {p.materialCode} · Đầu phun {p.nozzleDiameterMm} mm · {p.extruderCount} đầu đùn · {p.maximumColorSlots} màu · {p.widthMm}×{p.depthMm}×{p.heightMm} mm</Typography>

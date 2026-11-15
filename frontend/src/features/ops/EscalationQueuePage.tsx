@@ -1,4 +1,5 @@
 import { Link as RouterLink } from 'react-router-dom'
+import { useState } from 'react'
 import {
   Alert,
   Box,
@@ -13,9 +14,10 @@ import {
   TableHead,
   TableRow,
   Typography,
+  TextField,
+  MenuItem,
 } from '@mui/material'
 import { WarningRounded } from '@mui/icons-material'
-import { PageBackButton } from '../../shared/components/PageBackButton'
 import { useOpsEscalations, type OpsEscalationKind, type OpsEscalationStatus } from './useOps'
 
 const KIND_LABELS: Record<OpsEscalationKind, string> = {
@@ -39,16 +41,18 @@ const fmtDateTime = (d: string | null | undefined) =>
 export default function EscalationQueuePage() {
   const escalations = useOpsEscalations()
   const rows = escalations.data ?? []
+  const [statusFilter, setStatusFilter] = useState('')
+  const [kindFilter, setKindFilter] = useState('')
+  const filteredRows = rows.filter((row) => (!statusFilter || row.status === statusFilter) && (!kindFilter || row.kind === kindFilter))
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1000, mx: 'auto' }} spacing={2.5}>
+    <Box className="ops-page">
+      <Stack className="ops-page-body" spacing={2.5}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
-            <PageBackButton />
             <Box>
-              <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800, color: 'text.primary' }}>
-                Hàng đợi cảnh báo — Ops
+              <Typography variant="h1">
+                Cảnh báo & can thiệp
               </Typography>
               <Typography color="text.secondary">Danh sách đơn in cần can thiệp xử lý: in lại vượt giới hạn hoặc không còn khung giờ khả dụng</Typography>
             </Box>
@@ -57,15 +61,24 @@ export default function EscalationQueuePage() {
 
         {escalations.isError ? <Alert severity="error">Không tải được hàng đợi cảnh báo.</Alert> : null}
         {escalations.isLoading ? <CircularProgress sx={{ alignSelf: 'center' }} /> : null}
+        <Paper variant="outlined" sx={{ p: 2 }}><Stack direction={{ xs: 'column', sm: 'row' }} useFlexGap flexWrap="wrap" gap={2} alignItems={{ sm: 'center' }}>
+          <TextField select size="small" label="Trạng thái cảnh báo" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} sx={{ minWidth: 180 }}>
+            <MenuItem value="">Tất cả trạng thái</MenuItem><MenuItem value="Open">Đang mở</MenuItem><MenuItem value="Resolved">Đã xử lý</MenuItem>
+          </TextField>
+          <TextField select size="small" label="Loại cảnh báo" value={kindFilter} onChange={(event) => setKindFilter(event.target.value)} sx={{ minWidth: 220 }}>
+            <MenuItem value="">Tất cả loại</MenuItem><MenuItem value="ReprintLimitExceeded">In lại vượt trần</MenuItem><MenuItem value="NoFeasibleSlot">Hết khung giờ khả dụng</MenuItem>
+          </TextField>
+          <Typography role="status" variant="body2" color="text.secondary">{escalations.data ? filteredRows.length + ' cảnh báo trong danh sách' : 'Chưa có dữ liệu'}</Typography>
+        </Stack></Paper>
 
-        {!escalations.isLoading && !escalations.isError && rows.length === 0 ? (
+        {!escalations.isLoading && !escalations.isError && filteredRows.length === 0 ? (
           <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
             <WarningRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
-            <Typography color="text.secondary">Không có cảnh báo nào đang mở. Hệ thống tự xử lý được hết.</Typography>
+            <Typography color="text.secondary">{rows.length ? 'Không có cảnh báo phù hợp với bộ lọc đã chọn.' : 'Chưa có cảnh báo nào được ghi nhận.'}</Typography>
           </Box>
         ) : null}
 
-        {rows.length > 0 ? (
+        {filteredRows.length > 0 ? (
           <TableContainer component={Paper} variant="outlined" sx={{ bgcolor: 'background.paper' }}>
             <Table size="small">
               <TableHead>
@@ -78,7 +91,7 @@ export default function EscalationQueuePage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.map((e) => (
+                {filteredRows.map((e) => (
                   <TableRow key={e.id}>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{fmtDateTime(e.createdAtUtc)}</TableCell>
                     <TableCell>
