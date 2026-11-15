@@ -76,20 +76,28 @@ public sealed class CuraResourceCatalog
         var result = new List<CuraMachineDefinition>();
         foreach (var file in Directory.EnumerateFiles(Path.Combine(_root, "definitions"), "*.def.json"))
         {
-            var id = Path.GetFileName(file)[..^".def.json".Length];
-            JsonElement raw;
-            try { raw = Resolve(id); } catch { continue; }
-            var metadata = raw.TryGetProperty("metadata", out var m) ? m : default;
-            if (metadata.ValueKind != JsonValueKind.Object || !Bool(metadata, "visible", false)) continue;
-            var extruder = metadata.TryGetProperty("machine_extruder_trains", out var trains) &&
-                           trains.TryGetProperty("0", out var train) ? train.GetString() ?? "" : "";
-            if (extruder.Length == 0) continue;
-            var overrides = raw.TryGetProperty("overrides", out var o) ? o : default;
-            result.Add(new(id, Text(metadata, "manufacturer", "Unknown"), Text(raw, "name", id), extruder,
-                Text(metadata, "preferred_material", "generic_pla"), Text(metadata, "preferred_quality_type", "standard"),
-                DecimalSetting(overrides, "machine_width"), DecimalSetting(overrides, "machine_depth"),
-                DecimalSetting(overrides, "machine_height"), BoolSetting(overrides, "machine_heated_bed"),
-                DecimalSetting(overrides, "material_diameter", 1.75m), trains.EnumerateObject().Count()));
+            try
+            {
+                var id = Path.GetFileName(file)[..^".def.json".Length];
+                var raw = Resolve(id);
+                var metadata = raw.TryGetProperty("metadata", out var m) ? m : default;
+                if (metadata.ValueKind != JsonValueKind.Object || !Bool(metadata, "visible", false)) continue;
+                if (!metadata.TryGetProperty("machine_extruder_trains", out var trains) ||
+                    trains.ValueKind != JsonValueKind.Object || !trains.TryGetProperty("0", out var train) ||
+                    train.ValueKind != JsonValueKind.String) continue;
+                var extruder = train.GetString() ?? "";
+                if (extruder.Length == 0) continue;
+                var overrides = raw.TryGetProperty("overrides", out var o) ? o : default;
+                result.Add(new(id, Text(metadata, "manufacturer", "Unknown"), Text(raw, "name", id), extruder,
+                    Text(metadata, "preferred_material", "generic_pla"), Text(metadata, "preferred_quality_type", "standard"),
+                    DecimalSetting(overrides, "machine_width"), DecimalSetting(overrides, "machine_depth"),
+                    DecimalSetting(overrides, "machine_height"), BoolSetting(overrides, "machine_heated_bed"),
+                    DecimalSetting(overrides, "material_diameter", 1.75m), trains.EnumerateObject().Count()));
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
+            {
+                // Third-party Cura definitions are not uniformly shaped. One malformed entry must not hide the catalog.
+            }
         }
         return result.OrderBy(x => x.Manufacturer).ThenBy(x => x.Name).ToList();
     }
