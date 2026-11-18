@@ -209,7 +209,7 @@ export default function ModelLibraryPage() {
 
   return (
     <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1200, mx: 'auto' }} spacing={2.5}>
+      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1520, mx: 'auto' }} spacing={3}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
             <PageBackButton />
@@ -261,12 +261,14 @@ export default function ModelLibraryPage() {
         {isError ? (
           <Alert severity="error">Không tải được danh sách model.</Alert>
         ) : (
-          <Box sx={{ border: '1px solid #E8EBF2', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper' }}>
+          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden', bgcolor: 'background.paper', boxShadow: '0 10px 30px rgba(35, 29, 85, 0.06)' }}>
             <DataGrid
               rows={rows}
               columns={columns}
               loading={isLoading}
               autoHeight
+              rowHeight={60}
+              columnHeaderHeight={56}
               disableRowSelectionOnClick
               initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
               pageSizeOptions={[10, 25, 50]}
@@ -276,8 +278,33 @@ export default function ModelLibraryPage() {
                 </Box>
               ) }}
               sx={{
-                '&.MuiDataGrid-root': { border: 'none' },
-                '& .MuiDataGrid-columnHeaders': { bgcolor: 'action.hover' },
+                '&.MuiDataGrid-root': { border: 'none', color: 'text.primary', fontSize: '0.9rem' },
+                '& .MuiDataGrid-columnHeaders': {
+                  bgcolor: '#F5F3FF',
+                  borderBottom: '1px solid',
+                  borderColor: 'divider',
+                },
+                '& .MuiDataGrid-columnHeaderTitle': {
+                  color: '#3E3564',
+                  fontSize: '0.76rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.045em',
+                },
+                '& .MuiDataGrid-cell': {
+                  borderColor: '#ECEAF4',
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontWeight: 500,
+                },
+                '& .MuiDataGrid-row:hover': { bgcolor: '#FAF9FF' },
+                '& .MuiDataGrid-footerContainer': {
+                  minHeight: 58,
+                  borderColor: 'divider',
+                  bgcolor: '#FCFBFF',
+                  color: 'text.primary',
+                },
+                '& .MuiTablePagination-root': { color: 'text.primary' },
+                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontSize: '0.85rem', fontWeight: 600 },
               }}
             />
           </Box>
