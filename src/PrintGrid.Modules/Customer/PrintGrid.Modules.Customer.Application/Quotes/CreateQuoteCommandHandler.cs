@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using PrintGrid.Modules.Customer.Application.Abstractions;
 using PrintGrid.Modules.Customer.Application.DTOs;
 using PrintGrid.Modules.Customer.Domain.Entities;
@@ -18,7 +19,8 @@ public class CreateQuoteCommandHandler(
     IProductionCapacityProbe capacity,
     IMachineFilterService machineFilter,
     ICommercialPolicyProvider? commercialPolicy = null,
-    IQuoteSlicer? quoteSlicer = null)
+    IQuoteSlicer? quoteSlicer = null,
+    ILogger<CreateQuoteCommandHandler>? logger = null)
     : IRequestHandler<CreateQuoteCommand, Result<QuoteDto>>
 {
     private static readonly TimeSpan _quoteValidity = TimeSpan.FromHours(48); // BR-QUOTE-003 (cfg in FR-ADMIN-002 later)
@@ -294,7 +296,11 @@ public class CreateQuoteCommandHandler(
                 if (trial is not null && (best is null || price.TotalAmount < best.TotalAmount))
                 { best = price; bestMachineId = machineId; bestPlacement = trial; }
             }
-            catch { /* Skip machines that fail */ }
+            catch (Exception error) when (error is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                logger?.LogWarning(error, "Quotation candidate failed for model {ModelId}, machine {MachineId}",
+                    model.Id, machineId);
+            }
         }
         return (best, bestMachineId, bestPlacement);
     }

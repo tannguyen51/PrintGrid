@@ -1,4 +1,5 @@
 using NSubstitute;
+using PrintGrid.Modules.Customer.Application.Abstractions;
 using PrintGrid.Modules.Customer.Application.Quotes;
 using PrintGrid.Modules.Customer.Domain.Entities;
 using PrintGrid.Modules.Customer.Domain.Repositories;
@@ -40,7 +41,8 @@ public class SlicedQuoteFlowTests
             ColorPricePerKg = new Dictionary<string, decimal> { ["PLA:BLUE"] = 300000, ["PLA:WHITE"] = 290000 } };
         var policy = Substitute.For<ICommercialPolicyProvider>();
         policy.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(new CommercialPolicy(rates, 10_000_000, 48));
-        var handler = new CreateQuoteCommandHandler(models, quotes, Substitute.For<IUnitOfWork>(), clock, probe, policy, slicer);
+        var handler = new CreateQuoteCommandHandler(models, quotes, Substitute.For<IUnitOfWork>(), clock, probe,
+            Substitute.For<IMachineFilterService>(), policy, slicer);
         var result = await handler.Handle(new CreateQuoteCommand(customer, model.Id, "PLA", "BLUE", .2m, 30, 5, .2m,
             "M", ["BLUE", "WHITE"], true), CancellationToken.None);
         result.IsSuccess.Should().BeTrue();
