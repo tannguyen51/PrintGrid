@@ -87,6 +87,10 @@ Everything in containers:
 docker compose up -d --build                  # SPA on :3000, API on :5000
 ```
 
+The Compose API applies pending database migrations before starting. Existing local
+data is retained when rebuilding against a newer schema; migration failures stop
+the API instead of serving requests against an outdated database.
+
 | Endpoint | URL |
 |---|---|
 | Swagger | http://localhost:5000/swagger |
