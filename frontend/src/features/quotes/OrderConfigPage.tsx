@@ -4,12 +4,14 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '../../shared/api/apiClient'
 import {
   Alert,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Box,
   Button,
   Checkbox,
   Chip,
   CircularProgress,
-  Divider,
   FormControl,
   FormControlLabel,
   InputLabel,
@@ -21,10 +23,11 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { ArrowBackRounded, ArrowForwardRounded, PriceCheckRounded } from '@mui/icons-material'
+import { ArrowBackRounded, ArrowForwardRounded, ExpandMoreRounded, PriceCheckRounded } from '@mui/icons-material'
 import type { Quote } from './quoteTypes'
 import { COLORS, INFILL_OPTIONS, MATERIALS, QUALITY_GRADES } from './quoteTypes'
-import { useCreateQuote, usePlaceOrder } from './useQuotes'
+import { useCreateQuote, usePlaceOrder, useQuotes } from './useQuotes'
+import { QuotePriceDetails } from './QuotePriceDetails'
 import { useAuth } from '../../app/AuthContext'
 import TechConstraintsSelector from './TechConstraintsSelector'
 import type { TechConstraintsValue } from './TechConstraintsSelector'
@@ -41,6 +44,8 @@ export default function OrderConfigPage() {
   const navigate = useNavigate()
   const createQuote = useCreateQuote()
   const placeOrder = usePlaceOrder()
+  const savedQuotes = useQuotes()
+  const quoteResult = useRef<HTMLDivElement>(null)
 
   // Config state
   const [material, setMaterial] = useState('PLA')
@@ -67,12 +72,16 @@ export default function OrderConfigPage() {
   const [postalCode, setPostalCode] = useState('')
   const [orderError, setOrderError] = useState<string | null>(null)
   const [acceptTerms, setAcceptTerms] = useState(false)
-  const configKey = JSON.stringify([modelId, material, colors, sizeCode, polishing, layerIndex, infill, quantity])
+  const configKey = JSON.stringify([modelId, material, colors, sizeCode, polishing, layerIndex, infill, quantity, techConstraints ?? {}, pinnedModelId])
   const currentConfig = useRef(configKey)
   currentConfig.current = configKey
 
   // A result belongs to exactly one configuration. Never allow placing a stale quote.
   useEffect(() => { setQuote(null) }, [configKey])
+
+  useEffect(() => {
+    if (quote) quoteResult.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [quote])
 
   // Live expiry countdown for the quote (BR-QUOTE-003) — refreshed every 30 s.
   const [now, setNow] = useState(() => Date.now())
@@ -127,7 +136,7 @@ export default function OrderConfigPage() {
     setQuote(null)
     const submittedConfig = configKey
     try {
-      await createQuote.mutateAsync({
+      const saved = await createQuote.mutateAsync({
         modelId,
         materialCode: material,
         colorCode: colors[0] ?? color,
@@ -145,9 +154,8 @@ export default function OrderConfigPage() {
         pinnedModelId: pinnedModelId ? pinnedModelId : undefined,
       })
       if (currentConfig.current === submittedConfig) {
-        // After getting a quote, navigate back to library so the user
-        // can see model statuses including Pending Review.
-        navigate('/library', { replace: true })
+        setQuote(saved)
+        setOrderError(null)
       }
     } catch (error) {
       const apiMessage = axios.isAxiosError(error)
@@ -180,7 +188,9 @@ export default function OrderConfigPage() {
     }
   }
 
-  const fmt = (n: number) => n.toLocaleString('vi-VN')
+  const history = (savedQuotes.data ?? [])
+    .filter(saved => saved.id !== quote?.id && saved.items.some(item => item.modelId === modelId))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
 
   // BR-QUOTE-003 live countdown instead of a hard-coded "48 giờ" label.
   const expiry = quote?.expiresAt
@@ -320,7 +330,7 @@ export default function OrderConfigPage() {
 
         {/* ── Step 2: quote result + address ── */}
         {quote && (
-          <Box sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 3, border: '1px solid rgba(111,85,255,0.32)', bgcolor: 'background.paper' }}>
+          <Box ref={quoteResult} sx={{ p: { xs: 2.5, md: 4 }, scrollMarginTop: 100, borderRadius: 3, border: '1px solid rgba(111,85,255,0.32)', bgcolor: 'background.paper' }}>
             <Stack spacing={3}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: 'text.primary' }}>
@@ -333,53 +343,7 @@ export default function OrderConfigPage() {
                 />
               </Stack>
 
-              {quote.items.map((it) => (
-                <Box key={it.id}>
-                  <Typography variant="caption" color="text.disabled">CHI TIẾT</Typography>
-                  <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                    <Row label="Vật liệu / màu" value={`${it.materialCode} · ${it.calculation?.colors.map(c => c.colorCode).join(', ') ?? it.colorCode}`} />
-                    {it.calculation ? <>
-                      <Row label="Kích thước sau điều chỉnh" value={`${fmt(it.calculation.widthMm)} × ${fmt(it.calculation.depthMm)} × ${fmt(it.calculation.heightMm)} mm`} />
-                      <Row label="Thời gian in cả đơn (ước tính)" value={`${fmt(it.calculation.printMinutes / 60)} giờ`} />
-                      {it.calculation.colors.map(c => <Row key={c.colorCode} label={`${c.colorCode}: ${fmt(c.grams)} g × ${fmt(c.pricePerKg)} đ/kg`} value={`${fmt(c.amount)} đ`} />)}
-                      <Row label="Vật liệu cả đơn" value={`${fmt(it.calculation.materialAmount)} đ`} />
-                      <Row label={`Giờ máy (${fmt(it.calculation.pricePerHour)} đ/giờ)`} value={`${fmt(it.calculation.machineAmount)} đ`} />
-                      <Row label={`Dự phòng lỗi (${fmt(it.calculation.failureRate * 100)}%)`} value={`${fmt(it.calculation.failureAllowance)} đ`} />
-                      <Row label={`Đánh bóng (${fmt(it.calculation.polishingPerUnit)} đ/sản phẩm)`} value={`${fmt(it.calculation.serviceAmount)} đ`} />
-                      <Row label="Giá trung bình / sản phẩm" value={`${fmt(it.calculation.totalAmount / it.quantity)} đ`} />
-                    </> : <>
-                      <Row label="Phân tích" value={`${it.estimatedPrintMinutes} phút · ${it.estimatedMaterialGrams} g vật liệu`} />
-                      <Row label="Đơn giá" value={`${fmt(it.unitPrice)} đ`} />
-                      <Row label="— vật liệu" value={`${fmt(it.materialCostAmount)} đ`} />
-                      <Row label="— giờ máy" value={`${fmt(it.machineTimeCostAmount)} đ`} />
-                    </>}
-                    <Row label="Số lượng" value={`${it.quantity}`} />
-                  </Stack>
-                </Box>
-              ))}
-
-              <Divider sx={{ borderColor: 'divider' }} />
-
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" sx={{ bgcolor: 'rgba(111,85,255,0.07)', borderRadius: 2, p: 2 }}>
-                <Box>
-                  <Typography variant="caption" color="text.disabled">TỔNG</Typography>
-                  <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary' }}>
-                    {fmt(quote.totalPrice)} {quote.currency}
-                  </Typography>
-                </Box>
-                <Box textAlign={{ xs: 'left', sm: 'right' }}>
-                  <Typography variant="caption" color="text.disabled">NGÀY GIAO CAM KẾT</Typography>
-                  <Typography sx={{ fontWeight: 700, color: 'text.primary' }}>
-                    {new Date(quote.promisedDeliveryDate + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {quote.customerPlacementSummary ?? 'tính theo lịch máy thật của mạng lưới'}
-                  </Typography>
-                  <Typography variant="caption" color="text.disabled">
-                    {' '}· kỳ giá {quote.pricingVersion}
-                  </Typography>
-                </Box>
-              </Stack>
+              <QuotePriceDetails quote={quote} />
 
               {orderError && <Alert severity="error">{orderError}</Alert>}
 
@@ -440,7 +404,7 @@ export default function OrderConfigPage() {
                 color="primary"
                 size="large"
                 onClick={handlePlaceOrder}
-                disabled={quote.status !== 'Ready' || placeOrder.isPending || !street.trim() || !city.trim() || Boolean(user && !user.isEmailVerified)}
+                disabled={quote.status !== 'Ready' || Boolean(expiry?.expired) || placeOrder.isPending || !street.trim() || !city.trim() || !acceptTerms || Boolean(user && !user.isEmailVerified)}
                 endIcon={placeOrder.isPending ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}
               >
                 {placeOrder.isPending ? 'Đang đặt hàng…' : expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}
@@ -448,16 +412,31 @@ export default function OrderConfigPage() {
             </Stack>
           </Box>
         )}
+        {savedQuotes.isError && <Alert severity="warning">Không tải được các báo giá đã lưu.</Alert>}
+        {history.length > 0 && (
+          <Box>
+            <Typography sx={{ fontWeight: 700, mb: 1 }}>Báo giá đã tạo cho model này</Typography>
+            {history.map(saved => (
+              <Accordion key={saved.id}>
+                <AccordionSummary expandIcon={<ExpandMoreRounded />}>
+                  <Stack spacing={0.5}>
+                    <Typography sx={{ fontWeight: 600 }}>{saved.totalPrice.toLocaleString('vi-VN')} {saved.currency}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {new Date(saved.createdAt).toLocaleString('vi-VN')} · {quoteStatusLabels[saved.status]}
+                    </Typography>
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails><QuotePriceDetails quote={saved} /></AccordionDetails>
+              </Accordion>
+            ))}
+          </Box>
+        )}
       </Stack>
     </Box>
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <Stack direction="row" justifyContent="space-between">
-      <Typography variant="body2" color="text.secondary">{label}</Typography>
-      <Typography variant="body2" color="text.primary" sx={{ fontWeight: 600 }}>{value}</Typography>
-    </Stack>
-  )
+const quoteStatusLabels: Record<Quote['status'], string> = {
+  Pending: 'Đang tính giá', Draft: 'Chờ duyệt', Ready: 'Đã duyệt', Expired: 'Hết hiệu lực',
+  Converted: 'Đã đặt hàng', Failed: 'Không thể báo giá',
 }

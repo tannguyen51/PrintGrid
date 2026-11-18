@@ -15,10 +15,10 @@ export interface QuoteItem {
 }
 
 export interface QuoteCalculation {
-  sizeCode: string; widthMm: number; depthMm: number; heightMm: number; scale: number; quantity: number; engine: string
-  colors: { colorCode: string; grams: number; pricePerKg: number; amount: number }[]
-  printMinutes: number; pricePerHour: number; materialAmount: number; machineAmount: number
-  failureRate: number; failureAllowance: number; polishingPerUnit: number; serviceAmount: number; totalAmount: number
+  widthMm: number; depthMm: number; heightMm: number
+  colors: { colorCode: string; grams: number; pricePerKg?: number; amount?: number }[]
+  printMinutes: number; pricePerHour?: number; materialAmount: number; machineAmount: number
+  failureRate?: number; failureAllowance: number; polishingPerUnit?: number; serviceAmount: number; totalAmount: number
 }
 
 export type QuoteStatus = 'Pending' | 'Draft' | 'Ready' | 'Expired' | 'Converted' | 'Failed'

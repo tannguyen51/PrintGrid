@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Box,
   FormControl,
@@ -47,15 +47,18 @@ export default function TechConstraintsSelector({ defaultQualityLayerMm, onValue
   const hasAny = maxColors !== null || enclosedChamber !== null || nozzleDiameter !== null
     || maxTolerance.trim() !== '' || minLayerHeight.trim() !== ''
 
-  const value: TechConstraintsValue = {}
-  if (maxColors !== null) value.maxColors = maxColors
-  if (enclosedChamber !== null) value.enclosedChamber = !!enclosedChamber
-  if (nozzleDiameter !== null) value.nozzleDiameterMm = nozzleDiameter
-  if (maxTolerance.trim()) value.maxToleranceMm = maxTolerance
-  if (minLayerHeight.trim()) value.minLayerHeightMm = minLayerHeight
-
-  // Debounced emit
-  setTimeout(() => onValueChange(value), 300)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const value: TechConstraintsValue = {}
+      if (maxColors !== null) value.maxColors = maxColors
+      if (enclosedChamber !== null) value.enclosedChamber = enclosedChamber
+      if (nozzleDiameter !== null) value.nozzleDiameterMm = nozzleDiameter
+      if (maxTolerance.trim()) value.maxToleranceMm = maxTolerance
+      if (minLayerHeight.trim()) value.minLayerHeightMm = minLayerHeight
+      onValueChange(value)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [maxColors, enclosedChamber, nozzleDiameter, maxTolerance, minLayerHeight, onValueChange])
 
   return (
     <Box>
