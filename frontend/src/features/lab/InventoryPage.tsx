@@ -26,7 +26,12 @@ export default function InventoryPage() {
     enabled: !!labId,
   })
   const save = useMutation({
-    mutationFn: () => apiClient.put(`/labs/${labId}/inventory`, { materialCode, colorCode, quantityGrams, reorderPointGrams }),
+    mutationFn: () => apiClient.put(`/labs/${labId}/inventory`, {
+      materialCode: materialCode.trim().toUpperCase(),
+      colorCode: colorCode.trim().toUpperCase(),
+      quantityGrams,
+      reorderPointGrams,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory', labId] })
       // The admin/ops lab-approval page gates activation on materialStockCount — refresh it too.
@@ -57,7 +62,11 @@ export default function InventoryPage() {
         <TextField label="Màu" value={colorCode} onChange={e => setColor(e.target.value)} required />
         <TextField label="Tồn thực tế (g)" type="number" value={quantityGrams} onChange={e => setQuantity(Number(e.target.value))} inputProps={{ min: 0, step: .01 }} required />
         <TextField label="Ngưỡng cảnh báo (g)" type="number" value={reorderPointGrams} onChange={e => setReorder(Number(e.target.value))} inputProps={{ min: 0, step: .01 }} required />
-        <Button type="submit" variant="contained" disabled={save.isPending}>Lưu kho</Button>
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={save.isPending || !materialCode.trim() || !colorCode.trim() || quantityGrams < 0 || reorderPointGrams < 0}
+        >Lưu kho</Button>
       </Stack>
       <Stack spacing={1.5}>{(inventory.data ?? []).map(x => <Box key={x.id} sx={{ p: 2, border: '1px solid', borderColor: x.isLowStock ? 'warning.main' : 'divider', borderRadius: 2 }}>
         <Stack direction="row" justifyContent="space-between">
