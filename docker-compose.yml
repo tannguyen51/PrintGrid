@@ -60,9 +60,6 @@ services:
       context: .
       dockerfile: src/PrintGrid.Api/Dockerfile
     container_name: printgrid-api
-    # Persistent local databases must reach the image's schema before serving requests.
-    entrypoint: ["/bin/sh", "-c"]
-    command: ["dotnet PrintGrid.Api.dll --migrate && exec dotnet PrintGrid.Api.dll"]
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_HTTP_PORTS: "8080"
