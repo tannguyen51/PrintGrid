@@ -28,6 +28,7 @@ import {
   FactoryRounded,
   PrecisionManufacturingRounded,
   ScheduleRounded,
+  SyncRounded,
 } from '@mui/icons-material'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { defaultPrinterConfiguration, PrinterConfigurationFields, ProfilePresetField } from './PrinterConfigurationFields'
@@ -39,6 +40,7 @@ import {
   useScheduleMachineMaintenance,
   useSetMachineStatus,
   useUpdateMachine,
+  useSyncMachineProfiles,
 } from '../ops/useLabs'
 import {
   MACHINE_STATUS_LABELS,
@@ -78,9 +80,11 @@ export default function LabMachinesPage() {
   const deleteMachine = useDeleteMachine()
   const setStatus = useSetMachineStatus()
   const scheduleMaintenance = useScheduleMachineMaintenance()
+  const syncProfiles = useSyncMachineProfiles()
 
   const [bannerError, setBannerError] = useState<string | null>(null)
   const [bannerSuccess, setBannerSuccess] = useState<string | null>(null)
+  const [profileSyncErrors, setProfileSyncErrors] = useState<string[]>([])
 
   // Add / Edit dialog state
   const [formOpen, setFormOpen] = useState(false)
@@ -136,6 +140,7 @@ export default function LabMachinesPage() {
     if (!myLab) return
     setFormError(null)
     setBannerError(null)
+    setProfileSyncErrors([])
     if (!machineForm.name?.trim() || !machineForm.model?.trim()) {
       setFormError('Tên máy và model không được để trống.')
       return
@@ -166,6 +171,7 @@ export default function LabMachinesPage() {
           printerConfiguration: machineForm.printerConfiguration,
         })
         setBannerSuccess(`Đã cập nhật máy "${saved.name}". ${PROFILE_STATUS_LABELS[saved.profileStatus]}.`)
+        setProfileSyncErrors(saved.profileSyncErrors ?? [])
       } else {
         const saved = await addMachine.mutateAsync({
           labId: myLab.id,
@@ -181,10 +187,24 @@ export default function LabMachinesPage() {
           printerConfiguration: machineForm.printerConfiguration,
         })
         setBannerSuccess(`Đã thêm máy "${saved.name}". ${PROFILE_STATUS_LABELS[saved.profileStatus]}.`)
+        setProfileSyncErrors(saved.profileSyncErrors ?? [])
       }
       setFormOpen(false)
     } catch (err) {
       setFormError(getApiErrorMessage(err, 'Không thể lưu thông số máy.'))
+    }
+  }
+
+  async function handleSyncProfiles(machine: Machine) {
+    setBannerError(null)
+    setBannerSuccess(null)
+    setProfileSyncErrors([])
+    try {
+      const result = await syncProfiles.mutateAsync(machine.id)
+      setProfileSyncErrors(result.errors)
+      setBannerSuccess(`Đã đồng bộ profile máy "${machine.name}". ${PROFILE_STATUS_LABELS[result.status] ?? result.status}.`)
+    } catch (err) {
+      setBannerError(getApiErrorMessage(err, 'Không thể đồng bộ profile máy.'))
     }
   }
 
@@ -298,6 +318,11 @@ export default function LabMachinesPage() {
           </Alert>
         )}
         {isError && <Alert severity="error">Không tải được thông tin xưởng của bạn.</Alert>}
+        {profileSyncErrors.length > 0 && (
+          <Alert severity="warning" onClose={() => setProfileSyncErrors([])}>
+            Chưa đồng bộ đủ profile Cura. {profileSyncErrors.join(' ')}
+          </Alert>
+        )}
 
         {isLoading ? (
           <CircularProgress sx={{ alignSelf: 'center', my: 4 }} />
@@ -457,6 +482,12 @@ export default function LabMachinesPage() {
                         </Stack>
 
                         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                          {machine.technology === 0 && machine.printerConfiguration?.curaDefinitionId && machine.profileStatus !== 'Approved' && (
+                            <Button size="small" variant="outlined" startIcon={<SyncRounded fontSize="small" />}
+                              disabled={syncProfiles.isPending} onClick={() => handleSyncProfiles(machine)}>
+                              Đồng bộ profile
+                            </Button>
+                          )}
                           <FormControl size="small" sx={{ minWidth: 145 }}>
                             <Select
                               value={machine.status}

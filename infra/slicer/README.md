@@ -167,6 +167,13 @@ CuraLibrary__ResourcesPath=/opt/cura/resources
 CuraLibrary__ResolverPath=/opt/cura/tools/resolve_profile.py
 ```
 
+`CuraLibrary__PythonExecutablePath` can select the Python interpreter used by the
+resolver. On Windows the API first looks for the portable runtime at
+`.local/python312/python.exe`, then uses `python`; Linux uses `python3` by default.
+This avoids the Windows Microsoft Store `python3` alias when the portable runtime
+is installed. Failed synchronization returns material-specific errors to the lab
+screen, where **Đồng bộ profile** retries an existing machine without recreating it.
+
 Admin can run an idempotent database synchronization with
 `POST /api/v1/cura-library/sync`. The endpoint resolves and smoke-tests profiles for
 non-approved configured FDM machines, reuses identical active profiles, and never

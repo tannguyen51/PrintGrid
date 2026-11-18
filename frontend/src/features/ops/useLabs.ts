@@ -109,6 +109,16 @@ export function useUpdateMachine() {
   })
 }
 
+export function useSyncMachineProfiles() {
+  const invalidate = useInvalidateLabs()
+  return useMutation({
+    mutationFn: (machineId: string) => apiClient.post<{
+      machineId: string; status: string; errors: string[]
+    }>(`/cura-library/machines/${machineId}/sync`).then(r => r.data),
+    onSuccess: invalidate,
+  })
+}
+
 export function useDeleteMachine() {
   const invalidate = useInvalidateLabs()
   return useMutation({

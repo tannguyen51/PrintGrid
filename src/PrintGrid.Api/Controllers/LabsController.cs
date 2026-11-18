@@ -405,12 +405,14 @@ public class LabsController(ISender sender, IAuditLogWriter audit, CuraLibrarySy
         try
         {
             var synced = await curaLibrarySync.SyncMachineAsync(machine.Id, cancellationToken);
-            return machine with { ProfileStatus = synced.Status, CuraProfileIds = synced.ProfileIds };
+            return machine with { ProfileStatus = synced.Status, CuraProfileIds = synced.ProfileIds,
+                ProfileSyncErrors = synced.Errors };
         }
-        catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException)
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or
+                                            System.ComponentModel.Win32Exception or System.Text.Json.JsonException or KeyNotFoundException)
         {
             // Registration remains durable and MissingProfile when Cura is temporarily unavailable.
-            return machine;
+            return machine with { ProfileSyncErrors = [error.Message] };
         }
     }
 

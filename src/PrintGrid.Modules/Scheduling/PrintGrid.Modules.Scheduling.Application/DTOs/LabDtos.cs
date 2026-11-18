@@ -21,7 +21,8 @@ public record MachineDto(
     string? MaintenanceReason = null,
     Domain.ValueObjects.PrinterConfiguration? PrinterConfiguration = null,
     string ProfileStatus = "MissingProfile",
-    string? ProfileReviewReason = null);
+    string? ProfileReviewReason = null,
+    IReadOnlyList<string>? ProfileSyncErrors = null);
 
 public record LabDto(
     Guid Id,

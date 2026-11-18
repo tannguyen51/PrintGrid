@@ -38,7 +38,7 @@ public sealed class CuraLibrarySyncService(PrintGridDbContext db, CuraResourceCa
         foreach (var id in machineIds)
         {
             try { results.Add(await SyncMachineAsync(id, ct)); }
-            catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or JsonException)
+            catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or JsonException or System.ComponentModel.Win32Exception)
             { errors.Add($"{id}: {error.Message}"); }
         }
         return new(machineIds.Count, results.Sum(x => x.GeneratedMaterials.Count),
@@ -91,7 +91,7 @@ public sealed class CuraLibrarySyncService(PrintGridDbContext db, CuraResourceCa
                 db.Set<CuraProfile>().Add(profile);
                 generated.Add(materialCode);
             }
-            catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or JsonException)
+            catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or JsonException or System.ComponentModel.Win32Exception)
             { errors.Add($"{materialCode}: {error.Message}"); }
         }
 
@@ -147,7 +147,7 @@ public sealed class CuraLibrarySyncService(PrintGridDbContext db, CuraResourceCa
         var output = Path.GetTempFileName();
         try
         {
-            var start = new ProcessStartInfo("python3") { UseShellExecute = false, CreateNoWindow = true,
+            var start = new ProcessStartInfo(FindPython()) { UseShellExecute = false, CreateNoWindow = true,
                 RedirectStandardError = true, RedirectStandardOutput = true };
             foreach (var value in new[] { resolver, "--resources", resources, "--definition", printer.CuraDefinitionId,
                          "--extruder", printer.CuraExtruderDefinitionId, "--material", material, "--quality", quality,
@@ -174,6 +174,23 @@ public sealed class CuraLibrarySyncService(PrintGridDbContext db, CuraResourceCa
                 if (File.Exists(candidate)) return candidate;
             }
         return "";
+    }
+
+    private string FindPython()
+    {
+        var configured = configuration["CuraLibrary:PythonExecutablePath"];
+        if (!string.IsNullOrWhiteSpace(configured)) return configured;
+        if (OperatingSystem.IsWindows())
+        {
+            foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+                for (var current = new DirectoryInfo(start); current is not null; current = current.Parent)
+                {
+                    var candidate = Path.Combine(current.FullName, ".local", "python312", "python.exe");
+                    if (File.Exists(candidate)) return candidate;
+                }
+            return "python";
+        }
+        return "python3";
     }
 
     private async Task SmokeTestAsync(string settingsJson, CancellationToken ct)

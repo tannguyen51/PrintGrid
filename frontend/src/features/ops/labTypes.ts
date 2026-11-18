@@ -53,6 +53,7 @@ export interface Machine {
   profileStatus: string
   curaProfileIds: string[]
   profileReviewReason?: string | null
+  profileSyncErrors?: string[] | null
 }
 
 /**
