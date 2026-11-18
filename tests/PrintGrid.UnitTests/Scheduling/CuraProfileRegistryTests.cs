@@ -148,6 +148,19 @@ public class CuraProfileRegistryTests
         profile.Matches(Machine()).Should().BeTrue();
     }
 
+    [Fact]
+    public void Settings_identity_ignores_jsonb_formatting_and_key_order()
+    {
+        var profile = Profile();
+        var original = System.Text.Json.Nodes.JsonNode.Parse(_json)!.AsObject();
+        var persisted = new System.Text.Json.Nodes.JsonObject();
+        foreach (var pair in original.Reverse()) persisted[pair.Key] = pair.Value!.DeepClone();
+        profile.HasSameSettings(persisted.ToJsonString(new System.Text.Json.JsonSerializerOptions
+            { WriteIndented = true })).Should().BeTrue();
+        persisted["global"]!["speed_print"] = 99;
+        profile.HasSameSettings(persisted.ToJsonString()).Should().BeFalse();
+    }
+
     [Theory]
     [InlineData("99.822", 99.82)]
     [InlineData("99.825", 99.83)]

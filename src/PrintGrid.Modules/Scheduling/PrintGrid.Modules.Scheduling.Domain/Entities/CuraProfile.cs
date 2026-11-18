@@ -1,4 +1,5 @@
 using PrintGrid.SharedKernel.Common;
+using System.Text.Json.Nodes;
 
 namespace PrintGrid.Modules.Scheduling.Domain.Entities;
 
@@ -58,6 +59,9 @@ public sealed class CuraProfile : Entity<Guid>
     }
 
     public void Deactivate() => IsActive = false;
+
+    public bool HasSameSettings(string settingsJson) =>
+        JsonNode.DeepEquals(JsonNode.Parse(SettingsJson), JsonNode.Parse(settingsJson));
 
     public bool Matches(Machine m) => IsActive && m is { Technology: Enums.PrintTechnology.Fdm, PrinterConfiguration: { } c } &&
                                       (CuraDefinitionId.Length == 0 || CuraDefinitionId.Equals(c.CuraDefinitionId ?? "", StringComparison.OrdinalIgnoreCase)) &&

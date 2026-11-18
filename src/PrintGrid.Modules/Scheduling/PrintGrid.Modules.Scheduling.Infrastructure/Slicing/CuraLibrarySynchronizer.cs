@@ -78,7 +78,7 @@ public sealed class CuraLibrarySyncService(PrintGridDbContext db, CuraResourceCa
                     x.CuraQualityId == quality.Id && x.MaterialCode == materialCode &&
                     x.NozzleDiameterMm == config.NozzleDiameterMm && x.MaximumColorSlots == config.MaximumColorSlots)
                     .OrderByDescending(x => x.CreatedAtUtc).ToListAsync(ct);
-                var identical = old.FirstOrDefault(x => x.SettingsJson == profile.SettingsJson);
+                var identical = old.FirstOrDefault(x => x.HasSameSettings(profile.SettingsJson));
                 if (identical is not null)
                 {
                     reused.Add(materialCode);
@@ -223,6 +223,8 @@ public sealed class CuraLibrarySyncService(PrintGridDbContext db, CuraResourceCa
             var detail = (await stderr) + (await stdout);
             if (process.ExitCode != 0 || !File.Exists(output) || new FileInfo(output).Length == 0)
                 throw new InvalidOperationException($"CuraEngine smoke-test thất bại: {detail[^Math.Min(detail.Length, 500)..]}");
+            if (!(await File.ReadAllTextAsync(output, ct)).Contains(";LAYER:", StringComparison.Ordinal))
+                throw new InvalidOperationException("CuraEngine smoke-test không tạo được lớp in từ mẫu kiểm tra.");
         }
         finally { directory.Delete(true); }
     }
@@ -236,10 +238,34 @@ public sealed class CuraLibrarySyncService(PrintGridDbContext db, CuraResourceCa
 
     private const string CubeStl = """
         solid verification_tetrahedron
-        facet normal 0 0 -1 outer loop vertex 0 0 0 vertex 0 10 0 vertex 10 0 0 endloop endfacet
-        facet normal 0 -1 0 outer loop vertex 0 0 0 vertex 10 0 0 vertex 0 0 10 endloop endfacet
-        facet normal -1 0 0 outer loop vertex 0 0 0 vertex 0 0 10 vertex 0 10 0 endloop endfacet
-        facet normal 1 1 1 outer loop vertex 10 0 0 vertex 0 10 0 vertex 0 0 10 endloop endfacet
+        facet normal 0 0 -1
+          outer loop
+            vertex 0 0 0
+            vertex 0 10 0
+            vertex 10 0 0
+          endloop
+        endfacet
+        facet normal 0 -1 0
+          outer loop
+            vertex 0 0 0
+            vertex 10 0 0
+            vertex 0 0 10
+          endloop
+        endfacet
+        facet normal -1 0 0
+          outer loop
+            vertex 0 0 0
+            vertex 0 0 10
+            vertex 0 10 0
+          endloop
+        endfacet
+        facet normal 1 1 1
+          outer loop
+            vertex 10 0 0
+            vertex 0 10 0
+            vertex 0 0 10
+          endloop
+        endfacet
         endsolid verification_tetrahedron
         """;
 }
