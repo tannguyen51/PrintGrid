@@ -34,4 +34,16 @@ public sealed class CuraResourceCatalogTests
         options.Qualities.Should().NotContain(x => x.Id == "base_global_standard");
         options.Variants.Should().Contain(x => x.Id == "creality_base_0.4" && x.NozzleDiameterMm == 0.4m);
     }
+
+    [Theory]
+    [InlineData("3di_d300")]
+    [InlineData("101Hero")]
+    [InlineData("abax_titan")]
+    public void Generic_quality_is_available_as_fallback_for_machines_without_material_specific_quality(string definition)
+    {
+        var options = Catalog().GetOptions(definition);
+        options.GlobalQualities.Should().Contain(x => x.Id == "normal" && x.QualityType == "normal");
+        options.GlobalQualities.Should().OnlyContain(x => x.IsGlobal);
+        options.Qualities.Should().NotContain(x => x.IsGlobal);
+    }
 }

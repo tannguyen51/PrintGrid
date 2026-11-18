@@ -65,8 +65,8 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
             var max = all.Aggregate(Vector3.Max);
             var scaled = (max - min) * (float)request.Scale;
             decimal Setting(string name) => decimal.Parse(global[name]?.ToString() ?? throw new InvalidDataException($"Profile thiếu {name}."), CultureInfo.InvariantCulture);
-            var bedWidth = Setting("machine_width"); var bedDepth = Setting("machine_depth"); var bedHeight = Setting("machine_height");
-            if ((decimal)scaled.X > bedWidth || (decimal)scaled.Y > bedDepth || (decimal)scaled.Z > bedHeight)
+            var bedWidth = Setting("machine_width"); var bedDepth = Setting("machine_depth");
+            if (!FitsBuildPlate(global, (decimal)scaled.X, (decimal)scaled.Y, (decimal)scaled.Z))
                 throw new InvalidDataException("Model theo hướng hiện tại vượt khổ máy. Hãy đổi hướng file hoặc chọn size nhỏ hơn.");
             var centered = global["machine_center_is_zero"]?.ToString().Equals("true", StringComparison.OrdinalIgnoreCase) == true;
             var offset = new Vector3((centered ? 0 : (float)bedWidth / 2) - (min.X + max.X) * (float)request.Scale / 2,
@@ -155,6 +155,24 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
         while ((count = await reader.ReadAsync(buffer.AsMemory(), token)) > 0)
         { tail.Append(buffer, 0, count); if (tail.Length > 65536) tail.Remove(0, tail.Length - 65536); }
         return tail.ToString();
+    }
+
+    public static bool FitsBuildPlate(JsonObject settings, decimal width, decimal depth, decimal height)
+    {
+        decimal Setting(string key) => decimal.Parse(settings[key]?.ToString()
+            ?? throw new InvalidDataException($"Profile thiếu {key}."), CultureInfo.InvariantCulture);
+        var bedWidth = Setting("machine_width");
+        var bedDepth = Setting("machine_depth");
+        var bedHeight = Setting("machine_height");
+        if (bedWidth <= 0 || bedDepth <= 0 || bedHeight <= 0 || width <= 0 || depth <= 0 || height <= 0 ||
+            width > bedWidth || depth > bedDepth || height > bedHeight) return false;
+        return settings["machine_shape"]?.ToString() switch
+        {
+            "rectangular" => true,
+            // The centered bounding rectangle must lie entirely inside the elliptical bed.
+            "elliptic" => width / bedWidth * (width / bedWidth) + depth / bedDepth * (depth / bedDepth) <= 1,
+            _ => throw new InvalidDataException("Loại bàn in trong profile không được hỗ trợ.")
+        };
     }
 
     public static void ApplyQuoteSettings(JsonObject settings, decimal layerHeight, int infillPercent)

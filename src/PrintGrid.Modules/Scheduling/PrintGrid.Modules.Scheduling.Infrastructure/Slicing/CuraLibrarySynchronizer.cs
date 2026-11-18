@@ -64,7 +64,7 @@ public sealed class CuraLibrarySyncService(PrintGridDbContext db, CuraResourceCa
             try
             {
                 var material = ChooseMaterial(options.Materials, materialCode, config.FilamentDiameterMm);
-                var quality = ChooseQuality(options.Qualities, material.Id, options.Machine.PreferredQualityType,
+                var quality = ChooseQuality(options.Qualities.Concat(options.GlobalQualities), material.Id, options.Machine.PreferredQualityType,
                     config.NozzleDiameterMm, config.CuraQualityId);
                 var variant = config.CuraVariantId;
                 var json = await ResolveAsync(config, material.Id, variant, quality.Id, ct);
@@ -123,6 +123,7 @@ public sealed class CuraLibrarySyncService(PrintGridDbContext db, CuraResourceCa
             return values.FirstOrDefault(x => x.Id.Equals(requested, StringComparison.OrdinalIgnoreCase))
                    ?? throw new ArgumentException("Quality profile đã chọn không tương thích máy/vật liệu.");
         return values.OrderByDescending(x => x.QualityType?.Equals(preferredType, StringComparison.OrdinalIgnoreCase) == true)
+            .ThenBy(x => x.IsGlobal)
             .ThenByDescending(x => x.VariantId?.Contains(nozzleText, StringComparison.OrdinalIgnoreCase) == true)
             .FirstOrDefault() ?? throw new ArgumentException("Không có quality profile tương thích.");
     }

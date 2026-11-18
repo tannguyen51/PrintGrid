@@ -253,6 +253,11 @@ def main():
                  **{k: parse_literal(v) for k, v in quality.items()},
                  "machine_extruder_count": args.slots}
     resolver = Resolver(defs, overrides, args.slots)
+    # Cura disables bed-temperature settings on machines without a heated bed.
+    # Material XML can still contain temperatures; those must not become hardware requirements.
+    if not resolver.value("machine_heated_bed"):
+        overrides.update({"default_material_bed_temperature": 0,
+                          "material_bed_temperature": 0, "material_bed_temperature_layer_0": 0})
     output = {"global": {key: resolver.value(key) for key in defs}}
     for index in range(args.slots): output[f"extruder.{index}"] = {key: resolver.value(key, index) for key in defs}
     args.output.write_text(json.dumps(output, ensure_ascii=False, allow_nan=False, separators=(",", ":")), encoding="utf-8")

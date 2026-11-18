@@ -31,8 +31,8 @@ public static class CuraProfileImporter
             throw new ArgumentException("Profile phải có đủ extruder.0 đến extruder.N tương ứng số tool màu.");
         var width = Number(global, "machine_width"); var depth = Number(global, "machine_depth"); var height = Number(global, "machine_height");
         if (new[] { width, depth, height }.Any(n => n is <= 0 or > 1000)) throw new ArgumentException("Khổ in profile không hợp lệ.");
-        if (global["machine_shape"]?.ToString() != "rectangular")
-            throw new ArgumentException("Báo giá hiện hỗ trợ bàn in chữ nhật; bàn tròn cần cấu hình kiểm tra vùng in riêng.");
+        if (global["machine_shape"]?.ToString() is not ("rectangular" or "elliptic"))
+            throw new ArgumentException("Profile phải khai báo bàn in chữ nhật hoặc elip.");
         if (!bool.TryParse(global["machine_heated_bed"]?.ToString(), out var heated) ||
             !bool.TryParse(global["machine_center_is_zero"]?.ToString(), out _))
         {

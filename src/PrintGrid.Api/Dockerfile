@@ -56,6 +56,9 @@ COPY tools/cura-library/ /opt/cura/tools/
 RUN cp /opt/cura/tools/cura-engine.sh /opt/cura/CuraEngine \
     && chmod 755 /opt/cura/CuraEngine /opt/cura/runtime/CuraEngine /opt/cura/tools/resolve_profile.py
 
+# Fail the image build if the extracted engine cannot start from the API's cwd.
+RUN /opt/cura/CuraEngine help 2>&1 | grep -F "Cura_SteamEngine version 5.11.0"
+
 USER printgrid
 EXPOSE 8080
 ENV ASPNETCORE_HTTP_PORTS=8080

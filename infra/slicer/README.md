@@ -174,6 +174,15 @@ This avoids the Windows Microsoft Store `python3` alias when the portable runtim
 is installed. Failed synchronization returns material-specific errors to the lab
 screen, where **Đồng bộ profile** retries an existing machine without recreating it.
 
+Material-specific quality presets take priority within the preferred quality type;
+inherited global quality presets remain available as fallbacks (including Cura's
+generic qualities). Resolved profiles for unheated beds set bed temperatures to
+zero. Rectangular and elliptical beds are supported; quotation checks that the
+model's centered bounding rectangle fits inside the actual bed outline.
+The Linux launcher explicitly invokes the host ELF loader because the pinned
+AppImage engine uses a relative interpreter path. Docker verifies engine startup
+from `/app` during the image build.
+
 Admin can run an idempotent database synchronization with
 `POST /api/v1/cura-library/sync`. The endpoint resolves and smoke-tests profiles for
 non-approved configured FDM machines, reuses identical active profiles, and never

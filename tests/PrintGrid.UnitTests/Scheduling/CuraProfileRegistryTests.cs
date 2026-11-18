@@ -139,4 +139,28 @@ public class CuraProfileRegistryTests
         var import = () => CuraProfileImporter.Parse("x", "x", "x", "PLA", "1", "5.11.0", 1, "{\"inherits\":\"fdmprinter\"}");
         import.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void Round_bed_profile_can_be_registered_for_slicing_with_bed_shape_validation()
+    {
+        var profile = CuraProfileImporter.Parse("Round", "Test Lab", "TEST-220", "PLA", "1", "5.11.0", 1,
+            _json.Replace("rectangular", "elliptic"));
+        profile.Matches(Machine()).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("99.822", 99.82)]
+    [InlineData("99.825", 99.83)]
+    public void Dimensions_match_at_the_precision_persisted_for_machines(string originalHeight, decimal storedHeight)
+    {
+        var machine = Machine();
+        machine.UpdateSpecifications("M1", "test-220", PrintTechnology.Fdm,
+            BuildVolume.Create(220, 220, storedHeight), .1m, .2m, ["PLA"]);
+        var profile = CuraProfileImporter.Parse("Round", "Test Lab", "TEST-220", "PLA", "1", "5.11.0", 1,
+            _json.Replace("\"machine_height\":250", $"\"machine_height\":{originalHeight}"));
+        profile.Matches(machine).Should().BeTrue();
+        machine.UpdateSpecifications("M1", "test-220", PrintTechnology.Fdm,
+            BuildVolume.Create(220, 220, 100), .1m, .2m, ["PLA"]);
+        profile.Matches(machine).Should().BeFalse();
+    }
 }

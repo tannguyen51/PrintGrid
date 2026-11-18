@@ -19,7 +19,7 @@ export interface CuraMachineDefinition {
 interface CuraPresetDefinition {
   id: string; name: string; materialId?: string; variantId?: string; qualityType?: string; nozzleDiameterMm?: number
 }
-interface CuraMachineOptions { variants: CuraPresetDefinition[]; qualities: CuraPresetDefinition[] }
+interface CuraMachineOptions { variants: CuraPresetDefinition[]; qualities: CuraPresetDefinition[]; globalQualities?: CuraPresetDefinition[] }
 
 export interface CuraProfileSummary {
   id: string; name: string; manufacturer: string; machineModel: string; materialCode: string
@@ -56,7 +56,7 @@ export function PrinterConfigurationFields({ value, onChange }: {
         {(options.data?.variants ?? []).map(x => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</TextField></Grid>
       <Grid size={{ xs: 12, sm: 6 }}><TextField select fullWidth label="Quality profile (tự chọn nếu để trống)" value={value.curaQualityId}
         onChange={e => update('curaQualityId', e.target.value)}><MenuItem value="">Tự động · Standard</MenuItem>
-        {(options.data?.qualities ?? []).filter(x => !x.variantId || x.variantId.includes(String(value.nozzleDiameterMm)))
+        {[...(options.data?.qualities ?? []), ...(options.data?.globalQualities ?? [])].filter(x => !x.variantId || x.variantId.includes(String(value.nozzleDiameterMm)))
           .map(x => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</TextField></Grid>
     </>}
     {([

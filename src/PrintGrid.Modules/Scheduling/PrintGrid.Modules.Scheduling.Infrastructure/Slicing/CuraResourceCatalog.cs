@@ -12,9 +12,10 @@ public sealed record CuraMachineDefinition(string Id, string Manufacturer, strin
 public sealed record CuraMaterialDefinition(string Id, string Brand, string Name, string MaterialCode,
     string Guid, decimal DiameterMm, decimal Density);
 public sealed record CuraPresetDefinition(string Id, string Name, string DefinitionId, string? MaterialId,
-    string? VariantId, string? QualityType, decimal? NozzleDiameterMm);
+    string? VariantId, string? QualityType, decimal? NozzleDiameterMm, bool IsGlobal = false);
 public sealed record CuraMachineOptions(CuraMachineDefinition Machine, IReadOnlyList<CuraMaterialDefinition> Materials,
-    IReadOnlyList<CuraPresetDefinition> Variants, IReadOnlyList<CuraPresetDefinition> Qualities);
+    IReadOnlyList<CuraPresetDefinition> Variants, IReadOnlyList<CuraPresetDefinition> Qualities,
+    IReadOnlyList<CuraPresetDefinition> GlobalQualities);
 
 /// <summary>Read-only view over the pinned Cura resource tree. IDs are file stems, never display names.</summary>
 public sealed class CuraResourceCatalog
@@ -55,7 +56,9 @@ public sealed class CuraResourceCatalog
     {
         var machine = Machines.SingleOrDefault(x => x.Id.Equals(definitionId, StringComparison.OrdinalIgnoreCase))
                       ?? throw new KeyNotFoundException("Không tìm thấy machine definition trong thư viện Cura đã ghim.");
-        return new(machine, Materials, LoadPresets("variants", definitionId), LoadPresets("quality", definitionId));
+        var qualities = LoadPresets("quality", definitionId);
+        return new(machine, Materials, LoadPresets("variants", definitionId),
+            qualities.Where(x => !x.IsGlobal).ToList(), qualities.Where(x => x.IsGlobal).ToList());
     }
 
     private IReadOnlyList<CuraMachineDefinition> LoadMachines()
@@ -135,8 +138,8 @@ public sealed class CuraResourceCatalog
         {
             var sections = ParseIni(file);
             if (!sections.TryGetValue("general", out var general) || !sections.TryGetValue("metadata", out var metadata)) continue;
-            if (directory == "quality" && metadata.GetValueOrDefault("global_quality", "false")
-                    .Equals("true", StringComparison.OrdinalIgnoreCase)) continue;
+            var isGlobal = directory == "quality" && metadata.GetValueOrDefault("global_quality", "false")
+                .Equals("true", StringComparison.OrdinalIgnoreCase);
             var definition = general.GetValueOrDefault("definition", "");
             if (definition.Length > 0 && !DefinitionApplies(definitionId, definition)) continue;
             decimal? nozzle = null;
@@ -145,7 +148,7 @@ public sealed class CuraResourceCatalog
                     System.Globalization.CultureInfo.InvariantCulture, out var parsedNozzle)) nozzle = parsedNozzle;
             result.Add(new(PresetId(file), general.GetValueOrDefault("name", Path.GetFileName(file)),
                 definition, metadata.GetValueOrDefault("material"), metadata.GetValueOrDefault("variant"),
-                metadata.GetValueOrDefault("quality_type"), nozzle));
+                metadata.GetValueOrDefault("quality_type"), nozzle, isGlobal));
         }
         return result.GroupBy(x => x.Id).Select(x => x.First()).OrderBy(x => x.Name).ToList();
     }

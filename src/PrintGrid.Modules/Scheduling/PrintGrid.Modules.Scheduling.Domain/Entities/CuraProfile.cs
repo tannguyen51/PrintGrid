@@ -64,7 +64,13 @@ public sealed class CuraProfile : Entity<Guid>
                                       Manufacturer.Equals(c.Manufacturer.Trim(), StringComparison.InvariantCultureIgnoreCase) && MachineModel.Equals(m.Model.Trim(), StringComparison.InvariantCultureIgnoreCase) &&
                                       NozzleDiameterMm == c.NozzleDiameterMm && FilamentDiameterMm == c.FilamentDiameterMm &&
                                       ExtruderCount == c.ExtruderCount && MaximumColorSlots == c.MaximumColorSlots &&
-                                      WidthMm == m.BuildVolume.WidthMm && DepthMm == m.BuildVolume.DepthMm && HeightMm == m.BuildVolume.HeightMm &&
+                                      SameDimension(WidthMm, m.BuildVolume.WidthMm) &&
+                                      SameDimension(DepthMm, m.BuildVolume.DepthMm) &&
+                                      SameDimension(HeightMm, m.BuildVolume.HeightMm) &&
                                       HeatedBed == c.HeatedBed && RequiredNozzleTemperatureC <= c.MaxNozzleTemperatureC &&
                                       RequiredBedTemperatureC <= c.MaxBedTemperatureC && m.SupportedMaterials.Contains(MaterialCode);
+
+    // PostgreSQL persists machine dimensions at scale 2 and rounds ties away from zero.
+    private static bool SameDimension(decimal profile, decimal machine) =>
+        Math.Round(profile, 2, MidpointRounding.AwayFromZero) == Math.Round(machine, 2, MidpointRounding.AwayFromZero);
 }
