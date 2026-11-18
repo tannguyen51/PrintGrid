@@ -15,6 +15,8 @@ public interface ILabRepository
     Task AddAsync(Lab lab, CancellationToken cancellationToken = default);
     void AddMachine(Machine machine);
     void RemoveMachine(Machine machine);
+    void AddMaterialStock(MaterialStock stock);
+    void AddStockTransaction(StockTransaction transaction);
     Task<NetworkStatsSnapshot> GetNetworkStatsAsync(CancellationToken cancellationToken = default);
 }
 

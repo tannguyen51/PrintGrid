@@ -30,7 +30,10 @@ public class AdjustMaterialStockCommandHandler(ILabRepository labs, IUnitOfWork 
         if (lab is null) return Result.Failure<MaterialStockDto>(Error.NotFound("Lab", command.LabId));
         try
         {
+            var transactionIds = lab.StockTransactions.Select(x => x.Id).ToHashSet();
             lab.AdjustMaterialStock(command.MaterialCode, command.ColorCode, command.DeltaGrams, command.Reason);
+            foreach (var transaction in lab.StockTransactions.Where(x => !transactionIds.Contains(x.Id)))
+                labs.AddStockTransaction(transaction);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             var stock = lab.MaterialStocks.Single(x => x.MaterialCode.Equals(command.MaterialCode.Trim(), StringComparison.InvariantCultureIgnoreCase)
                 && x.ColorCode.Equals(command.ColorCode.Trim(), StringComparison.InvariantCultureIgnoreCase));

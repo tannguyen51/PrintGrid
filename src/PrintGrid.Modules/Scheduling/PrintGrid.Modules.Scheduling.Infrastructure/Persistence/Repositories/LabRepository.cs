@@ -68,6 +68,10 @@ public class LabRepository(PrintGridDbContext context) : ILabRepository
 
     public void RemoveMachine(Machine machine) => context.Set<Machine>().Remove(machine);
 
+    public void AddMaterialStock(MaterialStock stock) => context.Set<MaterialStock>().Add(stock);
+
+    public void AddStockTransaction(StockTransaction transaction) => context.Set<StockTransaction>().Add(transaction);
+
     public async Task<NetworkStatsSnapshot> GetNetworkStatsAsync(CancellationToken cancellationToken = default)
     {
         var labs = await context.Set<Lab>().Include(l => l.Machines).AsNoTracking().ToListAsync(cancellationToken);
