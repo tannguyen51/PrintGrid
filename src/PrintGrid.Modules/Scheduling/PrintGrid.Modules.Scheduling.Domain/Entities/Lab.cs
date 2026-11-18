@@ -268,13 +268,15 @@ public class Lab : AggregateRoot<Guid>
         var existing = _materialStocks.SingleOrDefault(s => s.MaterialCode == material && s.ColorCode == color);
         if (existing is null)
         {
-            existing = MaterialStock.Create(Id, material, color, 0m, reorderPointGrams);
+            // The first count is the opening balance, not an adjustment. Persisting the stock and
+            // an adjustment row in the same first write also makes the ledger depend on insert
+            // ordering before its stock row exists.
+            existing = MaterialStock.Create(Id, material, color, availableGrams, reorderPointGrams);
             _materialStocks.Add(existing);
+            return;
         }
-        else
-        {
-            existing.ConfigureReorderPoint(reorderPointGrams);
-        }
+
+        existing.ConfigureReorderPoint(reorderPointGrams);
 
         var delta = availableGrams - existing.AvailableGrams;
         if (delta != 0) AdjustMaterialStock(material, color, delta, "Stock count adjustment");

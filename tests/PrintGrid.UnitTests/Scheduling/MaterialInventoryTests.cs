@@ -5,6 +5,19 @@ namespace PrintGrid.UnitTests.Scheduling;
 public class MaterialInventoryTests
 {
     [Fact]
+    public void Initial_stock_count_is_stored_as_opening_balance_without_adjustment()
+    {
+        var lab = LabBuilder.Default();
+
+        lab.SetMaterialStock("PLA", "Black", 50m, 20m);
+
+        var stock = lab.MaterialStocks.Single();
+        stock.AvailableGrams.Should().Be(50m);
+        stock.ReorderPointGrams.Should().Be(20m);
+        lab.StockTransactions.Should().BeEmpty();
+    }
+
+    [Fact]
     public void Restock_from_50_by_20_has_running_total_70()
     {
         var lab = Lab.Onboard("Lab", "HCM", 1);
