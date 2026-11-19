@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Admin.Application.AuditLogs;
 using PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
@@ -214,7 +215,7 @@ public class JobsController(
         }
 
         var result = await sender.Send(
-            new CompleteJobCommand(jobId, request.ActualPrintMinutes, CompleteJobRequest.SelfReport, photoKeys, request.ActualMaterialGrams),
+            new CompleteJobCommand(jobId, request.ActualPrintMinutes, request.SelfReport, photoKeys, request.ActualMaterialGrams),
             cancellationToken);
         if (!result.IsFailure) return ToResult(result);
         foreach (var key in photoKeys)
@@ -349,18 +350,23 @@ public class JobsController(
     }
 }
 
-public sealed class CompleteJobRequest(List<IFormFile>? photos, int actualPrintMinutes, decimal? actualMaterialGrams)
+public sealed class CompleteJobRequest
 {
-    public int ActualPrintMinutes { get; } = actualPrintMinutes;
-    public static string SelfReport => string.Empty;
-    public List<IFormFile>? Photos { get; } = photos;
+    [Range(1, int.MaxValue)]
+    public int ActualPrintMinutes { get; set; }
+
+    [Required, StringLength(2000)]
+    public string SelfReport { get; set; } = string.Empty;
+
+    public List<IFormFile>? Photos { get; set; }
 
     /// <summary>Material the lab actually used, for the stock ledger. Optional until the form collects it.</summary>
-    public decimal? ActualMaterialGrams { get; } = actualMaterialGrams;
+    [Range(typeof(decimal), "0.01", "99999999.99")]
+    public decimal? ActualMaterialGrams { get; set; }
 }
-public sealed class UploadInspectionPhotosRequest(List<IFormFile>? photos)
+public sealed class UploadInspectionPhotosRequest
 {
-    public List<IFormFile>? Photos { get; } = photos;
+    public List<IFormFile>? Photos { get; set; }
 }
 
 public record ReviewQcProofRequest(bool Approved, string? Reason);

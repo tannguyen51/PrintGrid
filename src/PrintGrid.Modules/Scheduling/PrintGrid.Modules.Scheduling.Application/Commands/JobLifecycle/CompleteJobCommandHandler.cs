@@ -21,6 +21,7 @@ public class CompleteJobCommandHandler(
         if (job.LabId is null) return Result.Failure(Error.Conflict("Job has no assigned lab"));
         var lab = await labs.GetByIdAsync(job.LabId.Value, cancellationToken);
         if (lab is null) return Result.Failure(Error.NotFound("Lab", job.LabId.Value));
+        var existingTransactions = lab.StockTransactions.Select(transaction => transaction.Id).ToHashSet();
 
         var result = job.Complete(
             clock.UtcNow,
@@ -55,6 +56,9 @@ public class CompleteJobCommandHandler(
                     compensated * color.Value / total, "Bồi hoàn do lỗi hub (hệ thống chịu phí)");
             }
         }
+
+        foreach (var transaction in lab.StockTransactions.Where(transaction => !existingTransactions.Contains(transaction.Id)))
+            labs.AddStockTransaction(transaction);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
