@@ -86,6 +86,31 @@ public class AssignmentEngineTests
         _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns([lab]);
     }
 
+    [Fact]
+    public async Task Ops_can_assign_an_existing_Cura_job_whose_quote_has_no_quantity_field()
+    {
+        OneCapableLab();
+        var lab = (await _labs.GetActiveWithMachinesAsync()).Single();
+        var job = PendingJob();
+        job.SetQuotedProduction(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Colors = new[] { new { ColorCode = job.Specification.ColorCode, Grams = job.Specification.MaterialGrams } },
+            PrintMinutes = 60
+        }), lab.Machines.Single().Id);
+        _jobs.GetByIdAsync(job.Id, Arg.Any<CancellationToken>()).Returns(job);
+
+        var handler = new PrintGrid.Modules.Scheduling.Application.Commands.AssignJob.AssignJobCommandHandler(_jobs, Engine());
+        var result = await handler.Handle(
+            new PrintGrid.Modules.Scheduling.Application.Commands.AssignJob.AssignJobCommand(job.Id), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        job.Status.Should().Be(JobStatus.Assigned);
+        job.MachineId.Should().Be(lab.Machines.Single().Id);
+        await _decisions.Received(1).AddAsync(
+            Arg.Is<AssignmentDecision>(d => d.ActorType == "ops" && d.Outcome == AssignmentOutcomes.Assigned),
+            Arg.Any<CancellationToken>());
+    }
+
     private (Lab First, Lab Second) TwoCapableLabs()
     {
         var first = Lab.Onboard("Lab A", "HCM", 1);

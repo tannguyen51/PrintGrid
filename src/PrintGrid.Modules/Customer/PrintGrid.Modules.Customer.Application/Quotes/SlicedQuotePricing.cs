@@ -24,7 +24,8 @@ public sealed record QuotePriceBreakdown(
     decimal TotalAmount,
     decimal WidthMm,
     decimal DepthMm,
-    decimal HeightMm);
+    decimal HeightMm,
+    int Quantity = 1);
 
 public static class SlicedQuotePricing
 {
@@ -66,7 +67,7 @@ public static class SlicedQuotePricing
         var failureAllowance = (materialAmount + machine) * failure / (1 - failure);
         var total = decimal.Round(materialAmount + machine + service + failureAllowance, 0, MidpointRounding.AwayFromZero);
         return new QuotePriceBreakdown(slice.Colors, slice.PrintMinutes, materialAmount, machine, service,
-            failureAllowance, total, widthMm, depthMm, heightMm);
+            failureAllowance, total, widthMm, depthMm, heightMm, quantity);
     }
 
     /// <summary>Section 4 BR-05: Calculate quoted price for a pinned model, applying surcharge coefficient.</summary>
@@ -92,6 +93,6 @@ public static class SlicedQuotePricing
         var withSurcharge = Math.Round(subtotal * pinCoefficient, 0, MidpointRounding.AwayFromZero);
 
         return new QuotePriceBreakdown(slice.Colors, slice.PrintMinutes, baseTotal, machineCost, serviceCost, allowance,
-            withSurcharge, widthMm, depthMm, heightMm);
+            withSurcharge, widthMm, depthMm, heightMm, quantity);
     }
 }

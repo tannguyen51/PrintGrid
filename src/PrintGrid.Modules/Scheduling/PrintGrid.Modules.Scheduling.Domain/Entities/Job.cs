@@ -21,10 +21,20 @@ public class Job : AggregateRoot<Guid>
         if (ProductionQuoteJson is null) return new Dictionary<string, decimal> { [Specification.ColorCode] = Specification.MaterialGrams };
         using var doc = System.Text.Json.JsonDocument.Parse(ProductionQuoteJson);
         var root = doc.RootElement;
-        var originalQuantity = root.GetProperty("Quantity").GetDecimal();
-        return root.GetProperty("Colors").EnumerateArray().ToDictionary(
+        var colors = root.GetProperty("Colors").EnumerateArray().ToDictionary(
             c => c.GetProperty("ColorCode").GetString()!,
-            c => decimal.Round(c.GetProperty("Grams").GetDecimal() * Quantity / originalQuantity, 2));
+            c => c.GetProperty("Grams").GetDecimal());
+        var batchGrams = colors.Values.Sum();
+        if (batchGrams <= 0)
+            throw new InvalidOperationException("Frozen production quote has no material usage.");
+
+        // Older Cura quotes stored batch totals without Quantity. Their job specification
+        // already holds this job's total grams (including split scaling), so recover the
+        // share from that total instead of treating batch grams as per-unit consumption.
+        var scale = root.TryGetProperty("Quantity", out var quantity) && quantity.GetDecimal() > 0
+            ? Quantity / quantity.GetDecimal()
+            : Specification.MaterialGrams / batchGrams;
+        return colors.ToDictionary(c => c.Key, c => decimal.Round(c.Value * scale, 2));
     }
     public JobSpecification Specification { get; private init; } = null!;
     public JobStatus Status { get; private set; }
@@ -142,6 +152,7 @@ public class Job : AggregateRoot<Guid>
             QuotedMachineId = original.QuotedMachineId,
             Specification = specification,
             EstimatedPrintMinutes = original.EstimatedPrintMinutes,
+            Quantity = original.Quantity,
             InternalDueDate = original.InternalDueDate,
             Status = JobStatus.Pending,
             AttemptNumber = 1,

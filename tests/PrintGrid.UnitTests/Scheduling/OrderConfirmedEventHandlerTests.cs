@@ -1,135 +1,66 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PrintGrid.Modules.Customer.Domain.Events;
-using PrintGrid.Modules.Scheduling.Application.Abstractions;
 using PrintGrid.Modules.Scheduling.Application.EventHandlers;
-using PrintGrid.Modules.Scheduling.Application.Services;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
+using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
 using PrintGrid.SharedKernel.Interfaces;
 
 namespace PrintGrid.UnitTests.Scheduling;
 
-/// <summary>
-/// Auto-assign right after the order is confirmed: every newly created job goes through the
-/// shared engine once, and one bad job cannot stop the rest of the order (FR-SCHED-006/007).
-/// </summary>
 public sealed class OrderConfirmedEventHandlerTests
 {
-    private readonly IJobRepository _jobs = Substitute.For<IJobRepository>();
-    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
-    private readonly IAssignmentEngine _engine = Substitute.For<IAssignmentEngine>();
-    private readonly IPlacementShortfallService _shortfall = Substitute.For<IPlacementShortfallService>();
-
-    private OrderConfirmedEventHandler Handler() =>
-        new(_jobs, _unitOfWork, _engine, _shortfall, NullLogger<OrderConfirmedEventHandler>.Instance);
-
-    private static readonly AssignmentOutcome _assigned = new(
-        Assigned: true,
-        Result: new PrintGrid.Modules.Scheduling.Application.Commands.AssignJob.AssignmentResultDto(Guid.NewGuid(),
-            DateTime.UtcNow.AddHours(1), DateTime.UtcNow.AddHours(2), 0.9m),
-        Outcome: AssignmentOutcomes.Assigned,
-        Reason: null,
-        Ranking: [],
-        Rejections: [],
-        ElapsedMs: 120,
-        BudgetExceeded: false,
-        EarliestFeasibleEndUtc: null);
-
-    private static AssignmentOutcome Unplaced(string outcome, string? reason = null) =>
-        new(false, null, outcome, reason, [], [], ElapsedMs: 120, BudgetExceeded: false, EarliestFeasibleEndUtc: null);
-
-    private static OrderConfirmedEvent Event(int itemCount = 2) =>
-        new(Guid.NewGuid(),
-            Enumerable.Range(0, itemCount)
-                .Select(_ => new OrderConfirmedItem(
-                    Guid.NewGuid(), Guid.NewGuid(), 1, "PLA", "BLUE",
-                    0.2m, 60, 10m, 20m, 20m, 20m))
-                .ToList(),
-            DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)));
-
-    private List<Job> CaptureCreatedJobs()
-    {
-        var created = new List<Job>();
-        _jobs.AddAsync(Arg.Do<Job>(created.Add), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
-        return created;
-    }
-
     [Fact]
-    public async Task Each_new_job_is_auto_assigned_once_after_the_jobs_are_committed()
+    public async Task Confirmation_creates_pending_jobs_for_ops_without_assigning_labs_or_machines()
     {
-        var created = CaptureCreatedJobs();
-        _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
-            .Returns(_assigned);
+        var jobs = Substitute.For<IJobRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var created = new List<Job>();
+        jobs.AddAsync(Arg.Do<Job>(created.Add), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        var date = new DateOnly(2026, 11, 25);
+        var notification = new OrderConfirmedEvent(Guid.NewGuid(),
+            [new OrderConfirmedItem(Guid.NewGuid(), Guid.NewGuid(), 3, "PLA", "BLUE", .2m, 60, 10m, 20m, 30m, 40m),
+             new OrderConfirmedItem(Guid.NewGuid(), Guid.NewGuid(), 1, "PLA", "BLACK", .1m, 30, 5m, 10m, 20m, 30m)], date);
 
-        await Handler().Handle(Event(2), CancellationToken.None);
+        var handler = new OrderConfirmedEventHandler(jobs, unitOfWork, NullLogger<OrderConfirmedEventHandler>.Instance);
+        await handler.Handle(notification, CancellationToken.None);
 
         created.Should().HaveCount(2);
-        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        await _engine.Received(2).AssignAsync(
-            Arg.Any<Job>(),
-            Arg.Is<AssignmentRequest>(request =>
-                request.Trigger == AssignmentTriggers.InitialAssign &&
-                request.TimeBudget == TimeSpan.FromSeconds(AssignmentEngine.DefaultTimeBudgetSeconds)),
-            Arg.Any<CancellationToken>());
-
-        // The engine must receive the SAME job instances that were persisted, not copies.
         foreach (var job in created)
-            await _engine.Received(1).AssignAsync(job, Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>());
-
-        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(null!, null!);
+        {
+            job.Status.Should().Be(JobStatus.Pending);
+            job.LabId.Should().BeNull();
+            job.MachineId.Should().BeNull();
+            job.PlannedStartUtc.Should().BeNull();
+            job.InternalDueDate.Should().Be(date.AddDays(-2));
+        }
+        created[0].Quantity.Should().Be(3);
+        created[0].EstimatedPrintMinutes.Should().Be(180);
+        created[0].Specification.MaterialGrams.Should().Be(30);
+        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task A_job_with_no_feasible_slot_goes_to_the_date_change_flow()
+    public async Task Pending_job_keeps_the_quoted_machine_profile_without_assigning_that_machine()
     {
-        CaptureCreatedJobs();
-        _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Unplaced(AssignmentOutcomes.NoFeasibleSlot, "No capable machine has capacity"));
+        var jobs = Substitute.For<IJobRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        Job? created = null;
+        jobs.AddAsync(Arg.Do<Job>(job => created = job), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        var machine = Guid.NewGuid();
+        const string json = "{\"Colors\":[{\"ColorCode\":\"BLACK\",\"Grams\":30}]}";
+        var item = new OrderConfirmedItem(Guid.NewGuid(), Guid.NewGuid(), 3, "PLA", "BLACK", .2m, 60, 10m,
+            20m, 30m, 40m, CalculationJson: json, QuotedMachineId: machine);
+        var notification = new OrderConfirmedEvent(Guid.NewGuid(), [item], new DateOnly(2026, 11, 25));
 
-        await Handler().Handle(Event(1), CancellationToken.None);
+        await new OrderConfirmedEventHandler(jobs, unitOfWork, NullLogger<OrderConfirmedEventHandler>.Instance)
+            .Handle(notification, CancellationToken.None);
 
-        await _shortfall.Received(1).HandleAsync(
-            Arg.Any<Job>(), "No capable machine has capacity", Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task A_job_with_no_capable_machine_goes_to_the_date_change_flow()
-    {
-        CaptureCreatedJobs();
-        _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Unplaced(AssignmentOutcomes.NoCapableMachine, "No lab can satisfy the specification"));
-
-        await Handler().Handle(Event(1), CancellationToken.None);
-
-        await _shortfall.Received(1).HandleAsync(
-            Arg.Any<Job>(), "No lab can satisfy the specification", Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task A_lost_placement_race_is_not_treated_as_a_shortfall()
-    {
-        CaptureCreatedJobs();
-        _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Unplaced(AssignmentOutcomes.PlacementRace, "constraint lost"));
-
-        await Handler().Handle(Event(), CancellationToken.None);
-
-        await _shortfall.DidNotReceiveWithAnyArgs().HandleAsync(null!, null!);
-    }
-
-    [Fact]
-    public async Task A_failure_on_one_job_does_not_block_the_remaining_jobs()
-    {
-        var created = CaptureCreatedJobs();
-        _engine.AssignAsync(Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>())
-            .Returns<Task<AssignmentOutcome>>(_ => throw new InvalidOperationException("engine blew up"));
-
-        var act = () => Handler().Handle(Event(3), CancellationToken.None);
-
-        await act.Should().NotThrowAsync();
-        await _engine.Received(3).AssignAsync(
-            Arg.Any<Job>(), Arg.Any<AssignmentRequest>(), Arg.Any<CancellationToken>());
-        created.Should().HaveCount(3);
+        created!.Status.Should().Be(JobStatus.Pending);
+        created.ProductionQuoteJson.Should().Be(json);
+        created.QuotedMachineId.Should().Be(machine);
+        created.MachineId.Should().BeNull();
+        created.MaterialByColor()["BLACK"].Should().Be(30);
     }
 }
