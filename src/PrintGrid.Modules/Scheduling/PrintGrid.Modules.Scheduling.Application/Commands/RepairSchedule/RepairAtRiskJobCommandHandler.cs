@@ -83,8 +83,8 @@ public class RepairAtRiskJobCommandHandler(IJobRepository jobs, ILabRepository l
         var request = DateChangeRequest.Propose(
             job.Id,
             job.OrderItemId,
-            job.InternalDueDate.AddDays(PlacementShortfallService.HubAndTransitBufferDays),
-            proposed.AddDays(PlacementShortfallService.HubAndTransitBufferDays),
+            job.InternalDueDate.AddDays(job.DeliveryBufferDays),
+            proposed.AddDays(job.DeliveryBufferDays),
             DateChangeReason.ReprintDeadlineUnrecoverable,
             "Không thể đáp ứng ngày cam kết sau khi thử chia số lượng cho nhiều lab",
             token: Guid.NewGuid().ToString("N"),

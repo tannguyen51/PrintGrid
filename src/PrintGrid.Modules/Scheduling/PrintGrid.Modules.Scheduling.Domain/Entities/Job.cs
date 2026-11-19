@@ -39,6 +39,8 @@ public class Job : AggregateRoot<Guid>
     public JobSpecification Specification { get; private init; } = null!;
     public JobStatus Status { get; private set; }
     public DateOnly InternalDueDate { get; private set; }
+    public int DeliveryBufferDays { get; private set; } = 2;
+    public int LastMileDays { get; private set; }
     public int EstimatedPrintMinutes { get; private init; }
     public int? ActualPrintMinutes { get; private set; }
     public decimal? ActualMaterialGrams { get; private set; }
@@ -91,11 +93,14 @@ public class Job : AggregateRoot<Guid>
         Guid modelId,
         JobSpecification specification,
         int estimatedPrintMinutes,
-        DateOnly internalDueDate, int quantity = 1, Guid? parentJobId = null)
+        DateOnly internalDueDate, int quantity = 1, Guid? parentJobId = null,
+        int deliveryBufferDays = 2, int lastMileDays = 0)
     {
         if (estimatedPrintMinutes <= 0)
             throw new ArgumentOutOfRangeException(nameof(estimatedPrintMinutes), "Estimate must be positive");
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(quantity);
+        ArgumentOutOfRangeException.ThrowIfNegative(deliveryBufferDays);
+        ArgumentOutOfRangeException.ThrowIfNegative(lastMileDays);
 
         return new Job
         {
@@ -105,6 +110,8 @@ public class Job : AggregateRoot<Guid>
             Specification = specification,
             EstimatedPrintMinutes = estimatedPrintMinutes,
             InternalDueDate = internalDueDate,
+            DeliveryBufferDays = deliveryBufferDays,
+            LastMileDays = lastMileDays,
             Status = JobStatus.Pending,
             AttemptNumber = 1,
             Priority = JobPriority.Normal,
@@ -154,6 +161,8 @@ public class Job : AggregateRoot<Guid>
             EstimatedPrintMinutes = original.EstimatedPrintMinutes,
             Quantity = original.Quantity,
             InternalDueDate = original.InternalDueDate,
+            DeliveryBufferDays = original.DeliveryBufferDays,
+            LastMileDays = original.LastMileDays,
             Status = JobStatus.Pending,
             AttemptNumber = 1,
             Priority = JobPriority.Urgent,
@@ -196,7 +205,8 @@ public class Job : AggregateRoot<Guid>
                 Specification.ToleranceMm,
                 Specification.Technology,
                 decimal.Round(Specification.MaterialGrams * ratio, 2));
-            var child = Create(OrderItemId, ModelId, spec, Math.Max(1, (int)Math.Ceiling(EstimatedPrintMinutes * ratio)), InternalDueDate, q, Id);
+            var child = Create(OrderItemId, ModelId, spec, Math.Max(1, (int)Math.Ceiling(EstimatedPrintMinutes * ratio)), InternalDueDate, q, Id,
+                DeliveryBufferDays, LastMileDays);
             child.SetQuotedProduction(ProductionQuoteJson, QuotedMachineId);
             return child;
         }).ToList();

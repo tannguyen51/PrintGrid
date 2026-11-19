@@ -48,6 +48,8 @@ export interface Job {
   toleranceMm: number
   technology: string
   orderNumber?: string | null
+  dispatchMode?: 'Automatic' | 'Manual' | null
+  orderQuantity?: number | null
   modelFileName?: string | null
   sha256?: string | null
   productionQuote?: {

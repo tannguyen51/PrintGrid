@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '../../shared/api/apiClient'
 import {
@@ -26,7 +27,7 @@ import {
 import { ArrowBackRounded, ArrowForwardRounded, ExpandMoreRounded, PriceCheckRounded } from '@mui/icons-material'
 import type { Quote } from './quoteTypes'
 import { COLORS, INFILL_OPTIONS, MATERIALS, QUALITY_GRADES } from './quoteTypes'
-import { useCreateQuote, usePlaceOrder, useQuotes } from './useQuotes'
+import { useCreateQuote, usePlaceOrder, useQuote, useQuotes } from './useQuotes'
 import { QuotePriceDetails } from './QuotePriceDetails'
 import { useAuth } from '../../app/AuthContext'
 import TechConstraintsSelector from './TechConstraintsSelector'
@@ -66,11 +67,26 @@ export default function OrderConfigPage() {
 
   // Quote + address state
   const [quote, setQuote] = useState<Quote | null>(null)
+  const quoteStatus = useQuote(quote?.id ?? null)
+  useEffect(() => {
+    if (quoteStatus.data) setQuote(current => current?.id === quoteStatus.data.id ? quoteStatus.data : current)
+  }, [quoteStatus.data])
   const [street, setStreet] = useState('')
   const [ward, setWard] = useState('')
   const [district, setDistrict] = useState('')
   const [city, setCity] = useState('')
   const [postalCode, setPostalCode] = useState('')
+  const [requestedDeliveryDate, setRequestedDeliveryDate] = useState('')
+  const addressValid = !!street.trim() && street.trim().length <= 200 && !!ward.trim() && ward.trim().length <= 100
+    && !!district.trim() && district.trim().length <= 100 && !!city.trim() && city.trim().length <= 100 && postalCode.trim().length <= 20
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const delivery = useQuery({
+    queryKey: ['delivery-preview', quote?.id, requestedDeliveryDate],
+    enabled: quote?.status === 'Ready' && requestedDeliveryDate > today,
+    queryFn: () => apiClient.post<{ earliestDeliveryDate: string; promisedDeliveryDate: string; canMeetRequestedDate: boolean }>('/orders/delivery-preview',
+      { quoteId: quote!.id, requestedDeliveryDate }).then(r => r.data),
+    staleTime: 0,
+  })
   const [orderError, setOrderError] = useState<string | null>(null)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const configKey = JSON.stringify([modelId, material, colors, sizeCode, polishing, layerIndex, infill, quantity, techConstraints ?? {}, pinnedModelId])
@@ -172,6 +188,7 @@ export default function OrderConfigPage() {
     try {
       await placeOrder.mutateAsync({
         quoteId: quote.id,
+        requestedDeliveryDate,
         street: street.trim(),
         ward: ward.trim(),
         district: district.trim(),
@@ -203,6 +220,24 @@ export default function OrderConfigPage() {
         return { label: d > 0 ? `Còn ${d} ngày ${h % 24} giờ` : `Còn ${h} giờ ${Math.floor((ms % 3_600_000) / 60_000)} phút`, expired: false }
       })()
     : null
+
+  const orderBlockReason = (() => {
+    if (!quote) return null
+    if (quote.status === 'Draft') return 'Báo giá đang chờ Ops duyệt. Sau khi được duyệt, bạn mới có thể xác nhận đặt hàng.'
+    if (quote.status === 'Pending') return 'Hệ thống đang tính báo giá.'
+    if (quote.status === 'Expired' || expiry?.expired) return 'Báo giá đã hết hạn. Vui lòng lấy báo giá mới.'
+    if (quote.status === 'Converted') return 'Báo giá này đã được đặt hàng. Bạn có thể xem đơn trong danh sách đơn hàng.'
+    if (quote.status !== 'Ready') return 'Báo giá chưa sẵn sàng để đặt hàng.'
+    if (user && !user.isEmailVerified) return 'Vui lòng xác thực email trước khi đặt hàng.'
+    if (!addressValid) return 'Vui lòng điền đầy đủ số nhà/đường, phường/xã, quận/huyện và tỉnh/thành phố.'
+    if (!requestedDeliveryDate) return 'Vui lòng chọn ngày giao hàng mong muốn.'
+    if (requestedDeliveryDate <= today) return 'Ngày giao hàng mong muốn phải sau ngày hiện tại.'
+    if (delivery.isFetching) return 'Đang kiểm tra khả năng giao hàng cho ngày bạn chọn.'
+    if (delivery.isError) return 'Chưa kiểm tra được khả năng giao hàng. Vui lòng bấm thử lại.'
+    if (!delivery.data?.canMeetRequestedDate) return 'Vui lòng chọn ngày mong muốn từ ngày giao sớm nhất dự kiến trở đi.'
+    if (!acceptTerms) return 'Vui lòng đồng ý điều khoản dịch vụ để đặt hàng.'
+    return null
+  })()
 
   return (
     <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
@@ -350,9 +385,14 @@ export default function OrderConfigPage() {
 
               {quote.status === 'Draft' && (
                 <Alert severity="info">
-                  Giá in đang chờ nhân viên thẩm định; thời hạn chỉ bắt đầu sau khi giá được duyệt. Đây chưa phải xác nhận ngày giao tới địa chỉ nhận.
+                  Báo giá #{quote.id.slice(0, 8)} cho {quote.items.reduce((sum, item) => sum + item.quantity, 0)} sản phẩm đang chờ Ops duyệt.
+                  {' '}Sau khi được duyệt, trang sẽ tự cập nhật để bạn tiếp tục đặt hàng. Thời hạn báo giá bắt đầu từ lúc duyệt.
+                  <Button size="small" color="inherit" sx={{ display: 'block', mt: 1 }} onClick={() => void quoteStatus.refetch()} disabled={quoteStatus.isFetching}>
+                    {quoteStatus.isFetching ? 'Đang cập nhật…' : 'Cập nhật trạng thái'}
+                  </Button>
                 </Alert>
               )}
+              {quoteStatus.isError && <Alert severity="warning">Không cập nhật được trạng thái báo giá. Vui lòng thử cập nhật lại.</Alert>}
 
               {user && !user.isEmailVerified && (
                 <Alert
@@ -372,15 +412,26 @@ export default function OrderConfigPage() {
               <Box>
                 <Typography variant="body2" sx={{ color: 'text.primary', mb: 1 }}>Địa chỉ giao hàng</Typography>
                 <Stack spacing={2}>
-                  <TextField label="Số nhà, đường" value={street} onChange={(e) => setStreet(e.target.value)} fullWidth />
+                  <TextField required label="Số nhà, đường" value={street} onChange={(e) => setStreet(e.target.value)} inputProps={{ maxLength: 200 }} fullWidth />
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                    <TextField label="Phường/Xã" value={ward} onChange={(e) => setWard(e.target.value)} fullWidth />
-                    <TextField label="Quận/Huyện" value={district} onChange={(e) => setDistrict(e.target.value)} fullWidth />
+                    <TextField required label="Phường/Xã" value={ward} onChange={(e) => setWard(e.target.value)} inputProps={{ maxLength: 100 }} fullWidth />
+                    <TextField required label="Quận/Huyện" value={district} onChange={(e) => setDistrict(e.target.value)} inputProps={{ maxLength: 100 }} fullWidth />
                   </Stack>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                    <TextField label="Tỉnh/Thành phố" value={city} onChange={(e) => setCity(e.target.value)} fullWidth />
-                    <TextField label="Mã bưu điện" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} sx={{ width: { xs: '100%', sm: 180 } }} />
+                    <TextField required label="Tỉnh/Thành phố" value={city} onChange={(e) => setCity(e.target.value)} inputProps={{ maxLength: 100 }} fullWidth />
+                    <TextField label="Mã bưu điện" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} inputProps={{ maxLength: 20 }} sx={{ width: { xs: '100%', sm: 180 } }} />
                   </Stack>
+                  <TextField required type="date" label="Ngày giao hàng mong muốn" value={requestedDeliveryDate}
+                    onChange={e => setRequestedDeliveryDate(e.target.value)} InputLabelProps={{ shrink: true }}
+                    inputProps={{ min: today }} error={!!requestedDeliveryDate && requestedDeliveryDate <= today}
+                    helperText="Hệ thống kiểm tra lại lịch sản xuất và thời gian vận chuyển trước khi cam kết." />
+                  {delivery.isFetching && <Typography role="status">Đang kiểm tra khả năng giao hàng…</Typography>}
+                  {delivery.isError && <Alert severity="error">{serverMessage(delivery.error, 'Không kiểm tra được lịch giao hàng.')} <Button onClick={() => void delivery.refetch()}>Thử lại</Button></Alert>}
+                  {delivery.data && <Alert severity={delivery.data.canMeetRequestedDate ? 'success' : 'warning'}>
+                    Ngày giao sớm nhất dự kiến: {new Date(`${delivery.data.earliestDeliveryDate}T00:00:00`).toLocaleDateString('vi-VN')}.
+                    {delivery.data.canMeetRequestedDate ? ` Ngày cam kết: ${new Date(`${delivery.data.promisedDeliveryDate}T00:00:00`).toLocaleDateString('vi-VN')}.` : ' Vui lòng chọn ngày mong muốn từ ngày này trở đi.'}
+                  </Alert>}
+                  <Typography variant="body2" color="text.secondary">Đơn từ 5 sản phẩm do điều phối viên phân công. Đơn nhỏ chỉ được tự gán sau khi đủ cọc và có lịch phù hợp.</Typography>
                 </Stack>
               </Box>
 
@@ -400,15 +451,16 @@ export default function OrderConfigPage() {
                 }
               />
 
+              {orderBlockReason && quote.status !== 'Draft' && <Alert severity="info">{orderBlockReason}</Alert>}
               <Button
                 variant="contained"
                 color="primary"
                 size="large"
                 onClick={handlePlaceOrder}
-                disabled={quote.status !== 'Ready' || Boolean(expiry?.expired) || placeOrder.isPending || !street.trim() || !city.trim() || !acceptTerms || Boolean(user && !user.isEmailVerified)}
+                disabled={!!orderBlockReason || placeOrder.isPending}
                 endIcon={placeOrder.isPending ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}
               >
-                {placeOrder.isPending ? 'Đang đặt hàng…' : expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}
+                {placeOrder.isPending ? 'Đang đặt hàng…' : quote.status === 'Draft' ? 'Chờ duyệt báo giá' : quote.status === 'Expired' || expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}
               </Button>
             </Stack>
           </Box>
@@ -427,7 +479,11 @@ export default function OrderConfigPage() {
                     </Typography>
                   </Stack>
                 </AccordionSummary>
-                <AccordionDetails><QuotePriceDetails quote={saved} /></AccordionDetails>
+                <AccordionDetails><Stack spacing={2}><QuotePriceDetails quote={saved} />
+                  {['Draft', 'Pending', 'Ready'].includes(saved.status) && <Button variant="outlined" onClick={() => { setQuote(saved); setOrderError(null) }}>
+                    {saved.status === 'Ready' ? 'Tiếp tục đặt hàng với báo giá này' : 'Theo dõi duyệt báo giá này'}
+                  </Button>}
+                </Stack></AccordionDetails>
               </Accordion>
             ))}
           </Box>

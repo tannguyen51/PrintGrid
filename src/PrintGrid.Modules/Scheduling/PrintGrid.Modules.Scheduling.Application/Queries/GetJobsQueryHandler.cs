@@ -91,6 +91,8 @@ public class GetJobsQueryHandler : IRequestHandler<GetJobsQuery, Result<IReadOnl
                 return dto with
                 {
                     OrderNumber = order?.OrderNumber,
+                    DispatchMode = order?.DispatchMode,
+                    OrderQuantity = order?.Items.Sum(i => i.Quantity),
                     ModelFileName = model?.FileName,
                     Sha256 = model?.Sha256,
                 };

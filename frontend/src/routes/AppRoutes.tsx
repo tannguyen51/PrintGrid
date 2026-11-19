@@ -13,6 +13,7 @@ const ModelLibraryPage = lazy(() => import('../features/models/ModelLibraryPage'
 const StartOrderPage = lazy(() => import('../features/orders/StartOrderPage'))
 const OrderConfigPage = lazy(() => import('../features/quotes/OrderConfigPage'))
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'))
+const OrderStatisticsPage = lazy(() => import('../features/ops/OrderStatisticsPage'))
 const DateChangeDecisionPage = lazy(() => import('../features/orders/DateChangeDecisionPage'))
 const LabQueuePage = lazy(() => import('../features/lab/LabQueuePage'))
 const LabRegisterPage = lazy(() => import('../features/lab/LabRegisterPage'))
@@ -306,6 +307,10 @@ export function AppRoutes() {
               <OpsLabsPage />
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="/ops/orders"
+          element={<ProtectedRoute allowedRoles={['OpsManager']}><OrderStatisticsPage /></ProtectedRoute>}
         />
         <Route
           path="/ops/sla"

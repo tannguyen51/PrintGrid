@@ -25,6 +25,8 @@ export interface Order {
   totalAmount: number
   currency: string
   promisedDeliveryDate: string
+  requestedDeliveryDate?: string | null
+  dispatchMode?: 'Automatic' | 'Manual'
   createdAt: string
   deliveredAt: string | null
   /**

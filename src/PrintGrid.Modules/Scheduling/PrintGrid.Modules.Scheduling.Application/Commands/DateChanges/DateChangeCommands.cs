@@ -68,7 +68,7 @@ public sealed class DecideDateChangeCommandHandler(
         {
             var orderChanged = order.ApplyApprovedDeliveryDate(request.ProposedDeliveryDate);
             if (orderChanged.IsFailure) return Result.Failure<DateChangeRequestDto>(orderChanged.Error);
-            var internalDate = request.ProposedDeliveryDate.AddDays(-PlacementShortfallService.HubAndTransitBufferDays);
+            var internalDate = request.ProposedDeliveryDate.AddDays(-job.DeliveryBufferDays);
             var jobChanged = job.ApplyApprovedInternalDueDate(internalDate);
             if (jobChanged.IsFailure) return Result.Failure<DateChangeRequestDto>(jobChanged.Error);
             request.Approve(command.CustomerId, clock.UtcNow);

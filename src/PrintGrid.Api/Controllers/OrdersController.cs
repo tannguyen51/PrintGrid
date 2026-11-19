@@ -11,8 +11,21 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/orders")]
 [Authorize(Policy = Policies.RequireCustomer)]
-public class OrdersController(ISender sender) : ControllerBase
+public class OrdersController(ISender sender,
+    PrintGrid.Modules.Customer.Domain.Repositories.IQuoteRepository quotes,
+    OrderDeliveryService delivery) : ControllerBase
 {
+    [HttpPost("delivery-preview")]
+    public async Task<IActionResult> PreviewDelivery(DeliveryPreviewRequest request, CancellationToken ct)
+    {
+        var quote = await quotes.GetByIdAsync(request.QuoteId, ct);
+        if (quote is null) return NotFound();
+        if (quote.CustomerId != User.GetCustomerId()) return Forbid();
+        if (quote.Status != PrintGrid.Modules.Customer.Domain.Enums.QuoteStatus.Ready || quote.ExpiresAt <= DateTime.UtcNow)
+            return Conflict(new { error = new { code = "conflict", message = "Báo giá chưa được duyệt hoặc đã hết hạn." } });
+        var result = await delivery.AssessAsync(quote, request.RequestedDeliveryDate, ct);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
+    }
     [HttpGet]
     public async Task<IActionResult> GetOrders(CancellationToken cancellationToken)
     {
@@ -77,7 +90,8 @@ public class OrdersController(ISender sender) : ControllerBase
                 request.TechConstraintsJson,
                 request.ModelBindingKind,
                 request.PinnedModelId,
-                request.ReferenceLineId),
+                request.ReferenceLineId,
+                request.RequestedDeliveryDate),
             cancellationToken);
 
         if (!result.IsFailure) return CreatedAtAction(nameof(PlaceOrder), new { id = result.Value.Id }, result.Value);
@@ -123,6 +137,9 @@ public record PlaceOrderRequest(
     string? TechConstraintsJson = null,
     string ModelBindingKind = "không",
     Guid? PinnedModelId = null,
-    Guid? ReferenceLineId = null);
+    Guid? ReferenceLineId = null,
+    DateOnly? RequestedDeliveryDate = null);
+
+public record DeliveryPreviewRequest(Guid QuoteId, DateOnly RequestedDeliveryDate);
 
 public record ReprintRequestBody(string Reason, string Description, IReadOnlyList<string> Photos);

@@ -40,10 +40,10 @@ public class PlacementShortfallService(
                 ProbeOnly: true),
             cancellationToken);
 
-        var originalDelivery = job.InternalDueDate.AddDays(HubAndTransitBufferDays);
+        var originalDelivery = job.InternalDueDate.AddDays(job.DeliveryBufferDays);
         var earliestEndUtc = probe.EarliestFeasibleEndUtc
                              ?? job.InternalDueDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
-        var proposedDelivery = DateOnly.FromDateTime(earliestEndUtc).AddDays(HubAndTransitBufferDays);
+        var proposedDelivery = DateOnly.FromDateTime(earliestEndUtc).AddDays(job.DeliveryBufferDays);
         if (proposedDelivery <= originalDelivery)
             proposedDelivery = originalDelivery.AddDays(1);
 

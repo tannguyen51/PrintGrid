@@ -270,4 +270,6 @@ public record JobDto(
     string Technology,
     string? OrderNumber = null,
     string? ModelFileName = null,
-    string? Sha256 = null);
+    string? Sha256 = null,
+    string? DispatchMode = null,
+    int? OrderQuantity = null);

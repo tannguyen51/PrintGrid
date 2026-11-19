@@ -19,6 +19,7 @@ import type { Order, OrderStatus } from '../../shared/types/order'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { ReprintRequestPanel } from './ReprintRequestPanel'
 import { OrderPaymentPanel } from './OrderPaymentPanel'
+import { OrderProductionProgress } from './OrderProductionProgress'
 
 const statusColor: Record<OrderStatus, 'warning' | 'info' | 'success' | 'error'> = {
   PaymentPending: 'warning',
@@ -99,6 +100,7 @@ export default function OrdersPage() {
       width: 140,
       valueFormatter: (v: string) => (v ? fmtDate(v) : '—'),
     },
+    { field: 'requestedDeliveryDate', headerName: 'Ngày mong muốn', width: 150, valueFormatter: (v: string) => v ? fmtDate(v) : '—' },
     {
       field: 'createdAt',
       headerName: 'Ngày tạo',
@@ -204,6 +206,11 @@ export default function OrdersPage() {
             </Box>
             <Divider sx={{ borderColor: 'divider' }} />
             <Box sx={{ p: 3, flex: 1, overflowY: 'auto' }}>
+              <Stack spacing={1} sx={{ mb: 3 }}>
+                <Typography>Ngày mong muốn: {selected.requestedDeliveryDate ? fmtDate(selected.requestedDeliveryDate) : 'Chưa khai báo (đơn cũ)'}</Typography>
+                <Typography>Ngày cam kết: {selected.promisedDeliveryDate ? fmtDate(selected.promisedDeliveryDate) : '—'}</Typography>
+                <Chip label={selected.dispatchMode === 'Automatic' ? 'Xét tự động sau khi đủ cọc' : 'Ops điều phối'} sx={{ alignSelf: 'flex-start' }} />
+              </Stack>
               {selected.status === 'PaymentPending' && (
                 <>
                   <OrderPaymentPanel orderId={selected.id} />
@@ -211,6 +218,7 @@ export default function OrdersPage() {
                 </>
               )}
               <OrderTimelineView orderId={selected.id} />
+              <OrderProductionProgress orderId={selected.id} />
 
               <Divider sx={{ my: 3, borderColor: 'divider' }} />
               <ReprintRequestPanel order={selected} />

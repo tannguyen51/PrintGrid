@@ -9,6 +9,19 @@ export function useQuotes() {
   return useQuery({
     queryKey: QUOTES_KEY,
     queryFn: () => apiClient.get<Quote[]>('/quotes').then((r) => r.data),
+    refetchOnWindowFocus: true,
+    refetchInterval: query => query.state.data?.some(q => q.status === 'Draft' || q.status === 'Pending') ? 15_000 : false,
+  })
+}
+
+/** Keep an open quote current while Ops reviews it, without changing the customer's form. */
+export function useQuote(quoteId: string | null) {
+  return useQuery({
+    queryKey: ['quote', quoteId],
+    enabled: !!quoteId,
+    queryFn: () => apiClient.get<Quote>(`/quotes/${quoteId}`).then(r => r.data),
+    refetchOnWindowFocus: true,
+    refetchInterval: query => ['Draft', 'Pending'].includes(query.state.data?.status ?? '') ? 5_000 : false,
   })
 }
 
@@ -31,6 +44,7 @@ export function useEligibleModels(materialCode?: string) {
 
 export interface PlaceOrderInput {
   quoteId: string
+  requestedDeliveryDate: string
   street: string
   ward: string
   district: string

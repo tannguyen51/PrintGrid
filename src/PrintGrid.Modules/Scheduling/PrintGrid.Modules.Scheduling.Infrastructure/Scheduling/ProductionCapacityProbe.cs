@@ -96,6 +96,8 @@ public class ProductionCapacityProbe(PrintGridDbContext context) : IProductionCa
         {
             if (lines.Any(l => l.RequiredMachineId.HasValue && l.RequiredMachineId != machine.Id)) continue;
             if (!specs.All(machine.Supports)) continue;
+            if (lines.GroupBy(l => new { l.MaterialCode, l.ColorCode }).Any(g =>
+                !lab.HasStock(g.Key.MaterialCode, g.Key.ColorCode, g.Sum(l => l.TotalGrams)))) continue;
 
             var windows = bookedByMachine.TryGetValue(machine.Id, out var w)
                 ? [.. w]

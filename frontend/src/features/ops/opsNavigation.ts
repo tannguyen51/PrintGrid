@@ -14,6 +14,7 @@ export const OPS_GROUPS = [
     { label: 'Thanh toán & đặt cọc', href: '/ops/payments', icon: 'payment' },
     { label: 'Xử lý hoàn tiền', href: '/ops/refunds', icon: 'refund' },
     { label: 'Hiệu suất & SLA', href: '/ops/sla', icon: 'chart' },
+    { label: 'Thống kê đơn hàng', href: '/ops/orders', icon: 'chart' },
     { label: 'Nhật ký quyết định', href: '/ops/decisions', icon: 'history' },
   ] },
 ] as const

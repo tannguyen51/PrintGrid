@@ -16,6 +16,8 @@ public static class ApiServiceExtensions
     {
         var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+        // Protect the read-only dispatch proposal carried back for explicit Ops confirmation.
+        services.AddDataProtection();
 
         // Auth services consumed by the Customer module's auth commands.
         services.AddScoped<ITokenService, JwtTokenService>();

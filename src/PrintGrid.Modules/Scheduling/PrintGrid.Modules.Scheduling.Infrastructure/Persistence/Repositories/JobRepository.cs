@@ -108,7 +108,8 @@ public class JobRepository(PrintGridDbContext context) : IJobRepository
         await context.Set<Job>()
             .Where(j => j.LabId.HasValue && _activeStatuses.Contains(j.Status))
             .GroupBy(j => j.LabId!.Value)
-            .ToDictionaryAsync(group => group.Key, group => group.Count(), cancellationToken);
+            .Select(group => new { LabId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(group => group.LabId, group => group.Count, cancellationToken);
 
     public Task<bool> HasActiveForMachineAsync(Guid machineId, CancellationToken cancellationToken = default) =>
         context.Set<Job>().AnyAsync(

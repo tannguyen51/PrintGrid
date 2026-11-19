@@ -38,5 +38,7 @@ public class GetOrdersQueryHandler(IOrderRepository orders)
             i.ModelBindingKind,
             i.PinnedModelId,
             i.BindingLevel,
-            i.ReferenceOrderLineId)).ToList());
+            i.ReferenceOrderLineId)).ToList(),
+        RequestedDeliveryDate: order.RequestedDeliveryDate,
+        DispatchMode: order.DispatchMode);
 }

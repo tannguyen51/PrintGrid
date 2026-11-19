@@ -10,7 +10,9 @@ public record OrderDto(
     DateTime CreatedAt,
     decimal DepositAmount,
     decimal RefundedAmount,
-    IReadOnlyList<OrderItemDto> Items);
+    IReadOnlyList<OrderItemDto> Items,
+    DateOnly? RequestedDeliveryDate = null,
+    string DispatchMode = "Manual");
 
 public record OrderItemDto(
     Guid Id,

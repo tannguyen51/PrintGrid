@@ -33,7 +33,7 @@ public sealed class OrderConfirmedEventHandlerTests
             job.LabId.Should().BeNull();
             job.MachineId.Should().BeNull();
             job.PlannedStartUtc.Should().BeNull();
-            job.InternalDueDate.Should().Be(date.AddDays(-2));
+            job.InternalDueDate.Should().Be(date.AddDays(-4));
         }
         created[0].Quantity.Should().Be(3);
         created[0].EstimatedPrintMinutes.Should().Be(180);

@@ -10,8 +10,9 @@ public class PlaceOrderCommandValidator : AbstractValidator<PlaceOrderCommand>
         RuleFor(c => c.QuoteId).NotEmpty();
         RuleFor(c => c.Street).NotEmpty().MaximumLength(200);
         RuleFor(c => c.City).NotEmpty().MaximumLength(100);
-        RuleFor(c => c.District).MaximumLength(100);
-        RuleFor(c => c.Ward).MaximumLength(100);
+        RuleFor(c => c.District).NotEmpty().MaximumLength(100);
+        RuleFor(c => c.Ward).NotEmpty().MaximumLength(100);
+        RuleFor(c => c.RequestedDeliveryDate).NotNull().WithMessage("Vui lòng chọn ngày giao hàng mong muốn.");
         RuleFor(c => c.PostalCode).MaximumLength(20);
         RuleFor(c => c.AcceptTerms)
             .Equal(true)

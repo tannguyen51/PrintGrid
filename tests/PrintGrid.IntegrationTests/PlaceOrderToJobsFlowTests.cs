@@ -14,6 +14,7 @@ using PrintGrid.Modules.Customer.Domain.ValueObjects;
 using PrintGrid.Modules.Scheduling.Application.EventHandlers;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
+using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
 using PrintGrid.SharedKernel.ValueObjects;
 using Testcontainers.PostgreSql;
 
@@ -87,8 +88,17 @@ public class PlaceOrderToJobsFlowTests : IAsyncLifetime
             var customer = Customer.Register("orders-jobs@printgrid.test", "hash-not-a-real-password", "Flow Tester", null);
             customer.VerifyEmail();
 
-            var model = Model.Create(customer.Id, "bracket", null, "bracket.stl", "STL", 1_048_576, null);
+            var model = Model.Create(customer.Id, "bracket", null, "bracket.stl", "STL", 1_048_576, null,
+                "models/bracket.stl", "test-hash");
             model.ApplyGeometry(60m, 60m, 40m, 20m, 60, 12m, true, true, true);
+            model.Approve(null, DateTime.UtcNow);
+            var lab = Lab.Onboard("Integration Lab", "Ha Noi", 1);
+            var machine = Machine.Register(lab.Id, "Printer", "MODEL", PrintTechnology.Fdm,
+                BuildVolume.Create(220, 220, 250), .1m, .1m, ["PLA"]);
+            var profile = CuraProfile.Import("PLA", "ACME", "MODEL", "PLA", "1", "5.11", .4m, 1.75m,
+                1, 1, 220, 220, 250, true, 200, 60, "{}");
+            machine.SetVerifiedProfiles([profile.Id], true, true);
+            lab.AddMachine(machine);
 
             var quote = Quote.CreatePending(customer.Id, TimeSpan.FromHours(48));
             quote.AddItem(
@@ -105,7 +115,7 @@ public class PlaceOrderToJobsFlowTests : IAsyncLifetime
                 boundingHeightMm: 40m);
             quote.MarkReady(promised, PricingParameterSet.Active.Version, "integration seed");
 
-            db.AddRange(customer, model, quote);
+            db.AddRange(customer, model, quote, profile, lab);
             await db.SaveChangesAsync();
 
             return (customer.Id, quote.Id);
@@ -119,7 +129,7 @@ public class PlaceOrderToJobsFlowTests : IAsyncLifetime
                 seededCustomerId,
                 quoteId,
                 "1 Dai Co Viet", "Bach Khoa", "Hai Ba Trung", "Ha Noi", "100000",
-                AcceptTerms: true));
+                AcceptTerms: true, RequestedDeliveryDate: promised.AddDays(2)));
 
             result.IsSuccess.Should().BeTrue(result.Error.Message);
             result.Value.Status.Should().Be(nameof(OrderStatus.PaymentPending));
@@ -173,13 +183,12 @@ public class PlaceOrderToJobsFlowTests : IAsyncLifetime
         job.Specification.MaterialGrams.Should().Be(80m, "40 g per unit × 2");
         job.Specification.RequiredVolume.WidthMm.Should().Be(60m);
         job.Specification.RequiredVolume.HeightMm.Should().Be(40m);
-        // Auto-assign runs right after the deposit, but this test seeds no labs/machines, so
-        // the engine can only report NoCapableMachine and the job legitimately stays Pending
-        // (with an ops escalation) instead of being silently dropped.
-        job.Status.Should().Be(JobStatus.Pending);
+        // The small order is automatically assigned only after the real deposit is recorded.
+        job.Status.Should().Be(JobStatus.Assigned);
+        job.LabId.Should().NotBeNull();
         job.InternalDueDate.Should().Be(
-            promised.AddDays(-OrderConfirmedEventHandler.HubAndTransitBufferDays),
-            "BR-SCHED-001: internal due is the promised date minus the hub buffer");
+            order.PromisedDeliveryDate.AddDays(-4),
+            "production reserves lab transit, hub processing and last-mile delivery");
 
         // And the raw table the hub queries against really holds it.
         var rawCount = await InScope(async sp =>

@@ -105,7 +105,9 @@ public class AssignmentEngine(
             var machineEstimateMinutes = job.QuotedMachineId.HasValue ? job.EstimatedPrintMinutes
                 : candidate.Machine.ApplyToEstimate(job.EstimatedPrintMinutes);
             var start = await timeline.FindEarliestFreeSlotAsync(
-                candidate.Machine, machineEstimateMinutes, clock.UtcNow, cancellationToken);
+                candidate.Machine, job.QuotedMachineId.HasValue
+                    ? (int)Math.Ceiling(machineEstimateMinutes * candidate.Machine.SpeedFactor) : machineEstimateMinutes,
+                clock.UtcNow, cancellationToken);
             var duration = job.QuotedMachineId.HasValue ? machineEstimateMinutes
                 : machineEstimateMinutes / candidate.Machine.SpeedFactor;
             var end = start.AddMinutes((double)duration);
@@ -115,7 +117,10 @@ public class AssignmentEngine(
 
             // Feasibility is judged against the internal due date — unless we are probing what
             // the network could do if the committed date moved (BR-SCHED-011).
-            if (!request.IgnoreDueDate && end > windowEnd)
+            var customerDate = job.InternalDueDate.AddDays(job.DeliveryBufferDays);
+            var transitDeadline = customerDate.AddDays(-(candidate.Lab.TransitDaysToHub + 1 + job.LastMileDays))
+                .ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+            if (!request.IgnoreDueDate && (end > windowEnd || end > transitDeadline))
                 continue;
 
             var utilization = await timeline.GetUtilizationAsync(
