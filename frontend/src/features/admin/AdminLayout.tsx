@@ -34,6 +34,7 @@ const GROUPS: { label: string; items: AdminSection[] }[] = [
   { label: 'Cấu hình hệ thống', items: [
     { label: 'Cấu hình thương mại', href: '/admin/commercial-configurations', icon: <TuneRounded /> },
     { label: 'Trọng số chấm điểm', href: '/admin/scoring-configurations', icon: <InsightsRounded /> },
+    { label: 'Điểm và giải thích lab', href: '/admin/lab-scores', icon: <InsightsRounded /> },
     { label: 'Nhật ký kiểm toán', href: '/admin/audit-logs', icon: <HistoryRounded /> },
     { label: 'Thông số hệ thống', href: '/admin/system-parameters', icon: <SettingsRounded /> },
   ] },
