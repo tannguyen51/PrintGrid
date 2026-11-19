@@ -66,11 +66,11 @@ public class AssignmentScorerTests
         var unreliableButFree = Placement(reliability: 0m, endOffsetHours: 48, utilization: 0m, cost: 50m);
         var reliabilityPeriod = new AssignmentScorer(new ScoringWeights
         {
-            DueDateSlack = 0m, LabReliability = 1m, LoadBalance = 0m, Cost = 0m, Transit = 0m
+            DueDateSlack = 0m, OnTimeRate = 0.5m, FirstPassYield = 0.5m, LoadBalance = 0m, Cost = 0m, Transit = 0m
         });
         var loadPeriod = new AssignmentScorer(new ScoringWeights
         {
-            DueDateSlack = 0m, LabReliability = 0m, LoadBalance = 1m, Cost = 0m, Transit = 0m
+            DueDateSlack = 0m, OnTimeRate = 0m, FirstPassYield = 0m, LoadBalance = 1m, Cost = 0m, Transit = 0m
         });
 
         reliabilityPeriod.Rank(job, [reliableButBusy, unreliableButFree], 50m)[0].Placement

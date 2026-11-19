@@ -30,10 +30,10 @@ public sealed class AdminConfigurationController(ISender sender, IAuditLogWriter
     }
 
     [HttpPost("commercial-configurations/{id:guid}/activate")]
-    public async Task<IActionResult> ActivateConfiguration(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> ActivateConfiguration(Guid id, [FromBody] ActivateCommercialConfigurationBody? body, CancellationToken cancellationToken)
     {
         var before = (await sender.Send(new GetCommercialConfigurationsQuery(), cancellationToken)).FirstOrDefault(x => x.Id == id);
-        var result = await sender.Send(new ActivateCommercialConfigurationCommand(id), cancellationToken);
+        var result = await sender.Send(new ActivateCommercialConfigurationCommand(id, body?.ScheduledActivationAtUtc), cancellationToken);
         if (!result.IsSuccess) return Conflict(ApiError(result.ErrorCode!, result.ErrorMessage!));
         await WriteAudit("commercial_configuration.activated", "CommercialConfigurationVersion", id.ToString(),
             before, result.Value, _commercialCodes, cancellationToken);

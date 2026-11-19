@@ -13,7 +13,8 @@ public sealed class ScoringWeightConfigurationEntityConfiguration : IEntityTypeC
         builder.Property(x => x.Version).HasMaxLength(64).IsRequired();
         builder.Property(x => x.Reason).HasMaxLength(500).IsRequired();
         builder.Property(x => x.DueDateSlack).HasPrecision(8, 6);
-        builder.Property(x => x.LabReliability).HasPrecision(8, 6);
+        builder.Property(x => x.OnTimeRate).HasPrecision(8, 6);
+        builder.Property(x => x.FirstPassYield).HasPrecision(8, 6);
         builder.Property(x => x.LoadBalance).HasPrecision(8, 6);
         builder.Property(x => x.Cost).HasPrecision(8, 6);
         builder.Property(x => x.Transit).HasPrecision(8, 6);

@@ -3,11 +3,13 @@ using Hangfire.PostgreSql;
 using Serilog;
 using PrintGrid.Api.BackgroundJobs;
 using PrintGrid.Api.Bootstrap;
+using PrintGrid.Api.Composition;
 using PrintGrid.Api.Extensions;
 using PrintGrid.Api.Hubs;
 using PrintGrid.Api.Middleware;
 using PrintGrid.Infrastructure.Shared;
 using PrintGrid.Infrastructure.Shared.Persistence;
+using PrintGrid.Modules.Scheduling.Application.Services;
 using Microsoft.EntityFrameworkCore;
 using PrintGrid.Api.Models;
 
@@ -43,6 +45,7 @@ builder.Services.AddCors(options => options.AddPolicy("PrintGridSpa", policy => 
 
 builder.Services.AddSharedInfrastructure(builder.Configuration);
 builder.Services.AddApplicationModules(builder.Configuration);
+builder.Services.AddScoped<ILabScoreParameterProvider, CommercialLabScoreParameterProvider>();
 
 // Handlers that depend on API-layer infrastructure (SignalR hub contexts) live here,
 // not in a module — register the composition-root assembly too or they silently never run.

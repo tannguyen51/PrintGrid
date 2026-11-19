@@ -29,7 +29,8 @@ interface ScoringConfiguration {
   id?: string | null
   version: string
   dueDateSlack: number
-  labReliability: number
+  onTimeRate: number
+  firstPassYield: number
   loadBalance: number
   cost: number
   transit: number
@@ -52,7 +53,8 @@ function useScoringConfigurations() {
 interface ActivateForm {
   version: string
   dueDateSlack: string
-  labReliability: string
+  onTimeRate: string
+  firstPassYield: string
   loadBalance: string
   cost: string
   transit: string
@@ -61,11 +63,12 @@ interface ActivateForm {
 
 const EMPTY_FORM: ActivateForm = {
   version: '',
-  dueDateSlack: '0.35',
-  labReliability: '0.25',
+  dueDateSlack: '0.30',
+  onTimeRate: '0.15',
+  firstPassYield: '0.10',
   loadBalance: '0.20',
   cost: '0.10',
-  transit: '0.10',
+  transit: '0.15',
   reason: '',
 }
 
@@ -79,7 +82,7 @@ export function AdminScoringConfigurationPage() {
   const configurations = useScoringConfigurations()
 
   const [formOpen, setFormOpen] = useState(false)
-  const [form, setForm] = useState<ActivateForm>(EMPTY_FORM)
+  const [form, setForm] = useState<ActivateForm>((EMPTY_FORM))
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -89,7 +92,8 @@ export function AdminScoringConfigurationPage() {
         await apiClient.post<ScoringConfiguration>('/admin/scoring-configurations', {
           version: form.version.trim(),
           dueDateSlack: Number(form.dueDateSlack),
-          labReliability: Number(form.labReliability),
+          onTimeRate: Number(form.onTimeRate),
+          firstPassYield: Number(form.firstPassYield),
           loadBalance: Number(form.loadBalance),
           cost: Number(form.cost),
           transit: Number(form.transit),
@@ -106,11 +110,11 @@ export function AdminScoringConfigurationPage() {
   })
 
   const sum =
-    Number(form.dueDateSlack) + Number(form.labReliability) + Number(form.loadBalance) +
-    Number(form.cost) + Number(form.transit)
+    Number(form.dueDateSlack) + Number(form.onTimeRate) + Number(form.firstPassYield) +
+    Number(form.loadBalance) + Number(form.cost) + Number(form.transit)
   const formValid =
     form.version.trim().length > 0 && form.reason.trim().length > 0 &&
-    [form.dueDateSlack, form.labReliability, form.loadBalance, form.cost, form.transit]
+    [form.dueDateSlack, form.onTimeRate, form.firstPassYield, form.loadBalance, form.cost, form.transit]
       .every((value) => Number.isFinite(Number(value))) &&
     Math.abs(sum - 1) < 0.0001
 
@@ -124,7 +128,7 @@ export function AdminScoringConfigurationPage() {
               Trọng số chấm điểm gán việc
             </Typography>
             <Typography color="text.secondary">
-              Kỳ cấu hình có phiên bản — mỗi quyết định gán giữ lại phiên bản đã dùng
+              Kỳ cấu hình có phiên bản — mi quyết định gán giữ lại phiên bản đã dùng
             </Typography>
           </Box>
         </Stack>
@@ -151,7 +155,8 @@ export function AdminScoringConfigurationPage() {
               <TableRow>
                 <TableCell>Phiên bản</TableCell>
                 <TableCell align="right">Slack hạn</TableCell>
-                <TableCell align="right">Uy tín lab</TableCell>
+                <TableCell align="right">Đúng hạn</TableCell>
+                <TableCell align="right">Chất lượng lần đầu</TableCell>
                 <TableCell align="right">Cân tải</TableCell>
                 <TableCell align="right">Chi phí</TableCell>
                 <TableCell align="right">Vận chuyển</TableCell>
@@ -163,7 +168,7 @@ export function AdminScoringConfigurationPage() {
             <TableBody>
               {(configurations.data ?? []).length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} sx={{ py: 5, textAlign: 'center', color: 'text.secondary' }}>
+                  <TableCell colSpan={10} sx={{ py: 5, textAlign: 'center', color: 'text.secondary' }}>
                     Chưa có phiên bản nào — engine đang dùng bộ trọng số mặc định.
                   </TableCell>
                 </TableRow>
@@ -172,7 +177,8 @@ export function AdminScoringConfigurationPage() {
                   <TableRow key={`${config.version}-${config.id ?? 'default'}`} hover>
                     <TableCell sx={{ fontWeight: 700 }}>{config.version}</TableCell>
                     <TableCell align="right">{config.dueDateSlack}</TableCell>
-                    <TableCell align="right">{config.labReliability}</TableCell>
+                    <TableCell align="right">{config.onTimeRate}</TableCell>
+                    <TableCell align="right">{config.firstPassYield}</TableCell>
                     <TableCell align="right">{config.loadBalance}</TableCell>
                     <TableCell align="right">{config.cost}</TableCell>
                     <TableCell align="right">{config.transit}</TableCell>
@@ -195,7 +201,7 @@ export function AdminScoringConfigurationPage() {
         <DialogTitle>Kích hoạt phiên bản trọng số mới</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Tổng năm trọng số phải bằng 1.0. Phiên bản mới chỉ ảnh hưởng các quyết định sau thời
+            Tổng sáu trọng số phải bằng 1.0. Phiên bản mới chỉ ảnh hưởng các quyết định sau thời
             điểm kích hoạt; vết quyết định cũ giữ nguyên phiên bản của nó.
           </Typography>
           {error ? <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert> : null}
@@ -211,7 +217,8 @@ export function AdminScoringConfigurationPage() {
             </Grid>
             {([
               ['dueDateSlack', 'Slack hạn giao'],
-              ['labReliability', 'Uy tín lab'],
+              ['onTimeRate', 'Tỷ lệ đúng hạn'],
+              ['firstPassYield', 'Tỷ lệ đạt chất lượng lần đầu'],
               ['loadBalance', 'Cân tải'],
               ['cost', 'Chi phí'],
               ['transit', 'Vận chuyển'],

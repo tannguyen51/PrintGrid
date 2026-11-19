@@ -14,6 +14,8 @@ public sealed class CommercialConfigurationVersionConfiguration : IEntityTypeCon
         builder.Property(x => x.ParametersJson).HasColumnType("jsonb").IsRequired();
         builder.Property(x => x.ChangeSummary).HasMaxLength(1000).IsRequired();
         builder.Property(x => x.Status).HasMaxLength(16).IsRequired();
+        builder.Property(x => x.ActivatedAtUtc).HasColumnName("activated_at_utc");
+        builder.Property(x => x.ScheduledActivationAtUtc).HasColumnName("scheduled_activation_at_utc");
         builder.HasIndex(x => x.VersionNumber).IsUnique();
         builder.HasIndex(x => x.Status).IsUnique().HasFilter("\"Status\" = 'Active'");
     }

@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Paper, Stack, TextField, Typography } from '@mui/material'
-import { AddRounded, CheckCircleRounded } from '@mui/icons-material'
+import { AddRounded, CheckCircleRounded, ScheduleRounded } from '@mui/icons-material'
 import { getApiErrorMessage } from '../../shared/api/apiError'
-import { type CommercialParameters, useActivateCommercialConfiguration, useCatalogItems, useCommercialConfigurations, useCreateCommercialConfiguration } from './useAdminConfiguration'
+import { type CommercialConfiguration, type CommercialParameters, useActivateCommercialConfiguration, useCatalogItems, useCommercialConfigurations, useCreateCommercialConfiguration } from './useAdminConfiguration'
 
 const defaults: CommercialParameters = {
   materialRates: { PLA: 470, PETG: 575, ABS: 520, TPU: 680, RESIN: 1550 },
@@ -11,6 +11,7 @@ const defaults: CommercialParameters = {
   prioritySurchargePercent: 20, autoLaneThreshold: 300000, quoteValidityHours: 48,
   assignmentWeights: { time: 0.3, load: 0.2, quality: 0.2, cost: 0.15, logistics: 0.15 },
   maxBatchSize: 100, schedulingTimeBudgetSeconds: 30, slaRiskThresholdHours: 24,
+  labProvisionalBaseScore: 0.5, labProvisionalWeightK: 5, labProvisionalThreshold: 10,
 }
 
 export default function AdminCommercialConfigurationPage() {
@@ -21,6 +22,8 @@ export default function AdminCommercialConfigurationPage() {
   const [params, setParams] = useState<CommercialParameters>(defaults)
   const [error, setError] = useState('')
   const [colorRates, setColorRates] = useState('{}')
+  const [activateDialog, setActivateDialog] = useState<{ open: boolean; id: string; item: CommercialConfiguration } | null>(null)
+  const [scheduledLocal, setScheduledLocal] = useState('')
   const materials = useMemo(() => Object.keys(params.materialRates), [params.materialRates])
   const startCreate = () => {
     const next = active ? structuredClone(active.parameters) : structuredClone(defaults)
@@ -42,7 +45,18 @@ export default function AdminCommercialConfigurationPage() {
     }
     await create.mutateAsync({ name, changeSummary: summary, parameters: { ...params, colorPricePerKg: rates } }); setOpen(false)
   } catch (e) { setError(getApiErrorMessage(e, 'Không thể tạo phiên bản.')) } }
-  const doActivate = async (id: string) => { setError(''); try { await activate.mutateAsync(id) } catch (e) { setError(getApiErrorMessage(e, 'Không thể kích hoạt phiên bản.')) } }
+  const doActivate = async () => {
+    if (!activateDialog) return
+    setError('')
+    try {
+      const scheduled = scheduledLocal ? new Date(scheduledLocal).toISOString() : undefined
+      await activate.mutateAsync({ id: activateDialog.id, scheduledActivationAtUtc: scheduled })
+      setActivateDialog(null)
+      setScheduledLocal('')
+    } catch (e) { setError(getApiErrorMessage(e, 'Không thể kích hoạt phiên bản.')) }
+  }
+
+  const formatUtc = (s?: string) => (s ? new Date(s).toLocaleString('vi-VN') : undefined)
 
   return <Box className="admin-page">
     <Box className="admin-page-body">
@@ -55,8 +69,12 @@ export default function AdminCommercialConfigurationPage() {
     {!query.isLoading && !query.isError && !query.data?.length && <Paper variant="outlined" sx={{ p: 5, textAlign: 'center' }}><Typography fontWeight={650}>Chưa có phiên bản cấu hình</Typography><Typography color="text.secondary" sx={{ mt: 1 }}>Chọn “Tạo phiên bản” để thiết lập cấu hình thương mại đầu tiên.</Typography></Paper>}
     {query.isLoading ? <CircularProgress /> : <Stack spacing={2}>{query.data?.map(item => <Paper key={item.id} variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
       <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={2}>
-        <Box><Stack direction="row" spacing={1} alignItems="center"><Typography variant="h6" fontWeight={750}>v{item.versionNumber} · {item.name}</Typography><Chip size="small" color={item.status === 'Active' ? 'success' : item.status === 'Draft' ? 'warning' : 'default'} label={item.status === 'Active' ? 'Đang hoạt động' : item.status === 'Draft' ? 'Bản nháp' : 'Đã lưu trữ'} /></Stack><Typography color="text.secondary" mt={0.5}>{item.changeSummary}</Typography><Typography variant="caption" color="text.secondary">Tạo lúc {new Date(item.createdAtUtc).toLocaleString('vi-VN')}</Typography></Box>
-        {item.status === 'Draft' && <Button variant="outlined" startIcon={<CheckCircleRounded />} disabled={activate.isPending} onClick={() => doActivate(item.id)}>Kích hoạt</Button>}
+        <Box><Stack direction="row" spacing={1} alignItems="center"><Typography variant="h6" fontWeight={750}>v{item.versionNumber} · {item.name}</Typography><Chip size="small" color={item.status === 'Active' ? 'success' : item.status === 'Draft' ? 'warning' : 'default'} label={item.status === 'Active' ? 'Đang hoạt động' : item.status === 'Draft' ? 'Bản nháp' : 'Đã lưu trữ'} /></Stack><Typography color="text.secondary" mt={0.5}>{item.changeSummary}</Typography>
+          <Typography variant="caption" color="text.secondary" component="div">Tạo lúc {formatUtc(item.createdAtUtc)}</Typography>
+          {item.activatedAtUtc && <Typography variant="caption" color="text.secondary" component="div">Kích hoạt lúc {formatUtc(item.activatedAtUtc)}</Typography>}
+          {item.scheduledActivationAtUtc && <Typography variant="caption" color="warning.main" component="div">Hẹn kích hoạt {formatUtc(item.scheduledActivationAtUtc)}</Typography>}
+        </Box>
+        {item.status === 'Draft' && <Button variant="outlined" startIcon={<ScheduleRounded />} disabled={activate.isPending} onClick={() => setActivateDialog({ open: true, id: item.id, item })}>Kích hoạt / Hẹn giờ</Button>}
       </Stack>
       <Grid container spacing={2} mt={1}>{[['Giá giờ máy', item.parameters.pricePerPrintHour], ['Phí xử lý hub', item.parameters.hubHandlingFee], ['Biên nền tảng', `${item.parameters.platformMarginPercent}%`], ['Hiệu lực báo giá', `${item.parameters.quoteValidityHours} giờ`], ['Kích thước lô tối đa', item.parameters.maxBatchSize], ['Ngưỡng rủi ro SLA', `${item.parameters.slaRiskThresholdHours} giờ`]].map(([label, value]) => <Grid key={String(label)} size={{ xs: 6, md: 2 }}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography fontWeight={700}>{typeof value === 'number' ? value.toLocaleString('vi-VN') : value}</Typography></Grid>)}</Grid>
     </Paper>)}</Stack>}
@@ -73,7 +91,31 @@ export default function AdminCommercialConfigurationPage() {
       </Grid>
       <TextField label="Giá từng màu (JSON, đồng/kg)" multiline minRows={4} value={colorRates} onChange={e => setColorRates(e.target.value)} helperText={'Ví dụ: {"PLA:BLUE":300000,"PLA:WHITE":290000,"PLA:SIGNALRED":310000}'} />
       <Typography fontWeight={750}>Giới hạn vận hành</Typography><Grid container spacing={2}><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Kích thước lô tối đa" value={params.maxBatchSize} onChange={e => number('maxBatchSize', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Ngân sách lập lịch (giây)" value={params.schedulingTimeBudgetSeconds} onChange={e => number('schedulingTimeBudgetSeconds', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Ngưỡng rủi ro SLA (giờ)" value={params.slaRiskThresholdHours} onChange={e => number('slaRiskThresholdHours', e.target.value)} /></Grid></Grid>
+      <Typography fontWeight={750}>Trọng số gán việc</Typography>
+      <Grid container spacing={2}>
+        {Object.entries(params.assignmentWeights).map(([key, value]) => <Grid key={key} size={{ xs: 6, md: 4 }}><TextField fullWidth type="number" label={key} value={value} onChange={e => setParams(p => ({ ...p, assignmentWeights: { ...p.assignmentWeights, [key]: Number(e.target.value) } }))} /></Grid>)}
+      </Grid>
+      <Typography fontWeight={750}>Điểm lab mới (tạm thời)</Typography>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Điểm nền" value={params.labProvisionalBaseScore} onChange={e => number('labProvisionalBaseScore', e.target.value)} inputProps={{ min: 0, max: 1, step: 0.05 }} /></Grid>
+        <Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Trọng số làm mượn (k)" value={params.labProvisionalWeightK} onChange={e => number('labProvisionalWeightK', e.target.value)} /></Grid>
+        <Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Ngưỡng chuyển chính thức" value={params.labProvisionalThreshold} onChange={e => number('labProvisionalThreshold', e.target.value)} /></Grid>
+      </Grid>
     </Stack></DialogContent><DialogActions><Button onClick={() => setOpen(false)}>Hủy</Button><Button variant="contained" disabled={!name.trim() || !summary.trim() || create.isPending} onClick={save}>Lưu bản nháp</Button></DialogActions></Dialog>
+
+    <Dialog open={activateDialog?.open ?? false} onClose={() => setActivateDialog(null)} fullWidth maxWidth="sm">
+      <DialogTitle>Kích hoạt phiên bản v{activateDialog?.item.versionNumber} · {activateDialog?.item.name}</DialogTitle>
+      <DialogContent>
+        <Stack spacing={2} mt={1}>
+          <Alert severity="info">Để trống để kích hoạt ngay. Chọn ngày giờ tương lai để hẹn kích hoạt tự động.</Alert>
+          <TextField type="datetime-local" label="Thời điểm kích hoạt (giờ local)" fullWidth value={scheduledLocal} onChange={e => setScheduledLocal(e.target.value)} />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setActivateDialog(null)}>Hủy</Button>
+        <Button variant="contained" startIcon={<CheckCircleRounded />} disabled={activate.isPending} onClick={doActivate}>{activate.isPending ? 'Đang lưu…' : 'Xác nhận'}</Button>
+      </DialogActions>
+    </Dialog>
     </Box>
   </Box>
 }

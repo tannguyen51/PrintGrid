@@ -17,11 +17,14 @@ export interface CommercialParameters {
   colorPricePerKg?: Record<string, number>
   failureRate?: number
   polishingPerUnit?: number
+  labProvisionalBaseScore?: number
+  labProvisionalWeightK?: number
+  labProvisionalThreshold?: number
 }
 
 export interface CommercialConfiguration {
   id: string; versionNumber: number; name: string; status: 'Draft' | 'Active' | 'Archived'
-  parameters: CommercialParameters; changeSummary: string; createdAtUtc: string; activatedAtUtc?: string
+  parameters: CommercialParameters; changeSummary: string; createdAtUtc: string; activatedAtUtc?: string; scheduledActivationAtUtc?: string
 }
 
 export interface CatalogItem {
@@ -48,7 +51,8 @@ export function useCreateCommercialConfiguration() {
 export function useActivateCommercialConfiguration() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: async (id: string) => (await apiClient.post<CommercialConfiguration>(`/admin/commercial-configurations/${id}/activate`)).data,
+    mutationFn: async ({ id, scheduledActivationAtUtc }: { id: string; scheduledActivationAtUtc?: string }) =>
+      (await apiClient.post<CommercialConfiguration>(`/admin/commercial-configurations/${id}/activate`, { scheduledActivationAtUtc })).data,
     onSuccess: () => client.invalidateQueries({ queryKey: configurationKeys.commercial }),
   })
 }

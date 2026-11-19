@@ -60,6 +60,7 @@ const NetworkPage = lazy(() => import('../features/network/NetworkPage'))
 const GuidesPage = lazy(() => import('../features/guides/GuidesPage'))
 const AdminSamplesPage = lazy(() => import('../features/admin/AdminSamplesPage'))
 const AdminSystemParametersPage = lazy(() => import('../features/admin/AdminSystemParametersPage'))
+const AdminLabScoresPage = lazy(() => import('../features/admin/AdminLabScoresPage'))
 
 function RouteFallback() {
   return (
@@ -398,6 +399,10 @@ export function AppRoutes() {
         <Route
           path="/admin/scoring-configurations"
           element={<ProtectedRoute allowedRoles={['Admin']}><AdminScoringConfigurationPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/admin/lab-scores"
+          element={<ProtectedRoute allowedRoles={['Admin']}><AdminLabScoresPage /></ProtectedRoute>}
         />
         </Route>
         </Route>

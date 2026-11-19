@@ -24,6 +24,9 @@ public class AssignmentEngineTests
     private readonly IScoringConfigurationProvider _scoringConfigurations = Substitute.For<IScoringConfigurationProvider>();
     private readonly IDateTimeProvider _clock = Substitute.For<IDateTimeProvider>();
 
+    private readonly ILabScoreService _labScoreService = Substitute.For<ILabScoreService>();
+    private readonly ILabScoreParameterProvider _labScoreParameters = Substitute.For<ILabScoreParameterProvider>();
+
     private readonly DateTime _now = new(2026, 10, 6, 8, 0, 0, DateTimeKind.Utc);
 
     public AssignmentEngineTests()
@@ -32,6 +35,7 @@ public class AssignmentEngineTests
         _jobs.GetActiveCountsByLabAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, int>());
         _scoringConfigurations.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ScoringParameterSet.Active);
+        _labScoreParameters.GetAsync(Arg.Any<CancellationToken>()).Returns(new PrintGrid.SharedKernel.LabScoreParameters());
         _unitOfWork.TrySaveChangesSafeAsync(Arg.Any<CancellationToken>()).Returns(true);
         // Every machine is free from "now" and half loaded unless a test says otherwise.
         _timeline.FindEarliestFreeSlotAsync(
@@ -70,6 +74,8 @@ public class AssignmentEngineTests
         _unitOfWork,
         _decisions,
         _clock,
+        _labScoreService,
+        _labScoreParameters,
         NullLogger<AssignmentEngine>.Instance);
 
     private Job PendingJob(int dueInDays = 5) => Job.Create(
@@ -142,7 +148,7 @@ public class AssignmentEngineTests
         OneCapableLab();
         var configured = new ScoringParameterSet("2026.11-load", new ScoringWeights
         {
-            DueDateSlack = 0m, LabReliability = 0m, LoadBalance = 1m, Cost = 0m, Transit = 0m
+            DueDateSlack = 0m, OnTimeRate = 0m, FirstPassYield = 0m, LoadBalance = 1m, Cost = 0m, Transit = 0m
         });
         _scoringConfigurations.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(configured);
         AssignmentDecision? logged = null;

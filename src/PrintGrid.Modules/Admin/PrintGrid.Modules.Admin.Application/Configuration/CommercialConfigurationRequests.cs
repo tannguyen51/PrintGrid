@@ -11,7 +11,8 @@ public sealed record GetCommercialConfigurationsQuery : IRequest<IReadOnlyList<C
 public sealed record CreateCommercialConfigurationCommand(
     string Name, CommercialParametersDto Parameters, string ChangeSummary, Guid ActorId)
     : IRequest<CommercialConfigurationDto>;
-public sealed record ActivateCommercialConfigurationCommand(Guid Id) : IRequest<MutationResult<CommercialConfigurationDto>>;
+public sealed record ActivateCommercialConfigurationCommand(Guid Id, DateTime? ScheduledActivationAtUtc = null) : IRequest<MutationResult<CommercialConfigurationDto>>;
+public sealed record ActivateCommercialConfigurationBody(DateTime? ScheduledActivationAtUtc);
 
 public sealed class CommercialParametersValidator : AbstractValidator<CommercialParametersDto>
 {
@@ -37,6 +38,9 @@ public sealed class CommercialParametersValidator : AbstractValidator<Commercial
         RuleFor(x => x.MaxBatchSize).InclusiveBetween(1, 1000);
         RuleFor(x => x.SchedulingTimeBudgetSeconds).InclusiveBetween(1, 300);
         RuleFor(x => x.SlaRiskThresholdHours).InclusiveBetween(1, 720);
+        RuleFor(x => x.LabProvisionalBaseScore).InclusiveBetween(0, 1);
+        RuleFor(x => x.LabProvisionalWeightK).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.LabProvisionalThreshold).GreaterThanOrEqualTo(0);
         RuleFor(x => x.AssignmentWeights).Cascade(CascadeMode.Stop).NotEmpty().Must(weights =>
                 _weightKeys.All(weights.ContainsKey) && weights.Values.All(v => v is >= 0 and <= 1) &&
                 Math.Abs(weights.Values.Sum() - 1m) <= 0.001m)
@@ -89,6 +93,15 @@ public sealed class CommercialConfigurationHandlers(IAdminConfigurationRepositor
         if (entity is null) return MutationResult<CommercialConfigurationDto>.Failure("configuration_not_found", "Không tìm thấy phiên bản cấu hình.");
         if (entity.Status != ConfigurationStatuses.Draft)
             return MutationResult<CommercialConfigurationDto>.Failure("configuration_not_draft", "Chỉ phiên bản nháp mới được kích hoạt.");
+
+        var isScheduled = request.ScheduledActivationAtUtc.HasValue && request.ScheduledActivationAtUtc.Value > DateTime.UtcNow;
+        if (isScheduled)
+        {
+            entity.ScheduleActivation(request.ScheduledActivationAtUtc!.Value);
+            await repository.UpdateConfigurationAsync(entity, cancellationToken);
+            return MutationResult<CommercialConfigurationDto>.Success(Map(entity));
+        }
+
         var previous = await repository.GetActiveConfigurationAsync(cancellationToken);
         await repository.ActivateConfigurationAsync(entity, previous, cancellationToken);
         return MutationResult<CommercialConfigurationDto>.Success(Map(entity));
@@ -97,5 +110,5 @@ public sealed class CommercialConfigurationHandlers(IAdminConfigurationRepositor
     private static CommercialConfigurationDto Map(CommercialConfigurationVersion x) => new(
         x.Id, x.VersionNumber, x.Name, x.Status,
         JsonSerializer.Deserialize<CommercialParametersDto>(x.ParametersJson, _jsonOptions)!,
-        x.ChangeSummary, x.CreatedBy, x.CreatedAtUtc, x.ActivatedAtUtc);
+        x.ChangeSummary, x.CreatedBy, x.CreatedAtUtc, x.ActivatedAtUtc, x.ScheduledActivationAtUtc);
 }

@@ -4,6 +4,7 @@ using PrintGrid.Infrastructure.Shared.Persistence;
 using PrintGrid.Modules.Admin.Application.Configuration;
 using PrintGrid.Modules.Admin.Domain.Entities;
 using PrintGrid.Modules.Customer.Application.Quotes;
+using PrintGrid.SharedKernel;
 
 namespace PrintGrid.Modules.Admin.Infrastructure;
 
@@ -14,10 +15,42 @@ public sealed class CommercialPolicyProvider(PrintGridDbContext context) : IComm
 
     public async Task<CommercialPolicy> GetActiveAsync(CancellationToken cancellationToken = default)
     {
-        var active = await context.Set<CommercialConfigurationVersion>().AsNoTracking()
+        var now = DateTime.UtcNow;
+        var active = await context.Set<CommercialConfigurationVersion>()
+            .AsNoTracking()
             .SingleOrDefaultAsync(x => x.Status == ConfigurationStatuses.Active, cancellationToken);
+
+        // If the active version was scheduled in the future (should not happen after materialization),
+        // treat it as not yet active so callers keep using the previous policy until the scheduled time.
+        if (active is not null && active.ActivatedAtUtc.HasValue && active.ActivatedAtUtc.Value > now)
+        {
+            active = null;
+        }
+
+        // Lazy materialization: a scheduled version whose time has come becomes active now.
+        var scheduled = await context.Set<CommercialConfigurationVersion>()
+            .Where(x => x.Status == ConfigurationStatuses.Draft && x.ScheduledActivationAtUtc.HasValue && x.ScheduledActivationAtUtc.Value <= now)
+            .OrderByDescending(x => x.ScheduledActivationAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (scheduled is not null)
+        {
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+            // Re-read with tracking inside the transaction.
+            var currentActive = await context.Set<CommercialConfigurationVersion>()
+                .FirstOrDefaultAsync(x => x.Status == ConfigurationStatuses.Active, cancellationToken);
+            currentActive?.Archive();
+
+            var toActivate = await context.Set<CommercialConfigurationVersion>().FirstAsync(x => x.Id == scheduled.Id, cancellationToken);
+            toActivate.MaterializeScheduledActivation(now);
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            active = toActivate;
+        }
+
         if (active is null)
-            return new CommercialPolicy(PricingParameterSet.Active, 300_000m, 48);
+            return new CommercialPolicy(PricingParameterSet.Active, 300_000m, 48, new LabScoreParameters());
 
         var parameters = JsonSerializer.Deserialize<CommercialParametersDto>(active.ParametersJson, _jsonOptions)!;
         var pricing = new PricingParameterSet(
@@ -27,6 +60,12 @@ public sealed class CommercialPolicyProvider(PrintGridDbContext context) : IComm
             parameters.PricePerPrintHour,
             PricingParameterSet.Active.TimeMultiplierByLayer,
             parameters.ColorPricePerKg, parameters.FailureRate, parameters.PolishingPerUnit);
-        return new CommercialPolicy(pricing, parameters.AutoLaneThreshold, parameters.QuoteValidityHours);
+
+        var labScoreParameters = new LabScoreParameters(
+            parameters.LabProvisionalBaseScore,
+            parameters.LabProvisionalWeightK,
+            parameters.LabProvisionalThreshold);
+
+        return new CommercialPolicy(pricing, parameters.AutoLaneThreshold, parameters.QuoteValidityHours, labScoreParameters);
     }
 }

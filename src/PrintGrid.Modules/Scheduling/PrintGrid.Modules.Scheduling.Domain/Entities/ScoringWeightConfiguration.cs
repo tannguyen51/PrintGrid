@@ -11,7 +11,8 @@ public sealed class ScoringWeightConfiguration
     public Guid Id { get; private set; }
     public string Version { get; private init; } = string.Empty;
     public decimal DueDateSlack { get; private init; }
-    public decimal LabReliability { get; private init; }
+    public decimal OnTimeRate { get; private init; }
+    public decimal FirstPassYield { get; private init; }
     public decimal LoadBalance { get; private init; }
     public decimal Cost { get; private init; }
     public decimal Transit { get; private init; }
@@ -23,7 +24,8 @@ public sealed class ScoringWeightConfiguration
     private ScoringWeights ToWeights() => new()
     {
         DueDateSlack = DueDateSlack,
-        LabReliability = LabReliability,
+        OnTimeRate = OnTimeRate,
+        FirstPassYield = FirstPassYield,
         LoadBalance = LoadBalance,
         Cost = Cost,
         Transit = Transit
@@ -42,7 +44,7 @@ public sealed class ScoringWeightConfiguration
             return Result.Failure<ScoringWeightConfiguration>(Error.Validation("Version is required and must not exceed 64 characters"));
         if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 10)
             return Result.Failure<ScoringWeightConfiguration>(Error.Validation("Change reason must contain at least 10 characters"));
-        if (weights.DueDateSlack < 0 || weights.LabReliability < 0 || weights.LoadBalance < 0 || weights.Cost < 0 || weights.Transit < 0)
+        if (weights.DueDateSlack < 0 || weights.OnTimeRate < 0 || weights.FirstPassYield < 0 || weights.LoadBalance < 0 || weights.Cost < 0 || weights.Transit < 0)
             return Result.Failure<ScoringWeightConfiguration>(Error.Validation("Scoring weights cannot be negative"));
         if (weights.Total != 1.0m)
             return Result.Failure<ScoringWeightConfiguration>(Error.Validation("Scoring weights must total exactly 1.0"));
@@ -52,7 +54,8 @@ public sealed class ScoringWeightConfiguration
             Id = Guid.NewGuid(),
             Version = version.Trim(),
             DueDateSlack = weights.DueDateSlack,
-            LabReliability = weights.LabReliability,
+            OnTimeRate = weights.OnTimeRate,
+            FirstPassYield = weights.FirstPassYield,
             LoadBalance = weights.LoadBalance,
             Cost = weights.Cost,
             Transit = weights.Transit,

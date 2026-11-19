@@ -7,7 +7,7 @@ public class MaterialInventoryTests
     [Fact]
     public void Initial_stock_count_is_stored_as_opening_balance_without_adjustment()
     {
-        var lab = LabBuilder.Default();
+        var lab = Lab.Onboard("Lab", "HCM", 1);
 
         lab.SetMaterialStock("PLA", "Black", 50m, 20m);
 

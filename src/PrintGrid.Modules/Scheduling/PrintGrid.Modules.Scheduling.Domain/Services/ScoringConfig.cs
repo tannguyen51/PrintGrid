@@ -4,7 +4,7 @@ namespace PrintGrid.Modules.Scheduling.Domain.Services;
 /// A named, immutable version of the assign-engine weights ("kỳ cấu hình", FR-SCHED-009 /
 /// BR-CONFIG-002/003). Every decision log entry freezes <see cref="Version"/> plus the
 /// resulting scores, so a past assignment can always be reconstructed with the weights that
-/// were in force — changing the active set never mutates history (forward-only, BR-CONFIG-003).
+/// were in force — changing the active set never mutates history (BR-CONFIG-003).
 /// Mirrors <c>PricingParameterSet</c> (FR-SCHED-010) for the scoring side.
 /// </summary>
 public sealed record ScoringParameterSet(string Version, ScoringWeights Weights)

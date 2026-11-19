@@ -54,7 +54,8 @@ public static class DecisionSnapshotJson
             weights = new
             {
                 dueDateSlack = set.Weights.DueDateSlack,
-                labReliability = set.Weights.LabReliability,
+                onTimeRate = set.Weights.OnTimeRate,
+                firstPassYield = set.Weights.FirstPassYield,
                 loadBalance = set.Weights.LoadBalance,
                 cost = set.Weights.Cost,
                 transit = set.Weights.Transit
