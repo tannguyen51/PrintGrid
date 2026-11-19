@@ -136,7 +136,8 @@ public class CreateQuoteCommandHandler(
         // BR-QUOTE-008: inexpensive, ordinary drafts may bypass the staff queue. The
         // threshold is hot configuration; zero disables the auto-lane.
         var autoLaneThreshold = policy.AutoLaneThreshold;
-        if (autoLaneThreshold > 0 && quote.TotalPrice.Amount < autoLaneThreshold)
+        if (autoLaneThreshold > 0 && quote.TotalPrice.Amount < autoLaneThreshold
+            && !OrderRoutingPolicy.RequiresManualDispatch(quote.Items.Sum(i => i.Quantity)))
         {
             var validityHours = policy.QuoteValidityHours;
             var approved = quote.Approve(
@@ -257,7 +258,8 @@ public class CreateQuoteCommandHandler(
         }
 
         quote.MarkDraft(placement.PromisedDeliveryDate, policy.Pricing.Version, placement.Basis, placement.CustomerBasis);
-        if (policy.AutoLaneThreshold > 0 && best.TotalAmount < policy.AutoLaneThreshold)
+        if (policy.AutoLaneThreshold > 0 && best.TotalAmount < policy.AutoLaneThreshold
+            && !OrderRoutingPolicy.RequiresManualDispatch(command.Quantity))
         {
             quote.Approve(null, best.TotalAmount, placement.PromisedDeliveryDate, null, clock.UtcNow,
                 TimeSpan.FromHours(policy.QuoteValidityHours), true, 0);

@@ -31,6 +31,7 @@ export function useEligibleModels(materialCode?: string) {
 
 export interface PlaceOrderInput {
   quoteId: string
+  requestedDeliveryDate: string
   street: string
   ward: string
   district: string

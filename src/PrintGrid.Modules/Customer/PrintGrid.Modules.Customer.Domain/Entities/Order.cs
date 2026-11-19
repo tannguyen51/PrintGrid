@@ -16,6 +16,8 @@ public class Order : AggregateRoot<Guid>
     public OrderStatus Status { get; private set; }
     public Money TotalPrice { get; private init; } = Money.Zero();
     public DateOnly PromisedDeliveryDate { get; private set; }
+    public DateOnly? RequestedDeliveryDate { get; private set; }
+    public string DispatchMode { get; private set; } = "Manual";
     public Address DeliveryAddress { get; private init; } = null!;
     public DateTime CreatedAt { get; private init; }
     public DateTime? ConfirmedAt { get; private set; }
@@ -103,7 +105,9 @@ public class Order : AggregateRoot<Guid>
         string? techConstraintsJson = null,
         string modelBindingKind = "không",
         Guid? pinnedModelId = null,
-        Guid? referenceLineId = null)
+        Guid? referenceLineId = null,
+        DateOnly? requestedDeliveryDate = null,
+        DateOnly? promisedDeliveryDate = null)
     {
         var depositPercentSafe = Math.Clamp(depositPercent, 0m, 100m);
         var order = new Order
@@ -114,7 +118,9 @@ public class Order : AggregateRoot<Guid>
             OrderNumber = orderNumber,
             Status = OrderStatus.PaymentPending,
             TotalPrice = quote.TotalPrice,
-            PromisedDeliveryDate = quote.PromisedDeliveryDate,
+            PromisedDeliveryDate = promisedDeliveryDate ?? quote.PromisedDeliveryDate,
+            RequestedDeliveryDate = requestedDeliveryDate,
+            DispatchMode = PrintGrid.SharedKernel.Interfaces.OrderRoutingPolicy.RequiresManualDispatch(quote.Items.Sum(i => i.Quantity)) ? "Manual" : "Automatic",
             DeliveryAddress = deliveryAddress,
             CreatedAt = DateTime.UtcNow,
             IsDelayed = false,
@@ -212,7 +218,8 @@ public class Order : AggregateRoot<Guid>
                 item.CalculationJson,
                 item.QuotedMachineId,
                 item.Configuration.ToleranceMm)).ToList(),
-            PromisedDeliveryDate));
+            PromisedDeliveryDate,
+            DispatchMode == "Automatic"));
 
         return Result.Success();
     }

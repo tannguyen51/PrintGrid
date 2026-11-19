@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '../../shared/api/apiClient'
 import {
@@ -71,6 +72,17 @@ export default function OrderConfigPage() {
   const [district, setDistrict] = useState('')
   const [city, setCity] = useState('')
   const [postalCode, setPostalCode] = useState('')
+  const [requestedDeliveryDate, setRequestedDeliveryDate] = useState('')
+  const addressValid = !!street.trim() && street.trim().length <= 200 && !!ward.trim() && ward.trim().length <= 100
+    && !!district.trim() && district.trim().length <= 100 && !!city.trim() && city.trim().length <= 100 && postalCode.trim().length <= 20
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const delivery = useQuery({
+    queryKey: ['delivery-preview', quote?.id, requestedDeliveryDate],
+    enabled: quote?.status === 'Ready' && requestedDeliveryDate > today,
+    queryFn: () => apiClient.post<{ earliestDeliveryDate: string; promisedDeliveryDate: string; canMeetRequestedDate: boolean }>('/orders/delivery-preview',
+      { quoteId: quote!.id, requestedDeliveryDate }).then(r => r.data),
+    staleTime: 0,
+  })
   const [orderError, setOrderError] = useState<string | null>(null)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const configKey = JSON.stringify([modelId, material, colors, sizeCode, polishing, layerIndex, infill, quantity, techConstraints ?? {}, pinnedModelId])
@@ -172,6 +184,7 @@ export default function OrderConfigPage() {
     try {
       await placeOrder.mutateAsync({
         quoteId: quote.id,
+        requestedDeliveryDate,
         street: street.trim(),
         ward: ward.trim(),
         district: district.trim(),
@@ -372,15 +385,26 @@ export default function OrderConfigPage() {
               <Box>
                 <Typography variant="body2" sx={{ color: 'text.primary', mb: 1 }}>Địa chỉ giao hàng</Typography>
                 <Stack spacing={2}>
-                  <TextField label="Số nhà, đường" value={street} onChange={(e) => setStreet(e.target.value)} fullWidth />
+                  <TextField required label="Số nhà, đường" value={street} onChange={(e) => setStreet(e.target.value)} inputProps={{ maxLength: 200 }} fullWidth />
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                    <TextField label="Phường/Xã" value={ward} onChange={(e) => setWard(e.target.value)} fullWidth />
-                    <TextField label="Quận/Huyện" value={district} onChange={(e) => setDistrict(e.target.value)} fullWidth />
+                    <TextField required label="Phường/Xã" value={ward} onChange={(e) => setWard(e.target.value)} inputProps={{ maxLength: 100 }} fullWidth />
+                    <TextField required label="Quận/Huyện" value={district} onChange={(e) => setDistrict(e.target.value)} inputProps={{ maxLength: 100 }} fullWidth />
                   </Stack>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                    <TextField label="Tỉnh/Thành phố" value={city} onChange={(e) => setCity(e.target.value)} fullWidth />
-                    <TextField label="Mã bưu điện" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} sx={{ width: { xs: '100%', sm: 180 } }} />
+                    <TextField required label="Tỉnh/Thành phố" value={city} onChange={(e) => setCity(e.target.value)} inputProps={{ maxLength: 100 }} fullWidth />
+                    <TextField label="Mã bưu điện" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} inputProps={{ maxLength: 20 }} sx={{ width: { xs: '100%', sm: 180 } }} />
                   </Stack>
+                  <TextField required type="date" label="Ngày giao hàng mong muốn" value={requestedDeliveryDate}
+                    onChange={e => setRequestedDeliveryDate(e.target.value)} InputLabelProps={{ shrink: true }}
+                    inputProps={{ min: today }} error={!!requestedDeliveryDate && requestedDeliveryDate <= today}
+                    helperText="Hệ thống kiểm tra lại lịch sản xuất và thời gian vận chuyển trước khi cam kết." />
+                  {delivery.isFetching && <Typography role="status">Đang kiểm tra khả năng giao hàng…</Typography>}
+                  {delivery.isError && <Alert severity="error">{serverMessage(delivery.error, 'Không kiểm tra được lịch giao hàng.')} <Button onClick={() => void delivery.refetch()}>Thử lại</Button></Alert>}
+                  {delivery.data && <Alert severity={delivery.data.canMeetRequestedDate ? 'success' : 'warning'}>
+                    Ngày giao sớm nhất dự kiến: {new Date(`${delivery.data.earliestDeliveryDate}T00:00:00`).toLocaleDateString('vi-VN')}.
+                    {delivery.data.canMeetRequestedDate ? ` Ngày cam kết: ${new Date(`${delivery.data.promisedDeliveryDate}T00:00:00`).toLocaleDateString('vi-VN')}.` : ' Vui lòng chọn ngày mong muốn từ ngày này trở đi.'}
+                  </Alert>}
+                  <Typography variant="body2" color="text.secondary">Đơn từ 5 sản phẩm do điều phối viên phân công. Đơn nhỏ chỉ được tự gán sau khi đủ cọc và có lịch phù hợp.</Typography>
                 </Stack>
               </Box>
 
@@ -405,7 +429,7 @@ export default function OrderConfigPage() {
                 color="primary"
                 size="large"
                 onClick={handlePlaceOrder}
-                disabled={quote.status !== 'Ready' || Boolean(expiry?.expired) || placeOrder.isPending || !street.trim() || !city.trim() || !acceptTerms || Boolean(user && !user.isEmailVerified)}
+                disabled={quote.status !== 'Ready' || Boolean(expiry?.expired) || placeOrder.isPending || !addressValid || !requestedDeliveryDate || requestedDeliveryDate <= today || delivery.isFetching || delivery.isError || !delivery.data?.canMeetRequestedDate || !acceptTerms || Boolean(user && !user.isEmailVerified)}
                 endIcon={placeOrder.isPending ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}
               >
                 {placeOrder.isPending ? 'Đang đặt hàng…' : expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}

@@ -72,6 +72,7 @@ Report 3 (SRS) và Report 4 (SDD): khi viết 2 report đó, trích + tái cấu
 - [16-Database-ERD.md](project/design/16-Database-ERD.md) — PostgreSQL schema-per-module (mức **Physical**; Review 1 cần bổ sung mức **Conceptual** — việc B8 trong audit)
 - [17-API-Design.md](project/design/17-API-Design.md) — REST conventions, endpoint catalog
 - `PrintGrid-CoreFlow.drawio` — sơ đồ luồng core (upload→quote→order)
+- [Đặt hàng, điều phối số lượng và thống kê](project/requirements/19-Order-Dispatch-Statistics.md) — quy tắc ngày giao, mốc 5 sản phẩm, chia lab và cách đếm thống kê từ góp ý mentor 19/11/2026.
 
 ---
 

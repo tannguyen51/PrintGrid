@@ -42,6 +42,8 @@ public class JobConfiguration : IEntityTypeConfiguration<Job>
         // Split batches (BR-SCHED-010) and the material the lab actually used.
         builder.Property(j => j.ActualMaterialGrams).HasPrecision(10, 2);
         builder.Property(j => j.Quantity).HasDefaultValue(1).IsRequired();
+        builder.Property(j => j.DeliveryBufferDays).HasDefaultValue(2).IsRequired();
+        builder.Property(j => j.LastMileDays).HasDefaultValue(0).IsRequired();
         builder.HasIndex(j => j.ParentJobId);
 
         builder.HasIndex(j => new { j.Status, j.MachineId });

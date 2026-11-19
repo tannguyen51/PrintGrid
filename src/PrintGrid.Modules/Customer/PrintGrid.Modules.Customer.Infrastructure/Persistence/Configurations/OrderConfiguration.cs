@@ -17,6 +17,8 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.Property(o => o.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(o => o.PaymentTransactionId).HasMaxLength(128);
+        builder.Property(o => o.RequestedDeliveryDate);
+        builder.Property(o => o.DispatchMode).HasMaxLength(16).HasDefaultValue("Manual");
         builder.Property(o => o.IsDelayed).IsRequired().HasDefaultValue(false);
         builder.Property(o => o.DeliveredAt);
         builder.Property(o => o.TrackingNumber).HasMaxLength(128);

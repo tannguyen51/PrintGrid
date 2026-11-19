@@ -1,6 +1,10 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.DataProtection;
+using System.Text.Json;
+using System.Security.Cryptography;
+using PrintGrid.Modules.Scheduling.Application.Abstractions;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Scheduling.Application.Commands.AssignJob;
 using PrintGrid.Modules.Scheduling.Application.Commands.RepairSchedule;
@@ -11,8 +15,30 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/scheduling/jobs/{jobId:guid}")]
 [Authorize(Policy = Policies.RequireOps)]
-public class SchedulingController(ISender sender) : ControllerBase
+public class SchedulingController(ISender sender, ISplitDispatchService dispatch, IDataProtectionProvider protection) : ControllerBase
 {
+    private IDataProtector PlanProtector => protection.CreateProtector("PrintGrid.SplitDispatch.v1");
+
+    [HttpPost("split-preview")]
+    public async Task<IActionResult> PreviewSplit(Guid jobId, CancellationToken ct)
+    {
+        var result = await dispatch.PreviewAsync(jobId, ct);
+        if (result.IsFailure) return Conflict(new { error = result.Error });
+        return Ok(new { plan = result.Value, token = PlanProtector.Protect(JsonSerializer.Serialize(result.Value)) });
+    }
+
+    [HttpPost("split-confirm")]
+    public async Task<IActionResult> ConfirmSplit(Guid jobId, ConfirmSplitRequest request, CancellationToken ct)
+    {
+        SplitDispatchPlan? plan;
+        try { plan = JsonSerializer.Deserialize<SplitDispatchPlan>(PlanProtector.Unprotect(request.Token)); }
+        catch (Exception e) when (e is CryptographicException or JsonException or ArgumentException)
+        { return BadRequest(new { error = new { code = "validation", message = "Phương án không hợp lệ. Vui lòng tạo lại." } }); }
+        if (plan is null || plan.JobId != jobId) return BadRequest();
+        var result = await dispatch.ConfirmAsync(plan, ct, User.GetCustomerId()?.ToString());
+        return result.IsSuccess ? Ok(new { jobIds = result.Value, message = "Đã chia và phân công đủ số lượng; giá đơn hàng giữ nguyên." })
+            : Conflict(new { error = result.Error });
+    }
     [HttpPost("assign")]
     public async Task<IActionResult> AssignJob(Guid jobId, CancellationToken cancellationToken)
     {
@@ -64,3 +90,4 @@ public class SchedulingController(ISender sender) : ControllerBase
 }
 
 public record CreateUrgentReprintRequest(string Reason, Guid? FaultLabId = null);
+public record ConfirmSplitRequest(string Token);

@@ -99,10 +99,14 @@ public class PlacedOrderConfirmationTests
 
         var configuration = Substitute.For<IConfiguration>();
         configuration["Payment:DepositPercent"].Returns("50");
-        // These tests pin the deposit-gated flow, so auto-confirm-on-place must be explicitly disabled.
-        configuration["Payment:AutoConfirmOnPlace"].Returns("false");
+        // Even a legacy demo flag must never manufacture a payment during placement.
+        configuration["Payment:AutoConfirmOnPlace"].Returns("true");
 
-        var handler = new PlaceOrderCommandHandler(quotes, orders, models, uow, clock, configuration);
+        var capacity = Substitute.For<IProductionCapacityProbe>();
+        capacity.FindEarliestFeasibleDeliveryAsync(Arg.Any<IReadOnlyList<TrialPlacementLine>>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(new TrialPlacementResult(promised.AddDays(-2), "test capacity"));
+        var handler = new PlaceOrderCommandHandler(quotes, orders, models, uow, clock, configuration,
+            new OrderDeliveryService(capacity, clock, configuration));
 
         // (CustomerId, QuoteId, ...) — not QuoteId first; see class comment, trap 1.
         var result = await handler.Handle(
@@ -110,7 +114,7 @@ public class PlacedOrderConfirmationTests
                 customerId,
                 quote.Id,
                 "1 Dai Co Viet", "Bach Khoa", "Hai Ba Trung", "Ha Noi", "100000",
-                AcceptTerms: true),
+                AcceptTerms: true, RequestedDeliveryDate: promised.AddDays(2)),
             CancellationToken.None);
 
         return (customerId, quote, promised, result, placed);

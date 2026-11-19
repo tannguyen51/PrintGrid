@@ -16,5 +16,6 @@ public static class CustomerApplicationExtensions
         services.AddValidatorsFromAssembly(assembly);
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddScoped<ICommercialPolicyProvider, DefaultCommercialPolicyProvider>();
+        services.AddScoped<Commands.PlaceOrder.OrderDeliveryService>();
     }
 }

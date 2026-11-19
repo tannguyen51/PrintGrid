@@ -42,6 +42,7 @@ import { OpsEmptyState, OpsPageHeader, OpsStatCard } from '../ops/OpsComponents'
 import { apiClient } from '../../shared/api/apiClient'
 import { JOB_LABELS } from '../jobs/jobTypes'
 import { useJobs } from '../jobs/useJobs'
+import { SplitDispatchDialog } from './SplitDispatchDialog'
 import { useOpsMonitor, useOpsReassign, useOpsReassignPreview, type DateChangeReason, type OpsRiskJob } from '../ops/useOps'
 
 const fmtDate = (value?: string | null) => value ? new Date(value.includes('T') ? value : `${value}T00:00:00`).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'
@@ -90,14 +91,11 @@ export default function SchedulingBoardPage() {
   // Pending-job board — assign / repair-risk (HEAD).
   const pending = useJobs('Pending')
   const [notice, setNotice] = useState<string | null>(null)
+  const [splitJobId, setSplitJobId] = useState<string | null>(null)
 
   const assign = useMutation({
     mutationFn: (jobId: string) => apiClient.post(`/scheduling/jobs/${jobId}/assign`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['jobs'] }),
-  })
-  const repair = useMutation({
-    mutationFn: (jobId: string) => apiClient.post<{ message: string }>(`/scheduling/jobs/${jobId}/repair-risk`).then(r => r.data),
-    onSuccess: data => { setNotice(data.message); queryClient.invalidateQueries({ queryKey: ['jobs'] }) },
+    onSuccess: () => { setNotice('Đã gán công việc cho xưởng.'); void queryClient.invalidateQueries({ queryKey: ['jobs'] }) },
   })
 
   const jobs = pending.data ?? []
@@ -112,6 +110,7 @@ export default function SchedulingBoardPage() {
   const fetching = monitor.isFetching || pending.isFetching
 
   return <Box className="ops-page">
+    <SplitDispatchDialog jobId={splitJobId} onClose={() => setSplitJobId(null)} />
     <Stack spacing={3}>
       <OpsPageHeader eyebrow="Điều hành mạng lưới" title="Trung tâm điều phối" description="Theo dõi tiến độ, nhận diện rủi ro và phân bổ công việc trong mạng lưới."
         actions={<Button variant="outlined" startIcon={<RefreshRounded />} onClick={refresh} disabled={fetching}>{fetching ? 'Đang cập nhật…' : 'Làm mới dữ liệu'}</Button>} />
@@ -149,7 +148,6 @@ export default function SchedulingBoardPage() {
             {notice && <Alert severity="success" sx={{ m: 2 }} onClose={() => setNotice(null)}>{notice}</Alert>}
             {pending.isError && <Alert severity="error" sx={{ m: 2 }}>Không tải được danh sách công việc chờ gán.</Alert>}
             {assign.isError && <Alert severity="error" sx={{ m: 2 }}>{getApiErrorMessage(assign.error, 'Không thể gán công việc. Vui lòng thử lại.')}</Alert>}
-            {repair.isError && <Alert severity="error" sx={{ m: 2 }}>{getApiErrorMessage(repair.error, 'Không thể xử lý nguy cơ trễ.')}</Alert>}
             {pending.isLoading ? <Box sx={{ p: 3 }}><Skeleton height={70} /><Skeleton height={70} /></Box>
               : pending.isError && !pending.data ? null
               : visibleJobs.length === 0 ? <OpsEmptyState icon={<AssignmentTurnedInRounded />} title={jobSearch ? 'Không tìm thấy công việc phù hợp' : 'Đã phân công hết công việc'} description={jobSearch ? 'Thử tìm bằng mã đơn, tên file hoặc loại vật liệu khác.' : 'Công việc từ đơn hàng mới sẽ xuất hiện tại đây khi cần phân công.'} />
@@ -157,10 +155,12 @@ export default function SchedulingBoardPage() {
                 <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1} flexWrap="wrap"><Typography sx={{ fontSize: 13, fontWeight: 700 }}>{job.orderNumber || '#' + job.id.slice(0, 8).toUpperCase()}</Typography><Chip size="small" color="warning" label={JOB_LABELS[job.status]} /></Stack>
                 <Typography sx={{ mt: 1, fontSize: 12, fontWeight: 550, overflowWrap: 'anywhere' }}>{job.modelFileName || 'Mô hình in 3D'} · {job.materialCode} / {job.colorCode}</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{job.quantity} sản phẩm · {job.estimatedPrintMinutes.toLocaleString('vi-VN')} phút dự kiến · Lớp {job.layerHeightMm} mm</Typography>
+                <Typography variant="body2" color="text.secondary">{job.dispatchMode === 'Automatic' ? 'Đơn nhỏ · cần Ops hỗ trợ gán lịch' : 'Ops điều phối'}{job.orderQuantity ? ` · Tổng đơn ${job.orderQuantity} sản phẩm` : ''}</Typography>
                 <Typography variant="body2" color="text.secondary">{job.boundingWidthMm} × {job.boundingDepthMm} × {job.boundingHeightMm} mm · {job.technology} · Dung sai ≤ {job.toleranceMm} mm</Typography>
                 <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} gap={1.5} sx={{ mt: 2 }}>
                   <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>Hạn nội bộ: {fmtDate(job.internalDueDate)}</Typography>
-                  <Stack direction="row" gap={1} flexWrap="wrap">{job.quantity > 1 && <Button size="small" variant="outlined" disabled={repair.isPending} onClick={() => repair.mutate(job.id)}>Xử lý nguy cơ trễ</Button>}
+                  <Stack direction="row" gap={1} flexWrap="wrap">
+                    {job.quantity > 1 && <Button size="small" variant="outlined" onClick={() => setSplitJobId(job.id)}>Xem phương án chia xưởng</Button>}
                     <Button size="small" variant="contained" startIcon={assign.isPending ? <CircularProgress size={14} color="inherit" /> : <RocketLaunchRounded sx={{ fontSize: 16 }} />} disabled={assign.isPending} onClick={() => assign.mutate(job.id)}>Gán cho xưởng</Button></Stack>
                 </Stack>
               </Box>)}

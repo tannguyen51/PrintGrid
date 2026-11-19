@@ -88,8 +88,8 @@ public sealed class PreviewOpsReassignQueryHandler(IJobRepository jobs, IAssignm
         }
         var late = await engine.AssignAsync(job, new AssignmentRequest(AssignmentTriggers.DateChangeProbe, IgnoreDueDate: true, ProbeOnly: true, ExcludeLabId: currentLab), ct);
         var proposed = late.EarliestFeasibleEndUtc is { } end
-            ? DateOnly.FromDateTime(end).AddDays(PlacementShortfallService.HubAndTransitBufferDays)
-            : job.InternalDueDate.AddDays(PlacementShortfallService.HubAndTransitBufferDays + 1);
+            ? DateOnly.FromDateTime(end).AddDays(job.DeliveryBufferDays)
+            : job.InternalDueDate.AddDays(job.DeliveryBufferDays + 1);
         return Result.Success(new OpsReassignPreviewDto(
             job.Id, false, true, currentLab, null, null, late.EarliestFeasibleEndUtc, proposed,
             "Gán lại sẽ ảnh hưởng ngày khách; cần bước xác nhận và khách duyệt ngày mới."));
@@ -126,7 +126,7 @@ public sealed class ReassignJobByOpsCommandHandler(
             if (await dateChanges.HasPendingAsync(job.Id, ct))
                 return Result.Failure<OpsReassignResultDto>(Error.Conflict("Job đã có đề nghị đổi ngày đang chờ khách"));
             var request = DateChangeRequest.Propose(job.Id, job.OrderItemId,
-                job.InternalDueDate.AddDays(PlacementShortfallService.HubAndTransitBufferDays),
+                job.InternalDueDate.AddDays(job.DeliveryBufferDays),
                 preview.Value.ProposedCustomerDate!.Value, command.DateChangeReason.Value,
                 command.Reason.Trim(), Guid.NewGuid().ToString("N"), clock.UtcNow);
             await dateChanges.AddAsync(request, ct);

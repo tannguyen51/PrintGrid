@@ -811,6 +811,13 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasDefaultValue(0m);
 
+                    b.Property<string>("DispatchMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Manual");
+
                     b.Property<bool>("IsDelayed")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -848,6 +855,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasDefaultValue(0m);
+
+                    b.Property<DateOnly?>("RequestedDeliveryDate")
+                        .HasColumnType("date");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1566,6 +1576,11 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("DeliveryBufferDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(2);
+
                     b.Property<int>("EstimatedPrintMinutes")
                         .HasColumnType("integer");
 
@@ -1603,6 +1618,11 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
                     b.Property<Guid?>("LabId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("LastMileDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<Guid?>("MachineId")
                         .HasColumnType("uuid");

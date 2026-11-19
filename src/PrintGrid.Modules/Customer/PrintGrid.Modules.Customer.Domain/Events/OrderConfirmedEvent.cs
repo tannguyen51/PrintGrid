@@ -5,7 +5,8 @@ namespace PrintGrid.Modules.Customer.Domain.Events;
 public sealed record OrderConfirmedEvent(
     Guid OrderId = default,
     IReadOnlyList<OrderConfirmedItem>? Items = null,
-    DateOnly PromisedDeliveryDate = default) : DomainEvent;
+    DateOnly PromisedDeliveryDate = default,
+    bool AutoAssign = false) : DomainEvent;
 
 public sealed record OrderConfirmedItem(
     Guid OrderItemId,

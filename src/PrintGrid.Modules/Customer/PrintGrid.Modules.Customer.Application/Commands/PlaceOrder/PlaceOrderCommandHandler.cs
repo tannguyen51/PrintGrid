@@ -17,11 +17,15 @@ public class PlaceOrderCommandHandler(
     IModelRepository models,
     IUnitOfWork unitOfWork,
     IDateTimeProvider clock,
-    IConfiguration configuration)
+    IConfiguration configuration,
+    OrderDeliveryService delivery)
     : IRequestHandler<PlaceOrderCommand, Result<OrderDto>>
 {
     public async Task<Result<OrderDto>> Handle(PlaceOrderCommand command, CancellationToken cancellationToken)
     {
+        var validation = await new PlaceOrderCommandValidator().ValidateAsync(command, cancellationToken);
+        if (!validation.IsValid)
+            return Result.Failure<OrderDto>(Error.Validation(string.Join(" ", validation.Errors.Select(e => e.ErrorMessage))));
         var quote = await quotes.GetByIdAsync(command.QuoteId, cancellationToken);
         if (quote is null)
             return Result.Failure<OrderDto>(Error.NotFound("Quote", command.QuoteId));
@@ -40,6 +44,11 @@ public class PlaceOrderCommandHandler(
             }
         }
 
+        var assessment = await delivery.AssessAsync(quote, command.RequestedDeliveryDate!.Value, cancellationToken);
+        if (assessment.IsFailure) return Result.Failure<OrderDto>(assessment.Error);
+        if (!assessment.Value.CanMeetRequestedDate)
+            return Result.Failure<OrderDto>(Error.Conflict($"Ngày giao sớm nhất hiện tại là {assessment.Value.EarliestDeliveryDate:dd/MM/yyyy}. Vui lòng chọn lại ngày mong muốn."));
+
         var conversion = quote.MarkConverted(clock.UtcNow);
         if (conversion.IsFailure)
             return Result.Failure<OrderDto>(conversion.Error);
@@ -56,30 +65,16 @@ public class PlaceOrderCommandHandler(
             techConstraintsJson: command.TechConstraintsJson,
             modelBindingKind: command.ModelBindingKind,
             pinnedModelId: command.PinnedModelId,
-            referenceLineId: command.ReferenceLineId);
+            referenceLineId: command.ReferenceLineId,
+            requestedDeliveryDate: command.RequestedDeliveryDate,
+            promisedDeliveryDate: assessment.Value.PromisedDeliveryDate);
 
-        // Demo flow: record the full payment up front. ApplyPayment also raises
-        // OrderConfirmedEvent (jobs are created immediately) and sets PaidAmount, so the
-        // hub's "ship" guard (IsSettled) passes later. With the flag off, the order stays
-        // PaymentPending until ops records the deposit via POST /orders/{id}/mark-paid.
-        if (AutoConfirmOnPlace())
-        {
-            var paid = order.ApplyPayment(order.TotalPrice.Amount, $"AUTO-{Guid.NewGuid():N}");
-            if (paid.IsFailure)
-                return Result.Failure<OrderDto>(paid.Error);
-        }
-
-        // When auto-confirm is disabled the order stays PaymentPending and no
-        // OrderConfirmedEvent is raised until the deposit is recorded.
+        // Placement never manufactures a payment, including for the automatic dispatch lane.
         await orders.AddAsync(order, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(Map(order));
     }
-
-    /// <summary>Defaults to true (demo): placement confirms the order without a separate payment step.</summary>
-    private bool AutoConfirmOnPlace()
-        => !bool.TryParse(configuration["Payment:AutoConfirmOnPlace"], out var enabled) || enabled;
 
     /// <summary>Reads "Payment:DepositPercent" (50 means 50%) and falls back to 50 when absent/invalid.</summary>
     private decimal DepositPercent()
@@ -113,5 +108,7 @@ public class PlaceOrderCommandHandler(
             i.ModelBindingKind,
             i.PinnedModelId,
             i.BindingLevel,
-            i.ReferenceOrderLineId)).ToList());
+            i.ReferenceOrderLineId)).ToList(),
+        order.RequestedDeliveryDate,
+        order.DispatchMode);
 }

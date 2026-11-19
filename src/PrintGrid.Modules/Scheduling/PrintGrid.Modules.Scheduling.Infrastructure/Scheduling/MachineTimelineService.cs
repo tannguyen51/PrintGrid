@@ -68,6 +68,9 @@ public class MachineTimelineService(PrintGridDbContext context) : IMachineTimeli
         var windows = rows
             .Select(r => (Start: r.PlannedStartUtc!.Value, End: r.PlannedEndUtc!.Value))
             .ToList();
+        if (machine.MaintenanceFromUtc.HasValue && machine.MaintenanceUntilUtc > fromUtc)
+            windows.Add((machine.MaintenanceFromUtc.Value, machine.MaintenanceUntilUtc.Value));
+        windows.Sort((a, b) => a.Start.CompareTo(b.Start));
 
         return windows;
     }

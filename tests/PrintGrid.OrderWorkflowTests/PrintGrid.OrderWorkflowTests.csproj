@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/PrintGrid.Api/PrintGrid.Api.csproj" />
+    <Compile Include="../PrintGrid.UnitTests/Customer/PlacedOrderConfirmationTests.cs" Link="Existing/PlacedOrderConfirmationTests.cs" />
+    <Compile Include="../PrintGrid.UnitTests/Scheduling/OrderConfirmedEventHandlerTests.cs" Link="Existing/OrderConfirmedEventHandlerTests.cs" />
+    <Compile Include="../PrintGrid.UnitTests/Scheduling/AssignmentEngineTests.cs" Link="Existing/AssignmentEngineTests.cs" />
+    <Compile Include="../PrintGrid.UnitTests/Scheduling/Builders.cs" Link="Existing/Builders.cs" />
+    <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
+  </ItemGroup>
+</Project>

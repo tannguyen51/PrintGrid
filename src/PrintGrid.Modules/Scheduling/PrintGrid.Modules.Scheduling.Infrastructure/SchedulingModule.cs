@@ -28,6 +28,7 @@ public class SchedulingModule : IModule
         SchedulingModuleRegistration.AddRepositories(services);
         services.AddScoped<IMachineProfileMatcher, MachineProfileRegistry>();
         services.AddScoped<ICuraProfileRegistry, MachineProfileRegistry>();
+        services.AddScoped<ISplitDispatchService, Scheduling.SplitDispatchService>();
         services.AddSingleton<CuraResourceCatalog>();
         services.AddScoped<CuraLibrarySyncService>();
         var rates = configuration.GetSection("ShipmentBatch:ZoneRates").GetChildren()

@@ -23,4 +23,5 @@ public record PlaceOrderCommand(
     string? TechConstraintsJson = null,
     string ModelBindingKind = "không",
     Guid? PinnedModelId = null,
-    Guid? ReferenceLineId = null) : IRequest<Result<OrderDto>>;
+    Guid? ReferenceLineId = null,
+    DateOnly? RequestedDeliveryDate = null) : IRequest<Result<OrderDto>>;
