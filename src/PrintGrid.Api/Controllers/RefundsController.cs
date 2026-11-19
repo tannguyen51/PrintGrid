@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Customer.Application.Commands.Refunds;
 using PrintGrid.SharedKernel.Results;
+using Microsoft.EntityFrameworkCore;
+using PrintGrid.Infrastructure.Shared.Persistence;
+using PrintGrid.Modules.Analytics.Domain.Entities;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -17,7 +20,7 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/refunds")]
 [Authorize(Policy = Policies.RequireOps)]
-public sealed class RefundsController(ISender sender) : ControllerBase
+public sealed class RefundsController(ISender sender, PrintGridDbContext db) : ControllerBase
 {
     private const string _csvHeader =
         "refund_id,order_id,order_item_id,date_change_request_id,amount,currency,payment_transaction_id,reason,status,created_at_utc";
@@ -38,10 +41,31 @@ public sealed class RefundsController(ISender sender) : ControllerBase
         var actorId = User.GetCustomerId();
         if (actorId is null) return Forbid();
 
+        var key = $"refund:{id:N}";
+        var existing = await db.Set<FinancialTransaction>().AsNoTracking()
+            .AnyAsync(x => x.Type == "Refund" && x.IdempotencyKey == key, cancellationToken);
+        if (existing)
+        {
+            var current = await sender.Send(new GetRefundRequestsQuery("Approved"), cancellationToken);
+            var row = current.IsSuccess ? current.Value.FirstOrDefault(x => x.Id == id) : null;
+            return row is null ? Conflict() : Ok(row);
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var result = await sender.Send(
             new ProcessRefundCommand(id, request.Approve, request.Note, actorId.Value),
             cancellationToken);
-        return result.IsFailure ? ToError(result.Error) : Ok(result.Value);
+        if (result.IsFailure) return ToError(result.Error);
+        if (request.Approve)
+        {
+            var reference = string.IsNullOrWhiteSpace(request.Reference) ? $"REFUND-{id:N}" : request.Reference.Trim();
+            db.Set<FinancialTransaction>().Add(FinancialTransaction.Create(result.Value.OrderId, "Refund",
+                result.Value.Amount, result.Value.Currency, reference, key, actorId.Value, DateTime.UtcNow,
+                result.Value.Id, request.Note));
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        await transaction.CommitAsync(cancellationToken);
+        return Ok(result.Value);
     }
 
     [HttpGet("export")]
@@ -96,4 +120,4 @@ public sealed class RefundsController(ISender sender) : ControllerBase
     }
 }
 
-public sealed record ProcessRefundRequest(bool Approve, string? Note = null);
+public sealed record ProcessRefundRequest(bool Approve, string? Note = null, string? Reference = null);

@@ -14,6 +14,10 @@ public class StockTransactionConfiguration : IEntityTypeConfiguration<StockTrans
         builder.Property(x => x.DeltaGrams).HasPrecision(12, 2).IsRequired();
         builder.Property(x => x.RunningTotalGrams).HasPrecision(12, 2).IsRequired();
         builder.Property(x => x.Reason).HasMaxLength(250).IsRequired();
+        builder.HasOne<MaterialStock>()
+            .WithMany()
+            .HasForeignKey(x => x.MaterialStockId)
+            .OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(x => x.TransactionCode).IsUnique();
         builder.HasIndex(x => new { x.LabId, x.CreatedAtUtc });
     }

@@ -11,6 +11,10 @@ public class MaterialReservationConfiguration : IEntityTypeConfiguration<Materia
         builder.ToTable("material_reservations", "scheduling");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.ReservedGrams).HasPrecision(12, 2).IsRequired();
+        builder.HasOne<MaterialStock>()
+            .WithMany()
+            .HasForeignKey(x => x.MaterialStockId)
+            .OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(x => new { x.JobId, x.MaterialStockId }).IsUnique();
     }
 }

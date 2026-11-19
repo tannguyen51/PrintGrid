@@ -1,0 +1,23 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Alert, Box, Button, Chip, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
+import { apiClient } from '../../shared/api/apiClient'
+
+type Report = { customerReceipts: { totalReceived: number; totalRefunded: number; netReceived: number }; labPayments: { totalPayable: number; totalPaid: number; outstanding: number }; business: { revenueAfterRefunds: number; labCostsRecognized: number; remainingCash: number }; transactions: Array<{ id: string; orderId: string; type: string; amount: number; reference: string; confirmedAtUtc: string }> }
+type Payable = { id: string; jobId: string; orderId: string; labId: string; grossAmount: number; deductionAmount: number; netAmount: number; status: string; eligibleAtUtc: string }
+const money = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n)
+
+export default function FinancePage() {
+  const qc = useQueryClient()
+  const report = useQuery({ queryKey: ['finance-report'], queryFn: () => apiClient.get<Report>('/finance/reports').then(r => r.data) })
+  const payables = useQuery({ queryKey: ['lab-payables'], queryFn: () => apiClient.get<Payable[]>('/finance/lab-payables').then(r => r.data) })
+  const sync = useMutation({ mutationFn: () => apiClient.post('/finance/lab-payables/sync'), onSuccess: () => qc.invalidateQueries({ queryKey: ['lab-payables'] }) })
+  const change = useMutation({ mutationFn: ({ id, action }: { id: string; action: 'approve' | 'pay' }) => action === 'approve' ? apiClient.post(`/finance/lab-payables/${id}/approve`) : apiClient.post(`/finance/lab-payables/${id}/pay`, { reference: `LAB-${Date.now()}` }), onSuccess: () => { qc.invalidateQueries({ queryKey: ['lab-payables'] }); qc.invalidateQueries({ queryKey: ['finance-report'] }) } })
+  const r = report.data
+  return <Box className="ops-page"><Stack className="ops-page-body" spacing={3}>
+    <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={2}><Box><Typography variant="h1">Tài chính & đối soát</Typography><Typography color="text.secondary">Mọi số tổng hợp đều truy ngược được về giao dịch thu, hoàn và công nợ theo job.</Typography></Box><Button variant="outlined" onClick={() => sync.mutate()} disabled={sync.isPending}>Đồng bộ công nợ nghiệm thu</Button></Stack>
+    {(report.isError || payables.isError) && <Alert severity="error">Không tải được dữ liệu tài chính.</Alert>}
+    {r && <Box className="ops-summary-grid">{[['Thực thu khách hàng', r.customerReceipts.totalReceived], ['Thực hoàn', r.customerReceipts.totalRefunded], ['Còn phải trả lab', r.labPayments.outstanding], ['Dòng tiền còn lại', r.business.remainingCash]].map(([label, value]) => <Box key={String(label)} sx={{ p: 2.5, bgcolor: 'background.paper', border: '1px solid #E8EBF2', borderRadius: 2 }}><Typography color="text.secondary">{label}</Typography><Typography variant="h5" fontWeight={800}>{money(Number(value))}</Typography></Box>)}</Box>}
+    <Box><Typography variant="h5" mb={1}>Công nợ lab</Typography><Table size="small"><TableHead><TableRow><TableCell>Job / đơn</TableCell><TableCell>Lab</TableCell><TableCell align="right">Phải trả</TableCell><TableCell align="right">Khấu trừ</TableCell><TableCell>Trạng thái</TableCell><TableCell /></TableRow></TableHead><TableBody>{(payables.data ?? []).map(p => <TableRow key={p.id}><TableCell>{p.jobId.slice(0, 8)} / {p.orderId.slice(0, 8)}</TableCell><TableCell>{p.labId.slice(0, 8)}</TableCell><TableCell align="right">{money(p.netAmount)}</TableCell><TableCell align="right">{money(p.deductionAmount)}</TableCell><TableCell><Chip size="small" label={p.status} /></TableCell><TableCell align="right">{p.status === 'Eligible' && <Button onClick={() => change.mutate({ id: p.id, action: 'approve' })}>Duyệt chi</Button>}{p.status === 'Approved' && <Button color="success" onClick={() => change.mutate({ id: p.id, action: 'pay' })}>Đã trả</Button>}</TableCell></TableRow>)}</TableBody></Table></Box>
+    <Box><Typography variant="h5" mb={1}>Giao dịch gần nhất</Typography><Table size="small"><TableHead><TableRow><TableCell>Thời gian</TableCell><TableCell>Đơn</TableCell><TableCell>Loại</TableCell><TableCell>Tham chiếu</TableCell><TableCell align="right">Số tiền</TableCell></TableRow></TableHead><TableBody>{(r?.transactions ?? []).map(t => <TableRow key={t.id}><TableCell>{new Date(t.confirmedAtUtc).toLocaleString('vi-VN')}</TableCell><TableCell>{t.orderId.slice(0, 8)}</TableCell><TableCell>{t.type}</TableCell><TableCell>{t.reference}</TableCell><TableCell align="right">{money(t.amount)}</TableCell></TableRow>)}</TableBody></Table></Box>
+  </Stack></Box>
+}

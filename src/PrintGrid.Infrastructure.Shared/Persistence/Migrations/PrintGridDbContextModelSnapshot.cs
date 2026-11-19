@@ -478,6 +478,131 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.ToTable("shared_catalog_items", "admin");
                 });
 
+            modelBuilder.Entity("PrintGrid.Modules.Analytics.Domain.Entities.FinancialTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("ConfirmedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ConfirmedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid?>("RefundRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId", "ConfirmedAtUtc");
+
+                    b.HasIndex("Type", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("financial_transactions", "analytics");
+                });
+
+            modelBuilder.Entity("PrintGrid.Modules.Analytics.Domain.Entities.LabPayable", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ApprovedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ApprovedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<decimal>("DeductionAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("EligibleAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("GrossAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LabId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("PaidAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PaidBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PaymentReference")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId")
+                        .IsUnique();
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("LabId", "Status");
+
+                    b.ToTable("lab_payables", "analytics");
+                });
+
             modelBuilder.Entity("PrintGrid.Modules.Customer.Domain.Entities.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2017,6 +2142,8 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
 
                     b.HasIndex("LabId");
 
+                    b.HasIndex("MaterialStockId");
+
                     b.HasIndex("JobId", "MaterialStockId")
                         .IsUnique();
 
@@ -2273,6 +2400,8 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasColumnType("character varying(32)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MaterialStockId");
 
                     b.HasIndex("TransactionCode")
                         .IsUnique();
@@ -2820,6 +2949,12 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasForeignKey("LabId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("PrintGrid.Modules.Scheduling.Domain.Entities.MaterialStock", null)
+                        .WithMany()
+                        .HasForeignKey("MaterialStockId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("PrintGrid.Modules.Scheduling.Domain.Entities.MaterialStock", b =>
@@ -2836,6 +2971,12 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.HasOne("PrintGrid.Modules.Scheduling.Domain.Entities.Lab", null)
                         .WithMany("StockTransactions")
                         .HasForeignKey("LabId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PrintGrid.Modules.Scheduling.Domain.Entities.MaterialStock", null)
+                        .WithMany()
+                        .HasForeignKey("MaterialStockId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
