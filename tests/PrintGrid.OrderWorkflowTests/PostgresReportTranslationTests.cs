@@ -5,6 +5,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using PrintGrid.Api.Controllers;
 using PrintGrid.Infrastructure.Shared.Persistence;
+using PrintGrid.Modules.Customer.Domain.Enums;
+using PrintGrid.Modules.Customer.Domain.Repositories;
+using PrintGrid.Modules.Customer.Infrastructure.Persistence.Repositories;
 
 namespace PrintGrid.OrderWorkflowTests;
 
@@ -29,6 +32,26 @@ public sealed class PostgresReportTranslationTests
         response.Should().BeOfType<OkObjectResult>();
         reader.Sql.Should().HaveCount(3, "summary, count and page must compile before the database execution is intercepted");
         reader.Sql[0].Should().Contain("EXISTS").And.ContainEquivalentOf("COUNT");
+        reader.Sql[2].Should().Contain("LIMIT").And.Contain("ORDER BY");
+    }
+
+    [Theory]
+    [InlineData(QuoteStatus.Draft)]
+    [InlineData(QuoteStatus.PendingReview)]
+    [InlineData(QuoteStatus.Ready)]
+    [InlineData(QuoteStatus.Expired)]
+    public async Task Quote_history_search_status_counts_and_pages_translate_to_Postgres(QuoteStatus status)
+    {
+        ModuleAssemblyRegistry.Register(typeof(PrintGrid.Modules.Customer.Infrastructure.CustomerModule).Assembly);
+        ModuleAssemblyRegistry.Register(typeof(PrintGrid.Modules.Scheduling.Infrastructure.SchedulingModule).Assembly);
+        var reader = new EmptyResults();
+        await using var db = new PrintGridDbContext(new DbContextOptionsBuilder<PrintGridDbContext>()
+            .UseNpgsql("Host=127.0.0.1;Port=1;Database=translation_only;Username=test;Password=test")
+            .AddInterceptors(new SuppressConnection(), reader).Options);
+        var page = await new QuoteRepository(db).GetHistoryAsync(new QuoteHistoryFilter(Guid.NewGuid(), Guid.NewGuid(),
+            status, "PLA", new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 19), "price-low", 2, 5, DateTime.UtcNow));
+        page.Items.Should().BeEmpty();
+        reader.Sql.Should().HaveCount(3);
         reader.Sql[2].Should().Contain("LIMIT").And.Contain("ORDER BY");
     }
 

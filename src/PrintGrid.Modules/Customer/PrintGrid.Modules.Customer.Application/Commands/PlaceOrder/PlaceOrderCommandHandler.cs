@@ -32,8 +32,7 @@ public class PlaceOrderCommandHandler(
         if (quote.CustomerId != command.CustomerId)
             return Result.Failure<OrderDto>(Error.Forbidden("Quote belongs to another customer"));
 
-        var requiresOpsApproval = quote.Status == QuoteStatus.Draft
-            && OrderRoutingPolicy.RequiresManualDispatch(quote.Items.Sum(i => i.Quantity));
+        var requiresOpsApproval = quote.Status == QuoteStatus.Draft;
         if (quote.Status != QuoteStatus.Ready && !requiresOpsApproval)
             return Result.Failure<OrderDto>(Error.Conflict("Báo giá chưa sẵn sàng để đặt hàng."));
         if (await orders.GetByQuoteIdAsync(quote.Id, cancellationToken) is not null)
@@ -56,7 +55,12 @@ public class PlaceOrderCommandHandler(
         if (!assessment.Value.CanMeetRequestedDate)
             return Result.Failure<OrderDto>(Error.Conflict($"Ngày giao sớm nhất hiện tại là {assessment.Value.EarliestDeliveryDate:dd/MM/yyyy}. Vui lòng chọn lại ngày mong muốn."));
 
-        if (!requiresOpsApproval)
+        if (requiresOpsApproval)
+        {
+            var submission = quote.SubmitForReview();
+            if (submission.IsFailure) return Result.Failure<OrderDto>(submission.Error);
+        }
+        else
         {
             var conversion = quote.MarkConverted(clock.UtcNow);
             if (conversion.IsFailure)

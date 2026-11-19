@@ -7,5 +7,6 @@ public enum QuoteStatus
     Ready,
     Expired,
     Converted,
-    Failed
+    Failed,
+    PendingReview
 }

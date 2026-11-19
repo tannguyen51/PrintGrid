@@ -123,8 +123,8 @@ public class Quote : AggregateRoot<Guid>
     public Result Approve(Guid? staffId, decimal totalAmount, DateOnly promisedDeliveryDate,
         string? reason, DateTime approvedAtUtc, TimeSpan validity, bool autoApproved, decimal adjustmentBandPercent)
     {
-        if (Status != QuoteStatus.Draft)
-            return Result.Failure(Error.Conflict("Only an engine draft can be approved"));
+        if (Status is not (QuoteStatus.Draft or QuoteStatus.PendingReview))
+            return Result.Failure(Error.Conflict("Only a draft or submitted quote can be approved"));
         if (totalAmount <= 0)
             return Result.Failure(Error.Validation("Approved total must be greater than zero"));
 
@@ -146,6 +146,15 @@ public class Quote : AggregateRoot<Guid>
         ExpiresAt = approvedAtUtc.Add(validity);
         Status = QuoteStatus.Ready;
         AddDomainEvent(new QuoteApprovedEvent());
+        return Result.Success();
+    }
+
+    /// <summary>A calculation remains private to its customer until they explicitly submit it.</summary>
+    public Result SubmitForReview()
+    {
+        if (Status != QuoteStatus.Draft)
+            return Result.Failure(Error.Conflict("Báo giá không còn là bản nháp hoặc đã được gửi duyệt."));
+        Status = QuoteStatus.PendingReview;
         return Result.Success();
     }
 

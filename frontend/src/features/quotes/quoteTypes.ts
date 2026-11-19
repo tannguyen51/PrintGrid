@@ -21,7 +21,12 @@ export interface QuoteCalculation {
   failureRate?: number; failureAllowance: number; polishingPerUnit?: number; serviceAmount: number; totalAmount: number
 }
 
-export type QuoteStatus = 'Pending' | 'Draft' | 'Ready' | 'Expired' | 'Converted' | 'Failed'
+export type QuoteStatus = 'Pending' | 'Draft' | 'PendingReview' | 'Ready' | 'Expired' | 'Converted' | 'Failed'
+
+export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
+  Pending: 'Đang tính giá', Draft: 'Bản nháp', PendingReview: 'Chờ Ops duyệt', Ready: 'Đã duyệt',
+  Expired: 'Hết hiệu lực', Converted: 'Đã đặt hàng', Failed: 'Không thể báo giá',
+}
 
 export interface Quote {
   id: string

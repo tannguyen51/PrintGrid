@@ -16,7 +16,15 @@ Tổng `Quantity` của tất cả dòng trong đơn **< 5**: `DispatchMode = Au
 
 Báo giá chỉ tự duyệt nếu đồng thời dưới ngưỡng tiền và dưới ngưỡng số lượng. Báo giá lớn phải qua Ops. Duyệt báo giá không chứng minh đã thanh toán và không đồng nghĩa đã phân công sản xuất.
 
-Đặt đơn luôn tạo `PaymentPending`, không tạo thanh toán giả kể cả khi còn cấu hình demo `Payment:AutoConfirmOnPlace`. Sau khi ghi nhận đủ cọc, `OrderConfirmedEvent` tạo các job. Chỉ đơn nhỏ được đưa vào assignment engine; engine kiểm tra máy/profile, tải, vật liệu và hạn trước khi gán. Nếu không gán được thì giữ job cho Ops. Đơn lớn chờ Ops phân công. Đơn cũ được migration giữ ở luồng Manual để không thay đổi cách xử lý hồi tố.
+Nhận báo giá chỉ tính giá: báo giá cần Ops xem xét được lưu ở `Draft` (bản nháp), chưa xuất hiện trong hàng đợi Ops. Khách điền địa chỉ, ngày mong muốn, chấp nhận điều khoản rồi bấm **Gửi duyệt báo giá**. Lúc đó hệ thống chuyển báo giá sang `PendingReview` và tạo đơn `AwaitingApproval`; chỉ trạng thái này được Ops xem và duyệt. Bản nháp không có đơn được giữ riêng dù khách tính giá nhiều lần.
+
+Sau khi Ops duyệt, đơn chuyển sang `PaymentPending`, giữ ngày khách mong muốn và ngày giao đã được kiểm tra; không lấy ngày sẵn sàng tại hub làm ngày giao khách. Báo giá nhỏ đủ điều kiện tự duyệt vẫn có thể xác nhận đặt hàng trực tiếp. Đơn chưa được duyệt không nhận thanh toán. Không tạo thanh toán giả kể cả khi còn cấu hình demo `Payment:AutoConfirmOnPlace`.
+
+Sau khi ghi nhận đủ cọc, `OrderConfirmedEvent` tạo các job. Chỉ đơn nhỏ được đưa vào assignment engine; engine kiểm tra máy/profile, tải, vật liệu và hạn trước khi gán. Nếu không gán được thì giữ job cho Ops. Đơn lớn chờ Ops phân công. Đơn cũ được migration giữ ở luồng Manual để không thay đổi cách xử lý hồi tố.
+
+Lịch sử báo giá ở trang đặt in có tìm mã/vật liệu/màu, lọc trạng thái và ngày tạo theo giờ Việt Nam, sắp xếp ngày hoặc giá, phân trang 5/10/20 dòng. API `GET /api/v1/quotes/history` chỉ trả dữ liệu của khách đang đăng nhập và model được chọn. Báo giá đang xem được đánh dấu trong bảng; xem chi tiết không gửi duyệt. Có thể tiếp tục một bản nháp hoặc báo giá đã được duyệt.
+
+Migration `SeparateQuoteCalculationFromReviewSubmission` chuyển các bản nháp đã có đơn `AwaitingApproval` sang `PendingReview` để giữ hàng đợi hiện hữu. Các bản nháp chỉ tính giá không có đơn không được tự đưa vào Ops.
 
 ## BR-ORDER-SPLIT-001 — Xem trước và xác nhận chia lab
 

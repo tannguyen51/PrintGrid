@@ -1,0 +1,27 @@
+.quote-history { overflow: hidden; border-radius: 20px !important; background: #fff; }
+.quote-history-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px 24px 20px; }
+.quote-history-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 0 24px 20px; }
+.quote-history .quote-history-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 12px; color: #626b80; background: #f7f8fb; border: 1px solid #edf0f5; border-radius: 12px; text-align: left; text-transform: none; }
+.quote-history-stat span { font-size: 12px; line-height: 1.5; }
+.quote-history-stat strong { color: #222d44; font-size: 23px; font-weight: 750; line-height: 1.2; }
+.quote-history .quote-history-stat.selected { color: #6246db; border-color: #cfc3ff; background: #f3efff; }
+.quote-history .quote-history-stat:hover { background: #eeebfa; }
+.quote-history-filters { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr)); gap: 14px 12px; padding: 20px 24px; border-top: 1px solid #edf0f5; background: #fcfcfe; }
+.quote-history .MuiTableHead-root { background: #f6f7fa; }
+.quote-history .MuiTableHead-root .MuiTableCell-root { color: #687289; font-size: 12px; font-weight: 700; padding-top: 13px; padding-bottom: 13px; }
+.quote-history .MuiTableBody-root .MuiTableCell-root { padding-top: 17px; padding-bottom: 17px; border-color: #edf0f5; }
+.quote-history .quote-history-id { font-family: ui-monospace, monospace; font-size: 14px; font-weight: 700; margin-bottom: 5px; }
+.quote-history .MuiTableRow-root.Mui-selected { background: #f7f4ff; }
+.quote-history-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 32px 12px; text-align: center; }
+.quote-history-empty > svg { width: 36px; height: 36px; color: #a7a0bd; }
+.quote-history .MuiTablePagination-toolbar { border-top: 1px solid #edf0f5; background: #fcfcfe; }
+@media (max-width: 600px) {
+  .quote-history-heading { padding: 20px 16px 16px; flex-wrap: wrap; }
+  .quote-history-heading h2 { font-size: 17px; }
+  .quote-history-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0 16px 16px; }
+  .quote-history-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px; }
+  .quote-history-filters > :first-child { grid-column: 1 / -1; }
+  .quote-history .MuiTablePagination-toolbar { padding: 0 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .quote-history .MuiTablePagination-spacer { flex: 0; }
+  .quote-history .MuiTablePagination-actions { margin-left: 8px; }
+}

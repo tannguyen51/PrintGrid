@@ -21,7 +21,8 @@ public class OrdersController(ISender sender,
         var quote = await quotes.GetByIdAsync(request.QuoteId, ct);
         if (quote is null) return NotFound();
         if (quote.CustomerId != User.GetCustomerId()) return Forbid();
-        if (quote.Status != PrintGrid.Modules.Customer.Domain.Enums.QuoteStatus.Ready || quote.ExpiresAt <= DateTime.UtcNow)
+        if (quote.Status is not (PrintGrid.Modules.Customer.Domain.Enums.QuoteStatus.Ready or PrintGrid.Modules.Customer.Domain.Enums.QuoteStatus.Draft)
+            || quote.ExpiresAt <= DateTime.UtcNow)
             return Conflict(new { error = new { code = "conflict", message = "Báo giá chưa được duyệt hoặc đã hết hạn." } });
         var result = await delivery.AssessAsync(quote, request.RequestedDeliveryDate, ct);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });

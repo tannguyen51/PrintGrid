@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../shared/api/apiClient'
 import type { Quote, QuoteConfigInput, ModelSummary } from './quoteTypes'
 import type { Order } from '../../shared/types/order'
@@ -10,7 +10,7 @@ export function useQuotes() {
     queryKey: QUOTES_KEY,
     queryFn: () => apiClient.get<Quote[]>('/quotes').then((r) => r.data),
     refetchOnWindowFocus: true,
-    refetchInterval: query => query.state.data?.some(q => q.status === 'Draft' || q.status === 'Pending') ? 15_000 : false,
+    refetchInterval: query => query.state.data?.some(q => q.status === 'PendingReview' || q.status === 'Pending') ? 15_000 : false,
   })
 }
 
@@ -21,7 +21,7 @@ export function useQuote(quoteId: string | null) {
     enabled: !!quoteId,
     queryFn: () => apiClient.get<Quote>(`/quotes/${quoteId}`).then(r => r.data),
     refetchOnWindowFocus: true,
-    refetchInterval: query => ['Draft', 'Pending'].includes(query.state.data?.status ?? '') ? 5_000 : false,
+    refetchInterval: query => ['PendingReview', 'Pending'].includes(query.state.data?.status ?? '') ? 5_000 : false,
   })
 }
 
@@ -29,7 +29,7 @@ export function useCreateQuote() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: QuoteConfigInput) => apiClient.post<Quote>('/quotes', input).then((r) => r.data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUOTES_KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: QUOTES_KEY }); void queryClient.invalidateQueries({ queryKey: ['quote-history'] }) },
   })
 }
 
@@ -63,6 +63,25 @@ export function usePlaceOrder() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: PlaceOrderInput) => apiClient.post<Order>('/orders', input).then((r) => r.data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orders'] }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['orders'] }); void queryClient.invalidateQueries({ queryKey: ['quote-history'] }); void queryClient.invalidateQueries({ queryKey: ['quote'] }) },
+  })
+}
+
+export interface QuoteHistoryFilters {
+  status: string; search: string; from: string; to: string; sort: string; page: number; pageSize: number
+}
+export interface QuoteHistoryPage {
+  items: Quote[]; totalCount: number; page: number; pageSize: number
+  totalQuotes: number; draftQuotes: number; pendingReviewQuotes: number; readyQuotes: number
+}
+export function useQuoteHistory(modelId: string, filters: QuoteHistoryFilters) {
+  return useQuery({
+    queryKey: ['quote-history', modelId, filters],
+    placeholderData: keepPreviousData,
+    enabled: !filters.from || !filters.to || filters.from <= filters.to,
+    queryFn: () => apiClient.get<QuoteHistoryPage>('/quotes/history', { params: { modelId, ...filters,
+      from: filters.from || undefined, to: filters.to || undefined, search: filters.search || undefined } }).then(r => r.data),
+    refetchOnWindowFocus: true,
+    refetchInterval: query => query.state.data?.items.some(q => q.status === 'PendingReview') ? 15_000 : false,
   })
 }

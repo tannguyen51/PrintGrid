@@ -116,7 +116,7 @@ public class Order : AggregateRoot<Guid>
             CustomerId = quote.CustomerId,
             QuoteId = quote.Id,
             OrderNumber = orderNumber,
-            Status = quote.Status == QuoteStatus.Draft
+            Status = quote.Status is QuoteStatus.Draft or QuoteStatus.PendingReview
                 ? OrderStatus.AwaitingApproval
                 : OrderStatus.PaymentPending,
             TotalPrice = quote.TotalPrice,
@@ -145,14 +145,14 @@ public class Order : AggregateRoot<Guid>
         return order;
     }
 
-    public Result ApplyApprovedQuote(Quote quote)
+    public Result ApplyApprovedQuote(Quote quote, DateOnly? promisedDeliveryDate = null)
     {
         if (Status != OrderStatus.AwaitingApproval || quote.Id != QuoteId || quote.Status != QuoteStatus.Ready)
             return Result.Failure(Error.Conflict("Order is not awaiting approval for this quote"));
 
         var depositPercent = TotalPrice.Amount <= 0m ? 0m : DepositAmount / TotalPrice.Amount;
         TotalPrice = quote.TotalPrice;
-        PromisedDeliveryDate = quote.PromisedDeliveryDate;
+        PromisedDeliveryDate = promisedDeliveryDate ?? quote.PromisedDeliveryDate;
         DepositAmount = decimal.Round(
             quote.TotalPrice.Amount * depositPercent, 2, MidpointRounding.AwayFromZero);
         Status = OrderStatus.PaymentPending;
@@ -176,6 +176,8 @@ public class Order : AggregateRoot<Guid>
     /// <param name="paymentReference">Gateway/manual reference stored on the order for reconciliation.</param>
     public Result ApplyPayment(decimal amount, string? paymentReference = null)
     {
+        if (Status == OrderStatus.AwaitingApproval)
+            return Result.Failure(Error.Conflict("Đơn đang chờ Ops duyệt, chưa thể ghi nhận thanh toán."));
         if (amount <= 0m)
             return Result.Failure(Error.Validation("Số tiền thanh toán phải lớn hơn 0."));
 

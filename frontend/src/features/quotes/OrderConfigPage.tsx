@@ -5,9 +5,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '../../shared/api/apiClient'
 import {
   Alert,
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Box,
   Button,
   Checkbox,
@@ -24,11 +21,12 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { ArrowBackRounded, ArrowForwardRounded, ExpandMoreRounded, PriceCheckRounded } from '@mui/icons-material'
+import { ArrowBackRounded, ArrowForwardRounded, PriceCheckRounded } from '@mui/icons-material'
 import type { Quote } from './quoteTypes'
-import { COLORS, INFILL_OPTIONS, MATERIALS, QUALITY_GRADES } from './quoteTypes'
-import { useCreateQuote, usePlaceOrder, useQuote, useQuotes } from './useQuotes'
+import { COLORS, INFILL_OPTIONS, MATERIALS, QUALITY_GRADES, QUOTE_STATUS_LABELS } from './quoteTypes'
+import { useCreateQuote, usePlaceOrder, useQuote } from './useQuotes'
 import { QuotePriceDetails } from './QuotePriceDetails'
+import { QuoteHistoryPanel } from './QuoteHistoryPanel'
 import { useAuth } from '../../app/AuthContext'
 import TechConstraintsSelector from './TechConstraintsSelector'
 import type { TechConstraintsValue } from './TechConstraintsSelector'
@@ -46,7 +44,6 @@ export default function OrderConfigPage() {
   const navigate = useNavigate()
   const createQuote = useCreateQuote()
   const placeOrder = usePlaceOrder()
-  const savedQuotes = useQuotes()
   const quoteResult = useRef<HTMLDivElement>(null)
 
   // Config state
@@ -206,10 +203,6 @@ export default function OrderConfigPage() {
     }
   }
 
-  const history = (savedQuotes.data ?? [])
-    .filter(saved => saved.id !== quote?.id && saved.items.some(item => item.modelId === modelId))
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-
   // BR-QUOTE-003 live countdown instead of a hard-coded "48 giờ" label.
   const expiry = quote?.expiresAt
     ? (() => {
@@ -224,6 +217,7 @@ export default function OrderConfigPage() {
   const orderBlockReason = (() => {
     if (!quote) return null
     if (quote.status === 'Pending') return 'Hệ thống đang tính báo giá.'
+    if (quote.status === 'PendingReview') return 'Báo giá đã được gửi duyệt. Bạn có thể theo dõi trong Đơn hàng.'
     if (quote.status === 'Expired' || expiry?.expired) return 'Báo giá đã hết hạn. Vui lòng lấy báo giá mới.'
     if (quote.status === 'Converted') return 'Báo giá này đã được đặt hàng. Bạn có thể xem đơn trong danh sách đơn hàng.'
     if (quote.status !== 'Ready' && quote.status !== 'Draft') return 'Báo giá chưa sẵn sàng để đặt hàng.'
@@ -372,7 +366,7 @@ export default function OrderConfigPage() {
                   Báo giá của bạn
                 </Typography>
                 <Chip
-                  label={`${quoteStatusLabels[quote.status]}${expiry ? ` · ${expiry.label}` : ''}`}
+                  label={`${QUOTE_STATUS_LABELS[quote.status]}${expiry ? ` · ${expiry.label}` : ''}`}
                   color={expiry?.expired ? 'error' : quote.status === 'Ready' ? 'success' : 'info'}
                   size="small"
                 />
@@ -384,13 +378,10 @@ export default function OrderConfigPage() {
 
               {quote.status === 'Draft' && (
                 <Alert severity="info">
-                  Báo giá #{quote.id.slice(0, 8)} cho {quote.items.reduce((sum, item) => sum + item.quantity, 0)} sản phẩm đang chờ Ops duyệt.
-                  {' '}Bạn vẫn có thể xác nhận đặt hàng ngay. Đơn sẽ hiển thị “Đang chờ duyệt” và tự chuyển sang bước thanh toán sau khi Ops duyệt.
-                  <Button size="small" color="inherit" sx={{ display: 'block', mt: 1 }} onClick={() => void quoteStatus.refetch()} disabled={quoteStatus.isFetching}>
-                    {quoteStatus.isFetching ? 'Đang cập nhật…' : 'Cập nhật trạng thái'}
-                  </Button>
+                  Đây là bản nháp tính giá, chưa gửi đến Ops. Điền địa chỉ, ngày mong muốn và bấm “Gửi duyệt báo giá” để tạo đơn chờ duyệt.
                 </Alert>
               )}
+              {quote.status === 'PendingReview' && <Alert severity="info">Bạn đã gửi báo giá này đến Ops. Đơn sẽ chuyển sang bước thanh toán sau khi được duyệt.</Alert>}
               {quoteStatus.isError && <Alert severity="warning">Không cập nhật được trạng thái báo giá. Vui lòng thử cập nhật lại.</Alert>}
 
               {user && !user.isEmailVerified && (
@@ -459,40 +450,16 @@ export default function OrderConfigPage() {
                 disabled={!!orderBlockReason || placeOrder.isPending}
                 endIcon={placeOrder.isPending ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}
               >
-                {placeOrder.isPending ? 'Đang đặt hàng…' : quote.status === 'Expired' || expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}
+                {placeOrder.isPending ? (quote.status === 'Draft' ? 'Đang gửi duyệt…' : 'Đang đặt hàng…')
+                  : quote.status === 'Draft' ? 'Gửi duyệt báo giá'
+                  : quote.status === 'PendingReview' ? 'Đã gửi duyệt'
+                  : quote.status === 'Expired' || expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}
               </Button>
             </Stack>
           </Box>
         )}
-        {savedQuotes.isError && <Alert severity="warning">Không tải được các báo giá đã lưu.</Alert>}
-        {history.length > 0 && (
-          <Box>
-            <Typography sx={{ fontWeight: 700, mb: 1 }}>Báo giá đã tạo cho model này</Typography>
-            {history.map(saved => (
-              <Accordion key={saved.id}>
-                <AccordionSummary expandIcon={<ExpandMoreRounded />}>
-                  <Stack spacing={0.5}>
-                    <Typography sx={{ fontWeight: 600 }}>{saved.totalPrice.toLocaleString('vi-VN')} {saved.currency}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(saved.createdAt).toLocaleString('vi-VN')} · {quoteStatusLabels[saved.status]}
-                    </Typography>
-                  </Stack>
-                </AccordionSummary>
-                <AccordionDetails><Stack spacing={2}><QuotePriceDetails quote={saved} />
-                  {['Draft', 'Pending', 'Ready'].includes(saved.status) && <Button variant="outlined" onClick={() => { setQuote(saved); setOrderError(null) }}>
-                    {saved.status === 'Ready' ? 'Tiếp tục đặt hàng với báo giá này' : 'Theo dõi duyệt báo giá này'}
-                  </Button>}
-                </Stack></AccordionDetails>
-              </Accordion>
-            ))}
-          </Box>
-        )}
+        {modelId && <QuoteHistoryPanel modelId={modelId} selectedQuoteId={quote?.id} onSelect={saved => { setQuote(saved); setOrderError(null) }} />}
       </Stack>
     </Box>
   )
-}
-
-const quoteStatusLabels: Record<Quote['status'], string> = {
-  Pending: 'Đang tính giá in', Draft: 'Giá in chờ duyệt', Ready: 'Giá in đã duyệt', Expired: 'Hết hiệu lực',
-  Converted: 'Đã đặt hàng', Failed: 'Không thể báo giá',
 }

@@ -11,6 +11,24 @@ namespace PrintGrid.Api.Controllers;
 [Authorize(Policy = Policies.RequireCustomer)]
 public class QuotesController(ISender sender) : ControllerBase
 {
+    [HttpGet("history")]
+    public async Task<IActionResult> History([FromQuery] Guid modelId, [FromQuery] string? status,
+        [FromQuery] string? search, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
+        [FromQuery] string sort = "newest", [FromQuery] int page = 1, [FromQuery] int pageSize = 5,
+        CancellationToken ct = default)
+    {
+        var customerId = User.GetCustomerId();
+        if (customerId is null) return Forbid();
+        PrintGrid.Modules.Customer.Domain.Enums.QuoteStatus? filterStatus = null;
+        if (!string.IsNullOrEmpty(status) && status != "all")
+        {
+            if (!Enum.TryParse<PrintGrid.Modules.Customer.Domain.Enums.QuoteStatus>(status, true, out var parsed) || !Enum.IsDefined(parsed))
+                return BadRequest(new { error = new { code = "validation", message = "Trạng thái báo giá không hợp lệ." } });
+            filterStatus = parsed;
+        }
+        var result = await sender.Send(new GetQuoteHistoryQuery(customerId.Value, modelId, filterStatus, search, from, to, sort, page, pageSize), ct);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
+    }
     [HttpGet]
     public async Task<IActionResult> GetQuotes(CancellationToken cancellationToken)
     {
