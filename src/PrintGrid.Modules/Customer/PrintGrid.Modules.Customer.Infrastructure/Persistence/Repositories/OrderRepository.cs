@@ -36,6 +36,11 @@ public class OrderRepository(PrintGridDbContext context) : IOrderRepository
             .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.Items.Any(i => i.Id == orderItemId), cancellationToken);
 
+    public Task<Order?> GetByQuoteIdAsync(Guid quoteId, CancellationToken cancellationToken = default) =>
+        context.Set<Order>()
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.QuoteId == quoteId, cancellationToken);
+
     public Task<int> CountAsync(CancellationToken cancellationToken = default) =>
         context.Set<Order>().CountAsync(cancellationToken);
 

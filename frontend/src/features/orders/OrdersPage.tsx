@@ -22,6 +22,7 @@ import { OrderPaymentPanel } from './OrderPaymentPanel'
 import { OrderProductionProgress } from './OrderProductionProgress'
 
 const statusColor: Record<OrderStatus, 'warning' | 'info' | 'success' | 'error'> = {
+  AwaitingApproval: 'warning',
   PaymentPending: 'warning',
   Confirmed: 'info',
   InProduction: 'info',
@@ -32,6 +33,7 @@ const statusColor: Record<OrderStatus, 'warning' | 'info' | 'success' | 'error'>
 }
 
 const statusLabel: Record<OrderStatus, string> = {
+  AwaitingApproval: 'Đang chờ duyệt',
   PaymentPending: 'Chờ thanh toán',
   Confirmed: 'Đã xác nhận',
   InProduction: 'Đang sản xuất',

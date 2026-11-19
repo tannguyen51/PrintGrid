@@ -32,6 +32,13 @@ public class PlaceOrderCommandHandler(
         if (quote.CustomerId != command.CustomerId)
             return Result.Failure<OrderDto>(Error.Forbidden("Quote belongs to another customer"));
 
+        var requiresOpsApproval = quote.Status == QuoteStatus.Draft
+            && OrderRoutingPolicy.RequiresManualDispatch(quote.Items.Sum(i => i.Quantity));
+        if (quote.Status != QuoteStatus.Ready && !requiresOpsApproval)
+            return Result.Failure<OrderDto>(Error.Conflict("Báo giá chưa sẵn sàng để đặt hàng."));
+        if (await orders.GetByQuoteIdAsync(quote.Id, cancellationToken) is not null)
+            return Result.Failure<OrderDto>(Error.Conflict("Báo giá này đã được dùng để đặt hàng."));
+
         // Moderation gate: a model can be rejected after the quote was published, so the
         // approval is re-checked at conversion time, before the quote is consumed.
         foreach (var modelId in quote.Items.Select(i => i.ModelId).Distinct())
@@ -49,9 +56,12 @@ public class PlaceOrderCommandHandler(
         if (!assessment.Value.CanMeetRequestedDate)
             return Result.Failure<OrderDto>(Error.Conflict($"Ngày giao sớm nhất hiện tại là {assessment.Value.EarliestDeliveryDate:dd/MM/yyyy}. Vui lòng chọn lại ngày mong muốn."));
 
-        var conversion = quote.MarkConverted(clock.UtcNow);
-        if (conversion.IsFailure)
-            return Result.Failure<OrderDto>(conversion.Error);
+        if (!requiresOpsApproval)
+        {
+            var conversion = quote.MarkConverted(clock.UtcNow);
+            if (conversion.IsFailure)
+                return Result.Failure<OrderDto>(conversion.Error);
+        }
 
         var address = Address.Create(
             command.Street, command.Ward, command.District, command.City, command.PostalCode);

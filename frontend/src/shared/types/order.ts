@@ -1,4 +1,5 @@
 export type OrderStatus =
+  | 'AwaitingApproval'
   | 'PaymentPending'
   | 'Confirmed'
   | 'InProduction'

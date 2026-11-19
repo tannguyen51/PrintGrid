@@ -41,10 +41,29 @@ public class QuoteReviewTests
         valid.AdjustmentReason.Should().Be("Cần thêm support");
     }
 
-    private static Quote Draft(decimal price)
+    [Fact]
+    public void Order_created_from_draft_waits_for_ops_then_moves_to_payment()
+    {
+        var quote = Draft(500_000m, quantity: 5);
+        var order = Order.CreateFromQuote(quote,
+            Address.Create("123 Quang Trung", "Long Thạnh Mỹ", "Quận 9", "TP.HCM", "70000"),
+            "PG-TEST-00001", depositPercent: 50m);
+
+        order.Status.Should().Be(OrderStatus.AwaitingApproval);
+
+        quote.Approve(Guid.NewGuid(), 525_000m, quote.PromisedDeliveryDate, "Điều chỉnh sau thẩm định",
+            DateTime.UtcNow, TimeSpan.FromHours(48), false, 10m).IsSuccess.Should().BeTrue();
+        order.ApplyApprovedQuote(quote).IsSuccess.Should().BeTrue();
+
+        order.Status.Should().Be(OrderStatus.PaymentPending);
+        order.TotalPrice.Amount.Should().Be(525_000m);
+        order.DepositAmount.Should().Be(262_500m);
+    }
+
+    private static Quote Draft(decimal price, int quantity = 1)
     {
         var quote = Quote.CreatePending(Guid.NewGuid(), TimeSpan.FromHours(48));
-        quote.AddItem(Guid.NewGuid(), 1,
+        quote.AddItem(Guid.NewGuid(), quantity,
             PrintConfiguration.Create("PLA", "BLACK", 0.2m, 20, 0.2m),
             Money.Of(price), 60, 20m, price / 2, price / 2, 10m, 10m, 10m);
         quote.MarkDraft(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3)), PricingParameterSet.Active.Version);

@@ -82,7 +82,7 @@ export default function OrderConfigPage() {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
   const delivery = useQuery({
     queryKey: ['delivery-preview', quote?.id, requestedDeliveryDate],
-    enabled: quote?.status === 'Ready' && requestedDeliveryDate > today,
+    enabled: (quote?.status === 'Ready' || quote?.status === 'Draft') && requestedDeliveryDate > today,
     queryFn: () => apiClient.post<{ earliestDeliveryDate: string; promisedDeliveryDate: string; canMeetRequestedDate: boolean }>('/orders/delivery-preview',
       { quoteId: quote!.id, requestedDeliveryDate }).then(r => r.data),
     staleTime: 0,
@@ -223,11 +223,10 @@ export default function OrderConfigPage() {
 
   const orderBlockReason = (() => {
     if (!quote) return null
-    if (quote.status === 'Draft') return 'Báo giá đang chờ Ops duyệt. Sau khi được duyệt, bạn mới có thể xác nhận đặt hàng.'
     if (quote.status === 'Pending') return 'Hệ thống đang tính báo giá.'
     if (quote.status === 'Expired' || expiry?.expired) return 'Báo giá đã hết hạn. Vui lòng lấy báo giá mới.'
     if (quote.status === 'Converted') return 'Báo giá này đã được đặt hàng. Bạn có thể xem đơn trong danh sách đơn hàng.'
-    if (quote.status !== 'Ready') return 'Báo giá chưa sẵn sàng để đặt hàng.'
+    if (quote.status !== 'Ready' && quote.status !== 'Draft') return 'Báo giá chưa sẵn sàng để đặt hàng.'
     if (user && !user.isEmailVerified) return 'Vui lòng xác thực email trước khi đặt hàng.'
     if (!addressValid) return 'Vui lòng điền đầy đủ số nhà/đường, phường/xã, quận/huyện và tỉnh/thành phố.'
     if (!requestedDeliveryDate) return 'Vui lòng chọn ngày giao hàng mong muốn.'
@@ -386,7 +385,7 @@ export default function OrderConfigPage() {
               {quote.status === 'Draft' && (
                 <Alert severity="info">
                   Báo giá #{quote.id.slice(0, 8)} cho {quote.items.reduce((sum, item) => sum + item.quantity, 0)} sản phẩm đang chờ Ops duyệt.
-                  {' '}Sau khi được duyệt, trang sẽ tự cập nhật để bạn tiếp tục đặt hàng. Thời hạn báo giá bắt đầu từ lúc duyệt.
+                  {' '}Bạn vẫn có thể xác nhận đặt hàng ngay. Đơn sẽ hiển thị “Đang chờ duyệt” và tự chuyển sang bước thanh toán sau khi Ops duyệt.
                   <Button size="small" color="inherit" sx={{ display: 'block', mt: 1 }} onClick={() => void quoteStatus.refetch()} disabled={quoteStatus.isFetching}>
                     {quoteStatus.isFetching ? 'Đang cập nhật…' : 'Cập nhật trạng thái'}
                   </Button>
@@ -451,7 +450,7 @@ export default function OrderConfigPage() {
                 }
               />
 
-              {orderBlockReason && quote.status !== 'Draft' && <Alert severity="info">{orderBlockReason}</Alert>}
+              {orderBlockReason && <Alert severity="info">{orderBlockReason}</Alert>}
               <Button
                 variant="contained"
                 color="primary"
@@ -460,7 +459,7 @@ export default function OrderConfigPage() {
                 disabled={!!orderBlockReason || placeOrder.isPending}
                 endIcon={placeOrder.isPending ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}
               >
-                {placeOrder.isPending ? 'Đang đặt hàng…' : quote.status === 'Draft' ? 'Đang chờ Ops duyệt' : quote.status === 'Expired' || expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}
+                {placeOrder.isPending ? 'Đang đặt hàng…' : quote.status === 'Expired' || expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}
               </Button>
             </Stack>
           </Box>

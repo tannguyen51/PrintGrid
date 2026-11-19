@@ -14,7 +14,7 @@ public class Order : AggregateRoot<Guid>
     public Guid QuoteId { get; private set; }
     public string OrderNumber { get; private init; } = string.Empty;
     public OrderStatus Status { get; private set; }
-    public Money TotalPrice { get; private init; } = Money.Zero();
+    public Money TotalPrice { get; private set; } = Money.Zero();
     public DateOnly PromisedDeliveryDate { get; private set; }
     public DateOnly? RequestedDeliveryDate { get; private set; }
     public string DispatchMode { get; private set; } = "Manual";
@@ -58,7 +58,7 @@ public class Order : AggregateRoot<Guid>
     public decimal RefundedAmount { get; private set; }
 
     /// <summary>Deposit required before production starts (FR-CUST-012 / BR-PAY-007).</summary>
-    public decimal DepositAmount { get; private init; }
+    public decimal DepositAmount { get; private set; }
 
     /// <summary>Amount the customer has actually paid so far (deposit + settlement instalments).</summary>
     public decimal PaidAmount { get; private set; }
@@ -116,7 +116,9 @@ public class Order : AggregateRoot<Guid>
             CustomerId = quote.CustomerId,
             QuoteId = quote.Id,
             OrderNumber = orderNumber,
-            Status = OrderStatus.PaymentPending,
+            Status = quote.Status == QuoteStatus.Draft
+                ? OrderStatus.AwaitingApproval
+                : OrderStatus.PaymentPending,
             TotalPrice = quote.TotalPrice,
             PromisedDeliveryDate = promisedDeliveryDate ?? quote.PromisedDeliveryDate,
             RequestedDeliveryDate = requestedDeliveryDate,
@@ -141,6 +143,20 @@ public class Order : AggregateRoot<Guid>
         }
 
         return order;
+    }
+
+    public Result ApplyApprovedQuote(Quote quote)
+    {
+        if (Status != OrderStatus.AwaitingApproval || quote.Id != QuoteId || quote.Status != QuoteStatus.Ready)
+            return Result.Failure(Error.Conflict("Order is not awaiting approval for this quote"));
+
+        var depositPercent = TotalPrice.Amount <= 0m ? 0m : DepositAmount / TotalPrice.Amount;
+        TotalPrice = quote.TotalPrice;
+        PromisedDeliveryDate = quote.PromisedDeliveryDate;
+        DepositAmount = decimal.Round(
+            quote.TotalPrice.Amount * depositPercent, 2, MidpointRounding.AwayFromZero);
+        Status = OrderStatus.PaymentPending;
+        return Result.Success();
     }
 
     /// <summary>

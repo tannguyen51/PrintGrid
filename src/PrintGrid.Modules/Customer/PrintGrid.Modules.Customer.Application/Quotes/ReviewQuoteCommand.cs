@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.Extensions.Configuration;
 using PrintGrid.Modules.Customer.Application.DTOs;
 using PrintGrid.Modules.Customer.Domain.Repositories;
+using PrintGrid.Modules.Customer.Domain.Enums;
 using PrintGrid.SharedKernel.Interfaces;
 using PrintGrid.SharedKernel.Results;
 
@@ -16,6 +17,7 @@ public record ReviewQuoteCommand(
 
 public sealed class ReviewQuoteCommandHandler(
     IQuoteRepository quotes,
+    IOrderRepository orders,
     IUnitOfWork unitOfWork,
     IDateTimeProvider clock,
     IConfiguration configuration) : IRequestHandler<ReviewQuoteCommand, Result<QuoteDto>>
@@ -35,6 +37,15 @@ public sealed class ReviewQuoteCommandHandler(
             command.Reason, clock.UtcNow, TimeSpan.FromHours(validityHours), false, band);
         if (result.IsFailure)
             return Result.Failure<QuoteDto>(result.Error);
+
+        var pendingOrder = await orders.GetByQuoteIdAsync(quote.Id, cancellationToken);
+        if (pendingOrder is not null && pendingOrder.Status == OrderStatus.AwaitingApproval)
+        {
+            var activate = pendingOrder.ApplyApprovedQuote(quote);
+            if (activate.IsFailure) return Result.Failure<QuoteDto>(activate.Error);
+            var conversion = quote.MarkConverted(clock.UtcNow);
+            if (conversion.IsFailure) return Result.Failure<QuoteDto>(conversion.Error);
+        }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(QuoteMappings.ToDto(quote));
