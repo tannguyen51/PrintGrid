@@ -460,7 +460,7 @@ export default function OrderConfigPage() {
                 disabled={!!orderBlockReason || placeOrder.isPending}
                 endIcon={placeOrder.isPending ? <CircularProgress size={18} color="inherit" /> : <ArrowForwardRounded />}
               >
-                {placeOrder.isPending ? 'Đang đặt hàng…' : quote.status === 'Draft' ? 'Chờ duyệt báo giá' : quote.status === 'Expired' || expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}
+                {placeOrder.isPending ? 'Đang đặt hàng…' : quote.status === 'Draft' ? 'Đang chờ Ops duyệt' : quote.status === 'Expired' || expiry?.expired ? 'Báo giá đã hết hạn' : 'Xác nhận đặt hàng'}
               </Button>
             </Stack>
           </Box>
