@@ -7,6 +7,7 @@ using PrintGrid.Modules.Scheduling.Application;
 using PrintGrid.Modules.Scheduling.Application.Abstractions;
 using PrintGrid.Modules.Scheduling.Application.Commands.OpsWorkflow;
 using PrintGrid.Modules.Scheduling.Application.Services;
+using PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Queries;
 using PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
 using PrintGrid.SharedKernel.Interfaces;
 using PrintGrid.SharedKernel.Modules;
@@ -28,6 +29,7 @@ public class SchedulingModule : IModule
         SchedulingModuleRegistration.AddRepositories(services);
         services.AddScoped<IMachineProfileMatcher, MachineProfileRegistry>();
         services.AddScoped<ICuraProfileRegistry, MachineProfileRegistry>();
+        services.AddScoped<ISchedulingRegistryQueryService, SchedulingRegistryQueryService>();
         services.AddScoped<ISplitDispatchService, Scheduling.SplitDispatchService>();
         services.AddSingleton<CuraResourceCatalog>();
         services.AddScoped<CuraLibrarySyncService>();

@@ -1,11 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../shared/api/apiClient'
+import type { PagedResponse } from '../../shared/types/pagination'
 import type {
   Lab,
+  LabOption,
   LabPerformance,
   LabTimeline,
   Machine,
+  MachineListItem,
   MachineStatus,
+  PagedLabsFilter,
+  PagedMachinesFilter,
   RegisterLabInput,
   RegisterMachineInput,
   ScheduleMaintenanceInput,
@@ -16,11 +21,80 @@ import type {
 const LABS_KEY = ['labs'] as const
 const MY_LAB_KEY = ['labs', 'me'] as const
 
+function compactParams(record: Record<string, string | number | boolean | undefined>) {
+  const out: Record<string, string | number | boolean> = {}
+  for (const [key, value] of Object.entries(record)) {
+    if (value !== undefined && value !== '') {
+      out[key] = typeof value === 'string' ? value.trim() : value
+    }
+  }
+  return out
+}
+
 export function useLabs(includeInactive = false) {
   return useQuery({
     queryKey: [...LABS_KEY, includeInactive],
     queryFn: () =>
       apiClient.get<Lab[]>(`/labs?includeInactive=${includeInactive}`).then((r) => r.data),
+  })
+}
+
+export function useLabOptions(enabled = true) {
+  return useQuery({
+    queryKey: [...LABS_KEY, 'options'],
+    enabled,
+    queryFn: () => apiClient.get<LabOption[]>('/labs/options').then((r) => r.data),
+  })
+}
+
+export function useLabsPaged(filters: PagedLabsFilter, enabled = true) {
+  return useQuery({
+    queryKey: [...LABS_KEY, 'paged', filters],
+    enabled,
+    placeholderData: (previous) => previous,
+    queryFn: () =>
+      apiClient
+        .get<PagedResponse<Lab>>('/labs/paged', {
+          params: compactParams({
+            search: filters.search,
+            approvalStatus: filters.approvalStatus,
+            isActive: filters.isActive === '' ? undefined : filters.isActive,
+            isInGoodStanding: filters.isInGoodStanding === '' ? undefined : filters.isInGoodStanding,
+            manufacturerOrModel: filters.manufacturerOrModel,
+            material: filters.material,
+            includeInactive: filters.includeInactive ?? true,
+            sortBy: filters.sortBy ?? 'pendingFirst',
+            page: filters.page,
+            pageSize: filters.pageSize,
+          }),
+        })
+        .then((r) => r.data),
+  })
+}
+
+export function useMachinesPaged(filters: PagedMachinesFilter, enabled = true) {
+  return useQuery({
+    queryKey: [...LABS_KEY, 'machines', 'paged', filters],
+    enabled,
+    placeholderData: (previous) => previous,
+    queryFn: () =>
+      apiClient
+        .get<PagedResponse<MachineListItem>>('/labs/machines/paged', {
+          params: compactParams({
+            search: filters.search,
+            labId: filters.labId,
+            profileStatus: filters.profileStatus,
+            operationalStatus: filters.operationalStatus,
+            labStatus: filters.labStatus,
+            manufacturerOrModel: filters.manufacturerOrModel,
+            material: filters.material,
+            technology: filters.technology,
+            sortBy: filters.sortBy ?? 'pendingFirst',
+            page: filters.page,
+            pageSize: filters.pageSize,
+          }),
+        })
+        .then((r) => r.data),
   })
 }
 
