@@ -5,11 +5,17 @@ namespace PrintGrid.Modules.Customer.Application.Quotes;
 public static class QuoteMappings
 {
     /// <summary>
-    /// Customer projection: the internal placement basis (lab + machine identity) is
-    /// deliberately blanked. The customer only sees district/city via CustomerPlacementSummary.
+    /// Quotes have no delivery address or hub-to-customer shipping calculation.
+    /// Expose the capacity date as an estimated hub-ready date, never a delivery promise.
+    /// The internal placement basis (lab + machine identity) is deliberately blanked.
     /// </summary>
     public static QuoteDto ToCustomerDto(Domain.Entities.Quote quote) =>
-        ToDto(quote) with { PlacementBasis = null };
+        ToDto(quote) with
+        {
+            PlacementBasis = null,
+            PromisedDeliveryDate = null,
+            EnginePromisedDeliveryDate = null
+        };
 
     public static QuoteDto ToDto(Domain.Entities.Quote quote) => new(
         quote.Id,
@@ -48,5 +54,6 @@ public static class QuoteMappings
         quote.UnpinnedPriceVnd,
         quote.UnpinnedDeliveryDay,
         quote.PinSurchargeCoefficient,
-        quote.PinnedModelMachineId.HasValue);
+        quote.PinnedModelMachineId.HasValue,
+        quote.PromisedDeliveryDate == default ? null : quote.PromisedDeliveryDate);
 }

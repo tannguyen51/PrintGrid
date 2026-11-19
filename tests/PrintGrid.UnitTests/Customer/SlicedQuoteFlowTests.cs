@@ -46,6 +46,8 @@ public class SlicedQuoteFlowTests
         var result = await handler.Handle(new CreateQuoteCommand(customer, model.Id, "PLA", "BLUE", .2m, 30, 5, .2m,
             "M", ["BLUE", "WHITE"], true), CancellationToken.None);
         result.IsSuccess.Should().BeTrue();
+        result.Value.EstimatedHubReadyDate.Should().Be(new DateOnly(2026, 11, 10));
+        result.Value.PromisedDeliveryDate.Should().BeNull();
         result.Value.Items.Single().Calculation!.WidthMm.Should().Be(150);
         result.Value.Items.Single().Calculation!.DepthMm.Should().Be(100);
         result.Value.Items.Single().Calculation!.HeightMm.Should().Be(200);

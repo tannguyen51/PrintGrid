@@ -37,7 +37,8 @@ import type { PinModelValue } from './MachinePinningSelector'
 /**
  * G3 — Print configuration & pre-order flow.
  * Step 1: choose material/color/quality/infill/quantity → get a quote.
- * Step 2: on success, show the price breakdown + delivery date, then confirm with an address.
+ * Step 2: show print pricing + hub-ready estimate, then collect the delivery address.
+ * Quote approval does not establish a delivery promise to that address.
  */
 export default function OrderConfigPage() {
   const { modelId } = useParams<{ modelId: string }>()
@@ -218,7 +219,7 @@ export default function OrderConfigPage() {
             Đặt in model
           </Typography>
           <Typography color="text.secondary">
-            Bước 1 — chọn cấu hình in · Bước 2 — nhận báo giá & giao hàng
+            Bước 1 — chọn cấu hình in · Bước 2 — xem giá in & nhập địa chỉ nhận
           </Typography>
         </Box>
 
@@ -337,8 +338,8 @@ export default function OrderConfigPage() {
                   Báo giá của bạn
                 </Typography>
                 <Chip
-                  label={expiry?.label ?? quote.status}
-                  color={expiry && !expiry.expired ? 'success' : 'error'}
+                  label={`${quoteStatusLabels[quote.status]}${expiry ? ` · ${expiry.label}` : ''}`}
+                  color={expiry?.expired ? 'error' : quote.status === 'Ready' ? 'success' : 'info'}
                   size="small"
                 />
               </Stack>
@@ -349,7 +350,7 @@ export default function OrderConfigPage() {
 
               {quote.status === 'Draft' && (
                 <Alert severity="info">
-                  Engine đã tạo bản nháp. Báo giá đang chờ nhân viên thẩm định; thời hạn chỉ bắt đầu sau khi được duyệt.
+                  Giá in đang chờ nhân viên thẩm định; thời hạn chỉ bắt đầu sau khi giá được duyệt. Đây chưa phải xác nhận ngày giao tới địa chỉ nhận.
                 </Alert>
               )}
 
@@ -437,6 +438,6 @@ export default function OrderConfigPage() {
 }
 
 const quoteStatusLabels: Record<Quote['status'], string> = {
-  Pending: 'Đang tính giá', Draft: 'Chờ duyệt', Ready: 'Đã duyệt', Expired: 'Hết hiệu lực',
+  Pending: 'Đang tính giá in', Draft: 'Giá in chờ duyệt', Ready: 'Giá in đã duyệt', Expired: 'Hết hiệu lực',
   Converted: 'Đã đặt hàng', Failed: 'Không thể báo giá',
 }

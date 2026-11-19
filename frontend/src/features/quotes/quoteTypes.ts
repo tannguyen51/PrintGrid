@@ -29,7 +29,10 @@ export interface Quote {
   status: QuoteStatus
   totalPrice: number
   currency: string
-  promisedDeliveryDate: string
+  /** Internal date retained for staff review; customer quotes have no delivery promise. */
+  promisedDeliveryDate: string | null
+  /** Production, transit to hub and hub processing, excluding delivery to the recipient. */
+  estimatedHubReadyDate?: string | null
   createdAt: string
   expiresAt?: string | null
   failureReason?: string | null

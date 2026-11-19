@@ -20,7 +20,7 @@ export default function QuoteReviewPage() {
 
   const value = (q: Quote) => edits[q.id] ?? {
     price: String(q.engineTotalAmount ?? q.totalPrice),
-    date: q.enginePromisedDeliveryDate ?? q.promisedDeliveryDate,
+    date: q.enginePromisedDeliveryDate ?? q.estimatedHubReadyDate ?? q.promisedDeliveryDate ?? '',
     reason: '',
   }
   const update = (q: Quote, patch: Partial<ReturnType<typeof value>>) =>
@@ -31,7 +31,7 @@ export default function QuoteReviewPage() {
       <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 3 }}>
         <Box>
           <Typography variant="h1">Duyệt báo giá</Typography>
-          <Typography color="text.secondary">Thẩm định báo giá đề xuất trước khi phát hành. Điều chỉnh giá hoặc ngày giao cần có lý do.</Typography>
+          <Typography color="text.secondary">Thẩm định giá in và ngày dự kiến sẵn sàng tại hub. Điều chỉnh cần có lý do; chưa bao gồm giao tới địa chỉ khách.</Typography>
         </Box>
       </Stack>
       {queue.isLoading && <CircularProgress />}
@@ -49,10 +49,10 @@ export default function QuoteReviewPage() {
                 <Typography variant="body2" color="text.secondary">Cơ sở xếp lịch: {q.placementBasis}</Typography>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                   <TextField label="Tổng giá" type="number" value={edit.price} onChange={e => update(q, { price: e.target.value })} fullWidth />
-                  <TextField label="Ngày giao" type="date" value={edit.date} onChange={e => update(q, { date: e.target.value })} InputLabelProps={{ shrink: true }} fullWidth />
+                  <TextField label="Dự kiến sẵn sàng tại hub" type="date" value={edit.date} onChange={e => update(q, { date: e.target.value })} InputLabelProps={{ shrink: true }} fullWidth />
                 </Stack>
                 <TextField label={changed ? 'Lý do điều chỉnh (bắt buộc)' : 'Lý do / ghi chú'} value={edit.reason} onChange={e => update(q, { reason: e.target.value })} required={changed} fullWidth />
-                <Button variant="contained" disabled={approve.isPending || !Number(edit.price) || (changed && !edit.reason.trim())}
+                <Button variant="contained" disabled={approve.isPending || !Number(edit.price) || !edit.date || (changed && !edit.reason.trim())}
                   onClick={() => approve.mutate({ id: q.id, totalPrice: Number(edit.price), promisedDeliveryDate: edit.date, reason: edit.reason.trim() || undefined })}>
                   Duyệt và phát hành
                 </Button>

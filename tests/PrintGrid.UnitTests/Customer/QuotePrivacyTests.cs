@@ -1,5 +1,7 @@
+using NSubstitute;
 using PrintGrid.Modules.Customer.Application.Quotes;
 using PrintGrid.Modules.Customer.Domain.Entities;
+using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.Modules.Customer.Domain.ValueObjects;
 using PrintGrid.SharedKernel.ValueObjects;
 
@@ -40,6 +42,55 @@ public class QuotePrivacyTests
 
         dto.PlacementBasis.Should().Be(_internalBasis);
         dto.CustomerPlacementSummary.Should().Be(_customerSummary);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void Price_approval_never_turns_a_hub_estimate_into_a_customer_delivery_promise(bool approve, bool autoApprove)
+    {
+        var quote = DraftQuoteWithPlacement();
+        if (approve)
+            quote.Approve(autoApprove ? null : Guid.NewGuid(), quote.TotalPrice.Amount,
+                quote.PromisedDeliveryDate, null, DateTime.UtcNow, TimeSpan.FromHours(48), autoApprove, 0m)
+                .IsSuccess.Should().BeTrue();
+
+        var customer = QuoteMappings.ToCustomerDto(quote);
+
+        customer.EstimatedHubReadyDate.Should().Be(quote.PromisedDeliveryDate);
+        customer.PromisedDeliveryDate.Should().BeNull();
+        customer.EnginePromisedDeliveryDate.Should().BeNull();
+        customer.TotalPrice.Should().Be(quote.TotalPrice.Amount);
+        customer.Status.Should().Be(quote.Status.ToString());
+        QuoteMappings.ToDto(quote).PromisedDeliveryDate.Should().Be(quote.PromisedDeliveryDate,
+            "staff review still needs the internal planning date");
+    }
+
+    [Fact]
+    public async Task Reloading_saved_quotes_preserves_the_estimate_without_creating_a_delivery_promise()
+    {
+        var quote = DraftQuoteWithPlacement();
+        quote.Approve(null, quote.TotalPrice.Amount, quote.PromisedDeliveryDate, null,
+            DateTime.UtcNow, TimeSpan.FromHours(48), true, 0m).IsSuccess.Should().BeTrue();
+        var repository = Substitute.For<IQuoteRepository>();
+        repository.GetByCustomerAsync(quote.CustomerId, Arg.Any<CancellationToken>()).Returns([quote]);
+        repository.GetByIdAsync(quote.Id, Arg.Any<CancellationToken>()).Returns(quote);
+
+        var history = await new GetQuotesQueryHandler(repository)
+            .Handle(new GetQuotesQuery(quote.CustomerId), CancellationToken.None);
+        var detail = await new GetQuoteByIdQueryHandler(repository)
+            .Handle(new GetQuoteByIdQuery(quote.CustomerId, quote.Id), CancellationToken.None);
+
+        history.IsSuccess.Should().BeTrue();
+        detail.IsSuccess.Should().BeTrue();
+        foreach (var dto in new[] { history.Value.Single(), detail.Value })
+        {
+            dto.PromisedDeliveryDate.Should().BeNull();
+            dto.EnginePromisedDeliveryDate.Should().BeNull();
+            dto.EstimatedHubReadyDate.Should().Be(quote.PromisedDeliveryDate);
+            dto.TotalPrice.Should().Be(quote.TotalPrice.Amount);
+        }
     }
 
     private static Quote DraftQuoteWithPlacement()

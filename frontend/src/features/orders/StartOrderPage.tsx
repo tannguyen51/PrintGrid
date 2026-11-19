@@ -110,7 +110,7 @@ export default function StartOrderPage() {
           </Typography>
           <Typography sx={{ color: landing.textMuted, maxWidth: '62ch' }}>
             Chọn model có sẵn trong thư viện hoặc tải file 3D mới lên. Sau bước này bạn sẽ chọn vật liệu,
-            nhận báo giá và ngày giao cam kết.
+            nhận giá in và ngày dự kiến sẵn sàng tại hub, rồi nhập địa chỉ nhận hàng.
           </Typography>
         </Stack>
       </Box>

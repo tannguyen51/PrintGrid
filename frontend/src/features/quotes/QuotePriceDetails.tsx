@@ -4,6 +4,9 @@ import type { Quote } from './quoteTypes'
 const fmt = (amount: number) => amount.toLocaleString('vi-VN')
 
 export function QuotePriceDetails({ quote }: { quote: Quote }) {
+  // Older API deployments used promisedDeliveryDate for this same hub-ready estimate.
+  // Neither that legacy field nor entering an address establishes a shipping promise.
+  const hubReadyDate = quote.estimatedHubReadyDate ?? quote.promisedDeliveryDate
   return <Stack spacing={3}>
     {quote.items.map(item => {
       const calculation = item.calculation
@@ -36,20 +39,24 @@ export function QuotePriceDetails({ quote }: { quote: Quote }) {
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between"
       sx={{ bgcolor: 'rgba(111,85,255,0.07)', borderRadius: 2, p: 2 }}>
       <Box sx={{ flexShrink: 0 }}>
-        <Typography variant="caption" color="text.disabled">TỔNG</Typography>
+        <Typography variant="caption" color="text.disabled">TỔNG GIÁ IN</Typography>
         <Typography sx={{ fontWeight: 800, fontSize: '1.4rem', color: 'text.primary', whiteSpace: 'nowrap' }}>
           {fmt(quote.totalPrice)} {quote.currency}
         </Typography>
+        <Typography variant="caption" color="text.secondary">Chưa bao gồm phí giao hàng</Typography>
       </Box>
       <Box textAlign={{ xs: 'left', sm: 'right' }}>
-        <Typography variant="caption" color="text.disabled">NGÀY GIAO CAM KẾT</Typography>
+        <Typography variant="caption" color="text.disabled">DỰ KIẾN SẴN SÀNG TẠI HUB</Typography>
         <Typography sx={{ fontWeight: 700, color: 'text.primary' }}>
-          {new Date(quote.promisedDeliveryDate + 'T00:00:00').toLocaleDateString('vi-VN')}
+          {hubReadyDate ? new Date(hubReadyDate + 'T00:00:00').toLocaleDateString('vi-VN') : 'Chưa có dự kiến'}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography component="p" variant="caption" color="text.secondary">
           {quote.customerPlacementSummary ?? 'tính theo lịch máy thật của mạng lưới'}
         </Typography>
-        <Typography variant="caption" color="text.disabled"> · kỳ giá {quote.pricingVersion}</Typography>
+        <Typography component="p" variant="caption" color="text.secondary">
+          Chưa có ngày giao cam kết tới địa chỉ nhận. Dự kiến trên chưa tính chặng giao từ hub tới khách.
+        </Typography>
+        <Typography variant="caption" color="text.disabled">Kỳ giá {quote.pricingVersion}</Typography>
       </Box>
     </Stack>
   </Stack>

@@ -40,7 +40,7 @@ public record QuoteDto(
     string Status,
     decimal TotalPrice,
     string Currency,
-    DateOnly PromisedDeliveryDate,
+    DateOnly? PromisedDeliveryDate,
     DateTime CreatedAt,
     DateTime? ExpiresAt,
     string? FailureReason,
@@ -58,7 +58,9 @@ public record QuoteDto(
     long? UnpinnedPriceVnd = null,
     DateOnly? UnpinnedDeliveryDay = null,
     decimal? PinSurchargeCoefficient = null,
-    bool IsPinnedModelQuote = false);
+    bool IsPinnedModelQuote = false,
+    // Production + lab-to-hub transit + hub processing; excludes delivery to the customer.
+    DateOnly? EstimatedHubReadyDate = null);
 
 public record QuoteItemDto(
     Guid Id,

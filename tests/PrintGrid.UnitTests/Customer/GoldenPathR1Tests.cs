@@ -65,7 +65,8 @@ public class GoldenPathR1Tests
 
         result.IsSuccess.Should().BeTrue();
         var promised = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(9));
-        result.Value.PromisedDeliveryDate.Should().Be(promised, "the probe's trial date must win over any constant");
+        result.Value.EstimatedHubReadyDate.Should().Be(promised, "the probe calculates availability at the hub");
+        result.Value.PromisedDeliveryDate.Should().BeNull("no address-dependent customer shipping date has been calculated");
         result.Value.PricingVersion.Should().Be(PricingParameterSet.Active.Version);
         // The customer projection deliberately hides the internal lab/machine basis.
         result.Value.PlacementBasis.Should().BeNull();
@@ -148,6 +149,7 @@ public class GoldenPathR1Tests
                         "In tại Quận 1, TP. Hồ Chí Minh — hoàn tất dự kiến; cộng 1 ngày vận chuyển"))
                 : Task.FromResult<TrialPlacementResult?>(null));
 
-        return new CreateQuoteCommandHandler(models, quotes, uow, clock, probe);
+        return new CreateQuoteCommandHandler(models, quotes, uow, clock, probe,
+            Substitute.For<PrintGrid.Modules.Customer.Application.Abstractions.IMachineFilterService>());
     }
 }
