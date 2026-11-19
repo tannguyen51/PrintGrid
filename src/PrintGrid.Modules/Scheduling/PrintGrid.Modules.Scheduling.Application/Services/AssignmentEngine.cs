@@ -35,6 +35,8 @@ public class AssignmentEngine(
     IUnitOfWork unitOfWork,
     IAssignmentDecisionRepository decisions,
     IDateTimeProvider clock,
+    ILabScoreService labScoreService,
+    ILabScoreParameterProvider labScoreParameters,
     ILogger<AssignmentEngine> logger)
     : IAssignmentEngine
 {
@@ -92,6 +94,10 @@ public class AssignmentEngine(
                 stopwatch, budget, budgetExceeded: false, earliestEnd: null, scoringConfig, cancellationToken);
         }
 
+        var labIds = filter.Candidates.Select(c => c.Lab.Id).Distinct().ToList();
+        var scoreParams = await labScoreParameters.GetAsync(cancellationToken);
+        var labScores = await labScoreService.ComputeScoresAsync(labIds, scoreParams, cancellationToken);
+
         var windowEnd = job.InternalDueDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
         var proposals = new List<PlacementProposal>();
         DateTime? earliestEnd = null;
@@ -132,7 +138,7 @@ public class AssignmentEngine(
 
         IReadOnlyList<ScoredPlacement> ranked = proposals.Count == 0
             ? []
-            : scorer.Rank(job, proposals, proposals.Max(p => p.EstimatedCost));
+            : scorer.Rank(job, proposals, proposals.Max(p => p.EstimatedCost), labScores);
 
         if (request.ProbeOnly)
         {

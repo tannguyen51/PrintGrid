@@ -26,7 +26,7 @@ public sealed class ScoringConfigurationsController(ISender sender, IAuditLogWri
         var actorId = User.GetCustomerId();
         if (actorId is null) return Forbid();
         var result = await sender.Send(new ActivateScoringConfigurationCommand(
-            request.Version, request.DueDateSlack, request.LabReliability,
+            request.Version, request.DueDateSlack, request.OnTimeRate, request.FirstPassYield,
             request.LoadBalance, request.Cost, request.Transit, request.Reason, actorId.Value), ct);
         if (result.IsSuccess)
         {
@@ -53,5 +53,5 @@ public sealed class ScoringConfigurationsController(ISender sender, IAuditLogWri
 }
 
 public sealed record ActivateScoringConfigurationRequest(
-    string Version, decimal DueDateSlack, decimal LabReliability,
+    string Version, decimal DueDateSlack, decimal OnTimeRate, decimal FirstPassYield,
     decimal LoadBalance, decimal Cost, decimal Transit, string Reason);

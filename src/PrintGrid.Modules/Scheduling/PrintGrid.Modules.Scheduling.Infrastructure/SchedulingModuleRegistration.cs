@@ -5,6 +5,7 @@ using PrintGrid.Modules.Scheduling.Domain.Services;
 using PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Repositories;
 using PrintGrid.Modules.Scheduling.Infrastructure.Scheduling;
 using PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
+using PrintGrid.Modules.Scheduling.Application.Services;
 using PrintGrid.SharedKernel.Interfaces;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure;
@@ -25,6 +26,8 @@ internal static class SchedulingModuleRegistration
         services.AddScoped<ScoringWeightConfigurationRepository>();
         services.AddScoped<IScoringWeightConfigurationRepository>(sp => sp.GetRequiredService<ScoringWeightConfigurationRepository>());
         services.AddScoped<IScoringConfigurationProvider>(sp => sp.GetRequiredService<ScoringWeightConfigurationRepository>());
+
+        services.AddScoped<ILabScoreService, LabScoreService>();
 
         services.AddSingleton<ISlicingService, PrintSlicingService>();
 

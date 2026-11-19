@@ -17,12 +17,15 @@ public sealed record CommercialParametersDto(
     int SlaRiskThresholdHours,
     IReadOnlyDictionary<string, decimal>? ColorPricePerKg = null,
     decimal FailureRate = 0m,
-    decimal PolishingPerUnit = 0m);
+    decimal PolishingPerUnit = 0m,
+    decimal LabProvisionalBaseScore = 0.5m,
+    int LabProvisionalWeightK = 5,
+    int LabProvisionalThreshold = 10);
 
 public sealed record CommercialConfigurationDto(
     Guid Id, int VersionNumber, string Name, string Status,
     CommercialParametersDto Parameters, string ChangeSummary,
-    Guid CreatedBy, DateTime CreatedAtUtc, DateTime? ActivatedAtUtc);
+    Guid CreatedBy, DateTime CreatedAtUtc, DateTime? ActivatedAtUtc, DateTime? ScheduledActivationAtUtc);
 
 public sealed record SharedCatalogItemDto(
     Guid Id, string CatalogType, string Code, int Revision, string Name,

@@ -8,14 +8,14 @@ using PrintGrid.SharedKernel.Results;
 namespace PrintGrid.Modules.Scheduling.Application.Commands.ScoringConfiguration;
 
 public sealed record ScoringConfigurationDto(
-    Guid? Id, string Version, decimal DueDateSlack, decimal LabReliability,
+    Guid? Id, string Version, decimal DueDateSlack, decimal OnTimeRate, decimal FirstPassYield,
     decimal LoadBalance, decimal Cost, decimal Transit, decimal Total,
     bool IsActive, string? Reason, Guid? ChangedBy, DateTime? CreatedAtUtc);
 
 public sealed record GetScoringConfigurationsQuery : IRequest<Result<IReadOnlyList<ScoringConfigurationDto>>>;
 
 public sealed record ActivateScoringConfigurationCommand(
-    string Version, decimal DueDateSlack, decimal LabReliability,
+    string Version, decimal DueDateSlack, decimal OnTimeRate, decimal FirstPassYield,
     decimal LoadBalance, decimal Cost, decimal Transit,
     string Reason, Guid ChangedBy) : IRequest<Result<ScoringConfigurationDto>>;
 
@@ -32,13 +32,13 @@ public sealed class GetScoringConfigurationsQueryHandler(IScoringWeightConfigura
     }
 
     internal static ScoringConfigurationDto Map(ScoringWeightConfiguration x) => new(
-        x.Id, x.Version, x.DueDateSlack, x.LabReliability, x.LoadBalance,
+        x.Id, x.Version, x.DueDateSlack, x.OnTimeRate, x.FirstPassYield, x.LoadBalance,
         x.Cost, x.Transit,
-        x.DueDateSlack + x.LabReliability + x.LoadBalance + x.Cost + x.Transit,
+        x.DueDateSlack + x.OnTimeRate + x.FirstPassYield + x.LoadBalance + x.Cost + x.Transit,
         x.IsActive, x.Reason, x.ChangedBy, x.CreatedAtUtc);
 
     private static ScoringConfigurationDto Map(ScoringParameterSet x) => new(
-        null, x.Version, x.Weights.DueDateSlack, x.Weights.LabReliability,
+        null, x.Version, x.Weights.DueDateSlack, x.Weights.OnTimeRate, x.Weights.FirstPassYield,
         x.Weights.LoadBalance, x.Weights.Cost, x.Weights.Transit,
         x.Weights.Total, true, "Built-in baseline", null, null);
 }
@@ -58,7 +58,8 @@ public sealed class ActivateScoringConfigurationCommandHandler(
         var created = ScoringWeightConfiguration.Create(version, new ScoringWeights
         {
             DueDateSlack = command.DueDateSlack,
-            LabReliability = command.LabReliability,
+            OnTimeRate = command.OnTimeRate,
+            FirstPassYield = command.FirstPassYield,
             LoadBalance = command.LoadBalance,
             Cost = command.Cost,
             Transit = command.Transit

@@ -14,7 +14,7 @@ public sealed class ScoringWeightConfigurationTests
     {
         var result = ScoringWeightConfiguration.Create("bad", new ScoringWeights
         {
-            DueDateSlack = .4m, LabReliability = .3m, LoadBalance = .2m, Cost = .1m, Transit = .1m
+            DueDateSlack = .4m, OnTimeRate = .15m, FirstPassYield = .15m, LoadBalance = .2m, Cost = .1m, Transit = .1m
         }, "Regression guard for invalid total", Guid.NewGuid(), DateTime.UtcNow);
 
         result.IsFailure.Should().BeTrue();
@@ -31,7 +31,7 @@ public sealed class ScoringWeightConfigurationTests
         var handler = new ActivateScoringConfigurationCommandHandler(repository, clock, unitOfWork);
 
         var result = await handler.Handle(new ActivateScoringConfigurationCommand(
-            "2026.11", .2m, .2m, .4m, .1m, .1m, "Prioritize load balancing", Guid.NewGuid()), CancellationToken.None);
+            "2026.11", .25m, .15m, .10m, .25m, .10m, .15m, "Prioritize load balancing", Guid.NewGuid()), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Total.Should().Be(1m);

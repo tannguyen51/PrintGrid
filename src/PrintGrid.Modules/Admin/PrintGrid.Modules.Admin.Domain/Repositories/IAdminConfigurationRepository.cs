@@ -9,6 +9,7 @@ public interface IAdminConfigurationRepository
     Task<CommercialConfigurationVersion?> GetActiveConfigurationAsync(CancellationToken cancellationToken = default);
     Task<int> GetNextConfigurationVersionAsync(CancellationToken cancellationToken = default);
     Task AddConfigurationAsync(CommercialConfigurationVersion version, CancellationToken cancellationToken = default);
+    Task UpdateConfigurationAsync(CommercialConfigurationVersion version, CancellationToken cancellationToken = default);
     Task ActivateConfigurationAsync(CommercialConfigurationVersion version, CommercialConfigurationVersion? previousActive, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<SharedCatalogItem>> GetCatalogAsync(string? catalogType, bool includeDeprecated, CancellationToken cancellationToken = default);

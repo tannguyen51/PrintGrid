@@ -183,7 +183,8 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ActivatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("activated_at_utc");
 
                     b.Property<string>("ChangeSummary")
                         .IsRequired()
@@ -204,6 +205,10 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<string>("ParametersJson")
                         .IsRequired()
                         .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("ScheduledActivationAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scheduled_activation_at_utc");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -2251,14 +2256,18 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasPrecision(8, 6)
                         .HasColumnType("numeric(8,6)");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<decimal>("LabReliability")
+                    b.Property<decimal>("FirstPassYield")
                         .HasPrecision(8, 6)
                         .HasColumnType("numeric(8,6)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal>("LoadBalance")
+                        .HasPrecision(8, 6)
+                        .HasColumnType("numeric(8,6)");
+
+                    b.Property<decimal>("OnTimeRate")
                         .HasPrecision(8, 6)
                         .HasColumnType("numeric(8,6)");
 

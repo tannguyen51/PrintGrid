@@ -27,6 +27,12 @@ public sealed class AdminConfigurationRepository(PrintGridDbContext context) : I
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    public Task UpdateConfigurationAsync(CommercialConfigurationVersion version, CancellationToken cancellationToken = default)
+    {
+        context.Set<CommercialConfigurationVersion>().Update(version);
+        return context.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task ActivateConfigurationAsync(CommercialConfigurationVersion version, CommercialConfigurationVersion? previousActive, CancellationToken cancellationToken = default)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
