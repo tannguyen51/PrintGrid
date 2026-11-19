@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using PrintGrid.Infrastructure.Shared.Persistence;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
+using PrintGrid.Modules.Scheduling.Domain.Services;
 using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
 using PrintGrid.Modules.Scheduling.Infrastructure.Persistence.Configurations;
 using PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
@@ -175,5 +176,112 @@ public class CuraProfileRegistryTests
         machine.UpdateSpecifications("M1", "test-220", PrintTechnology.Fdm,
             BuildVolume.Create(220, 220, 100), .1m, .2m, ["PLA"]);
         profile.Matches(machine).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Lab_proposal_workflow_keeps_profile_approval_separate_from_machine_approval()
+    {
+        await using var db = Database();
+        var ownerId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+        var lab = Lab.Onboard("Test Lab", "HCM", 1);
+        lab.SetMaterialStock("PLA", "BLACK", 1_000m);
+
+        var machine = Modules.Scheduling.Domain.Entities.Machine.Register(
+            lab.Id, "Nova #1", "NP-300", PrintTechnology.Fdm,
+            BuildVolume.Create(220, 220, 250), 0.1m, 0.2m, ["PLA"]);
+        machine.ConfigurePrinter(new PrinterConfiguration("NovaPrint", 1, 1, 0.4m, 1.75m, true, 260, 100, 6000, 0.05m));
+        lab.AddMachine(machine);
+
+        var proposal = CuraProfileImporter.Parse(
+            "NP-300 PLA", "NovaPrint", "NP-300", "PLA", "1.0", "5.11.0", 1, _json,
+            isActive: false, approvalStatus: CuraProfile.StatusPendingReview,
+            submittedByLabId: lab.Id, submittedByUserId: ownerId, targetMachineId: machine.Id,
+            submissionNotes: "Initial proposal", sourceFileName: "np300.resolved.json");
+
+        db.AddRange(machine, proposal);
+        await db.SaveChangesAsync();
+
+        var registry = Registry(db);
+        await registry.MatchAsync(machine, CancellationToken.None);
+        machine.ProfileStatus.Should().Be("MissingProfile");
+        proposal.Matches(machine).Should().BeFalse();
+
+        // Reject without reason fails
+        var emptyReject = () => proposal.RejectProposal(adminId, " ");
+        emptyReject.Should().Throw<ArgumentException>();
+
+        // Reject with reason keeps record for lab review
+        proposal.RejectProposal(adminId, "Cần kiểm tra lại tốc độ tường");
+        proposal.ApprovalStatus.Should().Be(CuraProfile.StatusRejected);
+        proposal.IsActive.Should().BeFalse();
+        proposal.ReviewReason.Should().Be("Cần kiểm tra lại tốc độ tường");
+
+        // Lab edits and resubmits
+        var replacement = CuraProfileImporter.Parse(
+            "NP-300 PLA", "NovaPrint", "NP-300", "PLA", "2.0", "5.11.0", 1, _json,
+            isActive: false, approvalStatus: CuraProfile.StatusPendingReview,
+            submittedByLabId: lab.Id, submittedByUserId: ownerId, targetMachineId: machine.Id,
+            submissionNotes: "Updated wall speed", sourceFileName: "np300-v2.resolved.json");
+        proposal.ResubmitFrom(replacement, ownerId, machine.Id, "Updated wall speed", "np300-v2.resolved.json");
+        proposal.ApprovalStatus.Should().Be(CuraProfile.StatusPendingReview);
+        proposal.ReviewReason.Should().BeNull();
+        proposal.Version.Should().Be("2.0");
+
+        // Admin approves the profile -> machine becomes PendingReview, NOT Approved
+        proposal.ApproveProposal(adminId, "Profile đạt chuẩn");
+        await db.SaveChangesAsync();
+        await registry.MatchAsync(machine, CancellationToken.None);
+        await db.SaveChangesAsync();
+
+        proposal.ApprovalStatus.Should().Be(CuraProfile.StatusApproved);
+        proposal.IsActive.Should().BeTrue();
+        machine.ProfileStatus.Should().Be("PendingReview");
+        machine.CuraProfileIds.Should().Contain(proposal.Id);
+
+        // Machine still cannot quote or be scheduled until machine itself is approved
+        (await registry.GetApprovedMachineIdsAsync(CancellationToken.None)).Should().BeEmpty();
+        (await registry.ResolveAsync(machine.Id, "PLA", CancellationToken.None)).Should().BeNull();
+        var preApprovalCap = CapabilityFilter.Filter(SpecBuilder.Default(), [lab]);
+        preApprovalCap.Candidates.Should().BeEmpty();
+        preApprovalCap.Rejections.Single().Reason.Should().Be("machine_profile_not_approved");
+
+        // Admin approves the machine -> now eligible for quoting and scheduling
+        machine.ReviewProfile(true, adminId, null);
+        await db.SaveChangesAsync();
+
+        (await registry.GetApprovedMachineIdsAsync(CancellationToken.None)).Should().Equal(machine.Id);
+        (await registry.ResolveAsync(machine.Id, "PLA", CancellationToken.None)).Should().NotBeNull();
+        var postApprovalCap = CapabilityFilter.Filter(SpecBuilder.Default(), [lab]);
+        postApprovalCap.Candidates.Should().ContainSingle(c => c.Machine.Id == machine.Id);
+    }
+
+    [Fact]
+    public void Pending_profile_cannot_be_activated_before_approval()
+    {
+        var proposal = CuraProfileImporter.Parse(
+            "Pending", "NovaPrint", "NP-300", "PLA", "1.0", "5.11.0", 1, _json,
+            isActive: false, approvalStatus: CuraProfile.StatusPendingReview);
+
+        var act = () => proposal.Activate();
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Profile_with_cura_definition_matches_machine_with_empty_definition_and_rejects_different_definition()
+    {
+        var profile = Profile();
+        profile.MarkVerified("creality_k1max", "creality_extruder_0", "0.4mm", "standard");
+
+        var machineWithoutDefId = Machine();
+        profile.Matches(machineWithoutDefId).Should().BeTrue();
+
+        var machineWithMatchingDefId = Machine();
+        machineWithMatchingDefId.ConfigurePrinter(machineWithMatchingDefId.PrinterConfiguration! with { CuraDefinitionId = "creality_k1max" });
+        profile.Matches(machineWithMatchingDefId).Should().BeTrue();
+
+        var machineWithOtherDefId = Machine();
+        machineWithOtherDefId.ConfigurePrinter(machineWithOtherDefId.PrinterConfiguration! with { CuraDefinitionId = "prusa_mk4" });
+        profile.Matches(machineWithOtherDefId).Should().BeFalse();
     }
 }

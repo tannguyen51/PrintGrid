@@ -17,6 +17,14 @@ public sealed class CuraProfileConfiguration : IEntityTypeConfiguration<CuraProf
         foreach (var name in new[] { "NozzleDiameterMm", "FilamentDiameterMm", "WidthMm", "DepthMm", "HeightMm", "RequiredNozzleTemperatureC", "RequiredBedTemperatureC" })
             builder.Property<decimal>(name).HasPrecision(10, 3);
         builder.Property(p => p.SettingsJson).HasColumnType("jsonb").IsRequired();
+        builder.Property(p => p.ApprovalStatus).HasMaxLength(30).HasDefaultValue(CuraProfile.StatusApproved).IsRequired();
+        builder.Property(p => p.SubmissionNotes).HasMaxLength(1000);
+        builder.Property(p => p.SourceFileName).HasMaxLength(255);
+        builder.Property(p => p.ReviewReason).HasMaxLength(1000);
+        builder.Property(p => p.UpdatedAtUtc).HasDefaultValueSql("NOW()").IsRequired();
         builder.HasIndex(p => new { p.Manufacturer, p.MachineModel, p.MaterialCode });
+        builder.HasIndex(p => new { p.ApprovalStatus, p.IsActive });
+        builder.HasIndex(p => new { p.SubmittedByLabId, p.ApprovalStatus });
+        builder.HasIndex(p => p.MaterialCode);
     }
 }

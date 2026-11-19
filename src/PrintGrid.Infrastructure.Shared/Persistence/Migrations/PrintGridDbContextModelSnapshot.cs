@@ -1372,6 +1372,13 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ApprovalStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Approved");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1459,9 +1466,41 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasPrecision(10, 3)
                         .HasColumnType("numeric(10,3)");
 
+                    b.Property<string>("ReviewReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("SettingsJson")
                         .IsRequired()
                         .HasColumnType("jsonb");
+
+                    b.Property<string>("SourceFileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("SubmissionNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid?>("SubmittedByLabId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SubmittedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TargetMachineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<string>("Version")
                         .IsRequired()
@@ -1473,6 +1512,12 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                         .HasColumnType("numeric(10,3)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MaterialCode");
+
+                    b.HasIndex("ApprovalStatus", "IsActive");
+
+                    b.HasIndex("SubmittedByLabId", "ApprovalStatus");
 
                     b.HasIndex("Manufacturer", "MachineModel", "MaterialCode");
 

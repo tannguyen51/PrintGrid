@@ -1,105 +1,978 @@
-import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Alert, Box, Button, Chip, CircularProgress, Grid, Paper, Stack, TextField, Typography } from '@mui/material'
+import { useEffect, useState } from 'react'
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Collapse,
+  FormControl,
+  Grid,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  Tab,
+  Tabs,
+  TextField,
+  Typography,
+} from '@mui/material'
+import { AddRounded, SearchRounded } from '@mui/icons-material'
 import { apiClient } from '../../shared/api/apiClient'
 import { getApiErrorMessage } from '../../shared/api/apiError'
-import { useLabs } from '../ops/useLabs'
-import { PROFILE_STATUS_LABELS } from '../ops/labTypes'
-import { useCuraProfiles } from '../lab/PrinterConfigurationFields'
+import { ServerPaginationBar } from '../../shared/components/ServerPaginationBar'
+import {
+  useCuraProfileProposalDetail,
+  useCuraProfilesPaged,
+  useImportCuraProfile,
+  useMatchMachineProfiles,
+  useReviewCuraProfileProposal,
+  useReviewMachineProfile,
+  useSetCuraProfileActive,
+} from '../lab/curaProfileApi'
+import { useLabOptions, useMachinesPaged } from '../ops/useLabs'
+import {
+  MACHINE_STATUS_LABELS,
+  PRINT_TECHNOLOGY_LABELS,
+  PROFILE_APPROVAL_STATUS_LABELS,
+  PROFILE_STATUS_LABELS,
+  type PagedMachinesFilter,
+  type PagedProfilesFilter,
+} from '../ops/labTypes'
 
-const empty = { name: '', manufacturer: '', machineModel: '', materialCode: 'PLA', version: '1', engineVersion: '5.11.0', extruderCount: 1, settingsJson: '' }
+const emptyImport = {
+  name: '',
+  manufacturer: '',
+  machineModel: '',
+  materialCode: 'PLA',
+  version: '1',
+  engineVersion: '5.11.0',
+  extruderCount: 1,
+  settingsJson: '',
+}
 
 export default function AdminCuraProfilesPage() {
-  const profiles = useCuraProfiles()
-  const labs = useLabs(true)
-  const client = useQueryClient()
-  const [form, setForm] = useState(empty)
+  const [tab, setTab] = useState(0)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [reasons, setReasons] = useState<Record<string, string>>({})
-  const refresh = () => { client.invalidateQueries({ queryKey: ['cura-profiles'] }); client.invalidateQueries({ queryKey: ['labs'] }) }
-  const action = useMutation({
-    mutationFn: async ({ id, kind, approve }: { id: string; kind: 'match' | 'review'; approve?: boolean }) => {
-      await apiClient.post(`/cura-profiles/machines/${id}/${kind}`, kind === 'review' ? { approve, reason: reasons[id] || null } : {})
-    },
-    onSuccess: () => { setError(''); setMessage('Đã cập nhật hồ sơ máy.'); refresh() },
-    onError: e => setError(getApiErrorMessage(e, 'Không cập nhật được hồ sơ máy.')),
+  const [importOpen, setImportOpen] = useState(false)
+  const [form, setForm] = useState(emptyImport)
+
+  // Proposal inspection & rejection reasons
+  const [previewId, setPreviewId] = useState<string | null>(null)
+  const [proposalReasons, setProposalReasons] = useState<Record<string, string>>({})
+  const [machineReasons, setMachineReasons] = useState<Record<string, string>>({})
+
+  const previewDetail = useCuraProfileProposalDetail(previewId)
+  const labOptions = useLabOptions(true)
+
+  // Tab 0: Lab Proposals filters
+  const [propSearchInput, setPropSearchInput] = useState('')
+  const [propFilters, setPropFilters] = useState<PagedProfilesFilter>({
+    scope: 'proposals',
+    search: '',
+    labId: '',
+    approvalStatus: '',
+    manufacturerOrModel: '',
+    material: '',
+    page: 1,
+    pageSize: 10,
   })
-  const save = useMutation({
-    mutationFn: () => apiClient.post('/cura-profiles', form),
-    onSuccess: () => { setError(''); setMessage('Đã lưu profile và tự tìm lại cho các máy thiếu profile hoặc chờ duyệt.'); setForm(empty); refresh() },
-    onError: e => setError(getApiErrorMessage(e, 'Không nhập được profile.')),
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPropFilters((prev) => (prev.search === propSearchInput ? prev : { ...prev, search: propSearchInput, page: 1 }))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [propSearchInput])
+  const proposals = useCuraProfilesPaged(propFilters, tab === 0)
+
+  // Tab 1: Profile Library filters
+  const [libSearchInput, setLibSearchInput] = useState('')
+  const [libFilters, setLibFilters] = useState<PagedProfilesFilter>({
+    scope: 'library',
+    search: '',
+    isActive: '',
+    manufacturerOrModel: '',
+    material: '',
+    page: 1,
+    pageSize: 10,
   })
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setLibFilters((prev) => (prev.search === libSearchInput ? prev : { ...prev, search: libSearchInput, page: 1 }))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [libSearchInput])
+  const library = useCuraProfilesPaged(libFilters, tab === 1)
+
+  // Tab 2: Machines Approval filters
+  const [machSearchInput, setMachSearchInput] = useState('')
+  const [machFilters, setMachFilters] = useState<PagedMachinesFilter>({
+    search: '',
+    labId: '',
+    profileStatus: '',
+    operationalStatus: '',
+    manufacturerOrModel: '',
+    material: '',
+    sortBy: 'pendingFirst',
+    page: 1,
+    pageSize: 10,
+  })
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setMachFilters((prev) => (prev.search === machSearchInput ? prev : { ...prev, search: machSearchInput, page: 1 }))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [machSearchInput])
+  const machines = useMachinesPaged(machFilters, tab === 2)
+
+  // Mutations
+  const importProfile = useImportCuraProfile()
+  const reviewProposal = useReviewCuraProfileProposal()
+  const setProfileActive = useSetCuraProfileActive()
+  const matchMachine = useMatchMachineProfiles()
+  const reviewMachine = useReviewMachineProfile()
+
   async function readFile(file?: File) {
     if (!file) return
-    if (file.size > 2 * 1024 * 1024) { setError('File profile tối đa 2 MB.'); return }
-    try { const json = await file.text(); JSON.parse(json); setForm(f => ({ ...f, settingsJson: json })); setError('') }
-    catch { setError('File JSON không hợp lệ.') }
+    if (file.size > 2 * 1024 * 1024) {
+      setError('File profile tối đa 2 MB.')
+      return
+    }
+    try {
+      const json = await file.text()
+      JSON.parse(json)
+      setForm((f) => ({ ...f, settingsJson: json }))
+      setError('')
+    } catch {
+      setError('File JSON không hợp lệ.')
+    }
   }
+
   async function copyProfile(id: string) {
     try {
-      const { data } = await apiClient.get(`/cura-profiles/${id}`)
-      setForm({ name: data.name, manufacturer: data.manufacturer, machineModel: data.machineModel,
-        materialCode: data.materialCode, version: `${data.version}-new`, engineVersion: data.engineVersion,
-        extruderCount: data.extruderCount, settingsJson: data.settingsJson })
-      setMessage('Đã mở cấu hình. Sửa thông số và lưu thành một phiên bản mới.'); setError('')
-    } catch (e) { setError(getApiErrorMessage(e, 'Không tải được profile.')) }
+      const { data } = await apiClient.get<{
+        name: string
+        manufacturer: string
+        machineModel: string
+        materialCode: string
+        version: string
+        engineVersion: string
+        extruderCount: number
+        settingsJson: string
+      }>(`/cura-profiles/${id}`)
+      setForm({
+        name: data.name,
+        manufacturer: data.manufacturer,
+        machineModel: data.machineModel,
+        materialCode: data.materialCode,
+        version: `${data.version}-new`,
+        engineVersion: data.engineVersion,
+        extruderCount: data.extruderCount,
+        settingsJson: data.settingsJson,
+      })
+      setImportOpen(true)
+      setMessage('Đã mở cấu hình profile. Bạn có thể chỉnh sửa và lưu thành phiên bản mới.')
+      setError('')
+    } catch (e) {
+      setError(getApiErrorMessage(e, 'Không tải được profile.'))
+    }
   }
-  return <Stack spacing={3}>
-    <Box><Typography variant="h1">Profile CuraEngine & duyệt máy</Typography>
-      <Typography color="text.secondary">Quản lý thư viện cấu hình in và cho phép máy tham gia báo giá.</Typography></Box>
-    {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
-    {message && <Alert severity="success" onClose={() => setMessage('')}>{message}</Alert>}
-    <Paper variant="outlined" sx={{ p: 3 }}>
-      <Stack spacing={2}>
-        <Typography variant="h6">Tạo / nhập profile</Typography>
-        <Typography variant="body2" color="text.secondary">Mỗi profile dành cho một model máy, vật liệu và cấu hình đầu phun. Nhập resolved JSON gồm global và extruder.0, extruder.1… Các giới hạn khổ in, đường kính, số tool màu và nhiệt độ được đọc từ file. Mỗi lần lưu tạo một phiên bản độc lập.</Typography>
-        <Grid container spacing={2}>
-          {([['name', 'Tên profile'], ['manufacturer', 'Hãng sản xuất'], ['machineModel', 'Model máy'],
-            ['materialCode', 'Mã vật liệu'], ['version', 'Phiên bản profile'], ['engineVersion', 'Phiên bản CuraEngine']] as const)
-            .map(([key, label]) => <Grid key={key} size={{ xs: 12, sm: 6 }}><TextField fullWidth required label={label}
-              value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} /></Grid>)}
-          <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth required type="number" label="Số đầu đùn vật lý" value={form.extruderCount}
-            onChange={e => setForm(f => ({ ...f, extruderCount: Number(e.target.value) }))} /></Grid>
-        </Grid>
-        <Button component="label" variant="outlined">Chọn file resolved JSON<input hidden type="file" accept=".json,application/json"
-          onChange={e => { void readFile(e.target.files?.[0]); e.target.value = '' }} /></Button>
-        <TextField multiline minRows={5} maxRows={14} label="Nội dung profile JSON" value={form.settingsJson}
-          onChange={e => setForm(f => ({ ...f, settingsJson: e.target.value }))} />
-        <Button variant="contained" disabled={save.isPending || !form.settingsJson || !form.name || !form.manufacturer || !form.machineModel}
-          onClick={() => save.mutate()}>{save.isPending ? 'Đang nhập…' : 'Lưu vào thư viện & tìm profile cho máy'}</Button>
-      </Stack>
-    </Paper>
-    <Paper variant="outlined" sx={{ p: 3 }}>
-      <Typography variant="h6" mb={2}>Thư viện profile</Typography>
-      {profiles.isLoading && <CircularProgress />}
-      {profiles.isError && <Alert severity="error">Không tải được thư viện profile.</Alert>}
-      {!profiles.isLoading && !profiles.isError && !profiles.data?.length && <Typography color="text.secondary">Chưa có profile. Nhập profile để máy đăng ký mới được tự đối chiếu.</Typography>}
-      <Stack spacing={1}>{profiles.data?.map(p => <Box key={p.id} sx={{ borderBottom: 1, borderColor: 'divider', pb: 1 }}>
-        <Typography fontWeight={700}>{p.name} · v{p.version}</Typography>
-        <Typography variant="body2">{p.manufacturer} · {p.machineModel} · {p.materialCode} · Đầu phun {p.nozzleDiameterMm} mm · {p.extruderCount} đầu đùn · {p.maximumColorSlots} màu · {p.widthMm}×{p.depthMm}×{p.heightMm} mm</Typography>
-        <Button size="small" onClick={() => void copyProfile(p.id)}>Xem / tạo phiên bản từ profile này</Button>
-      </Box>)}</Stack>
-    </Paper>
-    <Typography variant="h6">Hồ sơ máy của các xưởng</Typography>
-    {labs.isLoading && <CircularProgress />}
-    {labs.isError && <Alert severity="error">Không tải được hồ sơ máy.</Alert>}
-    {labs.data?.flatMap(lab => lab.machines.map(m => <Paper variant="outlined" key={m.id} sx={{ p: 2.5 }}>
-      <Stack spacing={1.5}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap"><Typography fontWeight={700}>{lab.name} · {m.name}</Typography>
-          <Chip size="small" color={m.profileStatus === 'Approved' ? 'success' : 'warning'} label={PROFILE_STATUS_LABELS[m.profileStatus] ?? 'Chưa có profile'} /></Stack>
-        <Typography variant="body2">{m.printerConfiguration?.manufacturer ?? 'Chưa khai hãng'} · {m.model} · {m.buildWidthMm}×{m.buildDepthMm}×{m.buildHeightMm} mm · {m.supportedMaterials.join(', ')}</Typography>
-        {m.printerConfiguration && <Typography variant="body2">Đầu phun {m.printerConfiguration.nozzleDiameterMm} mm · Sợi {m.printerConfiguration.filamentDiameterMm} mm · {m.printerConfiguration.extruderCount} đầu đùn · {m.printerConfiguration.maximumColorSlots} màu · Giới hạn nhiệt đầu phun/bàn: {m.printerConfiguration.maxNozzleTemperatureC}/{m.printerConfiguration.maxBedTemperatureC} °C · {m.printerConfiguration.pricePerHour.toLocaleString('vi-VN')} đ/giờ · Lỗi {Number((m.printerConfiguration.failureRate * 100).toFixed(2))}%</Typography>}
-        <Typography variant="body2">Profile đã gắn: {m.curaProfileIds?.map(id => profiles.data?.find(p => p.id === id)?.name ?? id).join(', ') || 'Chưa có'}</Typography>
-        {m.profileReviewReason && <Alert severity="warning">{m.profileReviewReason}</Alert>}
-        {!m.printerConfiguration && <Alert severity="info">Lab cần mở form sửa máy và bổ sung cấu hình đầu in, hãng và đơn giá.</Alert>}
-        <TextField size="small" label="Lý do từ chối" value={reasons[m.id] ?? ''} onChange={e => setReasons(r => ({ ...r, [m.id]: e.target.value }))} />
-        <Stack direction="row" spacing={1} flexWrap="wrap">
-          <Button disabled={action.isPending || !m.printerConfiguration} onClick={() => action.mutate({ id: m.id, kind: 'match' })}>Tìm lại profile</Button>
-          <Button variant="contained" disabled={action.isPending || m.profileStatus !== 'PendingReview'} onClick={() => action.mutate({ id: m.id, kind: 'review', approve: true })}>Duyệt báo giá</Button>
-          <Button color="error" disabled={action.isPending || !reasons[m.id]?.trim()} onClick={() => action.mutate({ id: m.id, kind: 'review', approve: false })}>Từ chối / thu hồi duyệt</Button>
+
+  async function handleImport() {
+    setError('')
+    setMessage('')
+    try {
+      await importProfile.mutateAsync(form)
+      setForm(emptyImport)
+      setImportOpen(false)
+      setMessage('Đã lưu profile vào thư viện và đối chiếu lại cho các máy chưa duyệt.')
+    } catch (e) {
+      setError(getApiErrorMessage(e, 'Không nhập được profile.'))
+    }
+  }
+
+  async function handleProposalReview(id: string, approve: boolean) {
+    setError('')
+    setMessage('')
+    try {
+      const result = await reviewProposal.mutateAsync({
+        id,
+        approve,
+        reason: proposalReasons[id]?.trim() || null,
+      })
+      setMessage(
+        approve
+          ? `Đã duyệt profile "${result.name}". Các máy khớp cấu hình đã được đối chiếu sang trạng thái Chờ duyệt máy (vẫn cần duyệt máy riêng ở tab "Duyệt máy sử dụng profile").`
+          : `Đã từ chối yêu cầu profile "${result.name}" kèm lý do để xưởng chỉnh sửa và gửi lại.`,
+      )
+    } catch (e) {
+      setError(getApiErrorMessage(e, 'Không thể xử lý yêu cầu profile.'))
+    }
+  }
+
+  async function handleMachineMatch(id: string) {
+    setError('')
+    setMessage('')
+    try {
+      const updated = await matchMachine.mutateAsync(id)
+      setMessage(`Đã đối chiếu lại profile cho máy "${updated.name}": ${PROFILE_STATUS_LABELS[updated.profileStatus] ?? updated.profileStatus}.`)
+    } catch (e) {
+      setError(getApiErrorMessage(e, 'Không tìm lại được profile cho máy.'))
+    }
+  }
+
+  async function handleMachineReview(id: string, approve: boolean) {
+    setError('')
+    setMessage('')
+    try {
+      const updated = await reviewMachine.mutateAsync({
+        machineId: id,
+        approve,
+        reason: machineReasons[id]?.trim() || null,
+      })
+      setMessage(
+        approve
+          ? `Đã duyệt máy "${updated.name}" sử dụng profile — máy đủ điều kiện tham gia báo giá & gán việc (khi xưởng hoạt động và máy Sẵn sàng).`
+          : `Đã từ chối / thu hồi quyền sử dụng profile của máy "${updated.name}".`,
+      )
+    } catch (e) {
+      setError(getApiErrorMessage(e, 'Không cập nhật được trạng thái duyệt máy.'))
+    }
+  }
+
+  return (
+    <Box className="admin-page">
+      <Stack className="admin-page-body" spacing={2.5}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          spacing={2}
+        >
+          <Box>
+            <Typography variant="h1">Profile CuraEngine &amp; Duyệt máy</Typography>
+            <Typography color="text.secondary">
+              Phân tách rõ quy trình duyệt profile từ xưởng, quản lý thư viện profile và duyệt máy sử dụng profile trước khi báo giá/gán việc.
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            startIcon={<AddRounded />}
+            onClick={() => {
+              setTab(1)
+              setImportOpen((open) => !open)
+            }}
+          >
+            {importOpen ? 'Đóng form nhập profile' : 'Nhập profile mới'}
+          </Button>
         </Stack>
+
+        {error && (
+          <Alert severity="error" onClose={() => setError('')}>
+            {error}
+          </Alert>
+        )}
+        {message && (
+          <Alert severity="success" onClose={() => setMessage('')}>
+            {message}
+          </Alert>
+        )}
+
+        <Paper variant="outlined" sx={{ borderRadius: 2.5, overflow: 'hidden' }}>
+          <Tabs
+            value={tab}
+            onChange={(_, next) => setTab(next)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{ borderBottom: 1, borderColor: 'divider', px: 1 }}
+          >
+            <Tab label="Yêu cầu profile từ lab" />
+            <Tab label="Thư viện profile" />
+            <Tab label="Duyệt máy sử dụng profile" />
+          </Tabs>
+        </Paper>
+
+        {/* ── TAB 0: LAB PROFILE PROPOSALS ── */}
+        {tab === 0 && (
+          <Stack spacing={2}>
+            <Alert severity="info">
+              Duyệt profile tại đây chỉ xác nhận file profile hợp lệ để đưa vào thư viện và ghép tự động cho máy khớp cấu hình. Để máy được tham gia báo giá/gán việc, Admin cần duyệt riêng máy ở tab <b>Duyệt máy sử dụng profile</b>.
+            </Alert>
+
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5 }}>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} flexWrap="wrap" useFlexGap>
+                <TextField
+                  size="small"
+                  placeholder="Tìm tên profile, xưởng, ghi chú, tên file…"
+                  value={propSearchInput}
+                  onChange={(e) => setPropSearchInput(e.target.value)}
+                  sx={{ minWidth: 230, flex: 1 }}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchRounded fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <FormControl size="small" sx={{ minWidth: 190 }}>
+                  <InputLabel id="prop-lab-filter">Xưởng gửi</InputLabel>
+                  <Select
+                    labelId="prop-lab-filter"
+                    label="Xưởng gửi"
+                    value={propFilters.labId ?? ''}
+                    onChange={(e) => setPropFilters((p) => ({ ...p, labId: e.target.value, page: 1 }))}
+                  >
+                    <MenuItem value="">Tất cả xưởng</MenuItem>
+                    {(labOptions.data ?? []).map((lab) => (
+                      <MenuItem key={lab.id} value={lab.id}>
+                        {lab.name} ({lab.city})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 165 }}>
+                  <InputLabel id="prop-status-filter">Trạng thái duyệt</InputLabel>
+                  <Select
+                    labelId="prop-status-filter"
+                    label="Trạng thái duyệt"
+                    value={propFilters.approvalStatus ?? ''}
+                    onChange={(e) => setPropFilters((p) => ({ ...p, approvalStatus: e.target.value, page: 1 }))}
+                  >
+                    <MenuItem value="">Tất cả</MenuItem>
+                    <MenuItem value="PendingReview">Chờ Admin duyệt</MenuItem>
+                    <MenuItem value="Approved">Đã duyệt</MenuItem>
+                    <MenuItem value="Rejected">Bị từ chối</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  size="small"
+                  label="Hãng / Model"
+                  value={propFilters.manufacturerOrModel ?? ''}
+                  onChange={(e) =>
+                    setPropFilters((p) => ({ ...p, manufacturerOrModel: e.target.value, page: 1 }))
+                  }
+                  sx={{ width: { xs: '100%', sm: 160 } }}
+                />
+                <TextField
+                  size="small"
+                  label="Vật liệu"
+                  value={propFilters.material ?? ''}
+                  onChange={(e) => setPropFilters((p) => ({ ...p, material: e.target.value, page: 1 }))}
+                  sx={{ width: { xs: '100%', sm: 120 } }}
+                />
+                <Button
+                  color="inherit"
+                  onClick={() => {
+                    setPropSearchInput('')
+                    setPropFilters((p) => ({
+                      ...p,
+                      search: '',
+                      labId: '',
+                      approvalStatus: '',
+                      manufacturerOrModel: '',
+                      material: '',
+                      page: 1,
+                    }))
+                  }}
+                >
+                  Xóa lọc
+                </Button>
+              </Stack>
+            </Paper>
+
+            {proposals.isLoading && <CircularProgress sx={{ alignSelf: 'center' }} />}
+            {proposals.isError && <Alert severity="error">Không tải được danh sách yêu cầu profile.</Alert>}
+            {!proposals.isLoading && !proposals.isError && (proposals.data?.items.length ?? 0) === 0 && (
+              <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', borderStyle: 'dashed' }}>
+                <Typography color="text.secondary">Không có yêu cầu profile nào khớp bộ lọc.</Typography>
+              </Paper>
+            )}
+
+            <Stack spacing={2}>
+              {proposals.data?.items.map((p) => (
+                <Paper key={p.id} variant="outlined" sx={{ p: 2.5, borderRadius: 2.5 }}>
+                  <Stack spacing={1.25}>
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                      <Typography fontWeight={750}>
+                        {p.name} · v{p.version}
+                      </Typography>
+                      <Chip
+                        size="small"
+                        color={
+                          p.approvalStatus === 'Approved'
+                            ? 'success'
+                            : p.approvalStatus === 'Rejected'
+                              ? 'error'
+                              : 'warning'
+                        }
+                        label={PROFILE_APPROVAL_STATUS_LABELS[p.approvalStatus] ?? p.approvalStatus}
+                      />
+                      {p.submittedByLabName && (
+                        <Chip size="small" variant="outlined" label={`Xưởng: ${p.submittedByLabName}`} />
+                      )}
+                      {p.targetMachineName && (
+                        <Chip size="small" variant="outlined" color="primary" label={`Máy gắn: ${p.targetMachineName}`} />
+                      )}
+                    </Stack>
+
+                    <Typography variant="body2" color="text.secondary">
+                      {p.manufacturer} · {p.machineModel} · Vật liệu <b>{p.materialCode}</b> · CuraEngine {p.engineVersion} · Khổ{' '}
+                      {p.widthMm}×{p.depthMm}×{p.heightMm} mm · Đầu phun {p.nozzleDiameterMm} mm · Sợi {p.filamentDiameterMm} mm ·{' '}
+                      {p.extruderCount} đầu đùn / {p.maximumColorSlots} màu · Nhiệt vật liệu {p.requiredNozzleTemperatureC}/
+                      {p.requiredBedTemperatureC} °C
+                    </Typography>
+
+                    {(p.sourceFileName || p.submissionNotes) && (
+                      <Typography variant="body2" color="text.secondary">
+                        {p.sourceFileName ? `File nguồn: ${p.sourceFileName}` : ''}
+                        {p.sourceFileName && p.submissionNotes ? ' · ' : ''}
+                        {p.submissionNotes ? `Ghi chú xưởng: ${p.submissionNotes}` : ''}
+                      </Typography>
+                    )}
+
+                    {p.reviewReason && (
+                      <Alert severity={p.approvalStatus === 'Rejected' ? 'error' : 'info'}>
+                        {p.approvalStatus === 'Rejected' ? 'Lý do từ chối: ' : 'Ghi chú duyệt: '}
+                        {p.reviewReason}
+                      </Alert>
+                    )}
+
+                    <Box>
+                      <Button
+                        size="small"
+                        onClick={() => setPreviewId((curr) => (curr === p.id ? null : p.id))}
+                      >
+                        {previewId === p.id ? 'Ẩn nội dung resolved JSON' : 'Kiểm tra nội dung resolved JSON'}
+                      </Button>
+                    </Box>
+
+                    {previewId === p.id && (
+                      previewDetail.isLoading ? (
+                        <CircularProgress size={20} />
+                      ) : previewDetail.isError ? (
+                        <Alert severity="error">Không tải được nội dung resolved JSON.</Alert>
+                      ) : (
+                        <TextField
+                          fullWidth
+                          multiline
+                          minRows={5}
+                          maxRows={12}
+                          label="Resolved JSON"
+                          value={previewDetail.data?.settingsJson ?? ''}
+                          slotProps={{ input: { readOnly: true } }}
+                        />
+                      )
+                    )}
+
+                    {p.approvalStatus === 'PendingReview' && (
+                      <>
+                        <TextField
+                          size="small"
+                          label="Lý do từ chối (bắt buộc khi từ chối) hoặc ghi chú duyệt"
+                          value={proposalReasons[p.id] ?? ''}
+                          onChange={(e) => setProposalReasons((r) => ({ ...r, [p.id]: e.target.value }))}
+                        />
+                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                          <Button
+                            variant="contained"
+                            size="small"
+                            disabled={reviewProposal.isPending}
+                            onClick={() => void handleProposalReview(p.id, true)}
+                          >
+                            Duyệt profile vào thư viện
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            disabled={reviewProposal.isPending || !(proposalReasons[p.id] ?? '').trim()}
+                            onClick={() => void handleProposalReview(p.id, false)}
+                          >
+                            Từ chối kèm lý do
+                          </Button>
+                        </Stack>
+                      </>
+                    )}
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+
+            {proposals.data && (
+              <ServerPaginationBar
+                totalCount={proposals.data.totalCount}
+                page={proposals.data.page}
+                pageSize={proposals.data.pageSize}
+                totalPages={proposals.data.totalPages}
+                itemLabel="yêu cầu profile"
+                onPageChange={(nextPage) => setPropFilters((p) => ({ ...p, page: nextPage }))}
+                onPageSizeChange={(nextSize) => setPropFilters((p) => ({ ...p, pageSize: nextSize, page: 1 }))}
+              />
+            )}
+          </Stack>
+        )}
+
+        {/* ── TAB 1: PROFILE LIBRARY ── */}
+        {tab === 1 && (
+          <Stack spacing={2}>
+            <Collapse in={importOpen}>
+              <Paper variant="outlined" sx={{ p: 3, borderRadius: 2.5 }}>
+                <Stack spacing={2}>
+                  <Typography variant="h6">Tạo / nhập profile mới vào thư viện</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Mỗi profile dành cho một model máy, vật liệu và cấu hình đầu phun. Nhập resolved JSON gồm global và extruder.0, extruder.1…
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {(
+                      [
+                        ['name', 'Tên profile'],
+                        ['manufacturer', 'Hãng sản xuất'],
+                        ['machineModel', 'Model máy'],
+                        ['materialCode', 'Mã vật liệu'],
+                        ['version', 'Phiên bản profile'],
+                        ['engineVersion', 'Phiên bản CuraEngine'],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <Grid key={key} size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                          fullWidth
+                          required
+                          label={label}
+                          value={form[key]}
+                          onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                        />
+                      </Grid>
+                    ))}
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        fullWidth
+                        required
+                        type="number"
+                        label="Số đầu đùn vật lý"
+                        value={form.extruderCount}
+                        onChange={(e) => setForm((f) => ({ ...f, extruderCount: Number(e.target.value) }))}
+                      />
+                    </Grid>
+                  </Grid>
+                  <Button component="label" variant="outlined">
+                    Chọn file resolved JSON
+                    <input
+                      hidden
+                      type="file"
+                      accept=".json,application/json"
+                      onChange={(e) => {
+                        void readFile(e.target.files?.[0])
+                        e.target.value = ''
+                      }}
+                    />
+                  </Button>
+                  <TextField
+                    multiline
+                    minRows={5}
+                    maxRows={14}
+                    label="Nội dung profile JSON"
+                    value={form.settingsJson}
+                    onChange={(e) => setForm((f) => ({ ...f, settingsJson: e.target.value }))}
+                  />
+                  <Button
+                    variant="contained"
+                    disabled={
+                      importProfile.isPending ||
+                      !form.settingsJson ||
+                      !form.name ||
+                      !form.manufacturer ||
+                      !form.machineModel
+                    }
+                    onClick={() => void handleImport()}
+                  >
+                    {importProfile.isPending ? 'Đang nhập…' : 'Lưu vào thư viện & đối chiếu máy'}
+                  </Button>
+                </Stack>
+              </Paper>
+            </Collapse>
+
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5 }}>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} flexWrap="wrap" useFlexGap>
+                <TextField
+                  size="small"
+                  placeholder="Tìm theo tên profile, hãng, model, phiên bản…"
+                  value={libSearchInput}
+                  onChange={(e) => setLibSearchInput(e.target.value)}
+                  sx={{ minWidth: 230, flex: 1 }}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchRounded fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <FormControl size="small" sx={{ minWidth: 165 }}>
+                  <InputLabel id="lib-active-filter">Trạng thái hoạt động</InputLabel>
+                  <Select
+                    labelId="lib-active-filter"
+                    label="Trạng thái hoạt động"
+                    value={libFilters.isActive ?? ''}
+                    onChange={(e) =>
+                      setLibFilters((p) => ({ ...p, isActive: e.target.value as '' | 'true' | 'false', page: 1 }))
+                    }
+                  >
+                    <MenuItem value="">Tất cả</MenuItem>
+                    <MenuItem value="true">Đang kích hoạt</MenuItem>
+                    <MenuItem value="false">Đã tắt</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  size="small"
+                  label="Hãng / Model"
+                  value={libFilters.manufacturerOrModel ?? ''}
+                  onChange={(e) => setLibFilters((p) => ({ ...p, manufacturerOrModel: e.target.value, page: 1 }))}
+                  sx={{ width: { xs: '100%', sm: 170 } }}
+                />
+                <TextField
+                  size="small"
+                  label="Vật liệu"
+                  value={libFilters.material ?? ''}
+                  onChange={(e) => setLibFilters((p) => ({ ...p, material: e.target.value, page: 1 }))}
+                  sx={{ width: { xs: '100%', sm: 130 } }}
+                />
+                <Button
+                  color="inherit"
+                  onClick={() => {
+                    setLibSearchInput('')
+                    setLibFilters((p) => ({
+                      ...p,
+                      search: '',
+                      isActive: '',
+                      manufacturerOrModel: '',
+                      material: '',
+                      page: 1,
+                    }))
+                  }}
+                >
+                  Xóa lọc
+                </Button>
+              </Stack>
+            </Paper>
+
+            {library.isLoading && <CircularProgress sx={{ alignSelf: 'center' }} />}
+            {library.isError && <Alert severity="error">Không tải được thư viện profile.</Alert>}
+            {!library.isLoading && !library.isError && (library.data?.items.length ?? 0) === 0 && (
+              <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', borderStyle: 'dashed' }}>
+                <Typography color="text.secondary">Chưa có profile nào phù hợp với bộ lọc.</Typography>
+              </Paper>
+            )}
+
+            <Stack spacing={1.5}>
+              {library.data?.items.map((p) => (
+                <Paper key={p.id} variant="outlined" sx={{ p: 2.25, borderRadius: 2.5 }}>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    justifyContent="space-between"
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    gap={1.5}
+                  >
+                    <Box>
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                        <Typography fontWeight={750}>
+                          {p.name} · v{p.version}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          color={p.isActive ? 'success' : 'default'}
+                          label={p.isActive ? 'Đang kích hoạt' : 'Đã tắt'}
+                        />
+                        {p.isVerified && <Chip size="small" color="info" variant="outlined" label="Cura Verified" />}
+                        {p.submittedByLabName && (
+                          <Chip size="small" variant="outlined" label={`Đề xuất từ ${p.submittedByLabName}`} />
+                        )}
+                      </Stack>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        {p.manufacturer} · {p.machineModel} · {p.materialCode} · CuraEngine {p.engineVersion} · Đầu phun{' '}
+                        {p.nozzleDiameterMm} mm · {p.extruderCount} đầu đùn / {p.maximumColorSlots} màu · {p.widthMm}×{p.depthMm}×
+                        {p.heightMm} mm · Nhiệt {p.requiredNozzleTemperatureC}/{p.requiredBedTemperatureC} °C
+                      </Typography>
+                    </Box>
+                    <Stack direction="row" spacing={1} flexShrink={0}>
+                      <Button size="small" variant="outlined" onClick={() => void copyProfile(p.id)}>
+                        Xem / tạo bản mới
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color={p.isActive ? 'warning' : 'success'}
+                        disabled={setProfileActive.isPending}
+                        onClick={() => void setProfileActive.mutateAsync({ id: p.id, isActive: !p.isActive })}
+                      >
+                        {p.isActive ? 'Tắt' : 'Kích hoạt'}
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+
+            {library.data && (
+              <ServerPaginationBar
+                totalCount={library.data.totalCount}
+                page={library.data.page}
+                pageSize={library.data.pageSize}
+                totalPages={library.data.totalPages}
+                itemLabel="profile"
+                onPageChange={(nextPage) => setLibFilters((p) => ({ ...p, page: nextPage }))}
+                onPageSizeChange={(nextSize) => setLibFilters((p) => ({ ...p, pageSize: nextSize, page: 1 }))}
+              />
+            )}
+          </Stack>
+        )}
+
+        {/* ── TAB 2: MACHINE APPROVAL ── */}
+        {tab === 2 && (
+          <Stack spacing={2}>
+            <Alert severity="info">
+              <b>Phân biệt duyệt profile và duyệt máy:</b> Máy in FDM chỉ được tham gia báo giá &amp; gán việc khi (1) có đủ profile đã duyệt cho mọi vật liệu hỗ trợ, (2) được Admin bấm <b>Duyệt máy sử dụng profile</b>, (3) xưởng chủ quản đang kích hoạt &amp; không bị đình chỉ, và (4) máy ở trạng thái Sẵn sàng/Đang in.
+            </Alert>
+
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5 }}>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} flexWrap="wrap" useFlexGap>
+                <TextField
+                  size="small"
+                  placeholder="Tìm tên máy, model, hãng, tên xưởng…"
+                  value={machSearchInput}
+                  onChange={(e) => setMachSearchInput(e.target.value)}
+                  sx={{ minWidth: 220, flex: 1 }}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchRounded fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <FormControl size="small" sx={{ minWidth: 185 }}>
+                  <InputLabel id="mach-lab-filter">Xưởng</InputLabel>
+                  <Select
+                    labelId="mach-lab-filter"
+                    label="Xưởng"
+                    value={machFilters.labId ?? ''}
+                    onChange={(e) => setMachFilters((p) => ({ ...p, labId: e.target.value, page: 1 }))}
+                  >
+                    <MenuItem value="">Tất cả xưởng</MenuItem>
+                    {(labOptions.data ?? []).map((lab) => (
+                      <MenuItem key={lab.id} value={lab.id}>
+                        {lab.name} ({lab.city})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 175 }}>
+                  <InputLabel id="mach-profile-status-filter">Trạng thái duyệt máy</InputLabel>
+                  <Select
+                    labelId="mach-profile-status-filter"
+                    label="Trạng thái duyệt máy"
+                    value={machFilters.profileStatus ?? ''}
+                    onChange={(e) => setMachFilters((p) => ({ ...p, profileStatus: e.target.value, page: 1 }))}
+                  >
+                    <MenuItem value="">Tất cả</MenuItem>
+                    <MenuItem value="PendingReview">Chờ duyệt máy</MenuItem>
+                    <MenuItem value="MissingProfile">Chưa có đủ profile</MenuItem>
+                    <MenuItem value="Approved">Đã duyệt máy</MenuItem>
+                    <MenuItem value="Rejected">Bị từ chối</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 165 }}>
+                  <InputLabel id="mach-op-status-filter">Trạng thái hoạt động</InputLabel>
+                  <Select
+                    labelId="mach-op-status-filter"
+                    label="Trạng thái hoạt động"
+                    value={machFilters.operationalStatus ?? ''}
+                    onChange={(e) => setMachFilters((p) => ({ ...p, operationalStatus: e.target.value, page: 1 }))}
+                  >
+                    <MenuItem value="">Tất cả</MenuItem>
+                    <MenuItem value="Idle">Sẵn sàng</MenuItem>
+                    <MenuItem value="Printing">Đang in</MenuItem>
+                    <MenuItem value="Maintenance">Bảo trì</MenuItem>
+                    <MenuItem value="Offline">Ngoại tuyến</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  size="small"
+                  label="Hãng / Model"
+                  value={machFilters.manufacturerOrModel ?? ''}
+                  onChange={(e) => setMachFilters((p) => ({ ...p, manufacturerOrModel: e.target.value, page: 1 }))}
+                  sx={{ width: { xs: '100%', sm: 155 } }}
+                />
+                <TextField
+                  size="small"
+                  label="Vật liệu"
+                  value={machFilters.material ?? ''}
+                  onChange={(e) => setMachFilters((p) => ({ ...p, material: e.target.value, page: 1 }))}
+                  sx={{ width: { xs: '100%', sm: 120 } }}
+                />
+                <Button
+                  color="inherit"
+                  onClick={() => {
+                    setMachSearchInput('')
+                    setMachFilters((p) => ({
+                      ...p,
+                      search: '',
+                      labId: '',
+                      profileStatus: '',
+                      operationalStatus: '',
+                      manufacturerOrModel: '',
+                      material: '',
+                      page: 1,
+                    }))
+                  }}
+                >
+                  Xóa lọc
+                </Button>
+              </Stack>
+            </Paper>
+
+            {machines.isLoading && <CircularProgress sx={{ alignSelf: 'center' }} />}
+            {machines.isError && <Alert severity="error">Không tải được danh sách máy in.</Alert>}
+            {!machines.isLoading && !machines.isError && (machines.data?.items.length ?? 0) === 0 && (
+              <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', borderStyle: 'dashed' }}>
+                <Typography color="text.secondary">Không có máy in nào khớp bộ lọc hiện tại.</Typography>
+              </Paper>
+            )}
+
+            <Stack spacing={2}>
+              {machines.data?.items.map((m) => (
+                <Paper key={m.id} variant="outlined" sx={{ p: 2.5, borderRadius: 2.5 }}>
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                      <Typography fontWeight={750}>
+                        {m.labName} · {m.name}
+                      </Typography>
+                      <Chip
+                        size="small"
+                        color={
+                          m.profileStatus === 'Approved'
+                            ? 'success'
+                            : m.profileStatus === 'Rejected'
+                              ? 'error'
+                              : m.profileStatus === 'PendingReview'
+                                ? 'info'
+                                : 'warning'
+                        }
+                        label={PROFILE_STATUS_LABELS[m.profileStatus] ?? m.profileStatus}
+                      />
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        color={
+                          m.status === 0 ? 'success' : m.status === 1 ? 'info' : m.status === 2 ? 'warning' : 'error'
+                        }
+                        label={MACHINE_STATUS_LABELS[m.status] ?? 'Không rõ'}
+                      />
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        color={m.isEligibleForQuotingAndScheduling ? 'success' : 'default'}
+                        label={
+                          m.isEligibleForQuotingAndScheduling
+                            ? 'Đủ điều kiện báo giá & gán việc'
+                            : 'Chưa đủ điều kiện báo giá & gán việc'
+                        }
+                      />
+                      {!m.labIsActive && <Chip size="small" color="warning" variant="outlined" label={`Xưởng: ${m.labStatus}`} />}
+                    </Stack>
+
+                    <Typography variant="body2">
+                      {PRINT_TECHNOLOGY_LABELS[m.technology] ?? 'FDM'} · {m.printerConfiguration?.manufacturer ?? 'Chưa khai hãng'} ·{' '}
+                      {m.model} · Khổ {m.buildWidthMm}×{m.buildDepthMm}×{m.buildHeightMm} mm · Vật liệu:{' '}
+                      {m.supportedMaterials.join(', ')}
+                    </Typography>
+
+                    {m.printerConfiguration && (
+                      <Typography variant="body2" color="text.secondary">
+                        Đầu phun {m.printerConfiguration.nozzleDiameterMm} mm · Sợi {m.printerConfiguration.filamentDiameterMm} mm ·{' '}
+                        {m.printerConfiguration.extruderCount} đầu đùn / {m.printerConfiguration.maximumColorSlots} màu · Nhiệt tối đa{' '}
+                        {m.printerConfiguration.maxNozzleTemperatureC}/{m.printerConfiguration.maxBedTemperatureC} °C ·{' '}
+                        {m.printerConfiguration.pricePerHour.toLocaleString('vi-VN')} đ/giờ · Lỗi{' '}
+                        {Number((m.printerConfiguration.failureRate * 100).toFixed(2))}%
+                      </Typography>
+                    )}
+
+                    <Typography variant="body2" color="text.secondary">
+                      Profile đã gắn:{' '}
+                      {m.matchedProfiles.length > 0
+                        ? m.matchedProfiles.map((p) => `${p.name} (${p.materialCode} v${p.version})`).join(', ')
+                        : m.curaProfileIds.length > 0
+                          ? m.curaProfileIds.join(', ')
+                          : 'Chưa có'}
+                    </Typography>
+
+                    {m.profileReviewReason && <Alert severity="warning">{m.profileReviewReason}</Alert>}
+                    {!m.printerConfiguration && (
+                      <Alert severity="info">Lab cần mở form sửa máy để bổ sung cấu hình đầu in, hãng và đơn giá.</Alert>
+                    )}
+
+                    <TextField
+                      size="small"
+                      label="Lý do từ chối / thu hồi duyệt máy"
+                      value={machineReasons[m.id] ?? ''}
+                      onChange={(e) => setMachineReasons((r) => ({ ...r, [m.id]: e.target.value }))}
+                    />
+
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        disabled={matchMachine.isPending || !m.printerConfiguration}
+                        onClick={() => void handleMachineMatch(m.id)}
+                      >
+                        Tìm lại profile
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disabled={reviewMachine.isPending || m.profileStatus !== 'PendingReview'}
+                        onClick={() => void handleMachineReview(m.id, true)}
+                      >
+                        Duyệt máy sử dụng profile
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        variant="outlined"
+                        disabled={reviewMachine.isPending || !(machineReasons[m.id] ?? '').trim()}
+                        onClick={() => void handleMachineReview(m.id, false)}
+                      >
+                        Từ chối / thu hồi duyệt
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+
+            {machines.data && (
+              <ServerPaginationBar
+                totalCount={machines.data.totalCount}
+                page={machines.data.page}
+                pageSize={machines.data.pageSize}
+                totalPages={machines.data.totalPages}
+                itemLabel="máy in"
+                onPageChange={(nextPage) => setMachFilters((p) => ({ ...p, page: nextPage }))}
+                onPageSizeChange={(nextSize) => setMachFilters((p) => ({ ...p, pageSize: nextSize, page: 1 }))}
+              />
+            )}
+          </Stack>
+        )}
       </Stack>
-    </Paper>))}
-  </Stack>
+    </Box>
+  )
 }

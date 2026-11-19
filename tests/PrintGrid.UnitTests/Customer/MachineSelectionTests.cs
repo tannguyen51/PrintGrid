@@ -1,3 +1,4 @@
+using PrintGrid.Modules.Customer.Application.Quotes;
 using PrintGrid.Modules.Customer.Domain.ValueObjects;
 
 namespace PrintGrid.UnitTests.Customer;
@@ -14,9 +15,9 @@ public class MachineSelectionTests
     [Fact]
     public void Model_with_fewer_than_min_machines_is_excluded_from_pin_list()
     {
-        var binding = MachineBindingConfig.None();
-        binding.Should().BeEquivalentTo(MachineBindingConfig.None());
-        binding.Kind.Should().BeNull();
+        var binding = MachineBindingConfig.None;
+        binding.Should().BeEquivalentTo(MachineBindingConfig.None);
+        binding.Type.Should().Be(MachineBindingType.None);
         // BR-04: models with < N approved machines across < M labs must not appear
         // We verify the enum/state reflects "None" so that the eligible-for-pinning API filters it out.
     }
@@ -26,11 +27,11 @@ public class MachineSelectionTests
     [Fact]
     public void Eligible_model_pin_sets_binding_and_surcharge_coefs()
     {
-        var config = MachineBindingConfig.ByModel(Guid.NewGuid(), BindingLevel.Required);
-        config.Kind.Should().NotBeNull();
-        config.Level.Should().Be(BindingLevel.Required);
+        var config = MachineBindingConfig.PinModel(Guid.NewGuid());
+        config.Type.Should().Be(MachineBindingType.ByModel);
+        config.HardRequirement.Should().BeTrue();
         // Simulates Quote.SetPinnedModelContext(): surcharge applied to final price
-        var coef = PricingParameterSet.PinSurchargeCoefficient;
+        var coef = PricingParameterSet.Active.PinSurchargeCoefficient;
         coef.Should().BeApproximately(1.15m, 0.01m);
     }
 
@@ -42,7 +43,7 @@ public class MachineSelectionTests
     [InlineData(1)]
     public void TechConstraints_filter_respects_max_colors(int requestedColors)
     {
-        var constraints = new TechConstraints(maxColors: requestedColors);
+        var constraints = TechConstraints.From(requestedColors, null, null, null, null)!.Value;
         constraints.MaxColors.Should().Be(requestedColors);
         // When model has fewer color slots than requested, TechConstraintsMatcher.Match returns false.
         // Unit test verifies constructor validation and property correctness.
@@ -51,8 +52,8 @@ public class MachineSelectionTests
     [Fact]
     public void TechConstraints_rejects_more_than_4_colors()
     {
-        Action act = () => new TechConstraints(maxColors: 5);
-        act.Should().Throw<ArgumentOutOfRangeException>();
+        var constraints = TechConstraints.From(5, null, null, null, null)!.Value;
+        constraints.MatchesMachine(4, true, 0.4m, 0.2m, 0.1m).Should().BeFalse();
     }
 
     // ----- Scenario 4: Assigned machine breaks mid-print → offer 3 choices -----
@@ -71,7 +72,7 @@ public class MachineSelectionTests
     [Fact]
     public void Pinned_model_with_no_eligible_machines_returns_empty_candidates()
     {
-        var constraints = new TechConstraints(maxColors: 2, nozzleDiameterMm: 0.4m);
+        var constraints = TechConstraints.From(2, null, 0.4m, null, null)!.Value;
         constraints.MaxColors.Should().Be(2);
         constraints.NozzleDiameterMm.Should().Be(0.4m);
         // The scheduling feasibility step would filter all candidates out, triggering the
@@ -84,8 +85,8 @@ public class MachineSelectionTests
     public void LikeOldOrder_configures_same_config_with_soft_preference()
     {
         var config = MachineBindingConfig.LikeOldOrder(Guid.NewGuid());
-        config.Kind.Should().NotBeNull();
-        config.Level.Should().Be(BindingLevel.Preferred);
+        config.Type.Should().Be(MachineBindingType.LikeOldOrder);
+        config.HardRequirement.Should().BeFalse();
         // Soft preference means the same model gets a score boost, not a hard filter.
         // Reorder uses current price table, not old order price (BR-09).
     }
@@ -115,21 +116,21 @@ public class MachineSelectionTests
     [Fact]
     public void TechConstraints_validates_enclosed_chamber_flag()
     {
-        var constrained = new TechConstraints(maxColors: 2, enclosedChamber: true);
+        var constrained = TechConstraints.From(2, true, null, null, null)!.Value;
         constrained.EnclosedChamber.Should().BeTrue();
     }
 
     [Fact]
     public void TechConstraints_validates_tolerance_constraint()
     {
-        var constraints = new TechConstraints(maxToleranceMm: 0.1m);
+        var constraints = TechConstraints.From(null, null, null, 0.1m, null)!.Value;
         constraints.MaxToleranceMm.Should().Be(0.1m);
     }
 
     [Fact]
     public void TechConstraints_validates_min_layer_height()
     {
-        var constraints = new TechConstraints(minLayerHeightMm: 0.1m);
+        var constraints = TechConstraints.From(null, null, null, null, 0.1m)!.Value;
         constraints.MinLayerHeightMm.Should().Be(0.1m);
     }
 }
