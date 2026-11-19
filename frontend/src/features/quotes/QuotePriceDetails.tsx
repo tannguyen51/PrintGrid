@@ -6,7 +6,10 @@ const fmt = (amount: number) => amount.toLocaleString('vi-VN')
 export function QuotePriceDetails({ quote }: { quote: Quote }) {
   // Older API deployments used promisedDeliveryDate for this same hub-ready estimate.
   // Neither that legacy field nor entering an address establishes a shipping promise.
-  const hubReadyDate = quote.estimatedHubReadyDate ?? quote.promisedDeliveryDate
+  const hubReadyDate = quote.estimatedHubReadyDate || quote.promisedDeliveryDate
+  const parsedHubDate = hubReadyDate ? new Date(hubReadyDate.includes('T') ? hubReadyDate : `${hubReadyDate}T00:00:00`) : null
+  const hubDateLabel = parsedHubDate && Number.isFinite(parsedHubDate.getTime())
+    ? parsedHubDate.toLocaleDateString('vi-VN') : 'Chưa có dự kiến'
   return <Stack spacing={3}>
     {quote.items.map(item => {
       const calculation = item.calculation
@@ -48,7 +51,7 @@ export function QuotePriceDetails({ quote }: { quote: Quote }) {
       <Box textAlign={{ xs: 'left', sm: 'right' }}>
         <Typography variant="caption" color="text.disabled">DỰ KIẾN SẴN SÀNG TẠI HUB</Typography>
         <Typography sx={{ fontWeight: 700, color: 'text.primary' }}>
-          {hubReadyDate ? new Date(hubReadyDate + 'T00:00:00').toLocaleDateString('vi-VN') : 'Chưa có dự kiến'}
+          {hubDateLabel}
         </Typography>
         <Typography component="p" variant="caption" color="text.secondary">
           {quote.customerPlacementSummary ?? 'tính theo lịch máy thật của mạng lưới'}
