@@ -15,10 +15,11 @@ Triển khai các yêu cầu về **kích hoạt cấu hình thương mại** v�
 - Kiểm tra duy nhất một phiên bản Active (unique index vẫn giữ nguyên).
 - Cập nhật DTO, handler, repository, controller, migration, và frontend UI.
 
-### Đảm bảo không nh hưởng báo giá/đơn đã chốt
-- `Quote.PricingVersion` được freeze tại thời điểm tạo quote; thay đổi cấu hình mới chỉ áp dụng cho quote/order sau đó.
+### Đảm bảo không ảnh hưởng báo giá/đơn đã chốt
 
-## 2. Chấm điểm lab tự động từ dữ liệu vận hành
+- `Quote.PricingVersion` được freeze tại thi điểm tạo quote; thay đổi cấu hình mới chỉ áp dụng cho quote/order sau đó.
+
+## 2. Chấm điểm lab tự động t dữ liệu vận hành
 
 ### Đã làm
 - Tách `LabReliability` thành `OnTimeRate` và `FirstPassYield` trong `ScoringWeights`.
@@ -40,22 +41,34 @@ Triển khai các yêu cầu về **kích hoạt cấu hình thương mại** v�
 
 ## 3. UI/UX
 
-- `AdminCommercialConfigurationPage`: hiển thị ngày giờ kích hoạt/ hẹn giờ, lịch sử phiên bản, dialog hẹn giờ, và các trưng trọng số + điểm lab mới.
+- `AdminCommercialConfigurationPage`: hiển thị ngày gi kích hoạt/ hẹn giờ, lịch sử phiên bản, dialog hẹn giờ, và các trưng trọng số + điểm lab mới.
 - `AdminScoringConfigurationPage`: hiển thị 6 trọng số, cập nhật form kích hoạt.
+- `AdminLabScoresPage`: trang mới giải thích điểm lab từ dữ liệu vận hành.
 - API mới: `GET /api/v1/scheduling/lab-scores` giải thích điểm lab.
 
 ## 4. Kiểm thử
 
 - Build API: OK
-- Build unit tests: OK (các test do thay đổi này pass)
+- Build unit tests: OK
 - Unit test toàn bộ: 333 pass, 3 fail (2 fail pre-existing, không liên quan đến thay đổi này)
-- Migrations: `AddCommercialScheduledActivation`, `SplitLabReliabilityScoringWeights`
+- Migrations:
+  - `AddCommercialScheduledActivation`
+  - `SplitLabReliabilityScoringWeights`
+  - `SeedAdminUser`
+- Local test:
+  - Backend chạy ở `http://localhost:5000`, health `Healthy`
+  - Login admin `admin@test.com` / `Admin123!` thành công, JWT có role `Admin`
+  - API `GET /api/v1/admin/commercial-configurations` trả về cấu hình thương mại
+  - API `GET /api/v1/admin/scoring-configurations` trả về trọng số chấm điểm
+  - API `GET /api/v1/scheduling/lab-scores` trả về rỗng (chưa có lab active)
 
-## 5. Vấn đề chưa giải quyết
+## 5. Lưu ý khi triển khai
 
-- PostgreSQL local đã cài nhưng chưa tạo được database `printgrid_db` vì chưa có mật khẩu user `postgres`.
-- Cần user cung cấp mật khẩu PostgreSQL hoặc cho phép cấu hình `pg_hba.conf` trust để khởi tạo DB, sau đó chạy `dotnet ef database update` và test UI deploy.
+- `appsettings.Development.json` đã được đổi sang kết nối PostgreSQL local trên port `5433` (cluster khởi tạo bằng `initdb` trong user profile). Nếu muốn dùng lại PostgreSQL service mặc định ở port `5432`, cần đổi lại connection string.
+- Đã tạo user admin `admin@test.com` / `Admin123!` qua migration seed để test local.
 
-## Commit
+## Commit chính
 
-`7b2a5faf` — feat: commercial config activation, scheduled activation, and operational lab scoring
+- `7b2a5faf` — feat: commercial config activation, scheduled activation, and operational lab scoring
+- `42eaa448` — feat: add lab scores explanation page and route
+- `3b0c5960` — chore: seed admin user migration for local testing
