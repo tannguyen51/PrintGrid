@@ -20,7 +20,15 @@ public sealed record CommercialParametersDto(
     decimal PolishingPerUnit = 0m,
     decimal LabProvisionalBaseScore = 0.5m,
     int LabProvisionalWeightK = 5,
-    int LabProvisionalThreshold = 10);
+    int LabProvisionalThreshold = 10,
+    decimal PinSurchargeCoefficient = 1.15m,
+    decimal MaterialWasteRate = .03m,
+    decimal SetupFeePerPlate = 20_000m,
+    decimal FailureCompletionRatio = .5m,
+    int PriceRoundingIncrement = 1000,
+    int MinPinMachines = 3,
+    int MinPinLabs = 2,
+    IReadOnlyDictionary<string, Guid>? ReferenceProfileIds = null);
 
 public sealed record CommercialConfigurationDto(
     Guid Id, int VersionNumber, string Name, string Status,

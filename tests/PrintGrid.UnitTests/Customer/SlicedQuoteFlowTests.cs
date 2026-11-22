@@ -12,7 +12,7 @@ namespace PrintGrid.UnitTests.Customer;
 public class SlicedQuoteFlowTests
 {
     [Fact]
-    public async Task Quote_scales_size_slices_each_eligible_machine_and_freezes_cheapest_batch_into_order()
+    public async Task Quote_uses_reference_profile_and_network_rates_then_places_on_earliest_machine()
     {
         var customer = Guid.NewGuid();
         var models = Substitute.For<IModelRepository>();
@@ -42,8 +42,16 @@ public class SlicedQuoteFlowTests
             ColorPricePerKg = new Dictionary<string, decimal> { ["PLA:BLUE"] = 300000, ["PLA:WHITE"] = 290000 } };
         var policy = Substitute.For<ICommercialPolicyProvider>();
         policy.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(new CommercialPolicy(rates, 10_000_000, 48, new LabScoreParameters()));
+        var filter = Substitute.For<IMachineFilterService>();
+        filter.FilterCandidatesAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<MachineSelectionCriteria>(), Arg.Any<CancellationToken>()).Returns([first, second]);
+        filter.GetReferenceMachineAsync(Arg.Any<IReadOnlyList<Guid>>(), "PLA", null, Arg.Any<CancellationToken>())
+            .Returns(new QuoteProfileSource(first, Guid.NewGuid()));
+        filter.GetCalibrationFactorAsync(null, Arg.Any<CancellationToken>()).Returns(1m);
+        probe.FindEarliestFeasibleDeliveryAsync(Arg.Any<IReadOnlyList<TrialPlacementLine>>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(call => new TrialPlacementResult(call.Arg<IReadOnlyList<TrialPlacementLine>>()[0].RequiredMachineId == second
+                ? new DateOnly(2026, 11, 10) : new DateOnly(2026, 11, 11), "private", "Hoàn tất dự kiến"));
         var handler = new CreateQuoteCommandHandler(models, quotes, Substitute.For<IUnitOfWork>(), clock, probe,
-            Substitute.For<IMachineFilterService>(), policy, slicer);
+            filter, policy, slicer);
         var result = await handler.Handle(new CreateQuoteCommand(customer, model.Id, "PLA", "BLUE", .2m, 30, 5, .2m,
             "M", ["BLUE", "WHITE"], true), CancellationToken.None);
         result.IsSuccess.Should().BeTrue();
@@ -54,7 +62,7 @@ public class SlicedQuoteFlowTests
         result.Value.Items.Single().Calculation!.HeightMm.Should().Be(200);
         result.Value.PlacementBasis.Should().BeNull();
         captured!.Items.Single().QuotedMachineId.Should().Be(second);
-        await slicer.Received(2).SliceAsync(Arg.Is<QuoteSliceRequest>(r => r.Scale == 1.25m && r.Quantity == 5 && r.Colors.Count == 2), Arg.Any<CancellationToken>());
+        await slicer.Received(1).SliceAsync(Arg.Is<QuoteSliceRequest>(r => r.Scale == 1.25m && r.Quantity == 5 && r.Colors.Count == 2 && r.MachineId == first), Arg.Any<CancellationToken>());
         var order = Order.CreateFromQuote(captured, Address.Create("1 A", "B", "C", "HCM", "70000"), "PG-TEST");
         order.TotalPrice.Should().Be(captured.TotalPrice);
         order.Items.Single().CalculationJson.Should().Be(captured.Items.Single().CalculationJson);
@@ -68,7 +76,7 @@ public class SlicedQuoteFlowTests
         var rates = PricingParameterSet.Active with { ColorPricePerKg = new Dictionary<string, decimal>() };
         var result = SlicedQuotePricing.Calculate(rates, "PLA", 1,
             new QuoteSliceResult([new QuoteColorUsage("BLUE", 10)], 60), false);
-        result.MaterialAmount.Should().Be(10 * rates.PricePerGram["PLA"]);
+        result.MaterialAmount.Should().Be(10 * rates.PricePerGram["PLA"] * (1 + rates.MaterialWasteRate));
     }
 
     [Fact]

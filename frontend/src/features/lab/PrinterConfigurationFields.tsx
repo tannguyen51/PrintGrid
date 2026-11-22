@@ -73,6 +73,8 @@ export function PrinterConfigurationFields({ value, onChange }: {
         onChange={e => update(key, Number(e.target.value) / (key === 'failureRate' ? 100 : 1))} />
     </Grid>)}
     <Grid size={{ xs: 12 }}>
+      <FormControlLabel label="Máy có buồng kín" control={<Checkbox checked={value.enclosedChamber ?? false}
+        onChange={(_, checked) => onChange({ ...value, enclosedChamber: checked })} />} />
       <FormControlLabel label="Máy có bàn nhiệt" control={<Checkbox checked={value.heatedBed}
         disabled={Boolean(value.curaDefinitionId)}
         onChange={(_, checked) => onChange({ ...value, heatedBed: checked, maxBedTemperatureC: checked ? 100 : 0 })} />} />

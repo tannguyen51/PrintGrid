@@ -18,6 +18,7 @@ export interface PrinterConfiguration {
   nozzleDiameterMm: number
   filamentDiameterMm: number
   heatedBed: boolean
+  enclosedChamber?: boolean
   maxNozzleTemperatureC: number
   maxBedTemperatureC: number
   pricePerHour: number

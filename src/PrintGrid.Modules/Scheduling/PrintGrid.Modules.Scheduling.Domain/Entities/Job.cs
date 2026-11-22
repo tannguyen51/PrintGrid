@@ -16,6 +16,20 @@ public class Job : AggregateRoot<Guid>
     public void SetQuotedProduction(string? json, Guid? machineId)
     { ProductionQuoteJson = json; QuotedMachineId = machineId; }
 
+    public bool HasFrozenRequirements()
+    {
+        if (ProductionQuoteJson is null) return false;
+        using var json = System.Text.Json.JsonDocument.Parse(ProductionQuoteJson);
+        return json.RootElement.TryGetProperty("Requirements", out var value) && value.ValueKind == System.Text.Json.JsonValueKind.Object;
+    }
+
+    public SharedKernel.ValueObjects.ProductionRequirements? FrozenRequirements()
+    {
+        if (!HasFrozenRequirements()) return null;
+        using var json = System.Text.Json.JsonDocument.Parse(ProductionQuoteJson!);
+        return System.Text.Json.JsonSerializer.Deserialize<SharedKernel.ValueObjects.ProductionRequirements>(json.RootElement.GetProperty("Requirements"));
+    }
+
     public IReadOnlyDictionary<string, decimal> MaterialByColor()
     {
         if (ProductionQuoteJson is null) return new Dictionary<string, decimal> { [Specification.ColorCode] = Specification.MaterialGrams };

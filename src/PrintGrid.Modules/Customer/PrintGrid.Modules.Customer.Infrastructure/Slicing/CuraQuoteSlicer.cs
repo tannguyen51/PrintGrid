@@ -30,7 +30,7 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
         var config = options.Value;
         if (string.IsNullOrWhiteSpace(config.ExecutablePath))
             throw new InvalidOperationException("Chưa cấu hình đường dẫn CuraEngine.");
-        var profile = await registry.ResolveAsync(request.MachineId, request.MaterialCode, cancellationToken)
+        var profile = await registry.ResolveAsync(request.MachineId, request.MaterialCode, cancellationToken, request.ProfileId)
             ?? throw new InvalidOperationException("Máy chưa có profile phù hợp được quản trị viên duyệt.");
         if (request.Colors.Count > profile.MaximumColorSlots)
             throw new InvalidOperationException("Số màu yêu cầu vượt khả năng máy.");
@@ -130,7 +130,15 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
                 ?? throw new InvalidDataException("Profile thiếu đường kính sợi nhựa material_diameter."), CultureInfo.InvariantCulture)).ToArray();
             var result = ParseEngineSummary(summary, request.Colors, request.Density, request.Quantity)
                 ?? ParseGcodeHeader(File.ReadLines(output).Take(10000), request.Colors, request.Density, request.Quantity, diameters);
-            return result with { PricePerHour = profile.PricePerHour, FailureRate = profile.FailureRate };
+            // Conservative rectangular grid packing, with clearance between parts. Slicer time/material
+            // are per-part estimates scaled by quantity; setup is charged once per occupied plate.
+            var spacing = 5m;
+            var across = Math.Max(1, (int)decimal.Floor((bedWidth + spacing) / ((decimal)scaled.X + spacing)));
+            var along = Math.Max(1, (int)decimal.Floor((bedDepth + spacing) / ((decimal)scaled.Y + spacing)));
+            var perPlate = global["machine_shape"]?.ToString() == "rectangular" ? across * along : 1;
+            var plates = (int)decimal.Ceiling((decimal)request.Quantity / perPlate);
+            return result with { PricePerHour = profile.PricePerHour, FailureRate = profile.FailureRate,
+                PlateCount = plates, ProfileId = profile.ProfileId, ProfileVersion = profile.ProfileVersion };
 
             // Turn resolved settings into definition JSONs with literal default_value fields.
             // Standard -j/-e/-l works with released CuraEngine versions; no GUI or -r required.

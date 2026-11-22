@@ -19,6 +19,17 @@ export interface QuoteCalculation {
   colors: { colorCode: string; grams: number; pricePerKg?: number; amount?: number }[]
   printMinutes: number; pricePerHour?: number; materialAmount: number; machineAmount: number
   failureRate?: number; failureAllowance: number; polishingPerUnit?: number; serviceAmount: number; totalAmount: number
+  setupAmount?: number; hubAmount?: number; pinSurchargeAmount?: number; pinSurchargeCoefficient?: number
+  calibrationFactor?: number; slicerPrintMinutes?: number; plateCount?: number
+  requirements?: TechRequirements & { pinnedModelId?: string | null; pinnedModelName?: string | null } | null
+}
+
+export interface TechRequirements {
+  maxColors?: number
+  enclosedChamber?: boolean
+  nozzleDiameterMm?: number
+  maxToleranceMm?: number
+  minLayerHeightMm?: number
 }
 
 export type QuoteStatus = 'Pending' | 'Draft' | 'PendingReview' | 'Ready' | 'Expired' | 'Converted' | 'Failed'
@@ -54,6 +65,10 @@ export interface Quote {
   enginePromisedDeliveryDate?: string | null
   adjustmentReason?: string | null
   items: QuoteItem[]
+  unpinnedPriceVnd?: number | null
+  unpinnedDeliveryDay?: string | null
+  pinSurchargeCoefficient?: number | null
+  isPinnedModelQuote?: boolean
 }
 
 export interface QuoteConfigInput {
@@ -71,8 +86,8 @@ export interface QuoteConfigInput {
   maxColors?: number
   enclosedChamber?: boolean
   nozzleDiameterMm?: number
-  maxToleranceMm?: string
-  minLayerHeightMm?: string
+  maxToleranceMm?: number
+  minLayerHeightMm?: number
   // Section 4/5: Machine binding type — BR-04, BR-05, BR-09
   bindingType?: number   // 0=None, 1=ByModel, 2=LikeOldOrder
   pinnedModelId?: string
@@ -84,7 +99,12 @@ export interface ModelSummary {
   id: string
   name: string
   approvedMachineCount: number
-  labCount: number
+}
+
+export interface MachineModelOptions {
+  models: ModelSummary[]
+  matchingMachineCount: number
+  pinSurchargeCoefficient: number
 }
 
 // Selector labels only — actual rates live server-side in the versioned pricing

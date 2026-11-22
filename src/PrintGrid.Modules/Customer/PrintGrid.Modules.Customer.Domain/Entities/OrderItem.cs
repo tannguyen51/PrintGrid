@@ -97,6 +97,17 @@ public class OrderItem : Entity<Guid>
         string bindingKind, Guid? modelId, Guid? referenceLineId)
     {
         var item = FromQuoteItem(orderId, quoteItem);
+        if (quoteItem.CalculationJson is not null)
+        {
+            using var json = System.Text.Json.JsonDocument.Parse(quoteItem.CalculationJson);
+            if (json.RootElement.TryGetProperty("Requirements", out var frozen) && frozen.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                var requirements = System.Text.Json.JsonSerializer.Deserialize<ProductionRequirements>(frozen)!;
+                item.FreezeTechConstraints(frozen.GetRawText());
+                item.SetModelBinding(requirements.PinnedModelId.HasValue ? "theo_model" : "không", requirements.PinnedModelId, null);
+                return item;
+            }
+        }
         item.SetModelBinding(bindingKind, modelId, referenceLineId);
         return item;
     }

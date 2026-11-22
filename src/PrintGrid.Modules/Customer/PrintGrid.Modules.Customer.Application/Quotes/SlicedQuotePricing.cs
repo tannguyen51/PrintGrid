@@ -1,11 +1,15 @@
+using PrintGrid.SharedKernel.ValueObjects;
+
 namespace PrintGrid.Modules.Customer.Application.Quotes;
 
-public sealed record QuoteColorUsage(string ColorCode, decimal Grams);
+public sealed record QuoteColorUsage(string ColorCode, decimal Grams, decimal? PricePerKg = null, decimal? Amount = null);
 public sealed record QuoteColorPrice(decimal Amount);
 public sealed record QuoteSliceRequest(string StorageKey, string FileFormat, decimal Scale,
     string MaterialCode, IReadOnlyList<string> Colors, decimal Density, decimal LayerHeightMm,
-    int InfillPercent, int Quantity, Guid MachineId);
-public sealed record QuoteSliceResult(IReadOnlyList<QuoteColorUsage> Colors, decimal PrintMinutes, decimal? PricePerHour = null, decimal? FailureRate = null);
+    int InfillPercent, int Quantity, Guid MachineId, Guid? ProfileId = null);
+public sealed record QuoteSliceResult(IReadOnlyList<QuoteColorUsage> Colors, decimal PrintMinutes,
+    decimal? PricePerHour = null, decimal? FailureRate = null, int PlateCount = 1,
+    Guid? ProfileId = null, string? ProfileVersion = null);
 
 public interface IQuoteSlicer
 {
@@ -25,7 +29,20 @@ public sealed record QuotePriceBreakdown(
     decimal WidthMm,
     decimal DepthMm,
     decimal HeightMm,
-    int Quantity = 1);
+    int Quantity = 1,
+    decimal SetupAmount = 0,
+    decimal HubAmount = 0,
+    decimal PinSurchargeAmount = 0,
+    decimal PinSurchargeCoefficient = 1,
+    decimal CalibrationFactor = 1,
+    decimal SlicerPrintMinutes = 0,
+    int PlateCount = 1,
+    Guid? ProfileId = null,
+    string? ProfileVersion = null,
+    ProductionRequirements? Requirements = null,
+    PricingParameterSet? PricingParameters = null,
+    decimal PriorityCoefficient = 1,
+    string? FormulaVersion = null);
 
 public static class SlicedQuotePricing
 {
@@ -44,55 +61,50 @@ public static class SlicedQuotePricing
     }
 
     public static QuotePriceBreakdown Calculate(PricingParameterSet rates, string material, int quantity,
-        QuoteSliceResult slice, bool polishing, decimal widthMm = 0, decimal depthMm = 0, decimal heightMm = 0)
+        QuoteSliceResult slice, bool polishing, decimal widthMm = 0, decimal depthMm = 0, decimal heightMm = 0,
+        decimal calibrationFactor = 1m, decimal pinCoefficient = 1m, decimal priorityCoefficient = 1m)
     {
         if (quantity is < 1 or > 100 || slice.PrintMinutes <= 0 || slice.Colors.Count == 0)
             throw new ArgumentException("Kết quả slicer hoặc số lượng không hợp lệ.");
-        var failure = slice.FailureRate ?? rates.FailureRate;
-        var hourly = slice.PricePerHour ?? rates.PricePerPrintHour;
-        if (failure is < 0 or >= 1 || hourly <= 0) throw new ArgumentException("Đơn giá máy hoặc tỷ lệ lỗi không hợp lệ.");
-        var materialAmount = slice.Colors.Sum(c =>
+        // Selling rates are network-wide. A lab's contractual rates must never change a customer quote.
+        var failure = rates.FailureRate;
+        var hourly = rates.PricePerPrintHour;
+        if (failure is < 0 or >= 1 || hourly <= 0 || calibrationFactor <= 0 || pinCoefficient < 1 || priorityCoefficient < 1
+            || rates.MaterialWasteRate is < 0 or > 1 || rates.FailureCompletionRatio is < 0 or > 1
+            || rates.SetupFeePerPlate < 0 || rates.HubHandlingPerUnit < 0 || rates.RoundingIncrement <= 0 || slice.PlateCount < 1)
+            throw new ArgumentException("Tham số tính giá không hợp lệ.");
+        var colors = slice.Colors.Select(c =>
         {
             if (c.Grams <= 0) throw new ArgumentException("Slicer trả khối lượng màu không hợp lệ.");
             var key = $"{material.ToUpperInvariant()}:{c.ColorCode.ToUpperInvariant()}";
             var perKg = rates.ColorPricePerKg is not null && rates.ColorPricePerKg.TryGetValue(key, out var overrideRate)
                 ? overrideRate : (rates.PricePerGram.TryGetValue(material, out var perGram) ? perGram * 1000m
                     : throw new ArgumentException("Chưa có đơn giá vật liệu."));
-            return perKg <= 0 ? throw new ArgumentException("Đơn giá màu không hợp lệ.") : c.Grams / 1000m * perKg;
-        });
-        var machine = slice.PrintMinutes / 60m * hourly;
+            if (perKg <= 0) throw new ArgumentException("Đơn giá màu không hợp lệ.");
+            return c with { PricePerKg = perKg, Amount = c.Grams / 1000m * perKg * (1 + rates.MaterialWasteRate) };
+        }).ToList();
+        var materialAmount = colors.Sum(c => c.Amount!.Value);
+        var calibratedMinutes = slice.PrintMinutes * calibrationFactor;
+        var machine = calibratedMinutes / 60m * hourly;
         var polishingRate = polishing ? rates.PolishingPerUnit : 0m;
         if (polishingRate < 0) throw new ArgumentException("Đơn giá đánh bóng không hợp lệ.");
         var service = quantity * polishingRate;
-        var failureAllowance = (materialAmount + machine) * failure / (1 - failure);
-        var total = decimal.Round(materialAmount + machine + service + failureAllowance, 0, MidpointRounding.AwayFromZero);
-        return new QuotePriceBreakdown(slice.Colors, slice.PrintMinutes, materialAmount, machine, service,
-            failureAllowance, total, widthMm, depthMm, heightMm, quantity);
+        var setup = slice.PlateCount * rates.SetupFeePerPlate;
+        var hub = quantity * rates.HubHandlingPerUnit;
+        var failureAllowance = (materialAmount + machine + setup) * failure * rates.FailureCompletionRatio / (1 - failure);
+        var subtotal = (materialAmount + machine + setup + service + hub + failureAllowance) * priorityCoefficient;
+        var surcharge = subtotal * (pinCoefficient - 1);
+        var total = decimal.Round((subtotal + surcharge) / rates.RoundingIncrement, 0,
+            MidpointRounding.AwayFromZero) * rates.RoundingIncrement;
+        return new QuotePriceBreakdown(colors, calibratedMinutes, materialAmount, machine, service,
+            failureAllowance, total, widthMm, depthMm, heightMm, quantity, setup, hub, surcharge,
+            pinCoefficient, calibrationFactor, slice.PrintMinutes, slice.PlateCount, slice.ProfileId,
+            slice.ProfileVersion, PricingParameters: rates, PriorityCoefficient: priorityCoefficient,
+            FormulaVersion: "machine-model-v1");
     }
 
     /// <summary>Section 4 BR-05: Calculate quoted price for a pinned model, applying surcharge coefficient.</summary>
     public static QuotePriceBreakdown CalculateWithPinSurcharge(PricingParameterSet rates, string material, int quantity,
         QuoteSliceResult slice, bool polishing, decimal pinCoefficient, decimal widthMm = 0, decimal depthMm = 0, decimal heightMm = 0)
-    {
-        // Use unrounded total before surcharge, then multiply by h_chỉ_định as per doc formula
-        var baseTotal = decimal.Round(slice.Colors.Sum(c =>
-        {
-            var key = $"{material.ToUpperInvariant()}:{c.ColorCode.ToUpperInvariant()}";
-            var perKg = rates.ColorPricePerKg != null && rates.ColorPricePerKg.TryGetValue(key, out var r) ? r
-                : (rates.PricePerGram.TryGetValue(material, out var pg) ? pg * 1000m : 0m);
-            return c.Grams / 1000m * perKg;
-        }), 2, MidpointRounding.AwayFromZero);
-
-        var hourly = slice.PricePerHour ?? rates.PricePerPrintHour;
-        var machineCost = slice.PrintMinutes / 60m * hourly;
-        var serviceCost = polishing ? quantity * rates.PolishingPerUnit : 0m;
-        var failureRate = slice.FailureRate ?? rates.FailureRate;
-        var allowance = (baseTotal + machineCost) * failureRate / (1 - failureRate);
-
-        var subtotal = baseTotal + machineCost + serviceCost + allowance;
-        var withSurcharge = Math.Round(subtotal * pinCoefficient, 0, MidpointRounding.AwayFromZero);
-
-        return new QuotePriceBreakdown(slice.Colors, slice.PrintMinutes, baseTotal, machineCost, serviceCost, allowance,
-            withSurcharge, widthMm, depthMm, heightMm, quantity);
-    }
+        => Calculate(rates, material, quantity, slice, polishing, widthMm, depthMm, heightMm, pinCoefficient: pinCoefficient);
 }

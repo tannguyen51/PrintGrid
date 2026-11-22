@@ -16,7 +16,15 @@ public sealed record PricingParameterSet(
     decimal FailureRate = 0m,
     decimal PolishingPerUnit = 0m,
     /// <summary>Section 4 BR-05: Surcharge coefficient when customer pins a machine model (default 1.15).</summary>
-    decimal PinSurchargeCoefficient = 1.15m)
+    decimal PinSurchargeCoefficient = 1.15m,
+    decimal MaterialWasteRate = .03m,
+    decimal SetupFeePerPlate = 20_000m,
+    decimal FailureCompletionRatio = .5m,
+    decimal HubHandlingPerUnit = 10_000m,
+    int RoundingIncrement = 1000,
+    int MinPinMachines = 3,
+    int MinPinLabs = 2,
+    IReadOnlyDictionary<string, Guid>? ReferenceProfileIds = null)
 {
     /// <summary>Rates as they stood when the register was approved (legacy constants).</summary>
     public static readonly PricingParameterSet V202609 = new(

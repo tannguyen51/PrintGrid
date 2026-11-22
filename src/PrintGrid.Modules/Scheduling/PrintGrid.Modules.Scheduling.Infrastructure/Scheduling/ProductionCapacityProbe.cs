@@ -4,6 +4,7 @@ using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
 using PrintGrid.SharedKernel.Interfaces;
+using PrintGrid.Modules.Scheduling.Domain.Services;
 
 namespace PrintGrid.Modules.Scheduling.Infrastructure.Scheduling;
 
@@ -39,6 +40,7 @@ public class ProductionCapacityProbe(PrintGridDbContext context) : IProductionCa
 
         var labs = await context.Set<Lab>()
             .Include(l => l.Machines)
+            .Include(l => l.MaterialStocks)
             .Where(l => l.IsActive && l.Status == LabStatus.Active && l.IsInGoodStanding)
             .ToListAsync(cancellationToken);
 
@@ -95,6 +97,7 @@ public class ProductionCapacityProbe(PrintGridDbContext context) : IProductionCa
         foreach (var (lab, machine) in candidates)
         {
             if (lines.Any(l => l.RequiredMachineId.HasValue && l.RequiredMachineId != machine.Id)) continue;
+            if (lines.Any(l => ProductionRequirementFilter.Reject(machine, l.Requirements) is not null)) continue;
             if (!specs.All(machine.Supports)) continue;
             if (lines.GroupBy(l => new { l.MaterialCode, l.ColorCode }).Any(g =>
                 !lab.HasStock(g.Key.MaterialCode, g.Key.ColorCode, g.Sum(l => l.TotalGrams)))) continue;
@@ -111,7 +114,7 @@ public class ProductionCapacityProbe(PrintGridDbContext context) : IProductionCa
 
             foreach (var (line, _) in lines.Zip(specs))
             {
-                var duration = TimeSpan.FromMinutes(line.RequiredMachineId.HasValue ? line.TotalMinutes
+                var duration = TimeSpan.FromMinutes(line.RequiredMachineId.HasValue || line.FrozenDuration ? line.TotalMinutes
                     : line.TotalMinutes / (double)machine.SpeedFactor);
                 foreach (var (start, end) in windows)
                 {
@@ -130,13 +133,9 @@ public class ProductionCapacityProbe(PrintGridDbContext context) : IProductionCa
                     $"In xong ước tính {cursor:dd/MM HH:mm} UTC tại {lab.Name} · máy {machine.Name}, " +
                     $"cộng {lab.TransitDaysToHub} ngày vận chuyển về hub + {_hubProcessingDays} ngày hub xử lý";
 
-                // Customer-facing summary: district/city only — never the lab name, machine
-                // name or street address (the customer must not be able to identify the shop).
-                var location = string.IsNullOrWhiteSpace(lab.District)
-                    ? lab.City
-                    : $"{lab.District}, {lab.City}";
+                // Customer-facing summary contains no production location or machine identity.
                 var customerBasis =
-                    $"In tại {location} — hoàn tất dự kiến {cursor:dd/MM HH:mm} UTC; " +
+                    $"Hoàn tất dự kiến {cursor:dd/MM HH:mm} UTC; " +
                     $"cộng {lab.TransitDaysToHub} ngày vận chuyển về hub";
 
                 best = new TrialPlacementResult(

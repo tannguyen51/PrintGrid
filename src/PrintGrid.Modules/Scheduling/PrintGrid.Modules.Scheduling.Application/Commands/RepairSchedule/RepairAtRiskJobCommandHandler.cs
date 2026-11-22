@@ -25,12 +25,17 @@ public class RepairAtRiskJobCommandHandler(IJobRepository jobs, ILabRepository l
                 || activeCount < lab.MaxConcurrentJobs.Value)
             .ToList();
         var candidates = CapabilityFilter.Filter(job.Specification, availableLabs).Candidates;
+        if (job.HasFrozenRequirements())
+            candidates = candidates.Where(c => ProductionRequirementFilter.Reject(c.Machine, job.FrozenRequirements()) is null).ToList();
+        else if (job.QuotedMachineId.HasValue)
+            candidates = candidates.Where(c => c.Machine.Id == job.QuotedMachineId).ToList();
         var dueUtc = job.InternalDueDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
         var slots = new List<(CapabilityCandidate Candidate, DateTime Start, int Capacity, decimal UnitMinutes)>();
         foreach (var candidate in candidates)
         {
-            var unitMinutes = (decimal)job.EstimatedPrintMinutes / job.Quantity / candidate.Machine.SpeedFactor;
-            var start = await timeline.FindEarliestFreeSlotAsync(candidate.Machine, Math.Max(1, (int)Math.Ceiling(unitMinutes)), clock.UtcNow, ct);
+            var unitMinutes = (decimal)job.EstimatedPrintMinutes / job.Quantity / (job.QuotedMachineId.HasValue ? 1 : candidate.Machine.SpeedFactor);
+            var timelineMinutes = unitMinutes * (job.QuotedMachineId.HasValue ? candidate.Machine.SpeedFactor : 1);
+            var start = await timeline.FindEarliestFreeSlotAsync(candidate.Machine, Math.Max(1, (int)Math.Ceiling(timelineMinutes)), clock.UtcNow, ct);
             var capacity = Math.Max(0, (int)Math.Floor((decimal)(dueUtc - start).TotalMinutes / unitMinutes));
             slots.Add((candidate, start, capacity, unitMinutes));
         }

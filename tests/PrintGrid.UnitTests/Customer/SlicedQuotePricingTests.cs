@@ -32,18 +32,34 @@ public class SlicedQuotePricingTests
     };
 
     [Fact]
-    public void Three_color_batch_matches_agreed_formula_without_any_platform_fees()
+    public void Reference_quote_matches_document_example_including_waste_setup_failure_and_hub()
     {
         var slice = new QuoteSliceResult([
-            new QuoteColorUsage("BLUE", 460),
-            new QuoteColorUsage("WHITE", 460), new QuoteColorUsage("SIGNALRED", 460)
-        ], 65 * 60);
-        var price = SlicedQuotePricing.Calculate(Rates, "PLA", 5, slice, true);
-        price.MaterialAmount.Should().Be(414000);
-        price.MachineAmount.Should().Be(390000);
+            new QuoteColorUsage("BLUE", 560),
+            new QuoteColorUsage("WHITE", 560), new QuoteColorUsage("SIGNALRED", 560)
+        ], 65 * 60, PlateCount: 2);
+        var price = SlicedQuotePricing.Calculate(Rates, "PLA", 5, slice, true, calibrationFactor: 1.10m);
+        price.MaterialAmount.Should().Be(519120);
+        price.MachineAmount.Should().Be(429000);
+        price.SetupAmount.Should().Be(40000);
+        price.HubAmount.Should().Be(50000);
         price.ServiceAmount.Should().Be(150000);
-        price.FailureAllowance.Should().BeApproximately(69913.043478m, .0001m);
-        price.TotalAmount.Should().Be(1023913);
+        price.FailureAllowance.Should().BeApproximately(42961.739130m, .0001m);
+        price.TotalAmount.Should().Be(1231000);
+    }
+
+    [Fact]
+    public void Pinned_quote_matches_document_and_multiplies_before_rounding()
+    {
+        var slice = new QuoteSliceResult([new("BLUE", 540), new("WHITE", 540), new("SIGNALRED", 540)],
+            58 * 60, PlateCount: 2);
+        var price = SlicedQuotePricing.Calculate(Rates, "PLA", 5, slice, true,
+            calibrationFactor: 1.05m, pinCoefficient: 1.15m);
+        price.MaterialAmount.Should().Be(500580);
+        price.MachineAmount.Should().Be(365400);
+        price.FailureAllowance.Should().BeApproximately(39390.4347826m, .0001m);
+        price.TotalAmount.Should().Be(1317000);
+        price.PinSurchargeAmount.Should().BeGreaterThan(0);
     }
 
     [Theory]
@@ -57,7 +73,7 @@ public class SlicedQuotePricingTests
     [Fact]
     public void No_polishing_and_zero_failure_add_no_extra_charge()
     {
-        var rates = Rates with { FailureRate = 0 };
+        var rates = Rates with { FailureRate = 0, MaterialWasteRate = 0, SetupFeePerPlate = 0, HubHandlingPerUnit = 0 };
         var price = SlicedQuotePricing.Calculate(rates, "PLA", 1,
             new QuoteSliceResult([new QuoteColorUsage("BLUE", 100)], 60), false);
         price.TotalAmount.Should().Be(36000);
@@ -65,11 +81,13 @@ public class SlicedQuotePricingTests
     }
 
     [Fact]
-    public void Machine_contract_overrides_hourly_rate_and_failure_only()
+    public void Lab_hourly_rate_and_failure_do_not_override_network_selling_rates()
     {
         var price = SlicedQuotePricing.Calculate(Rates, "PLA", 1,
             new QuoteSliceResult([new QuoteColorUsage("BLUE", 100)], 60, 10000, 0), false);
-        price.TotalAmount.Should().Be(40000);
+        var network = SlicedQuotePricing.Calculate(Rates, "PLA", 1,
+            new QuoteSliceResult([new QuoteColorUsage("BLUE", 100)], 60), false);
+        price.TotalAmount.Should().Be(network.TotalAmount);
     }
 
     [Fact]

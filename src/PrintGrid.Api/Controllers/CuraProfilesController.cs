@@ -9,6 +9,7 @@ using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
 using PrintGrid.Modules.Admin.Application.AuditLogs;
 using System.Security.Claims;
+using PrintGrid.SharedKernel.ValueObjects;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -18,6 +19,28 @@ namespace PrintGrid.Api.Controllers;
 public sealed class CuraProfilesController(PrintGridDbContext db, IMachineProfileMatcher matcher,
     IConfiguration configuration, IAuditLogWriter audit) : ControllerBase
 {
+    [HttpGet("models")]
+    [Authorize(Policy = Policies.RequireAdmin)]
+    public async Task<IActionResult> Models(CancellationToken ct)
+    {
+        var machines = await db.Set<Machine>().AsNoTracking().Where(m => m.PrinterConfiguration != null).ToListAsync(ct);
+        return Ok(machines.GroupBy(m => MachineModelIdentity.For(m.PrinterConfiguration!.Manufacturer, m.Model))
+            .Select(g => new { Id = g.Key, Name = $"{g.First().PrinterConfiguration!.Manufacturer} · {g.First().Model}",
+                AllowsCustomerPinning = g.All(m => m.AllowsCustomerPinning) }).OrderBy(m => m.Name));
+    }
+
+    [HttpPut("models/{id:guid}/pinning")]
+    [Authorize(Policy = Policies.RequireAdmin)]
+    public async Task<IActionResult> SetModelPinning(Guid id, ModelPinningRequest request, CancellationToken ct)
+    {
+        var configured = await db.Set<Machine>().Where(m => m.PrinterConfiguration != null).ToListAsync(ct);
+        var machines = configured.Where(m => MachineModelIdentity.For(m.PrinterConfiguration!.Manufacturer, m.Model) == id).ToList();
+        if (machines.Count == 0) return NotFound();
+        foreach (var machine in machines) machine.ToggleCustomerPinning(request.Allowed);
+        await db.SaveChangesAsync(ct);
+        await Log("machine_model.pinning_changed", "MachineModel", id, new { request.Allowed }, ct);
+        return NoContent();
+    }
     [HttpGet]
     public async Task<IActionResult> List(CancellationToken ct) => Ok(await db.Set<CuraProfile>().AsNoTracking()
         .Where(p => p.IsActive).OrderBy(p => p.Manufacturer).ThenBy(p => p.MachineModel)
@@ -102,6 +125,8 @@ public sealed class CuraProfilesController(PrintGridDbContext db, IMachineProfil
         User.GetCustomerId(), User.FindFirstValue(ClaimTypes.Email) ?? "unknown", "Admin", AuditActionClasses.Configuration,
         action, entity, id.ToString(), null, data, TraceId: HttpContext.TraceIdentifier), ct);
 }
+
+public record ModelPinningRequest(bool Allowed);
 
 public sealed record ImportCuraProfileRequest(string Name, string Manufacturer, string MachineModel, string MaterialCode,
     string Version, string EngineVersion, int ExtruderCount, string SettingsJson);

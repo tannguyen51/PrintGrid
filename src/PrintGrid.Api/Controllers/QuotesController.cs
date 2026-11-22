@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Customer.Application.Quotes;
+using PrintGrid.Modules.Customer.Application.Queries.Machines;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -11,6 +12,19 @@ namespace PrintGrid.Api.Controllers;
 [Authorize(Policy = Policies.RequireCustomer)]
 public class QuotesController(ISender sender) : ControllerBase
 {
+    [HttpGet("models")]
+    public async Task<IActionResult> Models([FromQuery] MachineModelOptionsRequest request, CancellationToken ct)
+    {
+        var customerId = User.GetCustomerId();
+        if (customerId is null) return Forbid();
+        var result = await sender.Send(new GetEligibleMachineModelsQuery(new CreateQuoteCommand(
+            customerId.Value, request.ModelId, request.MaterialCode, request.ColorCodes.FirstOrDefault() ?? "BLACK",
+            request.LayerHeightMm, 20, 1, request.ToleranceMm, request.SizeCode, request.ColorCodes,
+            MaxColors: request.MaxColors, EnclosedChamber: request.EnclosedChamber,
+            NozzleDiameterMm: request.NozzleDiameterMm, MaxToleranceMm: request.MaxToleranceMm,
+            MinLayerHeightMm: request.MinLayerHeightMm)), ct);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
+    }
     [HttpGet("history")]
     public async Task<IActionResult> History([FromQuery] Guid modelId, [FromQuery] string? status,
         [FromQuery] string? search, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
@@ -56,6 +70,8 @@ public class QuotesController(ISender sender) : ControllerBase
     {
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
+        if (request.PinnedMachineId.HasValue)
+            return BadRequest(new { error = new { code = "validation", message = "Khách chỉ được chọn model máy, không được chỉ định một máy cụ thể." } });
 
         var result = await sender.Send(
             new CreateQuoteCommand(
@@ -68,7 +84,7 @@ public class QuotesController(ISender sender) : ControllerBase
                 request.Quantity,
                 request.ToleranceMm, request.SizeCode ?? "ORIGINAL", request.ColorCodes, request.Polishing,
                 request.MaxColors, request.EnclosedChamber, request.NozzleDiameterMm, request.MaxToleranceMm, request.MinLayerHeightMm,
-                request.BindingType, request.PinnedMachineId, true, request.PreviousOrderLineId),
+                request.BindingType, request.PinnedModelId, true, request.PreviousOrderLineId),
             cancellationToken);
 
         if (!result.IsFailure) return CreatedAtAction(nameof(GetQuotes), new { }, result.Value);
@@ -100,4 +116,10 @@ public record CreateQuoteRequest(
     // Section 4/5: Machine binding type — BR-04, BR-05, BR-09
     int? BindingType = null,   // 0=None, 1=ByModel, 2=LikeOldOrder
     Guid? PinnedMachineId = null,
-    Guid? PreviousOrderLineId = null);
+    Guid? PreviousOrderLineId = null,
+    Guid? PinnedModelId = null);
+
+public record MachineModelOptionsRequest(Guid ModelId, string MaterialCode, string[] ColorCodes,
+    decimal LayerHeightMm = .2m, decimal ToleranceMm = .2m, string SizeCode = "ORIGINAL",
+    int? MaxColors = null, bool? EnclosedChamber = null, decimal? NozzleDiameterMm = null,
+    decimal? MaxToleranceMm = null, decimal? MinLayerHeightMm = null);

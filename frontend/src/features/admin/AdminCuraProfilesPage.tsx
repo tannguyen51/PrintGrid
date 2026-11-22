@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Alert, Box, Button, Chip, CircularProgress, Grid, Paper, Stack, TextField, Typography } from '@mui/material'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Alert, Box, Button, Chip, CircularProgress, FormControlLabel, Grid, Paper, Stack, Switch, TextField, Typography } from '@mui/material'
 import { apiClient } from '../../shared/api/apiClient'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { useLabs } from '../ops/useLabs'
@@ -13,6 +13,14 @@ export default function AdminCuraProfilesPage() {
   const profiles = useCuraProfiles()
   const labs = useLabs(true)
   const client = useQueryClient()
+  const models = useQuery({ queryKey: ['admin-machine-models'], queryFn: () => apiClient.get<{
+    id: string; name: string; allowsCustomerPinning: boolean
+  }[]>('/cura-profiles/models').then(r => r.data) })
+  const pinning = useMutation({ mutationFn: ({ id, allowed }: { id: string; allowed: boolean }) =>
+    apiClient.put(`/cura-profiles/models/${id}/pinning`, { allowed }),
+    onSuccess: () => { void client.invalidateQueries({ queryKey: ['admin-machine-models'] }); void client.invalidateQueries({ queryKey: ['eligible-models'] }) },
+    onError: e => setError(getApiErrorMessage(e, 'Không cập nhật được quyền chỉ định model.')),
+  })
   const [form, setForm] = useState(empty)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -50,6 +58,14 @@ export default function AdminCuraProfilesPage() {
       <Typography color="text.secondary">Quản lý thư viện cấu hình in và cho phép máy tham gia báo giá.</Typography></Box>
     {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
     {message && <Alert severity="success" onClose={() => setMessage('')}>{message}</Alert>}
+    <Paper variant="outlined" sx={{ p: 3 }}><Stack spacing={1}>
+      <Typography variant="h6">Model khách được phép chỉ định</Typography>
+      <Typography variant="body2" color="text.secondary">Model chỉ xuất hiện khi đủ số máy và số lab theo cấu hình thương mại, đồng thời đáp ứng yêu cầu sản phẩm.</Typography>
+      {models.isLoading && <CircularProgress size={22} />}
+      {models.isError && <Alert severity="error" action={<Button onClick={() => void models.refetch()}>Thử lại</Button>}>Không tải được danh sách model.</Alert>}
+      {models.data?.map(m => <FormControlLabel key={m.id} label={m.name} control={<Switch checked={m.allowsCustomerPinning}
+        disabled={pinning.isPending} onChange={(_, allowed) => pinning.mutate({ id: m.id, allowed })} />} />)}
+    </Stack></Paper>
     <Paper variant="outlined" sx={{ p: 3 }}>
       <Stack spacing={2}>
         <Typography variant="h6">Tạo / nhập profile</Typography>

@@ -62,8 +62,7 @@ public class AssignmentEngine(
                               || !activeCounts.TryGetValue(lab.Id, out var activeCount)
                               || activeCount < lab.MaxConcurrentJobs.Value)
         ];
-        var filter = ApplyExclusion(
-            CapabilityFilter.Filter(FirstColorSpec(job), labs1), request.ExcludeLabId, job.Id);
+        var filter = CapabilityFilter.Filter(FirstColorSpec(job), labs1);
         var colorDemands = job.MaterialByColor();
         var job1 = job;
         filter = new CapabilityFilterResult(
@@ -71,7 +70,14 @@ public class AssignmentEngine(
             .. filter.Candidates.Where(c =>
                 colorDemands.All(d => c.Lab.HasStock(job1.Specification.MaterialCode, d.Key, d.Value)))
         ], filter.Rejections);
-        if (job.QuotedMachineId.HasValue)
+        if (job.HasFrozenRequirements())
+        {
+            var requirements = job.FrozenRequirements();
+            var rejected = filter.Candidates.Select(c => (Candidate: c, Reason: ProductionRequirementFilter.Reject(c.Machine, requirements))).ToList();
+            filter = new CapabilityFilterResult(rejected.Where(r => r.Reason is null).Select(r => r.Candidate).ToList(),
+                [.. filter.Rejections, .. rejected.Where(r => r.Reason is not null).Select(r => new CapabilityRejection(r.Candidate.Machine.Id, r.Reason!))]);
+        }
+        else if (job.QuotedMachineId.HasValue)
         {
             var job2 = job;
             var job3 = job;
@@ -81,6 +87,8 @@ public class AssignmentEngine(
                     .Select(c => new CapabilityRejection(c.Machine.Id, "different_slicer_profile"))
             ]);
         }
+
+        filter = ApplyExclusion(filter, request.ExcludeLabId, job.Id);
 
         if (filter.Candidates.Count == 0)
         {

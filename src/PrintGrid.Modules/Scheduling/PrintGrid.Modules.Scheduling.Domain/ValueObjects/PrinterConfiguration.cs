@@ -14,7 +14,8 @@ public sealed record PrinterConfiguration(
     string CuraDefinitionId = "",
     string CuraExtruderDefinitionId = "",
     string CuraVariantId = "",
-    string CuraQualityId = "")
+    string CuraQualityId = "",
+    bool EnclosedChamber = false)
 {
     public void Validate()
     {

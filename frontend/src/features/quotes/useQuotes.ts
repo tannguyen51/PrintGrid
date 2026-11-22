@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../shared/api/apiClient'
-import type { Quote, QuoteConfigInput, ModelSummary } from './quoteTypes'
+import type { Quote, QuoteConfigInput, MachineModelOptions, TechRequirements } from './quoteTypes'
 import type { Order } from '../../shared/types/order'
 
 const QUOTES_KEY = ['quotes'] as const
@@ -34,11 +34,17 @@ export function useCreateQuote() {
 }
 
 /** BR-04: fetch eligible machine models (≥3 machines from ≥2 labs). */
-export function useEligibleModels(materialCode?: string) {
-  return useQuery<ModelSummary[]>({
-    queryKey: ['eligible-models', materialCode],
-    queryFn: () => apiClient.get<ModelSummary[]>('/quotes/models', { params: materialCode ? { materialCode } : {} }).then(r => r.data),
-    enabled: !!materialCode,
+export function useEligibleModels(input: TechRequirements & {
+  modelId: string; materialCode: string; colorCodes: string[]; sizeCode: string; layerHeightMm: number; toleranceMm: number
+}, enabled = true) {
+  return useQuery({
+    queryKey: ['eligible-models', input],
+    queryFn: () => apiClient.get<MachineModelOptions>('/quotes/models', {
+      params: input, paramsSerializer: { indexes: null },
+    }).then(r => r.data),
+    enabled: enabled && !!input.modelId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   })
 }
 

@@ -17,6 +17,14 @@ export interface CommercialParameters {
   colorPricePerKg?: Record<string, number>
   failureRate?: number
   polishingPerUnit?: number
+  pinSurchargeCoefficient?: number
+  materialWasteRate?: number
+  setupFeePerPlate?: number
+  failureCompletionRatio?: number
+  priceRoundingIncrement?: number
+  minPinMachines?: number
+  minPinLabs?: number
+  referenceProfileIds?: Record<string, string>
   labProvisionalBaseScore?: number
   labProvisionalWeightK?: number
   labProvisionalThreshold?: number

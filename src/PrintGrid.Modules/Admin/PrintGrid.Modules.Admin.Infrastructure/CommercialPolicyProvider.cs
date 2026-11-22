@@ -59,7 +59,10 @@ public sealed class CommercialPolicyProvider(PrintGridDbContext context) : IComm
             new Dictionary<string, decimal>(parameters.MaterialDensities, StringComparer.OrdinalIgnoreCase),
             parameters.PricePerPrintHour,
             PricingParameterSet.Active.TimeMultiplierByLayer,
-            parameters.ColorPricePerKg, parameters.FailureRate, parameters.PolishingPerUnit);
+            parameters.ColorPricePerKg, parameters.FailureRate, parameters.PolishingPerUnit,
+            parameters.PinSurchargeCoefficient, parameters.MaterialWasteRate, parameters.SetupFeePerPlate,
+            parameters.FailureCompletionRatio, parameters.HubHandlingFee, parameters.PriceRoundingIncrement,
+            parameters.MinPinMachines, parameters.MinPinLabs, parameters.ReferenceProfileIds);
 
         var labScoreParameters = new LabScoreParameters(
             parameters.LabProvisionalBaseScore,

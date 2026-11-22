@@ -92,6 +92,63 @@ public class AssignmentEngineTests
         _labs.GetActiveWithMachinesAsync(Arg.Any<CancellationToken>()).Returns([lab]);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Pinned_jobs_and_reprints_can_move_to_another_machine_of_the_same_model(bool reprint)
+    {
+        OneCapableLab();
+        var lab = (await _labs.GetActiveWithMachinesAsync()).Single();
+        var original = PendingJob();
+        var model = PrintGrid.SharedKernel.ValueObjects.MachineModelIdentity.For("Prusa", "Prusa MK4");
+        original.SetQuotedProduction(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Colors = new[] { new { ColorCode = "BLACK", Grams = 45m } }, Quantity = 1,
+            Requirements = new PrintGrid.SharedKernel.ValueObjects.ProductionRequirements(PinnedModelId: model)
+        }), Guid.NewGuid()); // the machine from the quotation is no longer available
+        var job = reprint ? Job.CreateUrgentReprint(original, 1) : original;
+        var outcome = await Engine().AssignAsync(job, new AssignmentRequest(AssignmentTriggers.InitialAssign));
+        outcome.Assigned.Should().BeTrue();
+        job.MachineId.Should().Be(lab.Machines.Single().Id);
+        job.FrozenRequirements()!.PinnedModelId.Should().Be(model);
+    }
+
+    [Fact]
+    public async Task Pinned_job_stays_unplaced_when_only_other_models_are_available()
+    {
+        OneCapableLab();
+        var job = PendingJob();
+        job.SetQuotedProduction(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Colors = new[] { new { ColorCode = "BLACK", Grams = 45m } }, Quantity = 1,
+            Requirements = new PrintGrid.SharedKernel.ValueObjects.ProductionRequirements(
+                PinnedModelId: PrintGrid.SharedKernel.ValueObjects.MachineModelIdentity.For("Other", "X"))
+        }), Guid.NewGuid());
+        var outcome = await Engine().AssignAsync(job, new AssignmentRequest(AssignmentTriggers.InitialAssign));
+        outcome.Assigned.Should().BeFalse();
+        outcome.Rejections.Should().Contain(r => r.Reason == "pinned_model_mismatch");
+        job.Status.Should().Be(JobStatus.Pending);
+        job.MachineId.Should().BeNull();
+    }
+
+    [Fact]
+    public void Technical_constraints_survive_quantity_splitting()
+    {
+        var job = Job.Create(Guid.NewGuid(), Guid.NewGuid(), SpecBuilder.Default(), 600,
+            DateOnly.FromDateTime(_now.AddDays(5)), 6);
+        var requirements = new PrintGrid.SharedKernel.ValueObjects.ProductionRequirements(4, true, .2m, .1m, .05m);
+        job.SetQuotedProduction(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Colors = new[] { new { ColorCode = "BLACK", Grams = 45m } }, Quantity = 6, Requirements = requirements
+        }), Guid.NewGuid());
+        var split = job.Split([3, 3]);
+        split.IsSuccess.Should().BeTrue();
+        split.Value.Should().OnlyContain(child => child.FrozenRequirements() == requirements);
+        var machine = MachineBuilder.Default();
+        PrintGrid.Modules.Scheduling.Domain.Services.ProductionRequirementFilter.Reject(machine, requirements)
+            .Should().Be("insufficient_color_slots");
+    }
+
     [Fact]
     public async Task Ops_can_assign_an_existing_Cura_job_whose_quote_has_no_quantity_field()
     {

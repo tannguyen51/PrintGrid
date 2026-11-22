@@ -138,7 +138,7 @@ public class Order : AggregateRoot<Guid>
         {
             var item = OrderItem.FromQuoteItemWithBinding(order.Id, quoteItem,
                 modelBindingKind, pinnedModelId, referenceLineId);
-            if (techConstraintsJson is not null) item.FreezeTechConstraints(techConstraintsJson);
+            if (item.TechConstraintsJson is null && techConstraintsJson is not null) item.FreezeTechConstraints(techConstraintsJson);
             order._items.Add(item);
         }
 

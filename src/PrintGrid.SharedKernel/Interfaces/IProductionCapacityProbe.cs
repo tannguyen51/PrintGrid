@@ -14,7 +14,9 @@ public sealed record TrialPlacementLine(
     decimal ToleranceMm,
     int TotalMinutes,
     decimal TotalGrams,
-    Guid? RequiredMachineId = null);
+    Guid? RequiredMachineId = null,
+    ValueObjects.ProductionRequirements? Requirements = null,
+    bool FrozenDuration = false);
 
 /// <summary>Result of a speculative (trial-only, nothing committed) placement across the network.</summary>
 public sealed record TrialPlacementResult(

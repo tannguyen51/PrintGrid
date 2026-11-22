@@ -139,6 +139,8 @@ public sealed class SplitDispatchService(PrintGridDbContext db, IMachineTimeline
         var unit = JobSpecification.Create(BuildVolume.Create(spec.RequiredVolume.WidthMm, spec.RequiredVolume.DepthMm, spec.RequiredVolume.HeightMm),
             spec.MaterialCode, first.Key, spec.LayerHeightMm, spec.ToleranceMm, spec.Technology, Math.Max(.01m, first.Value / job.Quantity));
         var candidates = CapabilityFilter.Filter(unit, labs.Where(l => !l.MaxConcurrentJobs.HasValue || counts.GetValueOrDefault(l.Id) < l.MaxConcurrentJobs.Value)).Candidates;
+        if (job.HasFrozenRequirements())
+            return candidates.Where(c => Domain.Services.ProductionRequirementFilter.Reject(c.Machine, job.FrozenRequirements()) is null).ToList();
         if (!job.QuotedMachineId.HasValue) return candidates;
         var original = labs.SelectMany(l => l.Machines).SingleOrDefault(m => m.Id == job.QuotedMachineId);
         if (original is null) return [];

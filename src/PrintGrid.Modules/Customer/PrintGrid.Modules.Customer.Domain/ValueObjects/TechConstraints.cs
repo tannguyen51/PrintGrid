@@ -33,15 +33,15 @@ public readonly partial struct TechConstraints
     }
 
     /// <summary>Check if this machine's specs satisfy all hard constraints.</summary>
-    public bool MatchesMachine(int machineMaxColors, bool machineHeatedBed,
+    public bool MatchesMachine(int machineMaxColors, bool machineEnclosedChamber,
         decimal machineNozzleDiameterMm, decimal machineAchievableToleranceMm,
         decimal machineMinLayerHeightMm)
     {
         if (MaxColors is not null && machineMaxColors < MaxColors.Value) return false;
-        if (EnclosedChamber is not null && machineHeatedBed != EnclosedChamber.Value) return false;
+        if (EnclosedChamber == true && !machineEnclosedChamber) return false;
         if (NozzleDiameterMm is not null && Math.Abs(machineNozzleDiameterMm - NozzleDiameterMm.Value) > 0.001m) return false;
         if (MaxToleranceMm is not null && machineAchievableToleranceMm > MaxToleranceMm.Value) return false;
-        if (MinLayerHeightMm is not null && machineMinLayerHeightMm < MinLayerHeightMm.Value) return false;
+        if (MinLayerHeightMm is not null && machineMinLayerHeightMm > MinLayerHeightMm.Value) return false;
         return true;
     }
 

@@ -42,7 +42,8 @@ public class GoldenPathR1Tests
         var validator = new PlaceOrderCommandValidator();
 
         var withoutTerms = new PlaceOrderCommand(
-            Guid.NewGuid(), Guid.NewGuid(), "1 Dai Co Viet", "Bach Khoa", "Hai Ba Trung", "Ha Noi", "100000", false);
+            Guid.NewGuid(), Guid.NewGuid(), "1 Dai Co Viet", "Bach Khoa", "Hai Ba Trung", "Ha Noi", "100000", false,
+            RequestedDeliveryDate: DateOnly.FromDateTime(DateTime.UtcNow.AddDays(14)));
         var withTerms = withoutTerms with { AcceptTerms = true };
 
         validator.Validate(withoutTerms).IsValid.Should().BeFalse();

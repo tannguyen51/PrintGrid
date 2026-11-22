@@ -44,12 +44,13 @@ public class QuoteReviewTests
     [Fact]
     public void Order_created_from_draft_waits_for_ops_then_moves_to_payment()
     {
-        var quote = Draft(500_000m, quantity: 5);
+        var quote = Draft(100_000m, quantity: 5); // 500,000 VND for the whole order
         var order = Order.CreateFromQuote(quote,
             Address.Create("123 Quang Trung", "Long Thạnh Mỹ", "Quận 9", "TP.HCM", "70000"),
             "PG-TEST-00001", depositPercent: 50m);
 
         order.Status.Should().Be(OrderStatus.AwaitingApproval);
+        quote.SubmitForReview().IsSuccess.Should().BeTrue();
 
         quote.Approve(Guid.NewGuid(), 525_000m, quote.PromisedDeliveryDate, "Điều chỉnh sau thẩm định",
             DateTime.UtcNow, TimeSpan.FromHours(48), false, 10m).IsSuccess.Should().BeTrue();

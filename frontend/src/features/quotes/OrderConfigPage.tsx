@@ -21,17 +21,15 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { ArrowBackRounded, ArrowForwardRounded, PriceCheckRounded } from '@mui/icons-material'
+import { ArrowBackRounded, ArrowDownwardRounded, ArrowForwardRounded, PriceCheckRounded } from '@mui/icons-material'
 import type { Quote } from './quoteTypes'
 import { COLORS, INFILL_OPTIONS, MATERIALS, QUALITY_GRADES, QUOTE_STATUS_LABELS } from './quoteTypes'
 import { useCreateQuote, usePlaceOrder, useQuote } from './useQuotes'
 import { QuotePriceDetails } from './QuotePriceDetails'
 import { QuoteHistoryPanel } from './QuoteHistoryPanel'
 import { useAuth } from '../../app/AuthContext'
-import TechConstraintsSelector from './TechConstraintsSelector'
 import type { TechConstraintsValue } from './TechConstraintsSelector'
 import MachinePinningSelector from './MachinePinningSelector'
-import type { PinModelValue } from './MachinePinningSelector'
 
 /**
  * G3 — Print configuration & pre-order flow.
@@ -45,6 +43,30 @@ export default function OrderConfigPage() {
   const createQuote = useCreateQuote()
   const placeOrder = usePlaceOrder()
   const quoteResult = useRef<HTMLDivElement>(null)
+  const deliveryForm = useRef<HTMLDivElement>(null)
+  const configurationFrame = useRef<HTMLDivElement>(null)
+  const quoteColumn = useRef<HTMLDivElement>(null)
+  const quoteAnchor = useRef<HTMLSpanElement>(null)
+  const [quotePinned, setQuotePinned] = useState(false)
+
+  useEffect(() => {
+    const configuration = configurationFrame.current
+    const column = quoteColumn.current
+    const anchor = quoteAnchor.current
+    if (!configuration || !column || !anchor) return
+
+    const syncHeight = () => column.style.setProperty('--configuration-height', `${configuration.getBoundingClientRect().height}px`)
+    const resize = new ResizeObserver(syncHeight)
+    resize.observe(configuration)
+    syncHeight()
+
+    // Keep the initial frames equal, then fit the sticky quote inside the viewport.
+    const intersection = new IntersectionObserver(([entry]) => {
+      setQuotePinned(!entry.isIntersecting && entry.boundingClientRect.top < 88)
+    }, { rootMargin: '-88px 0px 0px 0px', threshold: 0 })
+    intersection.observe(anchor)
+    return () => { resize.disconnect(); intersection.disconnect() }
+  }, [])
 
   // Config state
   const [material, setMaterial] = useState('PLA')
@@ -58,9 +80,10 @@ export default function OrderConfigPage() {
   const [configError, setConfigError] = useState<string | null>(null)
 
   // Section 3: tech constraints (doc §3, BR-03)
-  const [techConstraints, setTechConstraints] = useState<TechConstraintsValue | null>(null)
+  const [techConstraints, setTechConstraints] = useState<TechConstraintsValue>({})
   // Section 4: machine pinning (doc §4, BR-04/BR-05)
   const [pinnedModelId, setPinnedModelId] = useState<string | null>(null)
+  const [machineSelectionValid, setMachineSelectionValid] = useState(true)
 
   // Quote + address state
   const [quote, setQuote] = useState<Quote | null>(null)
@@ -91,11 +114,12 @@ export default function OrderConfigPage() {
   currentConfig.current = configKey
 
   // A result belongs to exactly one configuration. Never allow placing a stale quote.
-  useEffect(() => { setQuote(null) }, [configKey])
+  useEffect(() => { setQuote(null); setConfigError(null) }, [configKey])
 
   useEffect(() => {
-    if (quote) quoteResult.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [quote])
+    if (quote?.id && window.matchMedia('(max-width: 1199px)').matches)
+      quoteResult.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [quote?.id])
 
   // Live expiry countdown for the quote (BR-QUOTE-003) — refreshed every 30 s.
   const [now, setNow] = useState(() => Date.now())
@@ -106,17 +130,6 @@ export default function OrderConfigPage() {
 
   const [resendCooldown, setResendCooldown] = useState(0)
   const { user } = useAuth()
-
-  // Listen to pin-model-selector changes (custom event pattern)
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as PinModelValue | null
-      if (detail) setPinnedModelId(detail.pinnedModelId)
-      else setPinnedModelId(null)
-    }
-    window.addEventListener('pin-model-change', handler)
-    return () => window.removeEventListener('pin-model-change', handler)
-  }, [])
 
   useEffect(() => {
     let timer: any
@@ -145,7 +158,7 @@ export default function OrderConfigPage() {
   }
 
   async function handleGetQuote() {
-    if (!modelId) return
+    if (!modelId || !machineSelectionValid) return
     setConfigError(null)
     setQuote(null)
     const submittedConfig = configKey
@@ -163,6 +176,8 @@ export default function OrderConfigPage() {
         maxColors: techConstraints?.maxColors,
         enclosedChamber: techConstraints?.enclosedChamber,
         nozzleDiameterMm: techConstraints?.nozzleDiameterMm,
+        maxToleranceMm: techConstraints.maxToleranceMm,
+        minLayerHeightMm: techConstraints.minLayerHeightMm,
         // Section 4: machine pinning (BR-04/BR-05)
         bindingType: pinnedModelId ? 1 : undefined,
         pinnedModelId: pinnedModelId ? pinnedModelId : undefined,
@@ -192,10 +207,6 @@ export default function OrderConfigPage() {
         city: city.trim(),
         postalCode: postalCode.trim(),
         acceptTerms,
-        // Doc §6.1 / §6.2 — pass machine selection context to backend (BR-03/04/05/09)
-        techConstraintsJson: techConstraints ? JSON.stringify(techConstraints) : null,
-        modelBindingKind: pinnedModelId ? 'theo_model' : 'không',
-        pinnedModelId: pinnedModelId,
       })
       navigate('/orders', { replace: true })
     } catch (e) {
@@ -233,8 +244,8 @@ export default function OrderConfigPage() {
   })()
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 860, mx: 'auto' }} spacing={2.5}>
+    <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default', overflowAnchor: 'none' }}>
+      <Stack sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1400, mx: 'auto' }} spacing={2.5}>
         {/* Header */}
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Button onClick={() => navigate(-1)} startIcon={<ArrowBackRounded />} color="inherit" sx={{ color: 'text.primary' }}>
@@ -247,14 +258,16 @@ export default function OrderConfigPage() {
             Đặt in model
           </Typography>
           <Typography color="text.secondary">
-            Bước 1 — chọn cấu hình in · Bước 2 — xem giá in & nhập địa chỉ nhận
+            Chọn cấu hình, so sánh báo giá và hoàn tất thông tin nhận hàng.
           </Typography>
         </Box>
 
-        {configError && <Alert severity="error">{configError}</Alert>}
-
-        {/* ── Step 1: config ── */}
-        <Box sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 3, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
+        <Box sx={{ display: 'grid', gap: 3, alignItems: 'start',
+          gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' },
+          gridTemplateAreas: { xs: quote ? '"configuration" "quote" "delivery"' : '"configuration" "quote"',
+            lg: quote ? '"configuration quote" "delivery quote"' : '"configuration quote"' } }}>
+        <Box ref={configurationFrame} component="section" aria-label="Cấu hình in" sx={{ gridArea: 'configuration', minWidth: 0,
+          p: { xs: 2.5, md: 3.5 }, borderRadius: 3, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
           <Stack spacing={3}>
             <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '1.05rem' }}>Cấu hình in</Typography>
 
@@ -296,7 +309,8 @@ export default function OrderConfigPage() {
 
             <Box>
               <Typography variant="body2" sx={{ color: 'text.primary', mb: 0.75 }}>Chất lượng (độ cao lớp)</Typography>
-              <RadioGroup row value={layerIndex} onChange={(e) => setLayerIndex(+e.target.value)}>
+              <RadioGroup value={layerIndex} onChange={(e) => setLayerIndex(+e.target.value)}
+                sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1 }}>
                 {QUALITY_GRADES.map((g, i) => (
                   <FormControlLabel
                     key={g.layerMm}
@@ -327,11 +341,10 @@ export default function OrderConfigPage() {
               </Stack>
             </Box>
 
-            {/* Section 3: Tech constraints */}
-            <TechConstraintsSelector defaultQualityLayerMm={layer.layerMm} onValueChange={setTechConstraints} />
-
-            {/* Section 4: Machine pinning (BR-04/BR-05) */}
-            <MachinePinningSelector />
+            <MachinePinningSelector modelId={modelId ?? ''} materialCode={material} colorCodes={colors}
+              sizeCode={sizeCode} layerHeightMm={layer.layerMm} constraints={techConstraints}
+              onConstraintsChange={setTechConstraints} pinnedModelId={pinnedModelId}
+              onPinnedModelChange={setPinnedModelId} onValidityChange={setMachineSelectionValid} />
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5} alignItems="center">
               <TextField
@@ -348,7 +361,7 @@ export default function OrderConfigPage() {
                 color="primary"
                 size="large"
                 onClick={handleGetQuote}
-                disabled={createQuote.isPending}
+                disabled={createQuote.isPending || !machineSelectionValid}
                 endIcon={createQuote.isPending ? <CircularProgress size={18} color="inherit" /> : <PriceCheckRounded />}
               >
                 {createQuote.isPending ? 'Đang phân tích…' : 'Nhận báo giá'}
@@ -357,22 +370,45 @@ export default function OrderConfigPage() {
           </Stack>
         </Box>
 
-        {/* ── Step 2: quote result + address ── */}
-        {quote && (
-          <Box ref={quoteResult} sx={{ p: { xs: 2.5, md: 4 }, scrollMarginTop: 100, borderRadius: 3, border: '1px solid rgba(111,85,255,0.32)', bgcolor: 'background.paper' }}>
-            <Stack spacing={3}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: 'text.primary' }}>
-                  Báo giá của bạn
-                </Typography>
-                <Chip
-                  label={`${QUOTE_STATUS_LABELS[quote.status]}${expiry ? ` · ${expiry.label}` : ''}`}
-                  color={expiry?.expired ? 'error' : quote.status === 'Ready' ? 'success' : 'info'}
-                  size="small"
-                />
+        <Box ref={quoteColumn} component="aside" aria-label="Báo giá in" sx={{ gridArea: 'quote', minWidth: 0, alignSelf: 'stretch', overflowAnchor: 'none' }}>
+          <Box ref={quoteAnchor} component="span" aria-hidden sx={{ display: 'block', height: '1px', mb: '-1px', pointerEvents: 'none' }} />
+          <Box ref={quoteResult} sx={{ position: { lg: 'sticky' }, top: { lg: 88 },
+            height: { lg: quotePinned ? 'min(var(--configuration-height, 100dvh), calc(100dvh - 112px))' : 'var(--configuration-height, auto)' },
+            display: 'flex', flexDirection: 'column', minWidth: 0, scrollMarginTop: 88,
+            borderRadius: 3, border: '1px solid', borderColor: quote ? 'rgba(111,85,255,0.32)' : 'divider',
+            bgcolor: 'background.paper', p: { xs: 2.5, md: 3.5 } }}>
+            <Stack spacing={2} sx={{ flex: 1, minHeight: 0, overflowY: { lg: 'auto' }, scrollbarWidth: 'thin' }}>
+              <Stack direction="row" gap={1.5} justifyContent="space-between" alignItems="center" flexWrap="wrap">
+                <Typography component="h2" sx={{ fontWeight: 800, fontSize: '1.15rem' }}>Báo giá của bạn</Typography>
+                {quote && <Chip label={`${QUOTE_STATUS_LABELS[quote.status]}${expiry ? ` · ${expiry.label}` : ''}`}
+                  color={expiry?.expired ? 'error' : quote.status === 'Ready' ? 'success' : 'info'} size="small" />}
               </Stack>
+              {quote ? <>
+                <QuotePriceDetails quote={quote} collapsibleDetails />
+                {quote.status === 'PendingReview' && <Alert severity="info">Báo giá đã gửi đến Ops. Đơn chuyển sang bước thanh toán sau khi được duyệt.</Alert>}
+                {quoteStatus.isError && <Alert severity="warning">Không cập nhật được trạng thái báo giá. Vui lòng thử cập nhật lại.</Alert>}
+                {['Draft', 'Ready'].includes(quote.status) && !expiry?.expired && <Button variant="outlined"
+                  onClick={() => deliveryForm.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  endIcon={<ArrowDownwardRounded />}>Nhập thông tin nhận hàng</Button>}
+              </> : <Stack alignItems="center" justifyContent="center" textAlign="center" spacing={2} sx={{ py: 4, flex: 1 }} aria-live="polite">
+                {createQuote.isPending ? <CircularProgress size={36} /> : <PriceCheckRounded sx={{ fontSize: 44, color: 'primary.main' }} />}
+                <Typography fontWeight={650}>{createQuote.isPending ? 'Đang tính báo giá…' : 'Giá in sẽ hiển thị tại đây'}</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 340 }}>
+                  {createQuote.isPending ? 'Đang phân tích sản phẩm và kiểm tra lịch máy phù hợp.'
+                    : 'Chọn cấu hình và bấm “Nhận báo giá” để xem giá in, thời gian dự kiến và so sánh các phương án.'}
+                </Typography>
+                {configError && <Alert severity="error" sx={{ textAlign: 'left', width: '100%' }}>{configError}</Alert>}
+              </Stack>}
+            </Stack>
+          </Box>
+        </Box>
 
-              <QuotePriceDetails quote={quote} />
+        {quote && (
+          <Box sx={{ gridArea: 'delivery', minWidth: 0, minHeight: { lg: 'calc(100dvh - 112px)' } }}>
+          <Box ref={deliveryForm} component="section" aria-label="Thông tin nhận hàng" sx={{
+            p: { xs: 2.5, md: 3.5 }, scrollMarginTop: 88, borderRadius: 3, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
+            <Stack spacing={3}>
+              <Typography component="h2" sx={{ fontWeight: 800, fontSize: '1.15rem' }}>Thông tin nhận hàng</Typography>
 
               {orderError && <Alert severity="error">{orderError}</Alert>}
 
@@ -381,8 +417,6 @@ export default function OrderConfigPage() {
                   Đây là bản nháp tính giá, chưa gửi đến Ops. Điền địa chỉ, ngày mong muốn và bấm “Gửi duyệt báo giá” để tạo đơn chờ duyệt.
                 </Alert>
               )}
-              {quote.status === 'PendingReview' && <Alert severity="info">Bạn đã gửi báo giá này đến Ops. Đơn sẽ chuyển sang bước thanh toán sau khi được duyệt.</Alert>}
-              {quoteStatus.isError && <Alert severity="warning">Không cập nhật được trạng thái báo giá. Vui lòng thử cập nhật lại.</Alert>}
 
               {user && !user.isEmailVerified && (
                 <Alert
@@ -457,8 +491,13 @@ export default function OrderConfigPage() {
               </Button>
             </Stack>
           </Box>
+          </Box>
         )}
-        {modelId && <QuoteHistoryPanel modelId={modelId} selectedQuoteId={quote?.id} onSelect={saved => { setQuote(saved); setOrderError(null) }} />}
+        </Box>
+        {modelId && <QuoteHistoryPanel modelId={modelId} selectedQuoteId={quote?.id} onSelect={saved => {
+          setQuote(saved); setOrderError(null)
+          requestAnimationFrame(() => quoteResult.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+        }} />}
       </Stack>
     </Box>
   )

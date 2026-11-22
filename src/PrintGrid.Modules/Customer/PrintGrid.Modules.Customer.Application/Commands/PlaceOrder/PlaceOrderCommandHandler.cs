@@ -31,6 +31,9 @@ public class PlaceOrderCommandHandler(
             return Result.Failure<OrderDto>(Error.NotFound("Quote", command.QuoteId));
         if (quote.CustomerId != command.CustomerId)
             return Result.Failure<OrderDto>(Error.Forbidden("Quote belongs to another customer"));
+        if (command.TechConstraintsJson is not null || command.PinnedModelId.HasValue || command.ReferenceLineId.HasValue
+            || command.ModelBindingKind != "không")
+            return Result.Failure<OrderDto>(Error.Validation("Yêu cầu kỹ thuật và model máy phải được lưu trong báo giá. Hãy tạo báo giá mới để thay đổi cấu hình."));
 
         var requiresOpsApproval = quote.Status == QuoteStatus.Draft;
         if (quote.Status != QuoteStatus.Ready && !requiresOpsApproval)

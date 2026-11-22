@@ -28,13 +28,15 @@ public sealed class MachineProfileRegistry(PrintGridDbContext db, IConfiguration
         await db.Set<Machine>().AsNoTracking().Where(m => m.ProfileStatus == "Approved" && m.PrinterConfiguration != null)
             .Select(m => m.Id).ToListAsync(cancellationToken);
 
-    public async Task<RegisteredCuraSettings?> ResolveAsync(Guid machineId, string material, CancellationToken cancellationToken)
+    public async Task<RegisteredCuraSettings?> ResolveAsync(Guid machineId, string material, CancellationToken cancellationToken, Guid? profileId = null)
     {
         var machine = await db.Set<Machine>().AsNoTracking().SingleOrDefaultAsync(m => m.Id == machineId, cancellationToken);
         if (machine?.ProfileStatus != "Approved" || machine.PrinterConfiguration is not { } config) return null;
         var profiles = await db.Set<CuraProfile>().AsNoTracking()
             .Where(p => machine.CuraProfileIds.Contains(p.Id)).ToListAsync(cancellationToken);
-        var profile = profiles.FirstOrDefault(p => p.EngineVersion == EngineVersion && p.MaterialCode.Equals(material, StringComparison.InvariantCultureIgnoreCase) && p.Matches(machine));
-        return profile is null ? null : new RegisteredCuraSettings(profile.SettingsJson, config.MaximumColorSlots, config.PricePerHour, config.FailureRate);
+        var profile = profiles.FirstOrDefault(p => (!profileId.HasValue || p.Id == profileId) && p.EngineVersion == EngineVersion
+            && p.MaterialCode.Equals(material, StringComparison.InvariantCultureIgnoreCase) && p.Matches(machine));
+        return profile is null ? null : new RegisteredCuraSettings(profile.SettingsJson, config.MaximumColorSlots,
+            config.PricePerHour, config.FailureRate, profile.Id, profile.Version, profile.WidthMm, profile.DepthMm);
     }
 }

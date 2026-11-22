@@ -29,6 +29,9 @@ public class CreateQuoteCommandHandler(
 
     public async Task<Result<QuoteDto>> Handle(CreateQuoteCommand command, CancellationToken cancellationToken)
     {
+        var validation = new CreateQuoteCommandValidator().Validate(command);
+        if (!validation.IsValid)
+            return Result.Failure<QuoteDto>(Error.Validation(string.Join(" ", validation.Errors.Select(e => e.ErrorMessage))));
         var policy = await _commercialPolicy.GetActiveAsync(cancellationToken);
         var set = policy.Pricing;
         if (!QuotePricing.IsSupported(set, command.MaterialCode))
@@ -69,7 +72,9 @@ public class CreateQuoteCommandHandler(
                     : "Model đang chờ duyệt nội dung — chưa thể báo giá."));
         }
 
-        if (command.SizeCode is not null || command.ColorCodes is not null || command.Polishing)
+        if (command.SizeCode is not null || command.ColorCodes is not null || command.Polishing || command.BindingType == 1
+            || TechConstraints.From(command.MaxColors, command.EnclosedChamber, command.NozzleDiameterMm,
+                command.MaxToleranceMm, command.MinLayerHeightMm).HasValue)
             return await CreateSlicedQuote(command, model, policy, cancellationToken);
 
         // Volume & reference print time come from the async geometry analysis; fall back to
@@ -153,157 +158,8 @@ public class CreateQuoteCommandHandler(
         return Result.Success(QuoteMappings.ToCustomerDto(quote));
     }
 
-    private async Task<Result<QuoteDto>> CreateSlicedQuote(CreateQuoteCommand command, Model model,
-        CommercialPolicy policy, CancellationToken cancellationToken)
-    {
-        if (quoteSlicer is null)
-            return Result.Failure<QuoteDto>(Error.Conflict("Dịch vụ báo giá tự động chưa sẵn sàng. Vui lòng liên hệ PrintGrid."));
-        var machineIds = await quoteSlicer.GetConfiguredMachineIdsAsync(cancellationToken);
-        if (machineIds.Count == 0)
-            return Result.Failure<QuoteDto>(Error.Conflict("Chưa có máy in được quản trị viên duyệt để báo giá tự động. Vui lòng liên hệ PrintGrid."));
-
-        // BR-03: Filter by tech constraints (hard filter — no surcharge)
-        var techConstraints = TechConstraints.From(command.MaxColors, command.EnclosedChamber,
-            command.NozzleDiameterMm, command.MaxToleranceMm, command.MinLayerHeightMm);
-        if (techConstraints.HasValue)
-        {
-            machineIds = await machineFilter.FilterByTechConstraintsAsync(machineIds, techConstraints.Value, cancellationToken);
-            if (machineIds.Count == 0)
-                return Result.Failure<QuoteDto>(Error.Validation("Không có máy nào đáp ứng các ràng buộc kỹ thuật đã chọn"));
-        }
-
-        // Section 4: Pinned model handling (BR-04, BR-05, BR-06)
-        decimal surchargeCoefficient = 1.0m;
-        IReadOnlyList<Guid> allCandidateIds = machineIds;
-        IReadOnlyList<Guid> pinnedCandidateIds = machineIds;
-
-        if (command.BindingType == 1 && command.PinnedModelId.HasValue)
-        {
-            var result = await machineFilter.FilterByPinModelAsync(command.PinnedModelId.Value, machineIds, cancellationToken);
-            pinnedCandidateIds = result.pinnedIds;
-            allCandidateIds = result.unpinnedFallback;
-            surchargeCoefficient = 1.15m; // Default h_chỉ_định per design doc section 4.2
-        }
-
-        // Compute both pricing options for comparison display (BR-06)
-        QuotePriceBreakdown? bestPinned = null;
-        QuotePriceBreakdown? bestUnpinned = null;
-        Guid? pinnedMachineId = null;
-        Guid? unpinnedMachineId = null;
-        TrialPlacementResult? pinnedPlacement = null;
-        TrialPlacementResult? unpinnedPlacement = null;
-
-        (bestUnpinned, unpinnedMachineId, unpinnedPlacement) = await SliceOnCandidates(policy, allCandidateIds, cancellationToken, command, model);
-
-        if (surchargeCoefficient > 1.0m && !pinnedCandidateIds.SequenceEqual(allCandidateIds))
-        {
-            (bestPinned, pinnedMachineId, pinnedPlacement) = await SliceOnCandidates(policy, pinnedCandidateIds, cancellationToken, command, model);
-        }
-
-        // Determine which option to use as final quote
-        QuotePriceBreakdown? best = bestPinned ?? bestUnpinned;
-        Guid? placementMachineId = bestPinned is not null ? pinnedMachineId : unpinnedMachineId;
-        TrialPlacementResult? placement = bestPinned is not null ? pinnedPlacement : unpinnedPlacement;
-
-        long? alternativePriceVnd = null;
-        DateOnly? alternativeDeliveryDate = null;
-        if (bestPinned is not null && bestUnpinned is not null)
-        {
-            var pinnedAfterSurcharge = bestPinned.TotalAmount * surchargeCoefficient;
-            if (pinnedAfterSurcharge <= bestUnpinned.TotalAmount * 1.1m)
-            { best = bestPinned; placementMachineId = pinnedMachineId; placement = pinnedPlacement; }
-            else
-            { best = bestUnpinned; placementMachineId = unpinnedMachineId; placement = unpinnedPlacement; }
-            alternativePriceVnd = (long)bestUnpinned.TotalAmount;
-            alternativeDeliveryDate = unpinnedPlacement?.PromisedDeliveryDate;
-        }
-        else if (bestUnpinned is not null)
-        {
-            alternativePriceVnd = (long)bestUnpinned.TotalAmount;
-            alternativeDeliveryDate = unpinnedPlacement?.PromisedDeliveryDate;
-        }
-
-        if (best is null || placement is null)
-            return Result.Failure<QuoteDto>(Error.Validation(
-                "Không tìm thấy máy khả thi với các điều kiện đã chọn. Hãy thử thay đổi vật liệu hoặc màu sắc."));
-
-        var quote = Quote.CreatePending(command.CustomerId, _quoteValidity);
-        var config = PrintConfiguration.Create(command.MaterialCode,
-            command.ColorCodes?.FirstOrDefault() ?? command.ColorCode, command.LayerHeightMm,
-            command.InfillPercent, command.ToleranceMm);
-        var item = quote.AddItem(model.Id, command.Quantity, config, Money.Of(best.TotalAmount / command.Quantity),
-            (int)decimal.Ceiling(best.PrintMinutes / command.Quantity),
-            best.Colors.Sum(c => c.Grams) / command.Quantity,
-            best.MaterialAmount / command.Quantity, best.MachineAmount / command.Quantity,
-            best.WidthMm, best.DepthMm, best.HeightMm);
-
-        if (surchargeCoefficient > 1.0m && bestPinned is not null && alternativePriceVnd.HasValue)
-        {
-            item.FreezeCalculation(System.Text.Json.JsonSerializer.Serialize(best), best.TotalAmount, placementMachineId);
-            // Freeze profile + surcharge pin data per Section 4.2 (BR-05) — used at reorder & job creation
-            // Delivery date to store = unpinned date when pinned selected, else current placement date
-            var deliveryDateForPinch = (bestPinned.TotalAmount <= bestUnpinned!.TotalAmount * 1.1m
-                ? alternativeDeliveryDate   // pinned won → use unpinned date as "alternative"
-                : placement.PromisedDeliveryDate) ?? placement.PromisedDeliveryDate;
-            item.FreezePinchData(placementMachineId!.Value, policy.Pricing.Version, surchargeCoefficient,
-                alternativePriceVnd!.Value, deliveryDateForPinch);
-            quote.SetPinnedModelContext(surchargeCoefficient, command.PinnedModelId, alternativePriceVnd.Value, alternativeDeliveryDate);
-        }
-        else if (placementMachineId.HasValue)
-        {
-            item.FreezeCalculation(System.Text.Json.JsonSerializer.Serialize(best), best.TotalAmount, placementMachineId);
-            // Even unpinned quotes store profile for traceability
-            item.FreezePinchData(placementMachineId.Value, policy.Pricing.Version, 1.0m,
-                (long)bestUnpinned!.TotalAmount, placement.PromisedDeliveryDate);
-        }
-
-        quote.MarkDraft(placement.PromisedDeliveryDate, policy.Pricing.Version, placement.Basis, placement.CustomerBasis);
-        if (policy.AutoLaneThreshold > 0 && best.TotalAmount < policy.AutoLaneThreshold
-            && !OrderRoutingPolicy.RequiresManualDispatch(command.Quantity))
-        {
-            quote.Approve(null, best.TotalAmount, placement.PromisedDeliveryDate, null, clock.UtcNow,
-                TimeSpan.FromHours(policy.QuoteValidityHours), true, 0);
-        }
-
-        await quotes.AddAsync(quote, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Result.Success(QuoteMappings.ToCustomerDto(quote));
-    }
-
-    private async Task<(QuotePriceBreakdown? Best, Guid? MachineId, TrialPlacementResult? Placement)> SliceOnCandidates(CommercialPolicy policy, IReadOnlyList<Guid> candidateIds,
-        CancellationToken ct, CreateQuoteCommand command, Domain.Entities.Model model)
-    {
-        QuotePriceBreakdown? best = null;
-        Guid? bestMachineId = null;
-        TrialPlacementResult? bestPlacement = null;
-        foreach (var machineId in candidateIds)
-        {
-            try
-            {
-                var width = model.BoundingWidthMm!.Value;
-                var depth = model.BoundingDepthMm!.Value;
-                var height = model.BoundingHeightMm!.Value;
-                decimal scale = SlicedQuotePricing.ScaleFor(command.SizeCode ?? "ORIGINAL", width, depth, height);
-                var density = policy.Pricing.DensityGramsPerCm3[command.MaterialCode];
-                var slice = await quoteSlicer!.SliceAsync(new QuoteSliceRequest(model.StorageKey!, model.FileFormat, scale,
-                    command.MaterialCode, command.ColorCodes ?? [command.ColorCode], density,
-                    command.LayerHeightMm, command.InfillPercent, command.Quantity, machineId), ct);
-                var price = SlicedQuotePricing.Calculate(policy.Pricing, command.MaterialCode, command.Quantity, slice,
-                    command.Polishing, width * scale, depth * scale, height * scale);
-                var trial = await capacity.FindEarliestFeasibleDeliveryAsync(
-                    slice.Colors.Select((c, i) => new TrialPlacementLine(price.WidthMm, price.DepthMm, price.HeightMm,
-                        command.MaterialCode, c.ColorCode, command.LayerHeightMm, command.ToleranceMm,
-                        i == 0 ? (int)decimal.Ceiling(slice.PrintMinutes) : 0, c.Grams, machineId)).ToList(),
-                    clock.UtcNow, ct);
-                if (trial is not null && (best is null || price.TotalAmount < best.TotalAmount))
-                { best = price; bestMachineId = machineId; bestPlacement = trial; }
-            }
-            catch (Exception error) when (error is not OperationCanceledException || !ct.IsCancellationRequested)
-            {
-                logger?.LogWarning(error, "Quotation candidate failed for model {ModelId}, machine {MachineId}",
-                    model.Id, machineId);
-            }
-        }
-        return (best, bestMachineId, bestPlacement);
-    }
+    private Task<Result<QuoteDto>> CreateSlicedQuote(CreateQuoteCommand command, Model model,
+        CommercialPolicy policy, CancellationToken cancellationToken) =>
+        new SlicedQuoteBuilder(quotes, unitOfWork, clock, capacity, machineFilter, quoteSlicer, logger)
+            .BuildAsync(command, model, policy, cancellationToken);
 }

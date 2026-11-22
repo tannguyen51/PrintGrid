@@ -2899,6 +2899,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                                 .HasMaxLength(200)
                                 .HasColumnType("character varying(200)");
 
+                            b1.Property<bool>("EnclosedChamber")
+                                .HasColumnType("boolean");
+
                             b1.Property<int>("ExtruderCount")
                                 .HasColumnType("integer");
 
