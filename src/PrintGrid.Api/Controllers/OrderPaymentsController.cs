@@ -43,16 +43,19 @@ public class OrderPaymentsController(ISender sender, PrintGridDbContext db, IOpt
         if (result.IsFailure) return ToError(result.Error);
         var payment = result.Value;
         var options = sePayOptions.Value;
+        var transferDescription = IsVietinBank(options.BankCode)
+            ? $"SEVQR {payment.PaymentCode}"
+            : payment.PaymentCode;
         var qrUrl = options.CanCreateQr && payment.AmountDue > 0m
             ? $"{options.QrBaseUrl.TrimEnd('/')}?acc={Uri.EscapeDataString(options.AccountNumber)}" +
               $"&bank={Uri.EscapeDataString(options.BankCode)}&amount={payment.AmountDue:0}" +
-              $"&des={Uri.EscapeDataString(payment.PaymentCode)}"
+              $"&des={Uri.EscapeDataString(transferDescription)}"
             : null;
         return Ok(new
         {
             payment.IsDeposited, payment.IsSettled, payment.PaidAmount, payment.TotalAmount,
             payment.DepositAmount, payment.Remaining, payment.AmountDue, payment.Currency,
-            payment.PaymentCode, QrUrl = qrUrl,
+            payment.PaymentCode, TransferDescription = transferDescription, QrUrl = qrUrl,
             BankCode = options.CanCreateQr ? options.BankCode : null,
             AccountNumber = options.CanCreateQr ? options.AccountNumber : null,
             AccountName = options.CanCreateQr ? options.AccountName : null,
@@ -102,6 +105,11 @@ public class OrderPaymentsController(ISender sender, PrintGridDbContext db, IOpt
         await transaction.CommitAsync(cancellationToken);
         return Ok(result.Value);
     }
+
+    private static bool IsVietinBank(string bankCode) =>
+        bankCode.Equals("ICB", StringComparison.OrdinalIgnoreCase)
+        || bankCode.Equals("970415", StringComparison.OrdinalIgnoreCase)
+        || bankCode.Equals("VietinBank", StringComparison.OrdinalIgnoreCase);
 
     private IActionResult ToError(Error error)
     {

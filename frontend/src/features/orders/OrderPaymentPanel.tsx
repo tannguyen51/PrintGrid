@@ -51,8 +51,8 @@ export function OrderPaymentPanel({ orderId }: { orderId: string }) {
           <Button size="small" startIcon={<ContentCopyRounded />} onClick={() => void copy(data.accountNumber ?? '')}>Sao chép số tài khoản</Button>
           <Typography variant="caption" color="text.secondary">Nội dung chuyển khoản bắt buộc</Typography>
           <Stack direction="row" spacing={1} alignItems="center">
-            <Typography sx={{ fontFamily: 'monospace', fontWeight: 800, wordBreak: 'break-all' }}>{data.paymentCode}</Typography>
-            <Button size="small" onClick={() => void copy(data.paymentCode)}>Sao chép</Button>
+            <Typography sx={{ fontFamily: 'monospace', fontWeight: 800, wordBreak: 'break-all' }}>{data.transferDescription}</Typography>
+            <Button size="small" onClick={() => void copy(data.transferDescription)}>Sao chép</Button>
           </Stack>
           <Alert severity="warning">Chuyển đúng <strong>{fmtVnd(data.amountDue)}</strong> và không sửa nội dung. Trạng thái sẽ tự cập nhật sau khi SePay xác nhận.</Alert>
         </Stack>

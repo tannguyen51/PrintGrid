@@ -25,6 +25,8 @@ requires HMAC-SHA256. `BankCode` must be the VietQR/SePay bank identifier.
    because those transactions do not currently produce webhooks.
 2. Under company payment-code configuration, add prefix `PG`, with an alphanumeric suffix.
    PrintGrid generates 26-character suffixes.
+   For VietinBank personal/household accounts, PrintGrid automatically prepends the required
+   `SEVQR` marker to the transfer description while retaining the `PG...` payment code.
 3. Create an incoming-money webhook with JSON content at:
 
    `https://YOUR_API_HOST/api/v1/webhooks/sepay`

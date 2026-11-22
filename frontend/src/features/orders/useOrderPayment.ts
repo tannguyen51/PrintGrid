@@ -15,6 +15,7 @@ export interface OrderPayment {
   isSettled: boolean
   currency: string
   paymentCode: string
+  transferDescription: string
   qrUrl: string | null
   bankCode: string | null
   accountNumber: string | null
