@@ -1,6 +1,7 @@
 using Hangfire;
 using Hangfire.PostgreSql;
 using Serilog;
+using PrintGrid.Api.Payments;
 using PrintGrid.Api.BackgroundJobs;
 using PrintGrid.Api.Bootstrap;
 using PrintGrid.Api.Composition;
@@ -14,6 +15,7 @@ using Microsoft.EntityFrameworkCore;
 using PrintGrid.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.Configure<SePayOptions>(builder.Configuration.GetSection(SePayOptions.SectionName));
 
 // Machine-local paths/profiles are optional and never loaded in production.
 if (builder.Environment.IsDevelopment())

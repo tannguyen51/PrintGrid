@@ -39,6 +39,12 @@ public sealed class MarkOrderPaidCommandHandler(IOrderRepository orders, IUnitOf
 
 internal static class PaymentMapping
 {
-    internal static OrderPaymentDto ToDto(Domain.Entities.Order order) =>
-        new(order.IsDeposited, order.IsSettled, order.PaidAmount);
+    internal static OrderPaymentDto ToDto(Domain.Entities.Order order)
+    {
+        var remaining = Math.Max(0m, order.TotalPrice.Amount - order.PaidAmount);
+        var amountDue = order.IsDeposited ? remaining : Math.Max(0m, order.DepositAmount - order.PaidAmount);
+        return new(order.IsDeposited, order.IsSettled, order.PaidAmount,
+            order.TotalPrice.Amount, order.DepositAmount, remaining, amountDue,
+            order.TotalPrice.Currency, SePayPaymentCode.ForOrder(order.Id));
+    }
 }

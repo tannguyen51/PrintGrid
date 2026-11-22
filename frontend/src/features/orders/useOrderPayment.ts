@@ -10,9 +10,16 @@ export interface OrderPayment {
   depositAmount: number
   paidAmount: number
   remaining: number
+  amountDue: number
   isDeposited: boolean
   isSettled: boolean
   currency: string
+  paymentCode: string
+  qrUrl: string | null
+  bankCode: string | null
+  accountNumber: string | null
+  accountName: string | null
+  paymentEnabled: boolean
 }
 
 /** GET /orders/{orderId}/payment */
@@ -25,5 +32,6 @@ export function useOrderPayment(orderId: string | null) {
     },
     enabled: Boolean(orderId),
     retry: false,
+    refetchInterval: (query) => query.state.data?.isDeposited ? false : 4000,
   })
 }
