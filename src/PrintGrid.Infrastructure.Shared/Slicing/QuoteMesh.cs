@@ -9,6 +9,10 @@ namespace PrintGrid.Infrastructure.Shared.Slicing;
 /// <summary>Mesh preparation only; all extrusion/time estimates come from CuraEngine.</summary>
 public static class QuoteMesh
 {
+    // Binary STL stores an 84-byte header and 50 bytes per triangle. Support the
+    // full 100 MiB local upload limit while retaining a bounded mesh workload.
+    public const int MaxTriangles = (100 * 1024 * 1024 - 84) / 50;
+
     public sealed record Triangle(Vector3 A, Vector3 B, Vector3 C);
 
     public static IReadOnlyList<List<Triangle>> Read(Stream stream, string format)
@@ -24,8 +28,8 @@ public static class QuoteMesh
         if (format.TrimStart('.').Equals("3MF", StringComparison.OrdinalIgnoreCase)) Read3Mf(stream, groups);
         else if (format.TrimStart('.').Equals("STL", StringComparison.OrdinalIgnoreCase)) groups["0"] = ReadStl(stream);
         else throw new InvalidDataException("Báo giá CuraEngine hiện nhận STL một màu hoặc 3MF có phân vùng vật liệu. Hãy xuất file sang định dạng phù hợp.");
-        if (groups.Count == 0 || groups.Values.Any(g => g.Count == 0) || groups.Values.Sum(g => (long)g.Count) > 1_000_000)
-            throw new InvalidDataException("File rỗng hoặc vượt giới hạn 1 triệu mặt cho báo giá tự động.");
+        if (groups.Count == 0 || groups.Values.Any(g => g.Count == 0) || groups.Values.Sum(g => (long)g.Count) > MaxTriangles)
+            throw new InvalidDataException($"File rỗng hoặc vượt giới hạn {MaxTriangles} mặt cho báo giá tự động.");
         return [.. groups.Values];
     }
 
@@ -38,7 +42,7 @@ public static class QuoteMesh
             var count = reader.ReadUInt32();
             if (84L + 50L * count == stream.Length)
             {
-                if (count > 1_000_000) throw new InvalidDataException("File quá nhiều mặt.");
+                if (count > MaxTriangles) throw new InvalidDataException($"File vượt giới hạn {MaxTriangles} mặt.");
                 var triangles = new List<Triangle>();
                 for (var i = 0; i < count; i++)
                 {
@@ -59,7 +63,7 @@ public static class QuoteMesh
             var tokens = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
             if (tokens is not ["vertex", _, _, _]) continue;
             vertices.Add(Checked(new Vector3(F(tokens[1]), F(tokens[2]), F(tokens[3]))));
-            if (vertices.Count > 3_000_000) throw new InvalidDataException("File quá nhiều mặt.");
+            if (vertices.Count > 3 * MaxTriangles) throw new InvalidDataException($"File vượt giới hạn {MaxTriangles} mặt.");
         }
         if (vertices.Count == 0 || vertices.Count % 3 != 0) throw new InvalidDataException("STL không hợp lệ.");
         return [.. vertices.Chunk(3).Select(v => new Triangle(v[0], v[1], v[2]))];
@@ -102,7 +106,7 @@ public static class QuoteMesh
                     var key = $"{pid.PadLeft(10, '0')}:{p.PadLeft(10, '0')}";
                     if (!groups.TryGetValue(key, out var list)) groups[key] = list = [];
                     list.Add(new Triangle(vertices[Index("v1")], vertices[Index("v2")], vertices[Index("v3")]));
-                    if (++total > 1_000_000) throw new InvalidDataException("File quá nhiều mặt.");
+                    if (++total > MaxTriangles) throw new InvalidDataException($"File vượt giới hạn {MaxTriangles} mặt.");
                     continue;
                     int Index(string a) => int.Parse((string)t.Attribute(a)!, CultureInfo.InvariantCulture);
                 }

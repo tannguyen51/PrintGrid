@@ -103,7 +103,7 @@ Upload a 3D model file.
 
 **Request:**
 ```
-file: [binary STL/OBJ/3MF file, max 50MB]
+file: [binary STL/OBJ/3MF file, max 100 MiB / 104857600 bytes; local trial]
 ```
 
 **Response:** `202 Accepted` (async processing)
@@ -118,7 +118,7 @@ file: [binary STL/OBJ/3MF file, max 50MB]
 
 **Errors:**
 - `400 Bad Request`: Invalid file format or size
-- `413 Payload Too Large`: File exceeds 50MB
+- `413 Payload Too Large`: File exceeds 100 MiB (104857600 bytes)
 
 ---
 

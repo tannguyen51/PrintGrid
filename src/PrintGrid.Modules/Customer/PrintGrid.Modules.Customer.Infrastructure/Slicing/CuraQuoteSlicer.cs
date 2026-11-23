@@ -20,7 +20,8 @@ public sealed class CuraQuoteOptions
 }
 
 public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuoteOptions> options,
-    ILogger<CuraQuoteSlicer> logger, ICuraProfileRegistry registry) : IQuoteSlicer
+    ILogger<CuraQuoteSlicer> logger, ICuraProfileRegistry registry,
+    IOptions<ModelUploadOptions> uploadOptions) : IQuoteSlicer
 {
     private static readonly SemaphoreSlim _slots = new(2);
     public Task<IReadOnlyList<Guid>> GetConfiguredMachineIdsAsync(CancellationToken cancellationToken) =>
@@ -53,16 +54,23 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
             int read;
             while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
             {
-                if (content.Length + read > 50 * 1024 * 1024) throw new InvalidDataException("File vượt giới hạn 50 MB.");
+                if (content.Length + read > uploadOptions.Value.MaxFileBytes)
+                    throw new InvalidDataException($"File vượt giới hạn {uploadOptions.Value.MaxFileBytes / (1024m * 1024):0.##} MiB.");
                 content.Write(buffer, 0, read);
             }
             content.Position = 0;
             var groups = QuoteMesh.Read(content, request.FileFormat);
             if (request.Colors.Count > 1 && groups.Count != request.Colors.Count)
                 throw new InvalidDataException("File chưa có đủ vùng vật liệu cho các màu đã chọn. Hãy dùng 3MF với mỗi màu là một vùng vật liệu riêng; hệ thống không tự chia đều nhựa theo số màu.");
-            var all = groups.SelectMany(g => g).SelectMany(t => new[] { t.A, t.B, t.C }).ToList();
-            var min = all.Aggregate(Vector3.Min);
-            var max = all.Aggregate(Vector3.Max);
+            // Do not allocate another six million vertices for a 100 MiB STL.
+            var min = new Vector3(float.PositiveInfinity);
+            var max = new Vector3(float.NegativeInfinity);
+            foreach (var group in groups)
+            foreach (var triangle in group)
+            {
+                min = Vector3.Min(min, Vector3.Min(triangle.A, Vector3.Min(triangle.B, triangle.C)));
+                max = Vector3.Max(max, Vector3.Max(triangle.A, Vector3.Max(triangle.B, triangle.C)));
+            }
             var scaled = (max - min) * (float)request.Scale;
             decimal Setting(string name) => decimal.Parse(global[name]?.ToString() ?? throw new InvalidDataException($"Profile thiếu {name}."), CultureInfo.InvariantCulture);
             var bedWidth = Setting("machine_width"); var bedDepth = Setting("machine_depth");

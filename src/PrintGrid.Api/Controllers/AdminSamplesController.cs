@@ -45,7 +45,7 @@ public sealed class AdminSamplesController(
 
     /// <summary>Creates a sample from an uploaded model file. Geometry is analysed on the spot.</summary>
     [HttpPost]
-    [RequestSizeLimit(60 * 1024 * 1024)]
+    [RequestSizeLimit(120 * 1024 * 1024)]
     public async Task<IActionResult> Create([FromForm] SaveSampleForm form, CancellationToken cancellationToken)
     {
         var upload = await PrepareUploadAsync(form.File, cancellationToken);
@@ -80,7 +80,7 @@ public sealed class AdminSamplesController(
 
     /// <summary>Updates metadata; pass a file to replace the stored binary + geometry.</summary>
     [HttpPut("{id:guid}")]
-    [RequestSizeLimit(60 * 1024 * 1024)]
+    [RequestSizeLimit(120 * 1024 * 1024)]
     public async Task<IActionResult> Update(Guid id, [FromForm] SaveSampleForm form, CancellationToken cancellationToken)
     {
         var before = await sender.Send(new GetSampleByIdQuery(id), cancellationToken);
@@ -179,7 +179,7 @@ public sealed class AdminSamplesController(
             return new PreparedUpload { ErrorCode = "file_required", Error = "Hãy chọn file mô hình (STL, OBJ, 3MF hoặc GLB)." };
 
         if (file.Length > _uploadOptions.MaxFileBytes)
-            return new PreparedUpload { ErrorCode = "file_too_large", Error = "Kích thước file vượt giới hạn 50 MiB." };
+            return new PreparedUpload { ErrorCode = "file_too_large", Error = $"Kích thước file vượt giới hạn {_uploadOptions.MaxFileBytes / (1024m * 1024):0.##} MiB." };
 
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!ModelFileInspector.IsAllowedExtension(extension))

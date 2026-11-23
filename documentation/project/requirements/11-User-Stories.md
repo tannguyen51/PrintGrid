@@ -20,7 +20,7 @@ One row per story; full blocks with all acceptance criteria remain in the epics 
 
 | Story ID | As a… | I want… | So that… | Acceptance Criteria | Priority | Related Req. | Status |
 |---|---|---|---|---|---|---|---|
-| US-001 | Customer | upload STL/OBJ/3MF files | I can get a printing quote | ≤50 MB accepted; bad format rejected with message; stored in object storage with id | Must | FR-CUST-002 · UC-001 · BR-ACCESS-006 | Approved |
+| US-001 | Customer | upload STL/OBJ/3MF files | I can get a printing quote | ≤100 MiB accepted; bad format rejected with message; stored in object storage with id | Must | FR-CUST-002 · UC-001 · BR-ACCESS-006 | Approved · 100 MiB local trial |
 | US-002 | Customer | preview my model in 3D in the browser | I verify it before ordering | rotate/zoom; bbox dims; stats; loads <5 s | Should | FR-CUST-003 · UC-001 | Approved · **cut-candidate #2 if late** |
 | US-003 | Customer | get automatic geometry validation | I know the part is printable | watertight + manifold checks; oversize vs network rejected with reason; <10 s | Must | FR-CUST-004 · UC-002 · BR-QUOTE-006 | Approved |
 | US-004 | Customer | configure print parameters per item | I get exactly what I need | material/colour/grade/infill/qty/post-processing; invalid combos disabled | Must | FR-CUST-005 · UC-001 · BR-CONFIG-003 | Approved |
@@ -74,7 +74,7 @@ One row per story; full blocks with all acceptance criteria remain in the epics 
 **User Story:** As a customer, I want to upload my 3D model files (STL/OBJ/3MF), so that I can get a quote for printing.
 
 **Acceptance Criteria:**
-- AC1: User can select and upload STL, OBJ, or 3MF files up to 50 MB
+- AC1: User can select and upload STL, OBJ, or 3MF files up to 100 MiB (104857600 bytes, local trial)
 - AC2: Upload progress indicator shows percentage complete
 - AC3: System validates file format and shows error for unsupported formats
 - AC4: Successfully uploaded files appear in upload confirmation

@@ -77,7 +77,7 @@ const FRIENDLY: Record<string, string> = {
   rate_limit_exceeded: 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít phút.',
   cooldown_active: 'Vừa gửi email xác thực, vui lòng đợi vài phút trước khi gửi lại.',
   // Upload model (ModelsController + ExceptionHandlingMiddleware)
-  file_too_large: 'File vượt giới hạn 50 MB. Hãy giảm kích thước model rồi thử lại.',
+  file_too_large: 'File vượt giới hạn 100 MiB. Hãy giảm kích thước model rồi thử lại.',
   unsupported_format: 'Định dạng không được hỗ trợ. Chỉ nhận STL, OBJ, 3MF hoặc GLB.',
   invalid_file_content: 'Nội dung file không hợp lệ — có thể file bị hỏng hoặc sai định dạng.',
   quota_exceeded: 'Đã đạt giới hạn lưu trữ. Xoá bớt model không dùng rồi thử lại.',

@@ -12,7 +12,7 @@ using PrintGrid.Infrastructure.Shared;
 using PrintGrid.Infrastructure.Shared.Persistence;
 using PrintGrid.Modules.Scheduling.Application.Services;
 using Microsoft.EntityFrameworkCore;
-using PrintGrid.Api.Models;
+using PrintGrid.Infrastructure.Shared.FileStorage;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<SePayOptions>(builder.Configuration.GetSection(SePayOptions.SectionName));

@@ -10,7 +10,7 @@ This document provides detailed acceptance criteria in Gherkin (Given-When-Then)
 ### Scenario: Upload valid STL file
 ```gherkin
 Given the customer is on the upload page
-When the customer selects a valid STL file under 50 MB
+When the customer selects a valid STL file up to 100 MiB (104857600 bytes)
 And clicks "Upload"
 Then the file uploads successfully
 And a progress indicator shows completion
@@ -31,10 +31,10 @@ And the file is not stored
 ### Scenario: Upload file exceeding size limit
 ```gherkin
 Given the customer is on the upload page
-When the customer selects an STL file of 75 MB
+When the customer selects an STL file of 104857601 bytes
 And clicks "Upload"
 Then the upload is rejected
-And the system displays "File size exceeds 50 MB limit"
+And the system displays "File size exceeds 100 MiB limit"
 ```
 
 ### Scenario: Reject renamed or malformed model content

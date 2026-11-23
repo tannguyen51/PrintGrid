@@ -32,7 +32,8 @@ public class MinioFileStorage : IFileStorage
         string objectName,
         Stream content,
         string contentType,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        long? contentLength = null)
     {
         await EnsureBucketAsync(bucket, cancellationToken);
 
@@ -40,7 +41,7 @@ public class MinioFileStorage : IFileStorage
             .WithBucket(bucket)
             .WithObject(objectName)
             .WithStreamData(content)
-            .WithObjectSize(content.Length)
+            .WithObjectSize(contentLength ?? content.Length)
             .WithContentType(contentType);
 
         await _client.PutObjectAsync(args, cancellationToken);

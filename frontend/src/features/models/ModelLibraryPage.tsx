@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import {
   Alert,
@@ -16,7 +16,7 @@ import {
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 import { AddRounded, DeleteOutlineRounded, EditRounded, SearchRounded, VisibilityRounded } from '@mui/icons-material'
 import type { ThreeDModel } from './modelTypes'
-import { useDeleteModel, useCreateModel, useUpdateModel, useModels, useUploadModel, useModelQuota } from './useModels'
+import { useDeleteModel, useCreateModel, useUpdateModel, useModels, useUploadModel, useModelQuota, type ModelUploadProgress } from './useModels'
 import type { ModelFormValues } from './modelSchema'
 import { toModelInput } from './modelSchema'
 import { ModelFormDialog } from './components/ModelFormDialog'
@@ -42,6 +42,7 @@ export default function ModelLibraryPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [detail, setDetail] = useState<ThreeDModel | null>(null)
   const [deleting, setDeleting] = useState<ThreeDModel | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<ModelUploadProgress | null>(null)
 
   const { data, isLoading, isError } = useModels(search)
   const quota = useModelQuota()
@@ -51,6 +52,13 @@ export default function ModelLibraryPage() {
   const deleteMutation = useDeleteModel()
 
   const rows = useMemo(() => data ?? [], [data])
+
+  // Keep an open drawer in sync with the background geometry analysis polling.
+  useEffect(() => {
+    if (!detail || !data) return
+    const current = data.find(model => model.id === detail.id)
+    if (current && current !== detail) setDetail(current)
+  }, [data, detail])
 
   const columns: GridColDef<ThreeDModel>[] = [
     { field: 'name', headerName: 'Tên model', flex: 1.6, minWidth: 180 },
@@ -155,6 +163,7 @@ export default function ModelLibraryPage() {
 
   async function handleFormSubmit(values: ModelFormValues, file?: File) {
     setFormError(null)
+    setUploadProgress(file ? { percent: 0, loaded: 0, total: file.size } : null)
     try {
       let uploaded: ThreeDModel | undefined
       if (editing) {
@@ -170,11 +179,13 @@ export default function ModelLibraryPage() {
           description: values.description?.trim() || undefined,
           tags: (values.tags ?? '').split(',').map((t) => t.trim()).filter(Boolean),
           file,
+          onProgress: setUploadProgress,
         })
       } else {
         await createMutation.mutateAsync(toModelInput(values))
       }
       setFormOpen(false)
+      setUploadProgress(null)
       setEditing(null)
       // Open the detail drawer for a freshly uploaded file so its 3D preview is
       // visible immediately instead of hiding behind an extra row click.
@@ -190,6 +201,7 @@ export default function ModelLibraryPage() {
         setDetail(uploaded)
       }
     } catch (error) {
+      setUploadProgress(null)
       setFormError(getApiErrorMessage(error, 'Không thể lưu model. Vui lòng thử lại.'))
     }
   }
@@ -314,10 +326,11 @@ export default function ModelLibraryPage() {
       <ModelFormDialog
         key={formOpen ? (editing?.id ?? 'new') : 'closed'}
         open={formOpen}
-        onClose={() => { setFormOpen(false); setEditing(null) }}
+        onClose={() => { setFormOpen(false); setEditing(null); setUploadProgress(null) }}
         editing={editing}
         onSubmit={handleFormSubmit}
         submitting={submitting}
+        uploadProgress={uploadProgress}
         error={formError}
       />
 

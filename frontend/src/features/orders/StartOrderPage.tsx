@@ -5,7 +5,7 @@ import { AddPhotoAlternateRounded, LibraryBooksRounded } from '@mui/icons-materi
 import { landing, PillButton } from '../../shared/theme/landing'
 import { StatusChip, landingCardSx } from '../../shared/components/StatusChip'
 import { EmptyState } from '../../shared/components/EmptyState'
-import { useModels, useUploadModel } from '../models/useModels'
+import { useModels, useUploadModel, type ModelUploadProgress } from '../models/useModels'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { ModelFormDialog } from '../models/components/ModelFormDialog'
 import type { ModelFormValues } from '../models/modelSchema'
@@ -63,6 +63,7 @@ export default function StartOrderPage() {
   const navigate = useNavigate()
   const [uploadOpen, setUploadOpen] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<ModelUploadProgress | null>(null)
 
   const { data, isLoading, isError } = useModels('')
   const uploadMutation = useUploadModel()
@@ -79,19 +80,24 @@ export default function StartOrderPage() {
   async function handleUploadSubmit(values: ModelFormValues, file?: File) {
     setUploadError(null)
     if (!file) {
+      setUploadProgress(null)
       setUploadError('Chọn file .stl / .obj / .3mf / .glb để tải lên.')
       return
     }
+    setUploadProgress({ percent: 0, loaded: 0, total: file.size })
     try {
       const created = await uploadMutation.mutateAsync({
         name: values.name,
         description: values.description?.trim() || undefined,
         tags: (values.tags ?? '').split(',').map((t) => t.trim()).filter(Boolean),
         file,
+        onProgress: setUploadProgress,
       })
       setUploadOpen(false)
-      navigate(`/models/${created.id}/order`)
+      setUploadProgress(null)
+      navigate(`/models/${created.id}/preview`)
     } catch (error) {
+      setUploadProgress(null)
       setUploadError(getApiErrorMessage(error, 'Không tải được file lên. Kiểm tra kết nối rồi thử lại.'))
     }
   }
@@ -173,7 +179,7 @@ export default function StartOrderPage() {
                 <Box sx={{ minWidth: 0 }}>
                   <Typography sx={{ fontWeight: 700, color: landing.text }}>Tải file 3D mới</Typography>
                   <Typography sx={{ fontSize: '0.85rem', color: landing.textMuted }}>
-                    STL · OBJ · 3MF · GLB — tối đa 50 MB
+                    STL · OBJ · 3MF · GLB — tối đa 100 MiB
                   </Typography>
                 </Box>
               </Stack>
@@ -201,10 +207,11 @@ export default function StartOrderPage() {
       <ModelFormDialog
         key={uploadOpen ? 'new' : 'closed'}
         open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
+        onClose={() => { setUploadOpen(false); setUploadProgress(null) }}
         editing={null}
         onSubmit={handleUploadSubmit}
         submitting={uploadMutation.isPending}
+        uploadProgress={uploadProgress}
         error={uploadError}
       />
     </Box>

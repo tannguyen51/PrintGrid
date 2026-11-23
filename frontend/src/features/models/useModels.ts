@@ -2,6 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../shared/api/apiClient'
 import type { ModelInput, ModelQuota, ThreeDModel } from './modelTypes'
 
+export interface ModelUploadProgress {
+  percent: number
+  loaded: number
+  total?: number
+}
+
 const MODELS_KEY = ['models'] as const
 const QUOTA_KEY = ['models', 'quota'] as const
 const searchParam = (s: string) => (s.trim() ? `?search=${encodeURIComponent(s.trim())}` : '')
@@ -10,6 +16,7 @@ export function useModels(search: string) {
   return useQuery({
     queryKey: [...MODELS_KEY, search],
     queryFn: () => apiClient.get<ThreeDModel[]>(`/models${searchParam(search)}`).then((r) => r.data),
+    refetchInterval: query => query.state.data?.some(model => model.geometryStatus === 'Pending') ? 2_000 : false,
   })
 }
 
@@ -51,7 +58,7 @@ export function useDeleteModel() {
 export function useUploadModel() {
   const invalidate = useInvalidateModels()
   return useMutation({
-    mutationFn: ({ name, description, tags, file }: { name: string; description?: string; tags: string[]; file: File }) => {
+    mutationFn: ({ name, description, tags, file, onProgress }: { name: string; description?: string; tags: string[]; file: File; onProgress?: (progress: ModelUploadProgress) => void }) => {
       const form = new FormData()
       form.append('Name', name)
       if (description) form.append('Description', description)
@@ -59,7 +66,17 @@ export function useUploadModel() {
       tags.forEach((t) => form.append('Tags', t))
       form.append('File', file)
       return apiClient
-        .post<ThreeDModel>('/models/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+        .post<ThreeDModel>('/models/upload', form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: event => {
+            const ratio = event.progress ?? (event.total ? event.loaded / event.total : 0)
+            onProgress?.({
+              percent: Math.min(100, Math.max(0, Math.round(ratio * 100))),
+              loaded: event.loaded,
+              total: event.total,
+            })
+          },
+        })
         .then((r) => r.data)
     },
     onSuccess: invalidate,
