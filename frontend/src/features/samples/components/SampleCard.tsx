@@ -1,19 +1,42 @@
 import { Box, Stack, Typography } from '@mui/material'
 import { ArrowForwardRounded } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { apiClient } from '../../../shared/api/apiClient'
 import { landing } from '../../../shared/theme/landing'
 import { landingCardSx } from '../../../shared/components/StatusChip'
 import { formatDims, formatPrintTime, formatVnd, type SampleSummary } from '../sampleTypes'
 
-/** Wireframe cube used when a sample has no admin-supplied cover image. */
-function SampleGlyph() {
+const ModelViewer = lazy(() => import('../../../shared/components/ModelViewer').then(module => ({ default: module.ModelViewer })))
+
+/** Load actual geometry only while the card is near the viewport. */
+function SamplePreview({ sample }: { sample: SampleSummary }) {
+  const container = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const element = container.current
+    if (!element) return
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { rootMargin: '100px' })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
   return (
-    <Box component="svg" viewBox="0 0 200 160" sx={{ width: '100%', height: '100%', opacity: 0.55 }}>
-      <g transform="translate(100 82)" fill="none" stroke="#C0C6D4" strokeWidth={1.2}>
-        <path d="M0 -46 L46 -20 L46 26 L0 52 L-46 26 L-46 -20 Z" />
-        <path d="M0 -46 L0 52 M-46 -20 L0 6 L46 -20" />
-        <path d="M-30 -34 L16 -8" strokeDasharray="3 5" />
-      </g>
+    <Box ref={container} role="img" aria-label={`Mô hình 3D ${sample.name}`} sx={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      {visible && (
+        <Suspense fallback={null}>
+          <ModelViewer
+            url={apiClient.getUri({ url: `/samples/${encodeURIComponent(sample.slug)}/file` })}
+            format={sample.fileFormat}
+            fit
+            autoRotate={false}
+            interactive={false}
+            background="#F5F2FF"
+            sx={{ minHeight: 0 }}
+          />
+        </Suspense>
+      )}
     </Box>
   )
 }
@@ -55,13 +78,12 @@ export function SampleCard({ sample }: { sample: SampleSummary }) {
             sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (
-          <Box sx={{ width: '72%', height: '72%' }}>
-            <SampleGlyph />
-          </Box>
+          <SamplePreview sample={sample} />
         )}
         <Box
           sx={{
             position: 'absolute',
+            zIndex: 2,
             top: 12,
             left: 12,
             px: 1.25,

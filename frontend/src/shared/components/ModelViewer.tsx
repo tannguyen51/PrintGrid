@@ -97,12 +97,13 @@ interface SceneProps {
   fit: boolean
   cameraPosition: [number, number, number]
   autoRotate: boolean
+  interactive: boolean
   background: string
   onContextLost: () => void
   onContextRestored: () => void
 }
 
-function Scene({ url, format, fit, cameraPosition, autoRotate, background, onContextLost, onContextRestored }: SceneProps) {
+function Scene({ url, format, fit, cameraPosition, autoRotate, interactive, background, onContextLost, onContextRestored }: SceneProps) {
   const normalized = (format ?? '').trim().toUpperCase()
 
   useEffect(() => {
@@ -117,6 +118,7 @@ function Scene({ url, format, fit, cameraPosition, autoRotate, background, onCon
 
   return (
     <Canvas
+      frameloop={autoRotate ? 'always' : 'demand'}
       camera={{ position: cameraPosition, fov: 40 }}
       dpr={[1, 1.5]}
       style={{ background }}
@@ -174,7 +176,7 @@ function Scene({ url, format, fit, cameraPosition, autoRotate, background, onCon
 
       {/* Full mouse interaction: drag to rotate, scroll to zoom, right-drag to pan.
           Auto-rotate is gentle and pauses the moment the user grabs the model. */}
-      <OrbitControls
+      {interactive && <OrbitControls
         enableZoom
         enablePan
         enableDamping
@@ -183,7 +185,7 @@ function Scene({ url, format, fit, cameraPosition, autoRotate, background, onCon
         autoRotateSpeed={0.5}
         minDistance={3}
         maxDistance={14}
-      />
+      />}
     </Canvas>
   )
 }
@@ -233,6 +235,8 @@ export interface ModelViewerProps {
   /** Any valid height; pass '100%' to fill a positioned parent. */
   height?: number | string
   autoRotate?: boolean
+  /** Disable mouse controls for decorative previews inside clickable cards. */
+  interactive?: boolean
   cameraPosition?: [number, number, number]
   background?: string
   sx?: SxProps
@@ -244,6 +248,7 @@ export function ModelViewer({
   fit = false,
   height = '100%',
   autoRotate = true,
+  interactive = true,
   cameraPosition = [6, 4.2, 8],
   background = '#F5F2FF',
   sx,
@@ -273,6 +278,7 @@ export function ModelViewer({
             fit={fit}
             cameraPosition={cameraPosition}
             autoRotate={autoRotate}
+            interactive={interactive}
             background={background}
             onContextLost={() => setContextLost(true)}
             onContextRestored={() => setContextLost(false)}
