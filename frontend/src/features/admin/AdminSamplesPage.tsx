@@ -240,7 +240,7 @@ export default function AdminSamplesPage() {
                 />
               </Button>
               <Typography variant="caption" color="text.secondary">
-                STL, OBJ, 3MF hoặc GLB · tối đa 50 MB. Hình học được phân tích ngay khi lưu.
+                STL, OBJ, 3MF hoặc GLB · tối đa 100 MiB. Hình học được phân tích ngay khi lưu.
               </Typography>
 
               <TextField

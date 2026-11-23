@@ -50,7 +50,8 @@ public class CreateQuoteCommandHandler(
         // Only an explicit "false" blocks quoting. NULL means the model was analysed before the
 // printability flags existed (or the file predates them) — treating unknown as unprintable
 // rejected every such model outright. The trial placement below is the real feasibility gate.
-        if (model.IsPrintable == false && (command.SizeCode is null || model.IsWatertight != true || model.IsManifold != true))
+        var hasMeshWarnings = model.IsWatertight == false || model.IsManifold == false;
+        if (model.IsPrintable == false && !hasMeshWarnings && command.SizeCode is null)
         {
             return Result.Failure<QuoteDto>(Error.Validation(
                 model.GeometryMessage ?? "Model không thể in trên bất kỳ máy nào trong mạng lưới"));
@@ -72,7 +73,7 @@ public class CreateQuoteCommandHandler(
                     : "Model đang chờ duyệt nội dung — chưa thể báo giá."));
         }
 
-        if (command.SizeCode is not null || command.ColorCodes is not null || command.Polishing || command.BindingType == 1
+        if (hasMeshWarnings || command.SizeCode is not null || command.ColorCodes is not null || command.Polishing || command.BindingType == 1
             || TechConstraints.From(command.MaxColors, command.EnclosedChamber, command.NozzleDiameterMm,
                 command.MaxToleranceMm, command.MinLayerHeightMm).HasValue)
             return await CreateSlicedQuote(command, model, policy, cancellationToken);

@@ -8,7 +8,7 @@
 | Req ID | Type | Requirement Description | Category | Priority | Source | Acceptance Criteria | Status | Notes |
 |--------|------|-------------------------|----------|----------|--------|---------------------|--------|-------|
 | FR-CUST-001 | FR | Customer registers, signs in (email/password or Google), recovers password by email, and manages profile/delivery addresses | Customer | Must | P-19 | Google ID token audience verified server-side; reset response does not reveal account existence; reset token one-use, expires in 30 min; verified email required to order; **password ≥ 8 ký tự** | Approved | Actor: Customer · BR: ACCESS-005 · UC-001,026 · US-001,040 · M |
-| FR-CUST-002 | FR | Upload 3D model (STL/OBJ/3MF, ≤50 MB) into secure storage | Customer | Must | P-20 | Unsupported format rejected with message; quota per account enforced; **SHA-256 hash recorded + customer email receipt (time,size,hash)** | Approved · **R1 amended** | Actor: Customer · BR: ACCESS-006, IP-001/002 · UC-001 · US-001 · M |
+| FR-CUST-002 | FR | Upload 3D model (STL/OBJ/3MF, ≤100 MiB) into secure storage | Customer | Must | P-20 | Unsupported format rejected with message; quota per account enforced; **SHA-256 hash recorded + customer email receipt (time,size,hash)** | Approved · **R1 amended** · 100 MiB local trial | Actor: Customer · BR: ACCESS-006, IP-001/002 · UC-001 · US-001 · M |
 | FR-CUST-003 | FR | In-browser 3D preview with bounding-box readout | Customer | Should | P-20 | Model renders; rotate/zoom; dims match analysis result | Approved | Actor: Customer · UC-001 · US-002 · L — cut-candidate #2 |
 | FR-CUST-004 | FR | Validation feedback on mesh integrity and oversize | Customer | Must | P-21 | Issues listed per item; part exceeding max build volume cannot proceed to quote | Approved | Actor: Customer · BR: QUOTE-006 · UC-002 · US-003 · M |
 | FR-CUST-005 | FR | Per-item print configuration (material, colour, layer, infill, post-process, qty, service level, required-by) | Customer | Must | P-22, P-23 | Invalid combinations disabled with reason; config persists with draft | Approved | Actor: Customer · BR: CONFIG-003 · UC-001 · US-004 · M |
@@ -92,7 +92,7 @@
 
 **Requirements:**
 - Support STL, OBJ, 3MF formats
-- File size limit: 50 MB
+- File size limit: 100 MiB (104857600 bytes), local trial. Upload and quote slicing share `ModelUpload:MaxFileBytes`; multipart requests allow 120 MiB overhead. Existing performance baselines for files ≤50 MB have not yet been revalidated at 100 MiB.
 - Upload progress indicator
 - Multi-file upload for batch orders
 - Model stored securely in MinIO

@@ -139,7 +139,7 @@ paths:
             schema: { type: object, properties: { file: { type: string, format: binary } } }
       responses:
         '201': { description: Accepted; GeometryStatus=Pending }
-        '413': { description: Vượt 50MB (siết server-side — T3) }
+        '413': { description: Vượt 100 MiB (104857600 bytes; siết server-side — T3) }
         '415': { description: "Sai định dạng — kiểm nội dung thật (T3)" }
         '409': { description: Vượt quota tài khoản; trả usage và hướng dẫn dọn thư viện }
   /models/quota:

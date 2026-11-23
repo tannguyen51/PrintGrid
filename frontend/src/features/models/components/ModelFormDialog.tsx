@@ -17,9 +17,11 @@ import { SaveRounded, UploadFileRounded } from '@mui/icons-material'
 import type { ThreeDModel } from '../modelTypes'
 import { modelSchema, type ModelFormValues } from '../modelSchema'
 import { ModelViewer } from '../../../shared/components/ModelViewer'
+import type { ModelUploadProgress } from '../useModels'
 
 /** Formats the in-browser viewer can render — 3MF is unzipped by three's 3MFLoader. */
 const PREVIEWABLE_FORMATS = ['STL', 'OBJ', 'GLB', 'GLTF', '3MF']
+const MAX_AUTO_PREVIEW_BYTES = 20 * 1024 * 1024
 
 interface ModelFormDialogProps {
   open: boolean
@@ -27,6 +29,7 @@ interface ModelFormDialogProps {
   editing: ThreeDModel | null
   onSubmit: (values: ModelFormValues, file?: File) => Promise<void>
   submitting: boolean
+  uploadProgress?: ModelUploadProgress | null
   error?: string | null
 }
 
@@ -49,7 +52,7 @@ function defaultsFor(editing: ThreeDModel | null): ModelFormValues {
  * - Create mode: pick a real STL/OBJ/3MF/GLB file to upload (name auto-fills from the file).
  * - Edit mode: edit metadata only.
  */
-export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, error }: ModelFormDialogProps) {
+export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, uploadProgress, error }: ModelFormDialogProps) {
   const [file, setFile] = useState<File | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -58,7 +61,7 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
   // Preview the picked file locally (blob URL) before it is uploaded — the upload
   // itself only happens on Save, which previously left the dialog with no 3D view.
   const previewFormat = file ? (file.name.split('.').pop() ?? '').toUpperCase() : ''
-  const previewable = PREVIEWABLE_FORMATS.includes(previewFormat)
+  const previewable = PREVIEWABLE_FORMATS.includes(previewFormat) && Boolean(file && file.size <= MAX_AUTO_PREVIEW_BYTES)
 
   useEffect(() => {
     if (!file || !previewable) {
@@ -118,9 +121,9 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
         setFileError('Chỉ chấp nhận file STL, OBJ, 3MF hoặc GLB.')
         return
       }
-      if (next.size > 50 * 1024 * 1024) {
+      if (next.size > 100 * 1024 * 1024) {
         setFile(null)
-        setFileError('Kích thước file vượt giới hạn 50 MiB.')
+        setFileError('Kích thước file vượt giới hạn 100 MiB.')
         return
       }
     }
@@ -153,6 +156,22 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
         <Box component="form" id="model-form" onSubmit={submit} noValidate>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {error && <Alert severity="error">{error}</Alert>}
+            {submitting && isCreate && uploadProgress != null && (
+              <Box role="status" aria-label={`Đang tải lên ${uploadProgress.percent}%`}>
+                <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.75 }}>
+                  <Typography variant="body2" fontWeight={700}>Đang tải file lên</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {(uploadProgress.loaded / 1024 / 1024).toFixed(1)}
+                    {uploadProgress.total ? ` / ${(uploadProgress.total / 1024 / 1024).toFixed(1)} MB` : ' MB'}
+                    {` (${uploadProgress.percent}%)`}
+                  </Typography>
+                </Stack>
+                <Box sx={{ height: 8, borderRadius: 999, bgcolor: 'background.secondary', overflow: 'hidden' }}>
+                  <Box sx={{ width: `${uploadProgress.percent}%`, height: '100%', borderRadius: 'inherit', background: 'linear-gradient(90deg, #6F55FF, #FFB347)', transition: 'width 120ms ease' }} />
+                </Box>
+                {uploadProgress.percent >= 100 && <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>Đã gửi xong, đang lưu file…</Typography>}
+              </Box>
+            )}
 
             {/* ── File picker (create mode) ── */}
             {isCreate && (
@@ -199,8 +218,9 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
                 )}
                 {file && !previewable && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-                    Định dạng {previewFormat || 'này'} chưa xem trước 3D được trong trình duyệt —
-                    file vẫn được tải lên và phân tích hình học bình thường.
+                    {file.size > MAX_AUTO_PREVIEW_BYTES
+                      ? 'Đã tắt xem trước để file lớn không làm chậm trình duyệt — file vẫn được tải lên và phân tích bình thường.'
+                      : `Định dạng ${previewFormat || 'này'} chưa xem trước 3D được trong trình duyệt — file vẫn được tải lên và phân tích hình học bình thường.`}
                   </Typography>
                 )}
               </Box>
@@ -211,6 +231,7 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
               placeholder={isCreate ? 'Tự điền khi chọn file (có thể sửa)' : 'VD: Bình hoa PLA'}
               fullWidth
               autoFocus={!isCreate}
+              slotProps={{ inputLabel: { shrink: true } }}
               {...register('name')}
               error={Boolean(errors.name)}
               helperText={errors.name?.message}
@@ -289,7 +310,7 @@ export function ModelFormDialog({ open, onClose, editing, onSubmit, submitting, 
           Hủy
         </Button>
         <Button type="submit" form="model-form" variant="contained" color="primary" disabled={submitting || (isCreate && !file)} startIcon={<SaveRounded />}>
-          {submitting ? 'Đang lưu…' : isCreate ? 'Tải lên' : 'Lưu thay đổi'}
+          {submitting ? (uploadProgress != null && uploadProgress.percent < 100 ? `Đang tải ${uploadProgress.percent}%` : 'Đang lưu…') : isCreate ? 'Tải lên' : 'Lưu thay đổi'}
         </Button>
       </DialogActions>
     </Dialog>

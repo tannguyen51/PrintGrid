@@ -177,11 +177,11 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
                       </Box>
                     </Stack>
                     <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
-                      <Chip size="small" color={model.isWatertight ? 'success' : 'error'} label={model.isWatertight ? 'Kín' : 'Không kín'} />
-                      <Chip size="small" color={model.isManifold ? 'success' : 'error'} label={model.isManifold ? 'Manifold' : 'Non-manifold'} />
+                      <Chip size="small" color={model.isWatertight ? 'success' : 'warning'} label={model.isWatertight ? 'Kín' : 'Không kín'} />
+                      <Chip size="small" color={model.isManifold ? 'success' : 'warning'} label={model.isManifold ? 'Manifold' : 'Non-manifold'} />
                     </Stack>
-                    {model.isPrintable === false && (
-                      <Typography color="#ff453a" sx={{ mt: 1.5 }}>{model.geometryMessage ?? 'Model không thể in trong mạng lưới hiện tại.'}</Typography>
+                    {model.geometryMessage && (
+                      <Typography color="warning.main" sx={{ mt: 1.5 }}>{model.geometryMessage} — Cần kiểm tra kết quả slice trước khi xác nhận in.</Typography>
                     )}
                   </Box>
                 )}
@@ -206,7 +206,7 @@ export function ModelDetailDrawer({ model, onClose, onEdit, onDelete, onOrder, o
               fullWidth
               startIcon={<LocalShippingOutlined />}
               onClick={() => onOrder(model)}
-              disabled={model.geometryStatus !== 'Ready' || model.isPrintable === false || model.reviewStatus !== 'Approved'}
+              disabled={model.geometryStatus !== 'Ready' || (model.isPrintable === false && model.isWatertight !== false && model.isManifold !== false) || model.reviewStatus !== 'Approved'}
             >
               Đặt in
             </Button>

@@ -10,7 +10,6 @@ using PrintGrid.Api.Models;
 using PrintGrid.Infrastructure.Shared.FileStorage;
 using PrintGrid.Modules.Customer.Application.Models;
 using PrintGrid.Modules.Customer.Domain.Repositories;
-using PrintGrid.Modules.Scheduling.Application.Abstractions;
 using PrintGrid.Modules.Admin.Application.AuditLogs;
 
 namespace PrintGrid.Api.Controllers;
@@ -23,7 +22,6 @@ public class ModelsController(
     IFileStorage files,
     IOptions<MinioOptions> minio,
     IOptions<ModelUploadOptions> uploadOptions,
-    ISlicingService slicingService,
     IAuditLogWriter audit,
     IModelRepository models)
     : ControllerBase
@@ -190,10 +188,10 @@ public class ModelsController(
     }
 
     [HttpPost("upload")]
-    // Must stay ABOVE nginx's client_max_body_size (60m) and above the real per-file limit:
+    // Match nginx's request ceiling (120m), above the real per-file limit:
     // if Kestrel rejects the body while reading the multipart form, model binding fails first
     // and the caller gets a raw 400 instead of this endpoint's `file_too_large` message.
-    [RequestSizeLimit(60 * 1024 * 1024)]
+    [RequestSizeLimit(120 * 1024 * 1024)]
     public async Task<IActionResult> Upload(
         [FromForm] UploadModelRequest request,
         CancellationToken cancellationToken)
@@ -207,7 +205,7 @@ public class ModelsController(
         {
             return StatusCode(StatusCodes.Status413PayloadTooLarge, new
             {
-                error = new { code = "file_too_large", message = "Kích thước file vượt giới hạn 50 MiB.", maxBytes = _uploadOptions.MaxFileBytes }
+                error = new { code = "file_too_large", message = $"Kích thước file vượt giới hạn {_uploadOptions.MaxFileBytes / (1024m * 1024):0.##} MiB.", maxBytes = _uploadOptions.MaxFileBytes }
             });
         }
 
@@ -238,30 +236,23 @@ public class ModelsController(
                 });
             }
 
+            // Stream once from the multipart temp file to object storage. CryptoStream
+            // computes BR-IP-001's SHA-256 while MinIO consumes the same bytes, avoiding
+            // the old 100 MiB RAM copy, synchronous mesh parse and separate hash pass.
             await using var stream = request.File.OpenReadStream();
-
-            // Compute SHA-256 of the exact bytes received (BR-IP-001) while buffering.
-            using var buffer = new MemoryStream();
             using var sha = System.Security.Cryptography.SHA256.Create();
-            await stream.CopyToAsync(buffer, cancellationToken);
-            buffer.Position = 0;
-
-            var contentError = await ModelFileInspector.ValidateContentAsync(buffer, ext, slicingService, cancellationToken);
-            if (contentError is not null)
-            {
-                return StatusCode(StatusCodes.Status415UnsupportedMediaType, new
-                {
-                    error = new { code = "invalid_file_content", message = contentError }
-                });
-            }
-
-            var sha256 = Convert.ToHexString(await sha.ComputeHashAsync(buffer, cancellationToken)).ToLowerInvariant();
-            buffer.Position = 0;
-
-            // Object key: printgrid-models/{customerId}/{guid}.{ext}
             var randomId = Guid.NewGuid();
             var objectName = $"{customerId}/{randomId}{ext}";
-            await files.UploadAsync(_minio.ModelBucket, objectName, buffer, ContentTypeFor(ext), cancellationToken);
+            await using var hashingStream = new System.Security.Cryptography.CryptoStream(
+                stream, sha, System.Security.Cryptography.CryptoStreamMode.Read);
+            await files.UploadAsync(
+                _minio.ModelBucket,
+                objectName,
+                hashingStream,
+                ContentTypeFor(ext),
+                cancellationToken,
+                request.File.Length);
+            var sha256 = Convert.ToHexString(sha.Hash!).ToLowerInvariant();
 
             try
             {

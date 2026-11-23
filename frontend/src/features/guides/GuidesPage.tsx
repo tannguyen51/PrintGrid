@@ -18,7 +18,7 @@ const FAQ = [
   {
     question: 'File của tôi cần đáp ứng điều kiện gì?',
     answer:
-      'Dung lượng tối đa 50 MB, định dạng STL, OBJ, 3MF hoặc GLB. Model nên là khối kín (watertight) và không có cạnh non-manifold để hệ thống phân tích hình học chính xác.',
+      'Dung lượng tối đa 100 MiB, định dạng STL, OBJ, 3MF hoặc GLB. Model nên là khối kín (watertight) và không có cạnh non-manifold để hệ thống phân tích hình học chính xác.',
   },
   {
     question: 'Vì sao hệ thống cần phân tích hình học?',
@@ -89,7 +89,7 @@ export default function GuidesPage() {
               Định dạng được nhận
             </Typography>
             <Typography sx={{ color: landing.textMuted, fontSize: '0.87rem', mb: 2 }}>
-              Tối đa 50 MB mỗi file. Hệ thống tự nhận diện định dạng từ phần mở rộng.
+              Tối đa 100 MiB mỗi file. Hệ thống tự nhận diện định dạng từ phần mở rộng.
             </Typography>
             <Stack spacing={1.5} divider={<Divider sx={{ borderColor: landing.hairlineSoft }} />}>
               {FORMATS.map((format) => (

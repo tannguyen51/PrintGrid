@@ -128,7 +128,7 @@ FR = thứ hệ thống PHẢI LÀM được (không có nó, một nghiệp v�
 | Mã | Bình dân: hệ thống cho khách làm gì | MoSCoW |
 |---|---|---|
 | CUST-001 | Đăng ký/đăng nhập, sửa hồ sơ, quản lý địa chỉ (xác minh email mới được đặt đơn) | Must |
-| CUST-002 | Tải file STL/OBJ/3MF ≤50MB vào kho bảo mật | Must |
+| CUST-002 | Tải file STL/OBJ/3MF ≤100 MiB vào kho bảo mật (thử nghiệm local; upload và slice dùng chung giới hạn) | Must |
 | CUST-003 | Xem trước 3D trên trình duyệt kèm kích thước bao | Should (ứng viên cắt) |
 | CUST-004 | Nhận phản hồi lỗi file: thủng lưới, đa dạng không kín, quá khổ máy | Must |
 | CUST-005 | Cấu hình in từng item: vật liệu, màu, lớp, đặc/rỗng, hậu xử lý, số lượng, dịch vụ, cần-xong | Must |

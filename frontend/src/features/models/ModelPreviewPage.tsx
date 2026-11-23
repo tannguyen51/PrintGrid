@@ -59,7 +59,7 @@ export default function ModelPreviewPage() {
 
   const canOrder =
     model?.geometryStatus === 'Ready' &&
-    model.isPrintable !== false &&
+    (model.isPrintable !== false || model.isWatertight === false || model.isManifold === false) &&
     model.reviewStatus === 'Approved'
   const dimensions = model ? formatDimensions(model) : '—'
 
@@ -260,14 +260,15 @@ export default function ModelPreviewPage() {
                 </Stack>
 
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
-                  <Chip size="small" color={model.isWatertight ? 'success' : 'error'} label={model.isWatertight ? 'Kín' : 'Không kín'} />
-                  <Chip size="small" color={model.isManifold ? 'success' : 'error'} label={model.isManifold ? 'Manifold' : 'Non-manifold'} />
-                  <Chip size="small" color={model.isPrintable === false ? 'error' : 'success'} label={model.isPrintable === false ? 'Không thể in' : 'Có thể in'} />
+                  <Chip size="small" color={model.isWatertight ? 'success' : 'warning'} label={model.isWatertight ? 'Kín' : 'Không kín'} />
+                  <Chip size="small" color={model.isManifold ? 'success' : 'warning'} label={model.isManifold ? 'Manifold' : 'Non-manifold'} />
+                  <Chip size="small" label="Cần kiểm tra kết quả slice" />
                 </Stack>
 
-                {model.isPrintable === false && (
-                  <Typography color="error.main" sx={{ mt: 1.5, fontSize: '0.9rem' }}>
+                {model.geometryMessage && (
+                  <Typography color="warning.main" sx={{ mt: 1.5, fontSize: '0.9rem' }}>
                     {model.geometryMessage ?? 'Model không thể in trong mạng lưới hiện tại.'}
+                    {' — Lỗi bề mặt có thể được slicer tự sửa. Cần kiểm tra đường in trước khi xác nhận in; thể tích và thời gian tham khảo có thể chưa chính xác.'}
                   </Typography>
                 )}
               </Box>

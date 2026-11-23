@@ -7,7 +7,8 @@ public interface IFileStorage
         string objectName,
         Stream content,
         string contentType,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        long? contentLength = null);
 
     Task<Stream> DownloadAsync(string bucket, string objectName, CancellationToken cancellationToken = default);
 

@@ -62,7 +62,8 @@ public class AnalyzeModelJob(
             if (!geometry.IsWatertight) issues.Add("Model không kín (not watertight)");
             if (!geometry.IsManifold) issues.Add("Model có cạnh non-manifold");
             if (!fitsAnyMachine) issues.Add("Kích thước model vượt quá khổ in của tất cả máy trong mạng lưới");
-            var printable = geometry is { IsWatertight: true, IsManifold: true } && fitsAnyMachine;
+            // Mesh topology is advisory; successful slicing determines printability.
+            var printable = fitsAnyMachine;
 
             model.ApplyGeometry(
                 geometry.WidthMm,
