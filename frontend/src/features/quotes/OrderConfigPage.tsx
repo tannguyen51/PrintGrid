@@ -30,6 +30,8 @@ import { QuoteHistoryPanel } from './QuoteHistoryPanel'
 import { useAuth } from '../../app/AuthContext'
 import type { TechConstraintsValue } from './TechConstraintsSelector'
 import MachinePinningSelector from './MachinePinningSelector'
+import { OrderShippingAddress } from './OrderShippingAddress'
+import type { CustomerAddress } from '../account/accountTypes'
 
 /**
  * G3 — Print configuration & pre-order flow.
@@ -91,11 +93,8 @@ export default function OrderConfigPage() {
   useEffect(() => {
     if (quoteStatus.data) setQuote(current => current?.id === quoteStatus.data.id ? quoteStatus.data : current)
   }, [quoteStatus.data])
-  const [street, setStreet] = useState('')
-  const [ward, setWard] = useState('')
-  const [district, setDistrict] = useState('')
-  const [city, setCity] = useState('')
-  const [postalCode, setPostalCode] = useState('')
+  const [shippingAddress, setShippingAddress] = useState<CustomerAddress | null>(null)
+  const { street = '', ward = '', district = '', city = '', postalCode = '' } = shippingAddress ?? {}
   const [requestedDeliveryDate, setRequestedDeliveryDate] = useState('')
   const addressValid = !!street.trim() && street.trim().length <= 200 && !!ward.trim() && ward.trim().length <= 100
     && !!district.trim() && district.trim().length <= 100 && !!city.trim() && city.trim().length <= 100 && postalCode.trim().length <= 20
@@ -233,7 +232,8 @@ export default function OrderConfigPage() {
     if (quote.status === 'Converted') return 'Báo giá này đã được đặt hàng. Bạn có thể xem đơn trong danh sách đơn hàng.'
     if (quote.status !== 'Ready' && quote.status !== 'Draft') return 'Báo giá chưa sẵn sàng để đặt hàng.'
     if (user && !user.isEmailVerified) return 'Vui lòng xác thực email trước khi đặt hàng.'
-    if (!addressValid) return 'Vui lòng điền đầy đủ số nhà/đường, phường/xã, quận/huyện và tỉnh/thành phố.'
+    if (!shippingAddress) return 'Vui lòng chọn hoặc thêm địa chỉ giao hàng.'
+    if (!addressValid) return 'Địa chỉ đã chọn chưa đầy đủ hoặc vượt giới hạn. Bấm “Sửa địa chỉ” để cập nhật số nhà/đường, phường/xã, quận/huyện và tỉnh/thành phố.'
     if (!requestedDeliveryDate) return 'Vui lòng chọn ngày giao hàng mong muốn.'
     if (requestedDeliveryDate <= today) return 'Ngày giao hàng mong muốn phải sau ngày hiện tại.'
     if (delivery.isFetching) return 'Đang kiểm tra khả năng giao hàng cho ngày bạn chọn.'
@@ -414,7 +414,7 @@ export default function OrderConfigPage() {
 
               {quote.status === 'Draft' && (
                 <Alert severity="info">
-                  Đây là bản nháp tính giá, chưa gửi đến Ops. Điền địa chỉ, ngày mong muốn và bấm “Gửi duyệt báo giá” để tạo đơn chờ duyệt.
+                  Đây là bản nháp tính giá, chưa gửi đến Ops. Chọn địa chỉ nhận hàng, ngày mong muốn và bấm “Gửi duyệt báo giá” để tạo đơn chờ duyệt.
                 </Alert>
               )}
 
@@ -434,17 +434,8 @@ export default function OrderConfigPage() {
 
               {/* Address */}
               <Box>
-                <Typography variant="body2" sx={{ color: 'text.primary', mb: 1 }}>Địa chỉ giao hàng</Typography>
                 <Stack spacing={2}>
-                  <TextField required label="Số nhà, đường" value={street} onChange={(e) => setStreet(e.target.value)} inputProps={{ maxLength: 200 }} fullWidth />
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                    <TextField required label="Phường/Xã" value={ward} onChange={(e) => setWard(e.target.value)} inputProps={{ maxLength: 100 }} fullWidth />
-                    <TextField required label="Quận/Huyện" value={district} onChange={(e) => setDistrict(e.target.value)} inputProps={{ maxLength: 100 }} fullWidth />
-                  </Stack>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                    <TextField required label="Tỉnh/Thành phố" value={city} onChange={(e) => setCity(e.target.value)} inputProps={{ maxLength: 100 }} fullWidth />
-                    <TextField label="Mã bưu điện" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} inputProps={{ maxLength: 20 }} sx={{ width: { xs: '100%', sm: 180 } }} />
-                  </Stack>
+                  <OrderShippingAddress value={shippingAddress} onChange={setShippingAddress} />
                   <TextField required type="date" label="Ngày giao hàng mong muốn" value={requestedDeliveryDate}
                     onChange={e => setRequestedDeliveryDate(e.target.value)} InputLabelProps={{ shrink: true }}
                     inputProps={{ min: today }} error={!!requestedDeliveryDate && requestedDeliveryDate <= today}
