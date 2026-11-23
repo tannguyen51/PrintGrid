@@ -17,6 +17,7 @@ public interface ILabRepository
     void RemoveMachine(Machine machine);
     void AddMaterialStock(MaterialStock stock);
     void AddStockTransaction(StockTransaction transaction);
+    void AddMaterialReservation(MaterialReservation reservation);
     Task<NetworkStatsSnapshot> GetNetworkStatsAsync(CancellationToken cancellationToken = default);
 }
 

@@ -16,6 +16,7 @@ public class AcceptJobCommandHandler(IJobRepository jobs, ILabRepository labs, I
         if (job.LabId is null) return Result.Failure(Error.Conflict("Job has no assigned lab"));
         var lab = await labs.GetByIdAsync(job.LabId.Value, cancellationToken);
         if (lab is null) return Result.Failure(Error.NotFound("Lab", job.LabId.Value));
+        var existingReservations = lab.MaterialReservations.Select(reservation => reservation.Id).ToHashSet();
         try
         {
             var demands = job.MaterialByColor();
@@ -28,6 +29,11 @@ public class AcceptJobCommandHandler(IJobRepository jobs, ILabRepository labs, I
 
         var result = job.Accept();
         if (result.IsFailure) return result;
+
+        // Reservations have application-assigned IDs. Mark new rows as Added explicitly
+        // so EF inserts them instead of attempting to update rows that do not exist.
+        foreach (var reservation in lab.MaterialReservations.Where(reservation => !existingReservations.Contains(reservation.Id)))
+            labs.AddMaterialReservation(reservation);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
