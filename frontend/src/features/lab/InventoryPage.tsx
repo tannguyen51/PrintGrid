@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Alert, Autocomplete, Avatar, Box, Button, Card, CardContent, Chip, Divider, Grid, InputAdornment, LinearProgress, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Autocomplete, Avatar, Box, Button, Card, CardContent, Chip, Divider, Grid, InputAdornment, LinearProgress, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { AddRounded, CategoryOutlined, Inventory2Outlined, SaveRounded, WarningAmberRounded } from '@mui/icons-material'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -51,11 +51,29 @@ export default function InventoryPage() {
   const [colorInput, setColorInput] = useState(colorInputLabel('BLACK'))
   const [quantityGrams, setQuantity] = useState(0)
   const [reorderPointGrams, setReorder] = useState(100)
+  const [stockMode, setStockMode] = useState<'add' | 'set'>('add')
   const [message, setMessage] = useState<string | null>(null)
   const inventory = useQuery({ queryKey: ['inventory', labId], queryFn: () => apiClient.get<Stock[]>(`/labs/${labId}/inventory`).then(r => r.data), enabled: !!labId })
   const save = useMutation({
-    mutationFn: () => apiClient.put(`/labs/${labId}/inventory`, { materialCode: materialCode.trim().toUpperCase(), colorCode: colorCode.trim().toUpperCase(), quantityGrams, reorderPointGrams }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['inventory', labId] }); queryClient.invalidateQueries({ queryKey: ['labs'] }); setMessage('Đã cập nhật tồn kho thành công.') },
+    mutationFn: async () => {
+      const material = materialCode.trim().toUpperCase()
+      const color = colorCode.trim().toUpperCase()
+      const existing = inventory.data?.find(x => x.materialCode === material && x.colorCode === color)
+      if (stockMode === 'add' && existing) {
+        return apiClient.post(`/labs/${labId}/inventory/adjustments`, {
+          materialCode: material, colorCode: color, deltaGrams: quantityGrams, reason: 'Nhập thêm vật liệu vào kho',
+        })
+      }
+      return apiClient.put(`/labs/${labId}/inventory`, {
+        materialCode: material, colorCode: color, quantityGrams, reorderPointGrams,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory', labId] })
+      queryClient.invalidateQueries({ queryKey: ['labs'] })
+      setMessage(stockMode === 'add' ? `Đã cộng thêm ${fmt(quantityGrams)} g vào tồn kho.` : 'Đã điều chỉnh tồn thực tế thành công.')
+      setQuantity(0)
+    },
   })
   const totals = useMemo(() => (inventory.data ?? []).reduce((sum, item) => ({ available: sum.available + item.availableGrams, reserved: sum.reserved + item.reservedGrams, low: sum.low + Number(item.isLowStock) }), { available: 0, reserved: 0, low: 0 }), [inventory.data])
 
@@ -76,24 +94,34 @@ export default function InventoryPage() {
 
     <Card variant="outlined" sx={{ borderRadius: 3, overflow: 'visible' }}><CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
       <Stack direction="row" spacing={1.2} alignItems="center" mb={.5}><AddRounded sx={{ color: 'primary.main' }} /><Typography variant="h6" fontWeight={800}>Cập nhật vật liệu trong kho</Typography></Stack>
-      <Typography variant="body2" color="text.secondary" mb={3}>Chọn từ danh sách hoặc nhập mã vật liệu, màu riêng của xưởng.</Typography>
+      <Typography variant="body2" color="text.secondary" mb={3}>Chọn từ danh mục chuẩn; bấm × trước nếu cần nhập một tên mới.</Typography>
       <Box component="form" onSubmit={e => { e.preventDefault(); save.mutate() }}><Grid container spacing={2.5}>
-        <Grid size={{ xs: 12, md: 6 }}><Autocomplete freeSolo options={MATERIALS.map(x => x.code)} value={materialCode} inputValue={materialInput}
+        <Grid size={{ xs: 12 }}><ToggleButtonGroup exclusive value={stockMode} onChange={(_, value) => value && setStockMode(value)} size="small" color="primary" aria-label="Cách cập nhật tồn kho">
+          <ToggleButton value="add">Nhập thêm (cộng dồn)</ToggleButton>
+          <ToggleButton value="set">Điều chỉnh tồn thực tế</ToggleButton>
+        </ToggleButtonGroup></Grid>
+        <Grid size={{ xs: 12, md: 6 }}><Autocomplete freeSolo options={MATERIALS.map(x => x.code)} value={materialCode || null} inputValue={materialInput}
           onChange={(_, value) => { const code = value ?? ''; setMaterial(code); setMaterialInput(code ? materialInputLabel(code) : '') }}
-          onInputChange={(_, value, reason) => { if (reason === 'input') { setMaterialInput(value); setMaterial(value.trim().toUpperCase()) } else if (reason === 'clear') { setMaterialInput(''); setMaterial('') } }}
+          onInputChange={(_, value, reason) => {
+            if (reason === 'clear') { setMaterial(''); setMaterialInput(''); return }
+            if (reason === 'input' && materialInput !== materialInputLabel(materialCode)) { setMaterialInput(value); setMaterial(value.trim().toUpperCase()) }
+          }}
           getOptionLabel={code => `${code} — ${MATERIALS.find(x => x.code === code)?.name ?? code}`}
           renderOption={(props, code) => { const item = MATERIALS.find(x => x.code === code); return <Box component="li" {...props} key={code}><Stack><Typography fontWeight={700}>{item?.name ?? code} <Typography component="span" variant="caption" color="text.secondary">({code})</Typography></Typography><Typography variant="caption" color="text.secondary">{item?.note}</Typography></Stack></Box> }}
-          renderInput={params => <TextField {...params} required label="Vật liệu" placeholder="Tìm hoặc nhập vật liệu" InputProps={{ ...params.InputProps, startAdornment: <><InputAdornment position="start"><CategoryOutlined fontSize="small" /></InputAdornment>{params.InputProps.startAdornment}</> }} />} /></Grid>
-        <Grid size={{ xs: 12, md: 6 }}><Autocomplete freeSolo options={COLORS.map(x => x.code)} value={colorCode} inputValue={colorInput}
+          renderInput={params => <TextField {...params} required label="Vật liệu" placeholder="Tìm vật liệu" InputProps={{ ...params.InputProps, startAdornment: <><InputAdornment position="start"><CategoryOutlined fontSize="small" /></InputAdornment>{params.InputProps.startAdornment}</> }} />} /></Grid>
+        <Grid size={{ xs: 12, md: 6 }}><Autocomplete freeSolo options={COLORS.map(x => x.code)} value={colorCode || null} inputValue={colorInput}
           onChange={(_, value) => { const code = value ?? ''; setColor(code); setColorInput(code ? colorInputLabel(code) : '') }}
-          onInputChange={(_, value, reason) => { if (reason === 'input') { setColorInput(value); setColor(value.trim().toUpperCase()) } else if (reason === 'clear') { setColorInput(''); setColor('') } }}
+          onInputChange={(_, value, reason) => {
+            if (reason === 'clear') { setColor(''); setColorInput(''); return }
+            if (reason === 'input' && colorInput !== colorInputLabel(colorCode)) { setColorInput(value); setColor(value.trim().toUpperCase()) }
+          }}
           getOptionLabel={code => `${COLORS.find(x => x.code === code)?.label ?? code} — ${code}`}
           renderOption={(props, code) => { const item = colorInfo(code); return <Box component="li" {...props} key={code} sx={{ gap: 1.5 }}><ColorDot code={code} /><Box><Typography fontWeight={700}>{item?.label ?? code}</Typography><Typography variant="caption" color="text.secondary">{code}</Typography></Box></Box> }}
-          renderInput={params => <TextField {...params} required label="Màu sắc" placeholder="Tìm hoặc nhập màu" InputProps={{ ...params.InputProps, startAdornment: <><InputAdornment position="start"><ColorDot code={colorCode} size={20} /></InputAdornment>{params.InputProps.startAdornment}</> }} />} /></Grid>
+          renderInput={params => <TextField {...params} required label="Màu sắc" placeholder="Tìm màu" InputProps={{ ...params.InputProps, startAdornment: <><InputAdornment position="start"><ColorDot code={colorCode} size={20} /></InputAdornment>{params.InputProps.startAdornment}</> }} />} /></Grid>
         <Grid size={{ xs: 12 }}><Typography variant="caption" color="text.secondary" display="block" mb={1}>Chọn nhanh màu phổ biến</Typography><Stack direction="row" gap={1} flexWrap="wrap">{COLORS.map(color => <Chip key={color.code} clickable onClick={() => { setColor(color.code); setColorInput(colorInputLabel(color.code)) }} variant={colorCode === color.code ? 'filled' : 'outlined'} color={colorCode === color.code ? 'primary' : 'default'} avatar={<Avatar sx={{ bgcolor: 'transparent !important' }}><ColorDot code={color.code} size={18} /></Avatar>} label={color.label} />)}</Stack></Grid>
-        <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth required label="Tồn thực tế" type="number" value={quantityGrams} onChange={e => setQuantity(Number(e.target.value))} inputProps={{ min: 0, step: .01 }} InputProps={{ endAdornment: <InputAdornment position="end">gram</InputAdornment> }} helperText="Khối lượng hiện có trong kho" /></Grid>
+        <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth required label={stockMode === 'add' ? 'Khối lượng nhập thêm' : 'Tồn thực tế sau kiểm kê'} type="number" value={quantityGrams} onChange={e => setQuantity(Number(e.target.value))} inputProps={{ min: 0, step: .01 }} InputProps={{ endAdornment: <InputAdornment position="end">gram</InputAdornment> }} helperText={stockMode === 'add' ? 'Số gram này sẽ được cộng vào lượng đang có' : 'Tồn kho sẽ được đặt chính xác bằng số này'} /></Grid>
         <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth required label="Ngưỡng cảnh báo" type="number" value={reorderPointGrams} onChange={e => setReorder(Number(e.target.value))} inputProps={{ min: 0, step: .01 }} InputProps={{ endAdornment: <InputAdornment position="end">gram</InputAdornment> }} helperText="Cảnh báo khi tồn kho bằng hoặc thấp hơn mức này" /></Grid>
-        <Grid size={{ xs: 12 }}><Stack direction="row" justifyContent="flex-end"><Button type="submit" size="large" variant="contained" startIcon={<SaveRounded />} disabled={save.isPending || !materialCode.trim() || !colorCode.trim() || quantityGrams < 0 || reorderPointGrams < 0} sx={{ px: 3, minWidth: 170 }}>{save.isPending ? 'Đang lưu...' : 'Lưu vào kho'}</Button></Stack></Grid>
+        <Grid size={{ xs: 12 }}><Stack direction="row" justifyContent="flex-end"><Button type="submit" size="large" variant="contained" startIcon={<SaveRounded />} disabled={save.isPending || !materialCode.trim() || !colorCode.trim() || (stockMode === 'add' ? quantityGrams <= 0 : quantityGrams < 0) || reorderPointGrams < 0} sx={{ px: 3, minWidth: 190 }}>{save.isPending ? 'Đang lưu...' : stockMode === 'add' ? 'Cộng vào kho' : 'Lưu tồn thực tế'}</Button></Stack></Grid>
       </Grid></Box>
     </CardContent></Card>
 
