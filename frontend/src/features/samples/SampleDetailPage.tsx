@@ -16,6 +16,7 @@ import { PageBackButton } from '../../shared/components/PageBackButton'
 import { landing, PillButton } from '../../shared/theme/landing'
 import { landingCardSx } from '../../shared/components/StatusChip'
 import { getApiErrorMessage } from '../../shared/api/apiError'
+import { apiClient } from '../../shared/api/apiClient'
 import { PageHeading, PublicPage } from '../public/PublicLayout'
 import { SampleCard } from './components/SampleCard'
 import { formatDims, formatPrintTime, formatVnd } from './sampleTypes'
@@ -101,7 +102,7 @@ export default function SampleDetailPage() {
             }}
           >
             <ModelViewer
-              url={`/api/v1/samples/${encodeURIComponent(sample.slug)}/file`}
+              url={apiClient.getUri({ url: `/samples/${encodeURIComponent(sample.slug)}/file` })}
               format={sample.fileFormat}
               fit
               height="100%"

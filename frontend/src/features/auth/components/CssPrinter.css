@@ -1,0 +1,256 @@
+.auth-printer-scene {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  container-type: size;
+  pointer-events: none;
+}
+
+.auth-printer {
+  position: relative;
+  width: min(78cqw, 78cqh, 440px);
+  aspect-ratio: 1 / 1.12;
+}
+
+.auth-printer *,
+.auth-printer *::before,
+.auth-printer *::after {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.auth-printer__shadow {
+  inset: 87% 0 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #4933b83b, transparent 68%);
+  filter: blur(12px);
+}
+
+.auth-printer__spool-mount {
+  left: 38%;
+  top: 10%;
+  width: 5%;
+  height: 18%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #8992a5, #e8ebf2 48%, #a4abbd);
+}
+
+.auth-printer__spool {
+  left: 24%;
+  top: 1%;
+  width: 29%;
+  aspect-ratio: 1;
+  border: 5px solid #e8ebf2;
+  border-radius: 50%;
+  background: radial-gradient(circle, #454358 0 10%, #c0c6d4 11% 17%, transparent 18%),
+    repeating-conic-gradient(from 0deg, #a78bfa 0deg 2deg, #7e61d6 3deg 5deg);
+  box-shadow: inset 0 0 0 4px #ffffff70, 5px 3px 0 #8992a5, 9px 8px 15px #4933b81a;
+}
+
+.auth-printer__filament {
+  left: 47%;
+  top: 10%;
+  width: 22%;
+  height: 24%;
+  border: 2px solid #a78bfa;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0 70% 0 0;
+}
+
+.auth-printer__side {
+  inset: 20% 3% 11% 77%;
+  clip-path: polygon(0 7%, 100% 0, 100% 91%, 0 100%);
+  background: linear-gradient(110deg, #c0c6d4, #959eb2);
+}
+
+.auth-printer__side::after {
+  content: '';
+  inset: 12% 18% 17% 25%;
+  border: 1px solid #ffffff55;
+  background: linear-gradient(120deg, #5a566f, #353444);
+  clip-path: polygon(0 6%, 100% 0, 100% 94%, 0 100%);
+}
+
+.auth-printer__top {
+  inset: 20% 3% 71% 8%;
+  clip-path: polygon(0 60%, 78% 60%, 100% 0, 22% 0);
+  background: linear-gradient(160deg, #ffffff, #dce0ea);
+}
+
+.auth-printer__body {
+  inset: 25% 21% 11% 8%;
+  border: 1px solid #ffffff;
+  border-radius: 12px 9px 10px 12px;
+  background: linear-gradient(115deg, #ffffff, #f1f3f8 45%, #dce0ea);
+  box-shadow: inset 3px 0 4px #ffffff, inset -3px 0 5px #8992a54d, 0 12px 22px #4933b81a;
+}
+
+.auth-printer__wordmark {
+  inset: 3.5% 9% auto;
+  color: #68708a;
+  font: 700 clamp(8px, 2cqw, 12px) / 1.2 'Inter', sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.auth-printer__wordmark span {
+  right: 0;
+  color: #9299aa;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+.auth-printer__chamber {
+  inset: 12% 8% 22%;
+  overflow: hidden;
+  border: 5px solid #a9afbf;
+  border-radius: 5px;
+  background: radial-gradient(ellipse at 50% 0, #c0b3ef55, transparent 70%),
+    linear-gradient(135deg, #343246, #535066 65%, #373548);
+  box-shadow: 0 1px 0 #ffffff, inset 0 2px 12px #25263a80;
+}
+
+.auth-printer__rail {
+  top: 3%;
+  bottom: 8%;
+  width: 3%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #8992a5, #e8ebf2 50%, #68708a);
+}
+
+.auth-printer__rail--left { left: 8%; }
+.auth-printer__rail--right { right: 8%; }
+
+.auth-printer__bed-support {
+  inset: 77% 44% 2%;
+  background: linear-gradient(90deg, #25263a, #8992a5, #343246);
+}
+
+.auth-printer__bed {
+  inset: 70% 9% 14%;
+  border-bottom: 5px solid #8992a5;
+  border-radius: 3px;
+  background: repeating-linear-gradient(0deg, transparent 0 12px, #c0c6d433 12px 13px),
+    repeating-linear-gradient(90deg, #505062 0 12px, #c0c6d455 12px 13px);
+  transform: perspective(220px) rotateX(48deg);
+  box-shadow: 0 7px 10px #25263a66, 0 -1px 0 #ffb34799;
+}
+
+.auth-printer__print {
+  left: 38%;
+  bottom: 24%;
+  width: 25%;
+  height: 27%;
+  clip-path: polygon(26% 0, 74% 0, 70% 13%, 73% 30%, 94% 65%, 100% 90%, 91% 100%, 9% 100%, 0 90%, 6% 65%, 27% 30%, 30% 13%);
+  background: repeating-linear-gradient(0deg, #ffffff00 0 3px, #4933b844 3px 4px),
+    linear-gradient(90deg, #6f55ff, #c4b5fd 42%, #a78bfa 65%, #6f55ff);
+  border-radius: 0 0 20% 20%;
+}
+
+.auth-printer__gantry {
+  inset: 31% 3% auto;
+  height: 8%;
+  border-top: 2px solid #c0c6d4;
+  border-bottom: 2px solid #25263a;
+  background: linear-gradient(#68708a, #343246);
+}
+
+.auth-printer__head {
+  left: 43%;
+  top: -60%;
+  width: 23%;
+  height: 270%;
+  border: 1px solid #ffffff;
+  border-radius: 5px 5px 8px 8px;
+  background: linear-gradient(110deg, #ffffff, #dce0ea);
+  box-shadow: 3px 3px 0 #8992a5, 0 5px 12px #25263a55;
+  animation: auth-printer-travel 6s ease-in-out infinite;
+}
+
+.auth-printer__fan {
+  inset: 14% 19% 28%;
+  border: 3px solid #8992a5;
+  border-radius: 50%;
+  background: repeating-conic-gradient(#343246 0deg 35deg, #68708a 35deg 60deg);
+  box-shadow: inset 0 0 0 2px #343246;
+}
+
+.auth-printer__nozzle {
+  inset: 100% 34% -23%;
+  background: linear-gradient(90deg, #d99528, #ffd58a, #d99528);
+  clip-path: polygon(0 0, 100% 0, 65% 100%, 35% 100%);
+}
+
+.auth-printer__glass {
+  inset: 0;
+  background: linear-gradient(120deg, transparent 25%, #ffffff0d 25% 43%, transparent 43% 60%, #ffffff06 60% 72%, transparent 72%);
+  box-shadow: inset 0 1px 0 #a78bfa99;
+}
+
+.auth-printer__console {
+  inset: 83% 9% 6%;
+}
+
+.auth-printer__vents {
+  inset: 27% 65% 27% 0;
+  background: repeating-linear-gradient(90deg, #8992a5 0 2px, transparent 2px 6px);
+}
+
+.auth-printer__screen {
+  inset: 0 14% 0 47%;
+  border: 3px solid #8992a5;
+  border-radius: 4px;
+  background: #343246;
+  box-shadow: 0 1px 0 #ffffff;
+}
+
+.auth-printer__screen span {
+  left: 12%;
+  height: 7%;
+  border-radius: 2px;
+  background: #c4b5fd;
+}
+
+.auth-printer__screen span:nth-child(1) { top: 23%; width: 38%; }
+.auth-printer__screen span:nth-child(2) { top: 43%; width: 56%; opacity: 0.5; }
+.auth-printer__screen span:nth-child(3) { top: 72%; width: 73%; background: linear-gradient(90deg, #a78bfa, #ffb347); }
+
+.auth-printer__dial {
+  right: 0;
+  top: 20%;
+  height: 65%;
+  aspect-ratio: 1;
+  border: 2px solid #8992a5;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffffff, #c0c6d4);
+  box-shadow: 1px 2px 2px #68708a55;
+}
+
+.auth-printer__accent {
+  inset: auto 10% 2%;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #6f55ff, #a78bfa, #ffb347);
+  box-shadow: 0 0 9px #a78bfa66;
+}
+
+.auth-printer__foot {
+  top: 89%;
+  width: 13%;
+  height: 3%;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(#68708a, #343246);
+}
+
+.auth-printer__foot--left { left: 15%; }
+.auth-printer__foot--right { right: 18%; }
+
+@keyframes auth-printer-travel {
+  0%, 100% { transform: translateX(-28%); }
+  50% { transform: translateX(28%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-printer__head { animation: none; }
+}

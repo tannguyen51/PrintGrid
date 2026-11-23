@@ -1,16 +1,12 @@
 import { Box, Stack, Typography } from '@mui/material'
 import { BrandGlyph } from '../../../shared/components/BrandGlyph'
 import { useTheme } from '@mui/material/styles'
-import { GeometricNetwork } from '../../home/landing/GeometricNetwork'
+import { CssPrinter } from './CssPrinter'
 import { ambient, palette, shadows } from '../../../shared/theme/tokens'
 
 /**
- * Right showcase panel: a soft lavender/gold studio with the metallic Rubik
- * scene, brand header and (when framed inside a dialog) a white metallic border.
- *
- * The scene is the same procedural R3F piece used by the public hero — no
- * external GLB fetch, no 2 MB download, and the lighting stays on-brand in both
- * placements.
+ * Right showcase panel: a soft lavender/gold studio with a CSS 3D printer,
+ * brand header and (when framed inside a dialog) a white metallic border.
  */
 export function LoginShowcase({ frame = false }: { frame?: boolean }) {
   const theme = useTheme()
@@ -63,9 +59,9 @@ export function LoginShowcase({ frame = false }: { frame?: boolean }) {
         </Box>
       </Stack>
 
-      {/* ── Metallic showcase scene ── */}
-      <Box sx={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-        <GeometricNetwork cameraDistance={10.5} />
+      {/* Leave room for the brand header above the decorative printer. */}
+      <Box sx={{ position: 'absolute', inset: '96px 0 0', zIndex: 1 }}>
+        <CssPrinter />
       </Box>
 
       {/* Stat chips with hardcoded figures removed (26/09): the product must not
