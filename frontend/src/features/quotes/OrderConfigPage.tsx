@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { apiClient } from '../../shared/api/apiClient'
 import {
   Alert,
@@ -42,6 +42,8 @@ import type { CustomerAddress } from '../account/accountTypes'
 export default function OrderConfigPage() {
   const { modelId } = useParams<{ modelId: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedQuoteId = searchParams.get('quoteId')
   const createQuote = useCreateQuote()
   const placeOrder = usePlaceOrder()
   const quoteResult = useRef<HTMLDivElement>(null)
@@ -89,10 +91,19 @@ export default function OrderConfigPage() {
 
   // Quote + address state
   const [quote, setQuote] = useState<Quote | null>(null)
-  const quoteStatus = useQuote(quote?.id ?? null)
+  const quoteStatus = useQuote(quote?.id ?? requestedQuoteId)
   useEffect(() => {
-    if (quoteStatus.data) setQuote(current => current?.id === quoteStatus.data.id ? quoteStatus.data : current)
-  }, [quoteStatus.data])
+    const restored = quoteStatus.data
+    if (!restored) return
+    // The server is the source of truth for a quote reopened from another page.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setQuote(restored)
+    if (requestedQuoteId === restored.id) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('quoteId')
+      setSearchParams(next, { replace: true })
+    }
+  }, [quoteStatus.data, requestedQuoteId, searchParams, setSearchParams])
   const [shippingAddress, setShippingAddress] = useState<CustomerAddress | null>(null)
   const { street = '', ward = '', district = '', city = '', postalCode = '' } = shippingAddress ?? {}
   const [requestedDeliveryDate, setRequestedDeliveryDate] = useState('')
@@ -110,10 +121,20 @@ export default function OrderConfigPage() {
   const [acceptTerms, setAcceptTerms] = useState(false)
   const configKey = JSON.stringify([modelId, material, colors, sizeCode, polishing, layerIndex, infill, quantity, techConstraints ?? {}, pinnedModelId])
   const currentConfig = useRef(configKey)
+  // The ref guards an in-flight calculation from being applied after its form changed.
+  // oxlint-disable-next-line react/refs
   currentConfig.current = configKey
+  const previousConfig = useRef(configKey)
 
   // A result belongs to exactly one configuration. Never allow placing a stale quote.
-  useEffect(() => { setQuote(null); setConfigError(null) }, [configKey])
+  useEffect(() => {
+    if (previousConfig.current === configKey) return
+    previousConfig.current = configKey
+    // A quote calculated for the previous form must never be submitted with new settings.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setQuote(null)
+    setConfigError(null)
+  }, [configKey])
 
   useEffect(() => {
     if (quote?.id && window.matchMedia('(max-width: 1199px)').matches)

@@ -39,6 +39,7 @@ interface NavItem {
 const CUSTOMER_NAV: NavItem[] = [
   { label: 'Đặt in', href: '/order/new' },
   { label: 'Thư viện model', href: '/models' },
+  { label: 'Báo giá', href: '/quotes' },
   { label: 'Đơn hàng', href: '/orders' },
   { label: 'Yêu cầu thiết kế', href: '/design-request' },
 ]

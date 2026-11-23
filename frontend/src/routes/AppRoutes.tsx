@@ -12,6 +12,7 @@ const HomePage = lazy(() => import('../features/home/HomePage'))
 const ModelLibraryPage = lazy(() => import('../features/models/ModelLibraryPage'))
 const StartOrderPage = lazy(() => import('../features/orders/StartOrderPage'))
 const OrderConfigPage = lazy(() => import('../features/quotes/OrderConfigPage'))
+const CustomerQuotesPage = lazy(() => import('../features/quotes/CustomerQuotesPage'))
 const OrdersPage = lazy(() => import('../features/orders/OrdersPage'))
 const OrderStatisticsPage = lazy(() => import('../features/ops/OrderStatisticsPage'))
 const DateChangeDecisionPage = lazy(() => import('../features/orders/DateChangeDecisionPage'))
@@ -148,6 +149,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['Customer']}>
               <DesignRequestPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/quotes"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <CustomerQuotesPage />
             </ProtectedRoute>
           }
         />
