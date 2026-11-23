@@ -50,6 +50,23 @@ public class InventoryController(ISender sender) : ControllerBase
         return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
     }
 
+    [HttpDelete("{stockId:guid}")]
+    [Authorize(Roles = $"{Roles.LabManager},{Roles.OpsManager},{Roles.Admin}")]
+    public async Task<IActionResult> Delete(Guid labId, Guid stockId, CancellationToken ct)
+    {
+        if (!await CanAccessLab(labId, ct)) return Forbid();
+        var result = await sender.Send(new DeleteMaterialStockCommand(labId, stockId), ct);
+        if (result.IsSuccess) return NoContent();
+
+        var status = result.Error.Code switch
+        {
+            "not_found" => StatusCodes.Status404NotFound,
+            "conflict" => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status400BadRequest,
+        };
+        return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
+    }
+
     private async Task<bool> CanAccessLab(Guid labId, CancellationToken cancellationToken)
     {
         if (!User.IsInRole(Roles.LabManager)) return true;

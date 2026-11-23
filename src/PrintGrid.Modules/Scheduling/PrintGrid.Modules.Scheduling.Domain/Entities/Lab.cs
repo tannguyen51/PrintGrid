@@ -290,6 +290,16 @@ public class Lab : AggregateRoot<Guid>
         _stockTransactions.Add(StockTransaction.Create(Id, stock.Id, deltaGrams, stock.AvailableGrams, reason));
     }
 
+    public bool RemoveMaterialStock(Guid stockId)
+    {
+        var stock = _materialStocks.SingleOrDefault(item => item.Id == stockId);
+        if (stock is null) return false;
+        if (stock.ReservedGrams > 0 || _materialReservations.Any(item => item.MaterialStockId == stockId))
+            throw new InvalidOperationException("Không thể xóa vật liệu đang được giữ cho đơn in.");
+
+        return _materialStocks.Remove(stock);
+    }
+
     public void ReserveMaterial(Guid jobId, string materialCode, string colorCode, decimal estimatedGrams, decimal tolerancePercent = 0.03m)
     {
         if (tolerancePercent is < 0.01m or > 0.05m) throw new ArgumentOutOfRangeException(nameof(tolerancePercent));

@@ -81,4 +81,32 @@ public class MaterialInventoryTests
         lab.MaterialReservations.Should().BeEmpty();
         lab.StockTransactions.Should().BeEmpty();
     }
+
+    [Fact]
+    public void Material_stock_without_reservations_can_be_removed()
+    {
+        var lab = Lab.Onboard("Lab", "HCM", 1);
+        lab.SetMaterialStock("PLA", "BLACK", 100m, 25m);
+        var stockId = lab.MaterialStocks.Single().Id;
+
+        var removed = lab.RemoveMaterialStock(stockId);
+
+        removed.Should().BeTrue();
+        lab.MaterialStocks.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Material_stock_reserved_for_a_job_cannot_be_removed()
+    {
+        var lab = Lab.Onboard("Lab", "HCM", 1);
+        lab.SetMaterialStock("PLA", "BLACK", 100m, 25m);
+        var stockId = lab.MaterialStocks.Single().Id;
+        lab.ReserveMaterial(Guid.NewGuid(), "PLA", "BLACK", 40m);
+
+        Action remove = () => lab.RemoveMaterialStock(stockId);
+
+        remove.Should().Throw<InvalidOperationException>()
+            .WithMessage("*đang được giữ cho đơn in*");
+        lab.MaterialStocks.Should().ContainSingle();
+    }
 }

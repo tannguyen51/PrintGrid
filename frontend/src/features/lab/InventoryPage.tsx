@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Alert, Autocomplete, Avatar, Box, Button, Card, CardContent, Chip, Divider, FormControl, Grid, InputAdornment, InputLabel, LinearProgress, MenuItem, Select, Stack, TextField, Typography } from '@mui/material'
-import { AddRounded, CategoryOutlined, Inventory2Outlined, SaveRounded, SearchRounded, WarningAmberRounded } from '@mui/icons-material'
+import { Alert, Autocomplete, Avatar, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControl, Grid, IconButton, InputAdornment, InputLabel, LinearProgress, MenuItem, Select, Stack, TablePagination, TextField, Tooltip, Typography } from '@mui/material'
+import { AddRounded, CategoryOutlined, DeleteOutlineRounded, Inventory2Outlined, SaveRounded, SearchRounded, WarningAmberRounded } from '@mui/icons-material'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '../../shared/api/apiClient'
@@ -55,6 +55,9 @@ export default function InventoryPage() {
   const [materialFilter, setMaterialFilter] = useState('ALL')
   const [colorFilter, setColorFilter] = useState('ALL')
   const [stockFilter, setStockFilter] = useState<'ALL' | 'LOW' | 'AVAILABLE'>('ALL')
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(5)
+  const [deleteTarget, setDeleteTarget] = useState<Stock | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const inventory = useQuery({ queryKey: ['inventory', labId], queryFn: () => apiClient.get<Stock[]>(`/labs/${labId}/inventory`).then(r => r.data), enabled: !!labId })
   const save = useMutation({
@@ -78,6 +81,15 @@ export default function InventoryPage() {
       setQuantity(0)
     },
   })
+  const deleteStock = useMutation({
+    mutationFn: (stockId: string) => apiClient.delete(`/labs/${labId}/inventory/${stockId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory', labId] })
+      queryClient.invalidateQueries({ queryKey: ['labs'] })
+      setMessage('Đã xóa vật liệu khỏi kho.')
+      setDeleteTarget(null)
+    },
+  })
   const totals = useMemo(() => (inventory.data ?? []).reduce((sum, item) => ({ available: sum.available + item.availableGrams, reserved: sum.reserved + item.reservedGrams, low: sum.low + Number(item.isLowStock) }), { available: 0, reserved: 0, low: 0 }), [inventory.data])
   const materialFilters = useMemo(() => [...new Set((inventory.data ?? []).map(item => item.materialCode))].sort(), [inventory.data])
   const colorFilters = useMemo(() => [...new Set((inventory.data ?? []).map(item => item.colorCode))].sort(), [inventory.data])
@@ -93,6 +105,8 @@ export default function InventoryPage() {
     })
   }, [colorFilter, inventory.data, materialFilter, search, stockFilter])
   const hasActiveFilters = Boolean(search.trim()) || materialFilter !== 'ALL' || colorFilter !== 'ALL' || stockFilter !== 'ALL'
+  const currentPage = Math.min(page, Math.max(0, Math.ceil(filteredInventory.length / rowsPerPage) - 1))
+  const paginatedInventory = useMemo(() => filteredInventory.slice(currentPage * rowsPerPage, currentPage * rowsPerPage + rowsPerPage), [currentPage, filteredInventory, rowsPerPage])
 
   return <Box sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: '#F8F7FC', py: { xs: 2.5, md: 4 }, px: { xs: 2, md: 3 } }}><Box sx={{ maxWidth: 1120, mx: 'auto' }}><Stack spacing={3}>
     <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={2}>
@@ -101,6 +115,7 @@ export default function InventoryPage() {
     </Stack>
     {message && <Alert severity="success" onClose={() => setMessage(null)}>{message}</Alert>}
     {save.isError && <Alert severity="error" onClose={() => save.reset()}>{getApiErrorMessage(save.error, 'Không lưu được tồn kho. Vui lòng kiểm tra lại thông tin.')}</Alert>}
+    {deleteStock.isError && <Alert severity="error" onClose={() => deleteStock.reset()}>{getApiErrorMessage(deleteStock.error, 'Không thể xóa vật liệu khỏi kho.')}</Alert>}
     {inventory.isError && <Alert severity="error">Không tải được dữ liệu tồn kho.</Alert>}
 
     <Grid container spacing={2}>{[
@@ -140,19 +155,25 @@ export default function InventoryPage() {
 
     <Box><Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}><Typography variant="h6" fontWeight={800}>Danh sách tồn kho</Typography><Chip size="small" label={hasActiveFilters ? `${filteredInventory.length}/${inventory.data?.length ?? 0} kết quả` : `${inventory.data?.length ?? 0} loại vật liệu`} /></Stack>
       <Card variant="outlined" sx={{ borderRadius: 3, mb: 2 }}><CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}><Grid container spacing={1.5}>
-        <Grid size={{ xs: 12, md: 4 }}><TextField fullWidth size="small" label="Tìm trong kho" value={search} onChange={event => setSearch(event.target.value)} placeholder="Tên, mã vật liệu hoặc màu" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRounded fontSize="small" /></InputAdornment> }} /></Grid>
-        <Grid size={{ xs: 12, sm: 4, md: 2.5 }}><FormControl fullWidth size="small"><InputLabel id="material-filter-label">Vật liệu</InputLabel><Select labelId="material-filter-label" label="Vật liệu" value={materialFilter} onChange={event => setMaterialFilter(event.target.value)}><MenuItem value="ALL">Tất cả vật liệu</MenuItem>{materialFilters.map(code => <MenuItem key={code} value={code}>{materialName(code)}</MenuItem>)}</Select></FormControl></Grid>
-        <Grid size={{ xs: 12, sm: 4, md: 2.5 }}><FormControl fullWidth size="small"><InputLabel id="color-filter-label">Màu sắc</InputLabel><Select labelId="color-filter-label" label="Màu sắc" value={colorFilter} onChange={event => setColorFilter(event.target.value)}><MenuItem value="ALL">Tất cả màu</MenuItem>{colorFilters.map(code => <MenuItem key={code} value={code}><Stack direction="row" spacing={1} alignItems="center"><ColorDot code={code} size={16} /><span>{colorInfo(code)?.label ?? code}</span></Stack></MenuItem>)}</Select></FormControl></Grid>
-        <Grid size={{ xs: 12, sm: 4, md: 3 }}><FormControl fullWidth size="small"><InputLabel id="stock-filter-label">Trạng thái</InputLabel><Select labelId="stock-filter-label" label="Trạng thái" value={stockFilter} onChange={event => setStockFilter(event.target.value as 'ALL' | 'LOW' | 'AVAILABLE')}><MenuItem value="ALL">Tất cả trạng thái</MenuItem><MenuItem value="LOW">Sắp hết</MenuItem><MenuItem value="AVAILABLE">Còn đủ</MenuItem></Select></FormControl></Grid>
-        {hasActiveFilters && <Grid size={{ xs: 12 }}><Stack direction="row" justifyContent="flex-end"><Button size="small" onClick={() => { setSearch(''); setMaterialFilter('ALL'); setColorFilter('ALL'); setStockFilter('ALL') }}>Xóa bộ lọc</Button></Stack></Grid>}
+        <Grid size={{ xs: 12, md: 4 }}><TextField fullWidth size="small" label="Tìm trong kho" value={search} onChange={event => { setSearch(event.target.value); setPage(0) }} placeholder="Tên, mã vật liệu hoặc màu" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRounded fontSize="small" /></InputAdornment> }} /></Grid>
+        <Grid size={{ xs: 12, sm: 4, md: 2.5 }}><FormControl fullWidth size="small"><InputLabel id="material-filter-label">Vật liệu</InputLabel><Select labelId="material-filter-label" label="Vật liệu" value={materialFilter} onChange={event => { setMaterialFilter(event.target.value); setPage(0) }}><MenuItem value="ALL">Tất cả vật liệu</MenuItem>{materialFilters.map(code => <MenuItem key={code} value={code}>{materialName(code)}</MenuItem>)}</Select></FormControl></Grid>
+        <Grid size={{ xs: 12, sm: 4, md: 2.5 }}><FormControl fullWidth size="small"><InputLabel id="color-filter-label">Màu sắc</InputLabel><Select labelId="color-filter-label" label="Màu sắc" value={colorFilter} onChange={event => { setColorFilter(event.target.value); setPage(0) }}><MenuItem value="ALL">Tất cả màu</MenuItem>{colorFilters.map(code => <MenuItem key={code} value={code}><Stack direction="row" spacing={1} alignItems="center"><ColorDot code={code} size={16} /><span>{colorInfo(code)?.label ?? code}</span></Stack></MenuItem>)}</Select></FormControl></Grid>
+        <Grid size={{ xs: 12, sm: 4, md: 3 }}><FormControl fullWidth size="small"><InputLabel id="stock-filter-label">Trạng thái</InputLabel><Select labelId="stock-filter-label" label="Trạng thái" value={stockFilter} onChange={event => { setStockFilter(event.target.value as 'ALL' | 'LOW' | 'AVAILABLE'); setPage(0) }}><MenuItem value="ALL">Tất cả trạng thái</MenuItem><MenuItem value="LOW">Sắp hết</MenuItem><MenuItem value="AVAILABLE">Còn đủ</MenuItem></Select></FormControl></Grid>
+        {hasActiveFilters && <Grid size={{ xs: 12 }}><Stack direction="row" justifyContent="flex-end"><Button size="small" onClick={() => { setSearch(''); setMaterialFilter('ALL'); setColorFilter('ALL'); setStockFilter('ALL'); setPage(0) }}>Xóa bộ lọc</Button></Stack></Grid>}
       </Grid></CardContent></Card>
       {inventory.isLoading && <LinearProgress sx={{ borderRadius: 2 }} />}
       {!inventory.isLoading && !(inventory.data?.length) && <Card variant="outlined" sx={{ borderRadius: 3, py: 6, textAlign: 'center' }}><Inventory2Outlined sx={{ fontSize: 44, color: 'text.disabled' }} /><Typography fontWeight={700} mt={1}>Kho chưa có vật liệu</Typography><Typography variant="body2" color="text.secondary">Hãy thêm loại vật liệu đầu tiên ở biểu mẫu phía trên.</Typography></Card>}
       {!inventory.isLoading && Boolean(inventory.data?.length) && filteredInventory.length === 0 && <Card variant="outlined" sx={{ borderRadius: 3, py: 5, textAlign: 'center' }}><SearchRounded sx={{ fontSize: 40, color: 'text.disabled' }} /><Typography fontWeight={700} mt={1}>Không tìm thấy vật liệu phù hợp</Typography><Typography variant="body2" color="text.secondary">Thử đổi từ khóa hoặc xóa bớt bộ lọc.</Typography></Card>}
-      <Stack spacing={1.5}>{filteredInventory.map(item => { const ratio = item.reorderPointGrams > 0 ? Math.min(100, item.availableGrams / item.reorderPointGrams * 100) : 100; return <Card key={item.id} variant="outlined" sx={{ borderRadius: 3, borderColor: item.isLowStock ? 'warning.light' : 'divider' }}><CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={2}><Stack direction="row" spacing={1.5} alignItems="center"><Avatar sx={{ bgcolor: '#F1EFFE' }}><ColorDot code={item.colorCode} /></Avatar><Box><Stack direction="row" gap={1} alignItems="center" flexWrap="wrap"><Typography fontWeight={800}>{materialName(item.materialCode)}</Typography><Chip size="small" label={colorInfo(item.colorCode)?.label ?? item.colorCode} />{item.isLowStock && <Chip size="small" color="warning" icon={<WarningAmberRounded />} label="Sắp hết" />}</Stack><Typography variant="caption" color="text.secondary">{item.materialCode} · {item.colorCode}</Typography></Box></Stack><Stack direction="row" spacing={3}><Box textAlign="right"><Typography variant="caption" color="text.secondary">Có thể gán</Typography><Typography fontWeight={800}>{fmt(item.assignableGrams)} g</Typography></Box><Box textAlign="right"><Typography variant="caption" color="text.secondary">Đang giữ</Typography><Typography fontWeight={700}>{fmt(item.reservedGrams)} g</Typography></Box></Stack></Stack>
+      <Stack spacing={1.5}>{paginatedInventory.map(item => { const ratio = item.reorderPointGrams > 0 ? Math.min(100, item.availableGrams / item.reorderPointGrams * 100) : 100; return <Card key={item.id} variant="outlined" sx={{ borderRadius: 3, borderColor: item.isLowStock ? 'warning.light' : 'divider' }}><CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={2}><Stack direction="row" spacing={1.5} alignItems="center"><Avatar sx={{ bgcolor: '#F1EFFE' }}><ColorDot code={item.colorCode} /></Avatar><Box><Stack direction="row" gap={1} alignItems="center" flexWrap="wrap"><Typography fontWeight={800}>{materialName(item.materialCode)}</Typography><Chip size="small" label={colorInfo(item.colorCode)?.label ?? item.colorCode} />{item.isLowStock && <Chip size="small" color="warning" icon={<WarningAmberRounded />} label="Sắp hết" />}</Stack><Typography variant="caption" color="text.secondary">{item.materialCode} · {item.colorCode}</Typography></Box></Stack><Stack direction="row" spacing={2} alignItems="center"><Box textAlign="right"><Typography variant="caption" color="text.secondary">Có thể gán</Typography><Typography fontWeight={800}>{fmt(item.assignableGrams)} g</Typography></Box><Box textAlign="right"><Typography variant="caption" color="text.secondary">Đang giữ</Typography><Typography fontWeight={700}>{fmt(item.reservedGrams)} g</Typography></Box><Tooltip title={item.reservedGrams > 0 ? 'Không thể xóa khi vật liệu đang được giữ cho đơn in' : 'Xóa vật liệu khỏi kho'}><span><IconButton aria-label={`Xóa ${materialName(item.materialCode)} màu ${colorInfo(item.colorCode)?.label ?? item.colorCode}`} color="error" disabled={item.reservedGrams > 0 || deleteStock.isPending} onClick={() => { deleteStock.reset(); setDeleteTarget(item) }}><DeleteOutlineRounded /></IconButton></span></Tooltip></Stack></Stack>
         <Divider sx={{ my: 2 }} /><Stack direction="row" justifyContent="space-between" mb={.75}><Typography variant="body2">Tồn thực tế: <b>{fmt(item.availableGrams)} g</b></Typography><Typography variant="body2" color="text.secondary">Ngưỡng: {fmt(item.reorderPointGrams)} g</Typography></Stack><LinearProgress variant="determinate" value={ratio} color={item.isLowStock ? 'warning' : 'primary'} sx={{ height: 7, borderRadius: 4, bgcolor: '#EEEAF8' }} />
       </CardContent></Card> })}</Stack>
+      {filteredInventory.length > 0 && <TablePagination component="div" count={filteredInventory.length} page={currentPage} onPageChange={(_, nextPage) => setPage(nextPage)} rowsPerPage={rowsPerPage} onRowsPerPageChange={event => { setRowsPerPage(Number(event.target.value)); setPage(0) }} rowsPerPageOptions={[5, 10, 20]} labelRowsPerPage="Số mục mỗi trang" labelDisplayedRows={({ from, to, count }) => `${from}–${to} trong ${count}`} />}
     </Box>
+    <Dialog open={Boolean(deleteTarget)} onClose={() => !deleteStock.isPending && setDeleteTarget(null)} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontWeight: 800 }}>Xóa vật liệu khỏi kho?</DialogTitle>
+      <DialogContent><DialogContentText>{deleteTarget && <>Bạn sắp xóa <b>{materialName(deleteTarget.materialCode)} · {colorInfo(deleteTarget.colorCode)?.label ?? deleteTarget.colorCode}</b> khỏi danh sách tồn kho. Hành động này không thể hoàn tác.</>}</DialogContentText></DialogContent>
+      <DialogActions><Button disabled={deleteStock.isPending} onClick={() => setDeleteTarget(null)}>Hủy</Button><Button color="error" variant="contained" disabled={!deleteTarget || deleteStock.isPending} onClick={() => deleteTarget && deleteStock.mutate(deleteTarget.id)}>{deleteStock.isPending ? 'Đang xóa...' : 'Xóa khỏi kho'}</Button></DialogActions>
+    </Dialog>
   </Stack></Box></Box>
 }

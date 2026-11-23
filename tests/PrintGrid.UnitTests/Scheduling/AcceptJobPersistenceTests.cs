@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PrintGrid.Infrastructure.Shared.Persistence;
 using PrintGrid.Modules.Scheduling.Application.Commands.JobLifecycle;
+using PrintGrid.Modules.Scheduling.Application.Commands.Inventory;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Infrastructure;
@@ -58,5 +59,33 @@ public class AcceptJobPersistenceTests
         savedLab.MaterialReservations.Single(r => r.JobId == otherJobId).ReservedGrams.Should().Be(10.30m);
         savedLab.MaterialStocks.Single().ReservedGrams.Should().Be(56.65m);
         savedLab.MaterialStocks.Single().AvailableGrams.Should().Be(1_000m);
+    }
+
+    [Fact]
+    public async Task Delete_material_stock_removes_the_row_from_persistence()
+    {
+        ModuleAssemblyRegistry.Register(typeof(SchedulingModule).Assembly);
+        var options = new DbContextOptionsBuilder<PrintGridDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        var lab = Lab.Onboard("Lab", "HCM", 1);
+        lab.SetMaterialStock("PETG", "WHITE", 500m);
+        var stockId = lab.MaterialStocks.Single().Id;
+
+        await using (var seed = new PrintGridDbContext(options))
+        {
+            seed.Add(lab);
+            await seed.SaveChangesAsync();
+        }
+
+        await using (var context = new PrintGridDbContext(options))
+        {
+            var handler = new DeleteMaterialStockCommandHandler(new LabRepository(context), new UnitOfWork(context));
+            var result = await handler.Handle(new DeleteMaterialStockCommand(lab.Id, stockId), CancellationToken.None);
+            result.IsSuccess.Should().BeTrue();
+        }
+
+        await using var reader = new PrintGridDbContext(options);
+        (await reader.Set<MaterialStock>().AnyAsync(stock => stock.Id == stockId)).Should().BeFalse();
     }
 }
