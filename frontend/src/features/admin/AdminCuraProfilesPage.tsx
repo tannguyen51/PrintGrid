@@ -357,7 +357,7 @@ export default function AdminCuraProfilesPage() {
                     ))}
                   </Select>
                 </FormControl>
-                <FormControl size="small" sx={{ minWidth: 165 }}>
+                <FormControl size="small" sx={{ minWidth: 195 }}>
                   <InputLabel id="prop-status-filter">Trạng thái duyệt</InputLabel>
                   <Select
                     labelId="prop-status-filter"
@@ -636,7 +636,7 @@ export default function AdminCuraProfilesPage() {
                     },
                   }}
                 />
-                <FormControl size="small" sx={{ minWidth: 165 }}>
+                <FormControl size="small" sx={{ minWidth: 195 }}>
                   <InputLabel id="lib-active-filter">Trạng thái hoạt động</InputLabel>
                   <Select
                     labelId="lib-active-filter"
@@ -796,7 +796,7 @@ export default function AdminCuraProfilesPage() {
                     ))}
                   </Select>
                 </FormControl>
-                <FormControl size="small" sx={{ minWidth: 175 }}>
+                <FormControl size="small" sx={{ minWidth: 195 }}>
                   <InputLabel id="mach-profile-status-filter">Trạng thái duyệt máy</InputLabel>
                   <Select
                     labelId="mach-profile-status-filter"
@@ -811,7 +811,7 @@ export default function AdminCuraProfilesPage() {
                     <MenuItem value="Rejected">Bị từ chối</MenuItem>
                   </Select>
                 </FormControl>
-                <FormControl size="small" sx={{ minWidth: 165 }}>
+                <FormControl size="small" sx={{ minWidth: 195 }}>
                   <InputLabel id="mach-op-status-filter">Trạng thái hoạt động</InputLabel>
                   <Select
                     labelId="mach-op-status-filter"

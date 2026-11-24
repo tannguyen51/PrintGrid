@@ -60,7 +60,8 @@ public class MachineCrudCommandHandler(
 
         if (command is { IsAdminOrOps: false, RequestingUserId: not null })
         {
-            if (lab.OwnerUserId.HasValue && lab.OwnerUserId.Value != command.RequestingUserId.Value)
+            if (lab.OwnerUserId != command.RequestingUserId.Value &&
+                !lab.Staff.Any(s => s.UserId == command.RequestingUserId.Value))
                 return Result.Failure<MachineDto>(Error.Forbidden("Bạn chỉ có quyền chỉnh sửa máy thuộc xưởng của mình."));
         }
 
@@ -107,7 +108,8 @@ public class MachineCrudCommandHandler(
 
         if (command is { IsAdminOrOps: false, RequestingUserId: not null })
         {
-            if (lab.OwnerUserId.HasValue && lab.OwnerUserId.Value != command.RequestingUserId.Value)
+            if (lab.OwnerUserId != command.RequestingUserId.Value &&
+                !lab.Staff.Any(s => s.UserId == command.RequestingUserId.Value))
                 return Result.Failure(Error.Forbidden("Bạn chỉ có quyền xóa máy thuộc xưởng của mình."));
         }
 
@@ -135,7 +137,8 @@ public class MachineCrudCommandHandler(
 
         if (command is { IsAdminOrOps: false, RequestingUserId: not null })
         {
-            if (lab.OwnerUserId.HasValue && lab.OwnerUserId.Value != command.RequestingUserId.Value)
+            if (lab.OwnerUserId != command.RequestingUserId.Value &&
+                !lab.Staff.Any(s => s.UserId == command.RequestingUserId.Value))
                 return Result.Failure<MachineDto>(Error.Forbidden("Bạn chỉ có quyền đặt lịch bảo trì máy thuộc xưởng của mình."));
         }
 

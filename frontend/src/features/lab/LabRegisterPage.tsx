@@ -112,6 +112,15 @@ export default function LabRegisterPage() {
             >
               Máy in xưởng ({machineCount})
             </Button>
+            {myLab && (
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={() => navigate(`/lab/${myLab.id}/inventory`)}
+              >
+                Kho vật liệu ({myLab.materialStockCount ?? 0})
+              </Button>
+            )}
             <Button
               variant="outlined"
               color="inherit"
@@ -177,7 +186,7 @@ export default function LabRegisterPage() {
               <Divider sx={{ my: 2, borderColor: 'divider' }} />
 
               <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     {myLab ? (
                       <CheckCircleRounded color="success" fontSize="small" />
@@ -189,7 +198,7 @@ export default function LabRegisterPage() {
                     </Typography>
                   </Stack>
                 </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     {myLab && hasScheduleAndTransit ? (
                       <CheckCircleRounded color="success" fontSize="small" />
@@ -197,11 +206,11 @@ export default function LabRegisterPage() {
                       <AccessTimeRounded color="warning" fontSize="small" />
                     )}
                     <Typography variant="body2" color="text.primary">
-                      2. Lịch &amp; thời gian chuyển Hub: <b>{myLab ? `${myLab.operatingHours} (${myLab.transitDaysToHub} ngày)` : 'Chưa lưu'}</b>
+                      2. Lịch &amp; chuyển Hub: <b>{myLab ? `${myLab.operatingHours} (${myLab.transitDaysToHub} ngày)` : 'Chưa lưu'}</b>
                     </Typography>
                   </Stack>
                 </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     {machineCount > 0 ? (
                       <CheckCircleRounded color="success" fontSize="small" />
@@ -209,7 +218,19 @@ export default function LabRegisterPage() {
                       <ErrorOutlineRounded color="error" fontSize="small" />
                     )}
                     <Typography variant="body2" color="text.primary">
-                      3. Máy in khai báo: <b>{machineCount} máy</b> {machineCount === 0 ? '(Cần ít nhất 1 máy để được duyệt)' : ''}
+                      3. Máy in khai báo: <b>{machineCount} máy</b> {machineCount === 0 ? '(Cần ≥ 1 máy)' : ''}
+                    </Typography>
+                  </Stack>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    {(myLab?.materialStockCount ?? 0) > 0 ? (
+                      <CheckCircleRounded color="success" fontSize="small" />
+                    ) : (
+                      <ErrorOutlineRounded color="error" fontSize="small" />
+                    )}
+                    <Typography variant="body2" color="text.primary">
+                      4. Vật liệu trong kho: <b>{myLab?.materialStockCount ?? 0} loại</b> {(myLab?.materialStockCount ?? 0) === 0 ? '(Cần ≥ 1 loại)' : ''}
                     </Typography>
                   </Stack>
                 </Grid>

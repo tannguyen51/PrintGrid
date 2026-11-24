@@ -31,9 +31,10 @@ function compactParams(record: Record<string, string | number | boolean | undefi
   return out
 }
 
-export function useLabs(includeInactive = false) {
+export function useLabs(includeInactive = false, enabled = true) {
   return useQuery({
     queryKey: [...LABS_KEY, includeInactive],
+    enabled,
     queryFn: () =>
       apiClient.get<Lab[]>(`/labs?includeInactive=${includeInactive}`).then((r) => r.data),
   })

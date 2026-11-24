@@ -23,10 +23,7 @@ public class GetMyLabQueryHandler(ILabRepository labs) : IRequestHandler<GetMyLa
         if (member is not null)
             return Result.Success<LabDto?>(LabMappings.ToDto(member));
 
-        if (!query.AllowUnclaimedFallback) return Result.Success<LabDto?>(null);
-        var all = await labs.GetAllAsync(cancellationToken);
-        var unclaimed = all.FirstOrDefault(l => l.OwnerUserId is null);
-        return unclaimed is not null ? Result.Success<LabDto?>(LabMappings.ToDto(unclaimed)) : Result.Success<LabDto?>(null);
+        return Result.Success<LabDto?>(null);
     }
 }
 

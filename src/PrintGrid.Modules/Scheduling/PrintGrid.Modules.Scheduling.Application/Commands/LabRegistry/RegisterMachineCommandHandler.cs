@@ -22,14 +22,13 @@ public class RegisterMachineCommandHandler(
         var lab = await labs.GetByIdAsync(command.LabId, cancellationToken);
         if (lab is null)
             return Result.Failure<MachineDto>(Error.NotFound("Lab", command.LabId));
-        if (command.RequestingUserId.HasValue)
+        if (command is { IsAdminOrOps: false, RequestingUserId: not null })
         {
-            if (command.IsAdminOrOps)
-                lab.ClaimOwnership(command.RequestingUserId.Value);
-            else if (lab.OwnerUserId.HasValue && lab.OwnerUserId.Value != command.RequestingUserId.Value)
+            if (lab.OwnerUserId != command.RequestingUserId.Value &&
+                !lab.Staff.Any(s => s.UserId == command.RequestingUserId.Value))
                 return Result.Failure<MachineDto>(Error.Forbidden("Bạn chỉ có quyền thêm máy vào xưởng của mình."));
         }
-        else if (command.ActorUserId.HasValue && lab.OwnerUserId != command.ActorUserId)
+        else if (!command.IsAdminOrOps && command.ActorUserId.HasValue && lab.OwnerUserId != command.ActorUserId)
         {
             return Result.Failure<MachineDto>(Error.Forbidden("You can only manage machines in your own lab"));
         }
