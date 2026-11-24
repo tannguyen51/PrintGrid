@@ -73,7 +73,7 @@ public class CreateQuoteCommandHandler(
                     : "Model đang chờ duyệt nội dung — chưa thể báo giá."));
         }
 
-        if (hasMeshWarnings || command.SizeCode is not null || command.ColorCodes is not null || command.Polishing || command.BindingType == 1
+        if (hasMeshWarnings || command.SizeCode is not null || command.ColorCodes is not null || command.ColorAssignments is not null || command.Polishing || command.BindingType == 1
             || TechConstraints.From(command.MaxColors, command.EnclosedChamber, command.NozzleDiameterMm,
                 command.MaxToleranceMm, command.MinLayerHeightMm).HasValue)
             return await CreateSlicedQuote(command, model, policy, cancellationToken);

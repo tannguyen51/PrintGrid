@@ -14,6 +14,7 @@ public static class ProductionRequirementFilter
             MachineModelIdentity.For(config.Manufacturer, machine.Model) != requirements.PinnedModelId)
             return "pinned_model_mismatch";
         if (requirements.MaxColors is { } colors && config.MaximumColorSlots < colors) return "insufficient_color_slots";
+        if (requirements.MinimumBuildWidthMm is { } width && machine.BuildVolume.WidthMm < width) return "insufficient_build_width";
         if (requirements.EnclosedChamber == true && !config.EnclosedChamber) return "enclosed_chamber_required";
         if (requirements.NozzleDiameterMm is { } nozzle && Math.Abs(config.NozzleDiameterMm - nozzle) > .001m)
             return "nozzle_diameter_mismatch";

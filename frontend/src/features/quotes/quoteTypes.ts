@@ -1,3 +1,6 @@
+import type { ColorGroupAssignment } from '../../shared/threeMf/colorGroups'
+export { PRINT_COLORS as COLORS } from '../../shared/threeMf/colorGroups'
+
 export interface QuoteItem {
   id: string
   modelId: string
@@ -15,12 +18,14 @@ export interface QuoteItem {
 }
 
 export interface QuoteCalculation {
+  colorAssignments?: ColorGroupAssignment[] | null
   widthMm: number; depthMm: number; heightMm: number
   colors: { colorCode: string; grams: number; pricePerKg?: number; amount?: number }[]
   printMinutes: number; pricePerHour?: number; materialAmount: number; machineAmount: number
   failureRate?: number; failureAllowance: number; polishingPerUnit?: number; serviceAmount: number; totalAmount: number
   setupAmount?: number; hubAmount?: number; pinSurchargeAmount?: number; pinSurchargeCoefficient?: number
   calibrationFactor?: number; slicerPrintMinutes?: number; plateCount?: number
+  sourcePlateCount?: number; toolChangeCount?: number | null
   requirements?: TechRequirements & { pinnedModelId?: string | null; pinnedModelName?: string | null } | null
 }
 
@@ -81,6 +86,7 @@ export interface QuoteConfigInput {
   toleranceMm: number
   sizeCode?: string
   colorCodes?: string[]
+  colorAssignments?: ColorGroupAssignment[]
   polishing?: boolean
   // Section 3: Tech constraints (hard filters, no surcharge) — BR-03
   maxColors?: number
@@ -115,18 +121,6 @@ export const MATERIALS = [
   { code: 'ABS', label: 'ABS', desc: 'Cứng, chịu mài mòn' },
   { code: 'TPU', label: 'TPU', desc: 'Dẻo, cao su' },
   { code: 'RESIN', label: 'Resin', desc: 'Chi tiết mịn, chất lượng cao' },
-]
-
-export const COLORS = [
-  { code: 'BLACK', label: 'Đen' },
-  { code: 'WHITE', label: 'Trắng' },
-  { code: 'SIGNALRED', label: 'Đỏ' },
-  { code: 'BLUE', label: 'Xanh dương' },
-  { code: 'GREEN', label: 'Xanh lá' },
-  { code: 'YELLOW', label: 'Vàng' },
-  { code: 'ORANGE', label: 'Cam' },
-  { code: 'GREY', label: 'Xám' },
-  { code: 'TRANSPARENT', label: 'Trong suốt' },
 ]
 
 export const QUALITY_GRADES = [

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Customer.Application.Quotes;
 using PrintGrid.Modules.Customer.Application.Queries.Machines;
+using PrintGrid.SharedKernel.ValueObjects;
 
 namespace PrintGrid.Api.Controllers;
 
@@ -84,7 +85,7 @@ public class QuotesController(ISender sender) : ControllerBase
                 request.Quantity,
                 request.ToleranceMm, request.SizeCode ?? "ORIGINAL", request.ColorCodes, request.Polishing,
                 request.MaxColors, request.EnclosedChamber, request.NozzleDiameterMm, request.MaxToleranceMm, request.MinLayerHeightMm,
-                request.BindingType, request.PinnedModelId, true, request.PreviousOrderLineId),
+                request.BindingType, request.PinnedModelId, true, request.PreviousOrderLineId, request.ColorAssignments),
             cancellationToken);
 
         if (!result.IsFailure) return CreatedAtAction(nameof(GetQuotes), new { }, result.Value);
@@ -117,7 +118,8 @@ public record CreateQuoteRequest(
     int? BindingType = null,   // 0=None, 1=ByModel, 2=LikeOldOrder
     Guid? PinnedMachineId = null,
     Guid? PreviousOrderLineId = null,
-    Guid? PinnedModelId = null);
+    Guid? PinnedModelId = null,
+    IReadOnlyList<ColorGroupAssignment>? ColorAssignments = null);
 
 public record MachineModelOptionsRequest(Guid ModelId, string MaterialCode, string[] ColorCodes,
     decimal LayerHeightMm = .2m, decimal ToleranceMm = .2m, string SizeCode = "ORIGINAL",

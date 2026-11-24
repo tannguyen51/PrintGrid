@@ -4,17 +4,24 @@ namespace PrintGrid.Modules.Customer.Application.Quotes;
 
 public sealed record QuoteColorUsage(string ColorCode, decimal Grams, decimal? PricePerKg = null, decimal? Amount = null);
 public sealed record QuoteColorPrice(decimal Amount);
+public sealed record QuoteModelEnvelope(decimal WidthMm, decimal DepthMm, decimal HeightMm, int SourcePlateCount = 1);
 public sealed record QuoteSliceRequest(string StorageKey, string FileFormat, decimal Scale,
     string MaterialCode, IReadOnlyList<string> Colors, decimal Density, decimal LayerHeightMm,
-    int InfillPercent, int Quantity, Guid MachineId, Guid? ProfileId = null);
+    int InfillPercent, int Quantity, Guid MachineId, Guid? ProfileId = null,
+    IReadOnlyList<ColorGroupAssignment>? ColorAssignments = null);
 public sealed record QuoteSliceResult(IReadOnlyList<QuoteColorUsage> Colors, decimal PrintMinutes,
     decimal? PricePerHour = null, decimal? FailureRate = null, int PlateCount = 1,
-    Guid? ProfileId = null, string? ProfileVersion = null);
+    Guid? ProfileId = null, string? ProfileVersion = null,
+    IReadOnlyList<ColorGroupAssignment>? ColorAssignments = null,
+    string? SlicingEngine = null, string? SlicingProfileHash = null, decimal ModelScale = 1m, int SourcePlateCount = 1,
+    int? ToolChangeCount = null, decimal? MinimumBuildWidthMm = null);
 
 public interface IQuoteSlicer
 {
     Task<IReadOnlyList<Guid>> GetConfiguredMachineIdsAsync(CancellationToken cancellationToken);
     Task<QuoteSliceResult> SliceAsync(QuoteSliceRequest request, CancellationToken cancellationToken);
+    Task<QuoteModelEnvelope?> GetEnvelopeAsync(string storageKey, string format, CancellationToken cancellationToken)
+        => Task.FromResult<QuoteModelEnvelope?>(null);
 }
 
 /// <summary>Totals for the entire batch, including support/purge already reported by the slicer.</summary>
@@ -42,7 +49,10 @@ public sealed record QuotePriceBreakdown(
     ProductionRequirements? Requirements = null,
     PricingParameterSet? PricingParameters = null,
     decimal PriorityCoefficient = 1,
-    string? FormulaVersion = null);
+    string? FormulaVersion = null,
+    IReadOnlyList<ColorGroupAssignment>? ColorAssignments = null,
+    string? SlicingEngine = null, string? SlicingProfileHash = null, decimal ModelScale = 1m, int SourcePlateCount = 1,
+    int? ToolChangeCount = null);
 
 public static class SlicedQuotePricing
 {
@@ -100,7 +110,9 @@ public static class SlicedQuotePricing
             failureAllowance, total, widthMm, depthMm, heightMm, quantity, setup, hub, surcharge,
             pinCoefficient, calibrationFactor, slice.PrintMinutes, slice.PlateCount, slice.ProfileId,
             slice.ProfileVersion, PricingParameters: rates, PriorityCoefficient: priorityCoefficient,
-            FormulaVersion: "machine-model-v1");
+            FormulaVersion: "machine-model-v1", ColorAssignments: slice.ColorAssignments, SlicingEngine: slice.SlicingEngine,
+            SlicingProfileHash: slice.SlicingProfileHash, ModelScale: slice.ModelScale, SourcePlateCount: slice.SourcePlateCount,
+            ToolChangeCount: slice.ToolChangeCount);
     }
 
     /// <summary>Section 4 BR-05: Calculate quoted price for a pinned model, applying surcharge coefficient.</summary>

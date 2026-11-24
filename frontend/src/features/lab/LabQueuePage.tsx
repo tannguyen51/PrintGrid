@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { colorGroupNumber } from '../../shared/threeMf/colorGroups'
 import { useNavigate } from 'react-router-dom'
 import {
   Alert,
@@ -378,7 +379,9 @@ export default function LabQueuePage() {
                     <DownloadFileButton jobId={j.id} fileName={j.modelFileName} />
                     {j.productionQuote && <Alert severity="info" sx={{ mt: 1 }}>
                       In theo kích thước {j.boundingWidthMm} × {j.boundingDepthMm} × {j.boundingHeightMm} mm, giữ nguyên tỷ lệ file.
-                      {' '}{j.productionQuote.Colors.map((c, index) => `Vùng ${index + 1}: ${c.ColorCode}`).join(' · ')}.
+                      {' '}{j.productionQuote.ColorAssignments?.length
+                        ? j.productionQuote.ColorAssignments.map((a, index) => `Nhóm gốc ${colorGroupNumber(a.GroupId, index + 1)}${a.OriginalColorHex ? ` (${a.OriginalColorHex})` : ''} → ${a.ColorCode}`).join(' · ')
+                        : j.productionQuote.Colors.map((c, index) => `Vùng ${index + 1}: ${c.ColorCode}`).join(' · ')}.
                       {j.productionQuote.PolishingPerUnit > 0 ? ' Có đánh bóng sau in.' : ''}
                     </Alert>}
                     {j.qcProofStatus === 'Rejected' && j.qcRejectionReason && (

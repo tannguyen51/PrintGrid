@@ -2,6 +2,7 @@ import { Accordion, AccordionDetails, AccordionSummary, Box, Divider, Stack, Tab
   TableCell, TableHead, TableRow, Typography } from '@mui/material'
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 import type { Quote } from './quoteTypes'
+import { colorGroupNumber, PRINT_COLORS } from '../../shared/threeMf/colorGroups'
 
 const fmt = (amount: number) => amount.toLocaleString('vi-VN')
 
@@ -40,10 +41,15 @@ export function QuotePriceDetails({ quote, collapsibleDetails = false }: { quote
       return <Box key={item.id}>
         <Stack spacing={1}>
           <Row label="Vật liệu / màu" value={`${item.materialCode} · ${calculation?.colors.map(c => c.colorCode).join(', ') ?? item.colorCode}`} />
+          {calculation?.colorAssignments?.map((assignment, index) => <Row key={assignment.groupId}
+            label={`Nhóm màu gốc ${colorGroupNumber(assignment.groupId, index + 1)}${assignment.originalColorHex ? ` (${assignment.originalColorHex})` : ''}`}
+            value={PRINT_COLORS.find(c => c.code === assignment.colorCode)?.label ?? assignment.colorCode} />)}
           {calculation?.requirements?.pinnedModelName && <Row label="Model máy bắt buộc" value={calculation.requirements.pinnedModelName} />}
           {calculation ? <>
             <Row label="Kích thước sau điều chỉnh" value={`${fmt(calculation.widthMm)} × ${fmt(calculation.depthMm)} × ${fmt(calculation.heightMm)} mm`} />
             <Row label="Thời gian in cả đơn (ước tính)" value={`${fmt(calculation.printMinutes / 60)} giờ`} />
+            {!!calculation.toolChangeCount && <Row label="Số lần đổi màu" value={fmt(calculation.toolChangeCount)} />}
+            {(calculation.sourcePlateCount ?? 1) > 1 && <Row label="Số bàn in trong file" value={fmt(calculation.sourcePlateCount!)} />}
             {calculation.colors.map(color => <Row key={color.colorCode}
               label={color.pricePerKg != null ? `${color.colorCode}: ${fmt(color.grams)} g × ${fmt(color.pricePerKg)} đ/kg` : `Vật liệu ${color.colorCode}`}
               value={color.amount != null ? `${fmt(color.amount)} đ` : `${fmt(color.grams)} g`} />)}

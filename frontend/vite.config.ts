@@ -3,6 +3,9 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [react()],
+  // Worker-only imports must be ready before the first uploaded blob is opened.
+  // Late dependency optimization reloads the page and invalidates blob URLs.
+  optimizeDeps: { include: ['fflate', 'saxes'] },
   server: {
     port: 5173,
     proxy: {

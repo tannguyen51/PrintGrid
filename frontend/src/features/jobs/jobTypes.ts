@@ -55,6 +55,7 @@ export interface Job {
   productionQuote?: {
     SizeCode: string; WidthMm: number; DepthMm: number; HeightMm: number; Quantity: number
     Colors: { ColorCode: string; Grams: number }[]; PolishingPerUnit: number
+    ColorAssignments?: { GroupId: string; ColorCode: string; OriginalColorHex?: string | null }[] | null
   } | null
 }
 

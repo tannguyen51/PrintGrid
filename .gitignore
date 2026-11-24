@@ -98,9 +98,11 @@ agent_changes.md
 
 agent_changes.md
 
-
 # Figma MCP downloaded assets
 .figma-images/
+
+# Generated QA artifacts, logs, screenshots, and local build output
+/outputs/
 
 # Local database dumps and editor backups (never commit)
 .local/

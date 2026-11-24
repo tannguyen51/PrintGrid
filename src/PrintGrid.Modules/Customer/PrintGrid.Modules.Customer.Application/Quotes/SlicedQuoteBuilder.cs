@@ -19,8 +19,13 @@ internal sealed class SlicedQuoteBuilder(IQuoteRepository quotes, IUnitOfWork un
     {
         if (slicer is null) return Fail("Dịch vụ báo giá tự động chưa sẵn sàng.");
         MachineSelectionCriteria criteria;
-        try { criteria = MachineSelection.Criteria(command, model); }
-        catch (ArgumentException e) { return Fail(e.Message); }
+        QuoteModelEnvelope? envelope;
+        try
+        {
+            envelope = await slicer.GetEnvelopeAsync(model.StorageKey!, model.FileFormat, ct);
+            criteria = MachineSelection.Criteria(command, model, envelope);
+        }
+        catch (Exception e) when (e is ArgumentException or InvalidDataException) { return Fail(e.Message); }
         var configured = await slicer.GetConfiguredMachineIdsAsync(ct);
         var candidates = await machines.FilterCandidatesAsync(configured, criteria, ct);
         if (candidates.Count == 0) return Fail("Không có máy đáp ứng cấu hình và ràng buộc kỹ thuật đã chọn.");
@@ -45,9 +50,10 @@ internal sealed class SlicedQuoteBuilder(IQuoteRepository quotes, IUnitOfWork un
         var referenceMachine = await machines.GetReferenceMachineAsync(candidates, command.MaterialCode, referenceProfile, ct);
         if (referenceMachine is null) return Fail("Chưa có profile tham chiếu phù hợp. Vui lòng liên hệ PrintGrid.");
 
+        string? calculationError = null;
         var unpinned = await CalculateAndPlace(referenceMachine, candidates, requirements,
             await machines.GetCalibrationFactorAsync(null, ct), 1m);
-        if (unpinned is null) return Fail("Không thể báo giá và xếp lịch với profile tham chiếu. Vui lòng thử lại hoặc liên hệ PrintGrid.");
+        if (unpinned is null) return Fail(calculationError ?? "Không thể báo giá và xếp lịch với profile tham chiếu. Vui lòng thử lại hoặc liên hệ PrintGrid.");
 
         var chosen = unpinned;
         if (pinnedModel is not null)
@@ -94,20 +100,22 @@ internal sealed class SlicedQuoteBuilder(IQuoteRepository quotes, IUnitOfWork un
         {
             try
             {
-                var scale = criteria.WidthMm / model.BoundingWidthMm!.Value;
+                var scale = criteria.WidthMm / (envelope?.WidthMm ?? model.BoundingWidthMm!.Value);
                 var slice = await slicer.SliceAsync(new QuoteSliceRequest(model.StorageKey!, model.FileFormat, scale,
                     command.MaterialCode, criteria.Colors, rates.DensityGramsPerCm3[command.MaterialCode],
-                    command.LayerHeightMm, command.InfillPercent, command.Quantity, source.MachineId, source.ProfileId), ct);
+                    command.LayerHeightMm, command.InfillPercent, command.Quantity, source.MachineId, source.ProfileId,
+                    command.ColorAssignments), ct);
+                var productionRequirements = requirementsForOption with { MinimumBuildWidthMm = slice.MinimumBuildWidthMm };
                 var calculation = SlicedQuotePricing.Calculate(rates, command.MaterialCode, command.Quantity, slice,
                     command.Polishing, criteria.WidthMm, criteria.DepthMm, criteria.HeightMm, calibration, coefficient)
-                    with { Requirements = requirementsForOption };
+                    with { Requirements = productionRequirements };
                 PlacedQuote? earliest = null;
                 foreach (var machineId in targetMachines)
                 {
                     var lines = calculation.Colors.Select((c, i) => new TrialPlacementLine(criteria.WidthMm,
                         criteria.DepthMm, criteria.HeightMm, command.MaterialCode, c.ColorCode, command.LayerHeightMm,
                         command.ToleranceMm, i == 0 ? (int)decimal.Ceiling(calculation.PrintMinutes) : 0,
-                        c.Grams, machineId, requirementsForOption, true)).ToList();
+                        c.Grams, machineId, productionRequirements, true)).ToList();
                     var placement = await capacity.FindEarliestFeasibleDeliveryAsync(lines, clock.UtcNow, ct);
                     if (placement is not null && (earliest is null || placement.PromisedDeliveryDate < earliest.Placement.PromisedDeliveryDate))
                         earliest = new(calculation, machineId, placement);
@@ -116,6 +124,7 @@ internal sealed class SlicedQuoteBuilder(IQuoteRepository quotes, IUnitOfWork un
             }
             catch (Exception e) when (e is not OperationCanceledException || !ct.IsCancellationRequested)
             {
+                if (e is InvalidDataException) calculationError = e.Message;
                 logger?.LogWarning(e, "Quote calculation failed for product {ProductId}, reference machine {MachineId}", model.Id, source.MachineId);
                 return null;
             }

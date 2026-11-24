@@ -20,5 +20,11 @@ public sealed class CreateQuoteCommandValidator : AbstractValidator<CreateQuoteC
         RuleFor(c => c.PinnedModelId).Null().When(c => c.BindingType != 1);
         RuleFor(c => c.ColorCodes).Must(colors => colors is null || colors.Count is >= 1 and <= 4
             && colors.All(c => !string.IsNullOrWhiteSpace(c)) && colors.Distinct(StringComparer.OrdinalIgnoreCase).Count() == colors.Count);
+        RuleFor(c => c.ColorAssignments).Must(assignments => assignments is null || assignments.Count is >= 1 and <= 256
+            && assignments.All(a => a is not null && !string.IsNullOrWhiteSpace(a.GroupId) && a.GroupId.Length <= 512
+                && !string.IsNullOrWhiteSpace(a.ColorCode) && a.ColorCode.Length <= 32)
+            && assignments.Select(a => a.GroupId).Distinct(StringComparer.Ordinal).Count() == assignments.Count
+            && assignments.Select(a => a.ColorCode.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Count() <= 4)
+            .WithMessage("Mỗi nhóm màu cần một lựa chọn hợp lệ; tối đa 4 màu in khác nhau.");
     }
 }
