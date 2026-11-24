@@ -89,6 +89,14 @@ public static partial class PrusaQuoteSlicer
         var g = settings["global"]!.AsObject();
         decimal Number(JsonObject obj, string key, decimal fallback) => decimal.TryParse(obj[key]?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var n) ? n : fallback;
         decimal N(string key, decimal fallback) => Number(g, key, fallback);
+        // Cura's inherited "unlimited" feedrate is 299792458000 mm/s. Prusa 2.5
+        // validates these options against [0, INT_MAX], so do not copy the sentinel.
+        // Keep real approved limits; use the adapter defaults only outside that range.
+        decimal MotionLimit(string key, decimal fallback)
+        {
+            var value = N(key, fallback);
+            return value is >= 0 and <= int.MaxValue ? value : fallback;
+        }
         string F(decimal n) => n.ToString("0.######", CultureInfo.InvariantCulture);
         string Tools(Func<int, decimal> value) => string.Join(',', activeTools.Select(tool => F(value(tool - 1))));
         decimal E(int i, string key, decimal fallback) => settings[$"extruder.{i}"] is JsonObject e ? Number(e, key, N(key, fallback)) : N(key, fallback);
@@ -137,10 +145,10 @@ public static partial class PrusaQuoteSlicer
         };
         foreach (var axis in new[] { "x", "y", "z", "e" })
         {
-            values["machine_max_feedrate_" + axis] = F(N("machine_max_feedrate_" + axis, axis == "z" ? 10 : 150));
-            values["machine_max_acceleration_" + axis] = F(N("machine_max_acceleration_" + axis, axis == "z" ? 100 : 1000));
+            values["machine_max_feedrate_" + axis] = F(MotionLimit("machine_max_feedrate_" + axis, axis == "z" ? 10 : 150));
+            values["machine_max_acceleration_" + axis] = F(MotionLimit("machine_max_acceleration_" + axis, axis == "z" ? 100 : 1000));
         }
-        return "; PrintGrid approved-profile adapter prusa-paint-v1\n" + string.Join('\n', values.Select(v => v.Key + " = " + v.Value)) + "\n";
+        return "; PrintGrid approved-profile adapter prusa-paint-v2\n" + string.Join('\n', values.Select(v => v.Key + " = " + v.Value)) + "\n";
     }
 
     public static PlateResult ParseResult(IEnumerable<string> lines, int colors)

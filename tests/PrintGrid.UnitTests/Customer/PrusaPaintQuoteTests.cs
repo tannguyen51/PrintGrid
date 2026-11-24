@@ -10,6 +10,55 @@ namespace PrintGrid.UnitTests.Customer;
 
 public sealed class PrusaPaintQuoteTests
 {
+    [Theory]
+    [InlineData("299792458000")]
+    [InlineData("-1")]
+    [InlineData("not-a-number")]
+    public void Cura_unbounded_or_invalid_motion_limits_use_finite_adapter_defaults(string limit)
+    {
+        var global = new System.Text.Json.Nodes.JsonObject();
+        foreach (var axis in new[] { "x", "y", "z", "e" })
+        {
+            global["machine_max_feedrate_" + axis] = limit;
+            global["machine_max_acceleration_" + axis] = limit;
+        }
+        var settings = new System.Text.Json.Nodes.JsonObject { ["global"] = global };
+        var request = new QuoteSliceRequest("models/sample.3mf", "3MF", 1,
+            "PLA", ["WHITE", "RED"], 1.24m, .2m, 20, 1, Guid.NewGuid());
+
+        var profile = PrusaQuoteSlicer.BuildProfile(settings, request, 222, 222, 250,
+            [1, 2], new CuraQuoteOptions());
+        var values = profile.Split('\n').Where(line => line.Contains(" = "))
+            .Select(line => line.Split(" = ", 2)).ToDictionary(pair => pair[0], pair => pair[1]);
+
+        foreach (var axis in new[] { "x", "y", "z", "e" })
+        {
+            values["machine_max_feedrate_" + axis].Should().Be(axis == "z" ? "10" : "150");
+            values["machine_max_acceleration_" + axis].Should().Be(axis == "z" ? "100" : "1000");
+        }
+    }
+
+    [Fact]
+    public void Approved_motion_limits_are_preserved_without_modifying_source_profile()
+    {
+        var settings = System.Text.Json.Nodes.JsonNode.Parse("""
+            {"global":{"machine_max_feedrate_e":50,"machine_max_feedrate_z":12,
+             "machine_max_acceleration_e":5000,"machine_max_acceleration_z":200}}
+            """)!.AsObject();
+        var original = settings.ToJsonString();
+        var request = new QuoteSliceRequest("models/sample.3mf", "3MF", 1,
+            "PLA", ["WHITE"], 1.24m, .2m, 20, 1, Guid.NewGuid());
+
+        var profile = PrusaQuoteSlicer.BuildProfile(settings, request, 222, 222, 250,
+            [1], new CuraQuoteOptions());
+
+        profile.Should().Contain("machine_max_feedrate_e = 50\n");
+        profile.Should().Contain("machine_max_feedrate_z = 12\n");
+        profile.Should().Contain("machine_max_acceleration_e = 5000\n");
+        profile.Should().Contain("machine_max_acceleration_z = 200\n");
+        settings.ToJsonString().Should().Be(original);
+    }
+
     [Fact]
     public void Single_color_plate_uses_its_original_tool_settings_without_a_wipe_tower()
     {
