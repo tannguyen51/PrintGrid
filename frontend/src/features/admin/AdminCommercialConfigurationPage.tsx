@@ -69,7 +69,7 @@ export default function AdminCommercialConfigurationPage() {
   return <Box className="admin-page">
     <Box className="admin-page-body">
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} mb={3}>
-      <Stack direction="row" spacing={1.5} alignItems="center"><Box><Typography variant="h1">Cấu hình thương mại</Typography><Typography color="text.secondary">Mỗi lần thay đổi tạo một phiên bản mới; chỉ phiên bản đang hoạt động áp dụng cho báo giá mới.</Typography></Box></Stack>
+      <Stack direction="row" spacing={1.5} alignItems="center"><Box><Typography variant="h1">Giá bán & vật liệu</Typography><Typography color="text.secondary">Admin và Ops có thể tạo phiên bản giá mới; chỉ phiên bản được kích hoạt áp dụng cho báo giá mới.</Typography></Box></Stack>
       <Button variant="contained" startIcon={<AddRounded />} onClick={startCreate}>Tạo phiên bản</Button>
     </Stack>
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -85,6 +85,13 @@ export default function AdminCommercialConfigurationPage() {
         {item.status === 'Draft' && <Button variant="outlined" startIcon={<ScheduleRounded />} disabled={activate.isPending} onClick={() => setActivateDialog({ open: true, id: item.id, item })}>Kích hoạt / Hẹn giờ</Button>}
       </Stack>
       <Grid container spacing={2} mt={1}>{[['Giá giờ máy', item.parameters.pricePerPrintHour], ['Phí xử lý hub', item.parameters.hubHandlingFee], ['Biên nền tảng', `${item.parameters.platformMarginPercent}%`], ['Hiệu lực báo giá', `${item.parameters.quoteValidityHours} giờ`], ['Kích thước lô tối đa', item.parameters.maxBatchSize], ['Ngưỡng rủi ro SLA', `${item.parameters.slaRiskThresholdHours} giờ`]].map(([label, value]) => <Grid key={String(label)} size={{ xs: 6, md: 2 }}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography fontWeight={700}>{typeof value === 'number' ? value.toLocaleString('vi-VN') : value}</Typography></Grid>)}</Grid>
+      <Box mt={2}>
+        <Typography variant="caption" color="text.secondary">Đơn giá vật liệu bán cho khách</Typography>
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mt={0.75}>
+          {Object.entries(item.parameters.materialRates).sort(([left], [right]) => left.localeCompare(right)).map(([code, rate]) =>
+            <Chip key={code} size="small" label={`${code}: ${rate.toLocaleString('vi-VN')} đ/g`} />)}
+        </Stack>
+      </Box>
     </Paper>)}</Stack>}
 
     <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth><DialogTitle>Tạo phiên bản cấu hình mới</DialogTitle><DialogContent><Stack spacing={2} mt={1}>

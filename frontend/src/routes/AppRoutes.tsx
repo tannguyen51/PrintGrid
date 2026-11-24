@@ -349,6 +349,10 @@ export function AppRoutes() {
         />
         <Route path="/ops/finance" element={<ProtectedRoute allowedRoles={['OpsManager']}><FinancePage /></ProtectedRoute>} />
         <Route
+          path="/ops/pricing"
+          element={<ProtectedRoute allowedRoles={['OpsManager']}><AdminCommercialConfigurationPage /></ProtectedRoute>}
+        />
+        <Route
           path="/ops/design-requests"
           element={
             <ProtectedRoute allowedRoles={['OpsManager']}>
