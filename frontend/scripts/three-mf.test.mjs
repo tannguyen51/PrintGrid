@@ -63,13 +63,22 @@ test('standard 3MF continues through the existing material and texture loader', 
 test('color choices follow stable sparse source IDs and merge physical colors without merging original groups', () => {
   const groups = [{ id: groupIdForSlot(1), slot: 1, originalColorHex: '#FFFFFF' }, { id: groupIdForSlot(3), slot: 3, originalColorHex: '#D02727' }]
   const original = initializeAssignments(groups, [])
-  assert.deepEqual(original.map(a => a.colorCode), ['WHITE', 'SIGNALRED'])
+  assert.deepEqual(original.map(a => a.colorCode), ['WHITE', 'RED'])
   const chosen = initializeAssignments(groups, [{ groupId: groups[1].id, colorCode: 'BLUE' }, { groupId: groups[0].id, colorCode: 'BLUE' }])
   assert.equal(chosen.length, 2)
   assert.deepEqual(assignedColors(chosen), ['BLUE'])
   assert.equal(chosen[1].groupId, 'filament:00000003')
   assert.equal(colorGroupNumber(chosen[1].groupId, 2), 3)
-  assert.equal(original[1].colorCode, 'SIGNALRED')
+  assert.equal(original[1].colorCode, 'RED')
+})
+
+test('saved legacy color names restore canonical inventory codes without losing source groups', () => {
+  const groups = [{ id: groupIdForSlot(1), slot: 1, originalColorHex: '#FFFFFF' },
+    { id: groupIdForSlot(2), slot: 2, originalColorHex: '#FFFFFF' }]
+  const saved = [{ groupId: groups[0].id, colorCode: 'SIGNALRED' }, { groupId: groups[1].id, colorCode: 'GREY' }]
+  assert.deepEqual(initializeAssignments(groups, saved).map(a => a.colorCode), ['RED', 'GRAY'])
+  assert.deepEqual(assignedColors([{ groupId: groups[0].id, colorCode: 'SIGNALRED' },
+    { groupId: groups[1].id, colorCode: 'RED' }]), ['RED'])
 })
 
 const directory = process.env.PRINTGRID_3MF_TEST_DIRECTORY

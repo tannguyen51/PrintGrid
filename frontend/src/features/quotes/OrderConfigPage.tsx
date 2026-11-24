@@ -25,6 +25,7 @@ import { ArrowBackRounded, ArrowDownwardRounded, ArrowForwardRounded, PriceCheck
 import type { Quote } from './quoteTypes'
 import { INFILL_OPTIONS, MATERIALS, QUALITY_GRADES, QUOTE_STATUS_LABELS } from './quoteTypes'
 import { assignedColors, type ColorGroupAssignment } from '../../shared/threeMf/colorGroups'
+import { normalizeMaterialColor } from '../../shared/materialColors'
 import { OrderColorConfigurator } from './OrderColorConfigurator'
 import { useModelFileUrl } from '../models/useModelFile'
 import type { ThreeDModel } from '../models/modelTypes'
@@ -40,7 +41,8 @@ import type { CustomerAddress } from '../account/accountTypes'
 function readColorDraft(modelId: string | undefined): ColorGroupAssignment[] {
   try {
     const saved = JSON.parse(localStorage.getItem(`printgrid:order-colors:${modelId}`) ?? '[]')
-    return Array.isArray(saved) ? saved.filter(a => a && typeof a.groupId === 'string' && typeof a.colorCode === 'string') : []
+    return Array.isArray(saved) ? saved.filter(a => a && typeof a.groupId === 'string' && typeof a.colorCode === 'string')
+      .map(a => ({ ...a, colorCode: normalizeMaterialColor(a.colorCode) })) : []
   } catch { return [] }
 }
 
@@ -119,6 +121,7 @@ export default function OrderConfigPage() {
   const quoteStatus = useQuote(quote?.id ?? requestedQuoteId)
   const restoreColorAssignments = useEffectEvent((restored: Quote) => {
     const assignments = restored.items.find(i => i.modelId === modelId)?.calculation?.colorAssignments
+      ?.map(a => ({ ...a, colorCode: normalizeMaterialColor(a.colorCode) }))
     if (!assignments?.length) return
     restoredColorConfig.current = JSON.stringify([modelId, material, assignedColors(assignments), assignments, sizeCode, polishing,
       layerIndex, infill, quantity, techConstraints ?? {}, pinnedModelId])

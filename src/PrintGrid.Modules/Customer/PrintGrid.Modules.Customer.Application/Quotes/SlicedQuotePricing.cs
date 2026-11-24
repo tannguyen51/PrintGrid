@@ -86,12 +86,21 @@ public static class SlicedQuotePricing
         var colors = slice.Colors.Select(c =>
         {
             if (c.Grams <= 0) throw new ArgumentException("Slicer trả khối lượng màu không hợp lệ.");
-            var key = $"{material.ToUpperInvariant()}:{c.ColorCode.ToUpperInvariant()}";
-            var perKg = rates.ColorPricePerKg is not null && rates.ColorPricePerKg.TryGetValue(key, out var overrideRate)
-                ? overrideRate : (rates.PricePerGram.TryGetValue(material, out var perGram) ? perGram * 1000m
-                    : throw new ArgumentException("Chưa có đơn giá vật liệu."));
+            var color = MaterialColorCodes.Normalize(c.ColorCode);
+            decimal? colorRate = null;
+            foreach (var alias in MaterialColorCodes.Aliases(color))
+            {
+                if (rates.ColorPricePerKg is not null && rates.ColorPricePerKg.TryGetValue(
+                    $"{material.Trim().ToUpperInvariant()}:{alias}", out var configuredRate))
+                {
+                    colorRate = configuredRate;
+                    break;
+                }
+            }
+            var perKg = colorRate ?? (rates.PricePerGram.TryGetValue(material, out var perGram) ? perGram * 1000m
+                : throw new ArgumentException("Chưa có đơn giá vật liệu."));
             if (perKg <= 0) throw new ArgumentException("Đơn giá màu không hợp lệ.");
-            return c with { PricePerKg = perKg, Amount = c.Grams / 1000m * perKg * (1 + rates.MaterialWasteRate) };
+            return c with { ColorCode = color, PricePerKg = perKg, Amount = c.Grams / 1000m * perKg * (1 + rates.MaterialWasteRate) };
         }).ToList();
         var materialAmount = colors.Sum(c => c.Amount!.Value);
         var calibratedMinutes = slice.PrintMinutes * calibrationFactor;

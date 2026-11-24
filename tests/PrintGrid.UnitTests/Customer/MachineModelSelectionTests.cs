@@ -89,6 +89,55 @@ public sealed class MachineModelSelectionTests
         optional.MatchingMachineCount.Should().Be(3);
     }
 
+    [Theory]
+    [InlineData("RED", "SIGNALRED")]
+    [InlineData("SIGNALRED", "RED")]
+    [InlineData("GRAY", "GREY")]
+    [InlineData("GREY", "GRAY")]
+    public async Task Color_aliases_match_existing_stock(string storedColor, string requestedColor)
+    {
+        await using var db = Database();
+        await Seed(db, colors: 2);
+        foreach (var lab in await db.Set<Lab>().Include(l => l.MaterialStocks).ToListAsync())
+        {
+            lab.SetMaterialStock("PLA", "RED", 1000);
+            var stock = lab.MaterialStocks.Single(s => s.ColorCode == "RED");
+            db.Add(stock);
+            // Simulate a legacy ledger row without rewriting balances or reservations.
+            db.Entry(stock).Property(s => s.ColorCode).CurrentValue = storedColor;
+            lab.AdjustMaterialStock("PLA", requestedColor, 10, "Restock by alias");
+            lab.ReserveMaterial(Guid.NewGuid(), "PLA", requestedColor, 100);
+            lab.MaterialReservations.Single().MaterialStockId.Should().Be(stock.Id);
+            stock.ColorCode.Should().Be(storedColor);
+            stock.AvailableGrams.Should().Be(1010);
+            stock.ReservedGrams.Should().Be(103);
+            db.AddRange(lab.MaterialReservations);
+            db.AddRange(lab.StockTransactions);
+        }
+        await db.SaveChangesAsync();
+        var service = new EfMachineFilterService(db);
+        var selection = Criteria() with { Colors = ["BLACK", requestedColor] };
+
+        (await service.GetOptionsAsync(selection, 3, 2, 1.15m, default)).MatchingMachineCount.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Approved_single_color_machines_remain_ineligible_for_two_stocked_colors()
+    {
+        await using var db = Database();
+        await Seed(db, colors: 1);
+        foreach (var lab in await db.Set<Lab>().Include(l => l.MaterialStocks).ToListAsync())
+        {
+            lab.SetMaterialStock("PLA", "RED", 1000);
+            db.Add(lab.MaterialStocks.Single(s => s.ColorCode == "RED"));
+        }
+        await db.SaveChangesAsync();
+        var service = new EfMachineFilterService(db);
+        var selection = Criteria() with { Colors = ["BLACK", "SIGNALRED"] };
+        (await service.GetOptionsAsync(Criteria(), 3, 2, 1.15m, default)).MatchingMachineCount.Should().Be(3);
+        (await service.GetOptionsAsync(selection, 3, 2, 1.15m, default)).MatchingMachineCount.Should().Be(0);
+    }
+
     [Fact]
     public async Task Model_options_apply_actual_colors_size_nozzle_tolerance_and_layer_requirements()
     {

@@ -4,6 +4,28 @@ namespace PrintGrid.UnitTests.Scheduling;
 
 public class MaterialInventoryTests
 {
+    [Theory]
+    [InlineData("SIGNALRED", "RED")]
+    [InlineData("GREY", "GRAY")]
+    public void Alias_stock_updates_and_reservations_use_the_same_ledger_row(string alias, string canonical)
+    {
+        var lab = Lab.Onboard("Lab", "HCM", 1);
+        lab.SetMaterialStock("PLA", alias, 100);
+        lab.MaterialStocks.Single().ColorCode.Should().Be(canonical);
+        lab.AdjustMaterialStock("PLA", canonical, 20, "Restock");
+        var jobId = Guid.NewGuid();
+        lab.ReserveMaterial(jobId, "PLA", alias, 50);
+        lab.ReserveMaterial(jobId, "PLA", canonical, 50);
+
+        lab.MaterialStocks.Should().ContainSingle();
+        lab.MaterialReservations.Should().ContainSingle();
+        lab.MaterialStocks.Single().ReservedGrams.Should().Be(51.5m);
+        lab.HasStock("PLA", alias, 70).Should().BeFalse();
+        lab.SettleMaterial(jobId, 48);
+        lab.MaterialStocks.Single().AvailableGrams.Should().Be(72);
+        lab.MaterialStocks.Single().ReservedGrams.Should().Be(0);
+    }
+
     [Fact]
     public void Initial_stock_count_is_stored_as_opening_balance_without_adjustment()
     {

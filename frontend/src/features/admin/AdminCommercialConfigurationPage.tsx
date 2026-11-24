@@ -119,7 +119,7 @@ export default function AdminCommercialConfigurationPage() {
       <TextField label="Profile tham chiếu theo vật liệu / chất lượng (JSON)" multiline minRows={3}
         value={referenceProfiles} onChange={e => setReferenceProfiles(e.target.value)}
         helperText={'Ví dụ {"PLA:0.2":"ID profile"}. Để trống dùng profile đã duyệt đầu tiên phù hợp; profile được lưu cùng báo giá.'} />
-      <TextField label="Giá từng màu (JSON, đồng/kg)" multiline minRows={4} value={colorRates} onChange={e => setColorRates(e.target.value)} helperText={'Ví dụ: {"PLA:BLUE":300000,"PLA:WHITE":290000,"PLA:SIGNALRED":310000}'} />
+      <TextField label="Giá từng màu (JSON, đồng/kg)" multiline minRows={4} value={colorRates} onChange={e => setColorRates(e.target.value)} helperText={'Ví dụ: {"PLA:BLUE":300000,"PLA:WHITE":290000,"PLA:RED":310000,"PLA:GRAY":300000}'} />
       <Typography fontWeight={750}>Giới hạn vận hành</Typography><Grid container spacing={2}><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Kích thước lô tối đa" value={params.maxBatchSize} onChange={e => number('maxBatchSize', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Ngân sách lập lịch (giây)" value={params.schedulingTimeBudgetSeconds} onChange={e => number('schedulingTimeBudgetSeconds', e.target.value)} /></Grid><Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Ngưỡng rủi ro SLA (giờ)" value={params.slaRiskThresholdHours} onChange={e => number('slaRiskThresholdHours', e.target.value)} /></Grid></Grid>
       <Typography fontWeight={750}>Trọng số gán việc</Typography>
       <Grid container spacing={2}>

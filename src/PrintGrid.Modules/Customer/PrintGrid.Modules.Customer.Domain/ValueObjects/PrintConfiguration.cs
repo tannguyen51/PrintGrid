@@ -1,4 +1,5 @@
 using PrintGrid.SharedKernel.Common;
+using PrintGrid.SharedKernel.ValueObjects;
 
 namespace PrintGrid.Modules.Customer.Domain.ValueObjects;
 
@@ -42,7 +43,7 @@ public sealed class PrintConfiguration : ValueObject
 
         return new PrintConfiguration(
             materialCode.Trim().ToUpperInvariant(),
-            colorCode.Trim().ToUpperInvariant(),
+            MaterialColorCodes.Normalize(colorCode),
             layerHeightMm,
             infillPercent,
             toleranceMm);

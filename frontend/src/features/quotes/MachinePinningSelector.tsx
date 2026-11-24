@@ -18,17 +18,26 @@ export default function MachinePinningSelector(props: Props) {
   const [pinning, setPinning] = useState(false)
   const options = useEligibleModels({ modelId: props.modelId, materialCode: props.materialCode,
     colorCodes: props.colorCodes, sizeCode: props.sizeCode, layerHeightMm: props.layerHeightMm,
-    toleranceMm: 0.2, ...props.constraints }, expanded || !!props.pinnedModelId)
+    toleranceMm: 0.2, ...props.constraints }, true)
   const models = options.data?.models ?? []
   const selectedValid = !props.pinnedModelId || models.some(m => m.id === props.pinnedModelId)
   const { maxToleranceMm, minLayerHeightMm } = props.constraints
   const constraintsValid = (maxToleranceMm == null || maxToleranceMm > 0 && maxToleranceMm <= 10)
     && (minLayerHeightMm == null || minLayerHeightMm > 0 && minLayerHeightMm <= 1)
-  const valid = constraintsValid && (!(pinning || props.pinnedModelId)
+  const hasCapacity = !!options.data && options.data.matchingMachineCount > 0 && !options.isFetching && !options.isError
+  const valid = constraintsValid && hasCapacity && (!(pinning || props.pinnedModelId)
     || !!props.pinnedModelId && selectedValid && !options.isFetching && !options.isError)
   useEffect(() => { props.onValidityChange(valid) }, [valid, props.onValidityChange])
   const coefficient = options.data?.pinSurchargeCoefficient
-  return <Accordion expanded={expanded} onChange={(_, value) => setExpanded(value)} disableGutters elevation={0}
+  return <Stack spacing={1.5}>
+    {options.isFetching && <Typography role="status" variant="body2">Đang kiểm tra máy phù hợp với cấu hình…</Typography>}
+    {options.isError && <Alert severity="error" action={<Button onClick={() => void options.refetch()}>Thử lại</Button>}>
+      Không kiểm tra được máy phù hợp. Vui lòng thử lại trước khi lấy báo giá.
+    </Alert>}
+    {!options.isFetching && !options.isError && options.data?.matchingMachineCount === 0 && <Alert severity="warning">
+      Chưa có máy đã được duyệt đáp ứng {props.colorCodes.length} màu và cấu hình đang chọn. Hãy đổi lựa chọn màu, kích thước hoặc yêu cầu in; bạn cũng có thể liên hệ PrintGrid để được hỗ trợ.
+    </Alert>}
+    <Accordion expanded={expanded} onChange={(_, value) => setExpanded(value)} disableGutters elevation={0}
     sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '12px !important', '&::before': { display: 'none' } }}>
     <AccordionSummary expandIcon={<ExpandMoreRounded />}>
       <Typography fontWeight={700}>Yêu cầu in nâng cao</Typography>
@@ -36,11 +45,7 @@ export default function MachinePinningSelector(props: Props) {
     <AccordionDetails><Stack spacing={2.5}>
       <TechConstraintsSelector value={props.constraints} onValueChange={props.onConstraintsChange} />
       {!constraintsValid && <Alert severity="error">Sai số phải lớn hơn 0 và không quá 10 mm; chiều cao lớp phải lớn hơn 0 và không quá 1 mm.</Alert>}
-      {options.isFetching && <Typography role="status" variant="body2">Đang tìm máy phù hợp…</Typography>}
-      {options.isError && <Alert severity="error" action={<Button onClick={() => void options.refetch()}>Thử lại</Button>}>
-        Không tải được danh sách model phù hợp. Vui lòng kiểm tra yêu cầu kỹ thuật.
-      </Alert>}
-      {!options.isFetching && !options.isError && options.data && options.data.matchingMachineCount < 3 && <Alert severity="warning">
+      {!options.isFetching && !options.isError && options.data && options.data.matchingMachineCount > 0 && options.data.matchingMachineCount < 3 && <Alert severity="warning">
         Chỉ có {options.data.matchingMachineCount} máy phù hợp. Thời gian chờ có thể dài; bạn có thể nới yêu cầu kỹ thuật.
       </Alert>}
       <FormControlLabel control={<Switch checked={pinning || !!props.pinnedModelId}
@@ -68,5 +73,6 @@ export default function MachinePinningSelector(props: Props) {
         </Typography>}
       </Stack> : <Typography variant="body2" color="text.secondary">Hệ thống tự chọn máy đáp ứng yêu cầu, không có phụ phí chỉ định.</Typography>}
     </Stack></AccordionDetails>
-  </Accordion>
+    </Accordion>
+  </Stack>
 }

@@ -44,19 +44,21 @@ public sealed class EfMachineFilterService(PrintGridDbContext db, IConfiguration
 
     private async Task<List<Machine>> Candidates(MachineSelectionCriteria c, CancellationToken ct)
     {
+        c = c with { Colors = c.Colors.Select(MaterialColorCodes.Normalize).Distinct().ToList() };
         var machines = (await ActiveMachines(ct)).Where(m => m.SupportedMaterials.Contains(c.MaterialCode)
             && m.BuildVolume.WidthMm >= c.WidthMm && m.BuildVolume.DepthMm >= c.DepthMm && m.BuildVolume.HeightMm >= c.HeightMm
             && m.MinLayerHeightMm <= c.LayerHeightMm && m.AchievableToleranceMm <= c.ToleranceMm
             && m.PrinterConfiguration!.MaximumColorSlots >= c.Colors.Count && Matches(m, c.TechConstraints)).ToList();
         var labIds = machines.Select(m => m.LabId).Distinct().ToList();
-        var profiles = await db.Set<CuraProfile>().AsNoTracking().Where(p => p.IsActive && p.MaterialCode == c.MaterialCode)
+        var profiles = await db.Set<CuraProfile>().AsNoTracking().Where(p => p.IsActive
+            && p.ApprovalStatus == CuraProfile.StatusApproved && p.MaterialCode == c.MaterialCode)
             .ToListAsync(ct);
         var engineVersion = configuration?["QuoteSlicer:EngineVersion"] ?? "5.11.0";
         var labs = await db.Set<Lab>().AsNoTracking().Include(l => l.MaterialStocks)
             .Where(l => labIds.Contains(l.Id)).ToListAsync(ct);
         return machines.Where(m => profiles.Any(p => p.EngineVersion == engineVersion && m.CuraProfileIds.Contains(p.Id) && p.Matches(m))
             && c.Colors.All(color => labs.Single(l => l.Id == m.LabId).MaterialStocks.Any(s =>
-                s.MaterialCode == c.MaterialCode && s.ColorCode == color && s.AssignableGrams > 0))).ToList();
+                s.MaterialCode == c.MaterialCode && MaterialColorCodes.Equivalent(s.ColorCode, color) && s.AssignableGrams > 0))).ToList();
     }
 
     public async Task<IReadOnlyList<Guid>> FilterCandidatesAsync(IReadOnlyList<Guid> candidates,
@@ -88,7 +90,8 @@ public sealed class EfMachineFilterService(PrintGridDbContext db, IConfiguration
             : (await ActiveMachines(ct)).Where(m => candidates.Contains(m.Id)).ToList();
         var engineVersion = configuration?["QuoteSlicer:EngineVersion"] ?? "5.11.0";
         var profiles = await db.Set<CuraProfile>().AsNoTracking()
-            .Where(p => p.IsActive && p.MaterialCode == materialCode && p.EngineVersion == engineVersion)
+            .Where(p => p.IsActive && p.ApprovalStatus == CuraProfile.StatusApproved
+                && p.MaterialCode == materialCode && p.EngineVersion == engineVersion)
             .OrderBy(p => p.CreatedAtUtc).ThenBy(p => p.Id).ToListAsync(ct);
         if (referenceProfileId.HasValue) profiles = profiles.Where(p => p.Id == referenceProfileId).ToList();
         foreach (var profile in profiles)

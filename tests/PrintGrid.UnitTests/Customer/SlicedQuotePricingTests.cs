@@ -90,6 +90,21 @@ public class SlicedQuotePricingTests
         price.TotalAmount.Should().Be(network.TotalAmount);
     }
 
+    [Theory]
+    [InlineData("RED", "SIGNALRED", "RED")]
+    [InlineData("SIGNALRED", "RED", "RED")]
+    [InlineData("GRAY", "GREY", "GRAY")]
+    [InlineData("GREY", "GRAY", "GRAY")]
+    public void Color_rate_aliases_preserve_configured_prices(string configuredColor, string requestedColor, string canonical)
+    {
+        var rates = Rates with { ColorPricePerKg = new Dictionary<string, decimal> { [$"PLA:{configuredColor}"] = 321000 } };
+        var price = SlicedQuotePricing.Calculate(rates, "PLA", 1,
+            new QuoteSliceResult([new(requestedColor, 100)], 60), false);
+        price.Colors.Single().ColorCode.Should().Be(canonical);
+        price.Colors.Single().PricePerKg.Should().Be(321000);
+        price.MaterialAmount.Should().Be(32100 * (1 + rates.MaterialWasteRate));
+    }
+
     [Fact]
     public void Hundred_percent_failure_is_rejected()
     {

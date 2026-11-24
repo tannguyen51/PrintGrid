@@ -36,6 +36,23 @@ public sealed class ColorGroupMappingTests
     }
 
     [Theory]
+    [InlineData("SIGNALRED", "RED")]
+    [InlineData("GREY", "GRAY")]
+    public void Legacy_and_canonical_names_keep_source_regions_but_share_one_physical_color(string legacy, string canonical)
+    {
+        var assignments = new ColorGroupAssignment[] { new(Source[0].Id, legacy), new(Source[1].Id, canonical) };
+        var result = ColorGroupMapping.Apply(Source, assignments, [canonical]);
+        result.Groups.Should().ContainSingle();
+        result.Groups.Single().Should().HaveCount(2);
+        result.Assignments.Should().OnlyContain(a => a.ColorCode == canonical);
+        var model = Model.Create(Guid.NewGuid(), "part", null, "part.3mf", "3MF", 1000, null, "models/part.3mf", "hash");
+        model.ApplyGeometry(10, 10, 10, 1, 1, 1, true, true, true);
+        var command = new CreateQuoteCommand(model.CustomerId, model.Id, "PLA", legacy, .2m, 30, 1, .2m,
+            ColorAssignments: assignments);
+        MachineSelection.Criteria(command, model).Colors.Should().Equal(canonical);
+    }
+
+    [Theory]
     [InlineData("missing")]
     [InlineData("duplicate")]
     [InlineData("unknown")]

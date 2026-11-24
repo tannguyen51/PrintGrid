@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '../../shared/api/apiClient'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { PageBackButton } from '../../shared/components/PageBackButton'
+import { MATERIAL_COLORS as COLORS, normalizeMaterialColor } from '../../shared/materialColors'
 
 interface Stock { id: string; materialCode: string; colorCode: string; availableGrams: number; reservedGrams: number; assignableGrams: number; reorderPointGrams: number; isLowStock: boolean }
 
@@ -18,21 +19,9 @@ const MATERIALS = [
   { code: 'RESIN', name: 'Resin tiêu chuẩn', note: 'Chi tiết cao' }, { code: 'RESIN-TOUGH', name: 'Resin Tough', note: 'Resin chịu lực' },
 ] as const
 
-const COLORS = [
-  { code: 'BLACK', label: 'Đen', hex: '#1F2937' }, { code: 'WHITE', label: 'Trắng', hex: '#FFFFFF' },
-  { code: 'GRAY', label: 'Xám', hex: '#9CA3AF' }, { code: 'SILVER', label: 'Bạc', hex: '#CBD5E1' },
-  { code: 'RED', label: 'Đỏ', hex: '#EF4444' }, { code: 'ORANGE', label: 'Cam', hex: '#F97316' },
-  { code: 'YELLOW', label: 'Vàng', hex: '#FACC15' }, { code: 'GREEN', label: 'Xanh lá', hex: '#22C55E' },
-  { code: 'BLUE', label: 'Xanh dương', hex: '#3B82F6' }, { code: 'NAVY', label: 'Xanh navy', hex: '#1E3A8A' },
-  { code: 'PURPLE', label: 'Tím', hex: '#8B5CF6' }, { code: 'PINK', label: 'Hồng', hex: '#EC4899' },
-  { code: 'BROWN', label: 'Nâu', hex: '#92400E' }, { code: 'BEIGE', label: 'Be', hex: '#D6C6A5' },
-  { code: 'GOLD', label: 'Vàng kim', hex: '#D4A72C' }, { code: 'COPPER', label: 'Đồng', hex: '#B87333' },
-  { code: 'TRANSPARENT', label: 'Trong suốt', hex: '#E0F2FE' }, { code: 'NATURAL', label: 'Tự nhiên', hex: '#F1E7D0' },
-] as const
-
 const fmt = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(value)
 const materialName = (code: string) => MATERIALS.find(x => x.code === code)?.name ?? code
-const colorInfo = (code: string) => COLORS.find(x => x.code === code)
+const colorInfo = (code: string) => COLORS.find(x => x.code === normalizeMaterialColor(code))
 const materialInputLabel = (code: string) => `${code} — ${materialName(code)}`
 const colorInputLabel = (code: string) => `${colorInfo(code)?.label ?? code} — ${code}`
 
@@ -63,8 +52,8 @@ export default function InventoryPage() {
   const save = useMutation({
     mutationFn: async () => {
       const material = materialCode.trim().toUpperCase()
-      const color = colorCode.trim().toUpperCase()
-      const existing = inventory.data?.find(x => x.materialCode === material && x.colorCode === color)
+      const color = normalizeMaterialColor(colorCode)
+      const existing = inventory.data?.find(x => x.materialCode === material && normalizeMaterialColor(x.colorCode) === color)
       if (existing) {
         return apiClient.post(`/labs/${labId}/inventory/adjustments`, {
           materialCode: material, colorCode: color, deltaGrams: quantityGrams, reason: 'Nhập thêm vật liệu vào kho',
@@ -143,7 +132,7 @@ export default function InventoryPage() {
             if (reason === 'clear') { setColor(''); setColorInput(''); return }
             if (reason === 'input' && colorInput !== colorInputLabel(colorCode)) { setColorInput(value); setColor(value.trim().toUpperCase()) }
           }}
-          getOptionLabel={code => `${COLORS.find(x => x.code === code)?.label ?? code} — ${code}`}
+          getOptionLabel={code => colorInputLabel(code)}
           renderOption={(props, code) => { const item = colorInfo(code); return <Box component="li" {...props} key={code} sx={{ gap: 1.5 }}><ColorDot code={code} /><Box><Typography fontWeight={700}>{item?.label ?? code}</Typography><Typography variant="caption" color="text.secondary">{code}</Typography></Box></Box> }}
           renderInput={params => <TextField {...params} required label="Màu sắc" placeholder="Tìm màu" InputProps={{ ...params.InputProps, startAdornment: <><InputAdornment position="start"><ColorDot code={colorCode} size={20} /></InputAdornment>{params.InputProps.startAdornment}</> }} />} /></Grid>
         <Grid size={{ xs: 12 }}><Typography variant="caption" color="text.secondary" display="block" mb={1}>Chọn nhanh màu phổ biến</Typography><Stack direction="row" gap={1} flexWrap="wrap">{COLORS.map(color => <Chip key={color.code} clickable onClick={() => { setColor(color.code); setColorInput(colorInputLabel(color.code)) }} variant={colorCode === color.code ? 'filled' : 'outlined'} color={colorCode === color.code ? 'primary' : 'default'} avatar={<Avatar sx={{ bgcolor: 'transparent !important' }}><ColorDot code={color.code} size={18} /></Avatar>} label={color.label} />)}</Stack></Grid>

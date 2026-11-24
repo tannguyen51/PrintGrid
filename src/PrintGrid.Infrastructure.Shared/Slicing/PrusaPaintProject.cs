@@ -38,7 +38,7 @@ public static class PrusaPaintProject
             assignments = source.Keys.Select((id, i) => new ColorGroupAssignment(id, colors[colors.Count == 1 ? 0 : i])).ToList();
         }
         var frozen = ColorGroupMapping.Resolve(source, assignments, colors);
-        var targets = colors.Select(c => c.Trim().ToUpperInvariant()).ToArray();
+        var targets = colors.Select(MaterialColorCodes.Normalize).ToArray();
         var byId = frozen.ToDictionary(a => a.GroupId, a => Array.IndexOf(targets, a.ColorCode) + 1, StringComparer.Ordinal);
         var cache = new Dictionary<(string, int), (string Paint, int[] Tools)>();
         (string Paint, int[] Tools) Painting(ThreeMfPackage.NativeFace face, int defaultSlot)

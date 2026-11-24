@@ -1,4 +1,5 @@
 using PrintGrid.SharedKernel.Common;
+using PrintGrid.SharedKernel.ValueObjects;
 
 namespace PrintGrid.Modules.Scheduling.Domain.Entities;
 
@@ -26,7 +27,7 @@ public class MaterialStock : Entity<Guid>
             Id = Guid.NewGuid(),
             LabId = labId,
             MaterialCode = Normalize(materialCode),
-            ColorCode = Normalize(colorCode),
+            ColorCode = MaterialColorCodes.Normalize(colorCode),
             AvailableGrams = availableGrams,
             ReorderPointGrams = reorderPointGrams,
             UpdatedAtUtc = DateTime.UtcNow

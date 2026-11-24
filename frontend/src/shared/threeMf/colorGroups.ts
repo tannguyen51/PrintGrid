@@ -1,3 +1,5 @@
+import { MATERIAL_COLORS, normalizeMaterialColor } from '../materialColors'
+
 export interface ModelColorGroup {
   id: string
   slot: number
@@ -13,17 +15,7 @@ export interface ColorGroupAssignment {
 export const groupIdForSlot = (slot: number) => `filament:${String(slot).padStart(8, '0')}`
 export const colorGroupNumber = (id: string, fallback: number) => /^filament:\d+$/.test(id) ? Number(id.slice(9)) : fallback
 
-export const PRINT_COLORS = [
-  { code: 'BLACK', label: 'Đen', hex: '#000000' },
-  { code: 'WHITE', label: 'Trắng', hex: '#FFFFFF' },
-  { code: 'SIGNALRED', label: 'Đỏ', hex: '#D02727' },
-  { code: 'BLUE', label: 'Xanh dương', hex: '#2563EB' },
-  { code: 'GREEN', label: 'Xanh lá', hex: '#16A34A' },
-  { code: 'YELLOW', label: 'Vàng', hex: '#FEC600' },
-  { code: 'ORANGE', label: 'Cam', hex: '#F97316' },
-  { code: 'GREY', label: 'Xám', hex: '#808080' },
-  { code: 'TRANSPARENT', label: 'Trong suốt', hex: '#DDE9ED' },
-]
+export const PRINT_COLORS = MATERIAL_COLORS
 
 export function nearestPrintColor(hex: string) {
   const rgb = (value: string) => [1, 3, 5].map(i => parseInt(value.slice(i, i + 2), 16))
@@ -35,10 +27,13 @@ export function nearestPrintColor(hex: string) {
 }
 
 export function initializeAssignments(groups: ModelColorGroup[], saved: ColorGroupAssignment[]) {
-  return groups.map(group => ({ groupId: group.id, originalColorHex: group.originalColorHex,
-    colorCode: saved.find(a => a.groupId === group.id && PRINT_COLORS.some(c => c.code === a.colorCode))?.colorCode
-      ?? nearestPrintColor(group.originalColorHex) }))
+  return groups.map(group => {
+    const savedCode = saved.find(a => a.groupId === group.id)?.colorCode
+    const colorCode = savedCode ? normalizeMaterialColor(savedCode) : undefined
+    return { groupId: group.id, originalColorHex: group.originalColorHex,
+      colorCode: PRINT_COLORS.some(c => c.code === colorCode) ? colorCode! : nearestPrintColor(group.originalColorHex) }
+  })
 }
 
 export const assignedColors = (assignments: ColorGroupAssignment[]) => [...new Set(
-  [...assignments].sort((a, b) => a.groupId.localeCompare(b.groupId)).map(a => a.colorCode))]
+  [...assignments].sort((a, b) => a.groupId.localeCompare(b.groupId)).map(a => normalizeMaterialColor(a.colorCode)))]

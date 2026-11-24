@@ -1,6 +1,7 @@
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.SharedKernel.Common;
 using PrintGrid.SharedKernel.Results;
+using PrintGrid.SharedKernel.ValueObjects;
 
 namespace PrintGrid.Modules.Scheduling.Domain.Entities;
 
@@ -264,8 +265,8 @@ public class Lab : AggregateRoot<Guid>
     public void SetMaterialStock(string materialCode, string colorCode, decimal availableGrams, decimal reorderPointGrams = 0m)
     {
         var material = NormalizeStockCode(materialCode);
-        var color = NormalizeStockCode(colorCode);
-        var existing = _materialStocks.SingleOrDefault(s => s.MaterialCode == material && s.ColorCode == color);
+        var color = MaterialColorCodes.Normalize(colorCode);
+        var existing = FindStock(material, color);
         if (existing is null)
         {
             // The first count is the opening balance, not an adjustment. Persisting the stock and
@@ -376,16 +377,17 @@ public class Lab : AggregateRoot<Guid>
     public bool HasStock(string materialCode, string colorCode, decimal requiredGrams)
     {
         var material = NormalizeStockCode(materialCode);
-        var color = NormalizeStockCode(colorCode);
+        var color = MaterialColorCodes.Normalize(colorCode);
         var tracked = _materialStocks
-            .Where(s => s.MaterialCode == material && s.ColorCode == color)
+            .Where(s => s.MaterialCode == material && MaterialColorCodes.Equivalent(s.ColorCode, color))
             .ToList();
 
         return tracked.Count == 0 || tracked.Any(s => s.AssignableGrams >= requiredGrams);
     }
 
     private MaterialStock? FindStock(string materialCode, string colorCode) =>
-        _materialStocks.SingleOrDefault(s => s.MaterialCode == NormalizeStockCode(materialCode) && s.ColorCode == NormalizeStockCode(colorCode));
+        _materialStocks.SingleOrDefault(s => s.MaterialCode == NormalizeStockCode(materialCode)
+            && MaterialColorCodes.Equivalent(s.ColorCode, colorCode));
 
     public void UpdatePerformance(decimal onTimeDeliveryRate, decimal firstPassYield)
     {
