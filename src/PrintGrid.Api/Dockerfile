@@ -40,7 +40,7 @@ WORKDIR /app
 
 # psql is required only by the pre-deploy migration command.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-client python3 \
+    && apt-get install -y --no-install-recommends postgresql-client python3 prusa-slicer=2.5.0+dfsg-4 xvfb xauth \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system --gid 2000 printgrid \
@@ -53,6 +53,8 @@ COPY --from=build --chown=printgrid:printgrid /app/migrations.sql ./migrations.s
 COPY --from=cura /opt/squashfs-root/ /opt/cura/runtime/
 COPY infra/slicer/cura-resources/5.11.0/ /opt/cura/resources/
 COPY tools/cura-library/ /opt/cura/tools/
+COPY tools/slicer/prusa-quote.sh /opt/printgrid/prusa-quote
+RUN sed -i 's/\r$//' /opt/printgrid/prusa-quote && chmod 755 /opt/printgrid/prusa-quote
 RUN sed -i 's/\r$//' /opt/cura/tools/cura-engine.sh \
     && cp /opt/cura/tools/cura-engine.sh /opt/cura/CuraEngine \
     && chmod 755 /opt/cura/CuraEngine /opt/cura/runtime/CuraEngine /opt/cura/tools/resolve_profile.py
@@ -65,6 +67,7 @@ EXPOSE 8080
 ENV ASPNETCORE_HTTP_PORTS=8080
 ENV QuoteSlicer__EngineVersion=5.11.0
 ENV QuoteSlicer__ExecutablePath=/opt/cura/CuraEngine
+ENV QuoteSlicer__PaintSlicerExecutablePath=/opt/printgrid/prusa-quote
 ENV CuraLibrary__ResourcesPath=/opt/cura/resources
 ENV CuraLibrary__ResolverPath=/opt/cura/tools/resolve_profile.py
 

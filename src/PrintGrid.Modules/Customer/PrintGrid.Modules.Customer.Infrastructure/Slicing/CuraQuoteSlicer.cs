@@ -8,6 +8,7 @@ using PrintGrid.Infrastructure.Shared.FileStorage;
 using PrintGrid.Infrastructure.Shared.Slicing;
 using PrintGrid.Modules.Customer.Application.Quotes;
 using PrintGrid.SharedKernel.Interfaces;
+using PrintGrid.SharedKernel.ValueObjects;
 
 namespace PrintGrid.Modules.Customer.Infrastructure.Slicing;
 
@@ -15,6 +16,12 @@ public sealed class CuraQuoteOptions
 {
     public string ExecutablePath { get; init; } = "";
     public int TimeoutSeconds { get; init; } = 120;
+    public string PaintSlicerExecutablePath { get; init; } = "";
+    public int PaintTimeoutSeconds { get; init; } = 240;
+    public decimal PaintPurgeVolumeMm3 { get; init; } = 70;
+    public decimal PaintColorChangeSeconds { get; init; } = 30;
+    public decimal PaintWipeTowerWidthMm { get; init; } = 20;
+    public decimal PaintMaxVolumetricSpeed { get; init; } = 12;
     public Dictionary<string, RegisteredCuraSettings> Machines { get; init; } =
         new(StringComparer.OrdinalIgnoreCase);
 }
@@ -24,13 +31,37 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
     IOptions<ModelUploadOptions> uploadOptions) : IQuoteSlicer
 {
     private static readonly SemaphoreSlim _slots = new(2);
+    private ThreeMfPackage.NativeDocument? _nativeDocument;
+    private string? _nativeStorageKey;
     public Task<IReadOnlyList<Guid>> GetConfiguredMachineIdsAsync(CancellationToken cancellationToken) =>
         registry.GetApprovedMachineIdsAsync(cancellationToken);
+    public async Task<QuoteModelEnvelope?> GetEnvelopeAsync(string storageKey, string format, CancellationToken cancellationToken)
+    {
+        if (!format.TrimStart('.').Equals("3MF", StringComparison.OrdinalIgnoreCase)) return null;
+        var document = await LoadNativeAsync(storageKey, cancellationToken);
+        var bounds = PrusaPaintProject.Envelope(document);
+        return new(bounds.Width, bounds.Depth, bounds.Height, document.PlateCount);
+    }
+
+    private async Task<ThreeMfPackage.NativeDocument> LoadNativeAsync(string storageKey, CancellationToken ct)
+    {
+        if (_nativeStorageKey == storageKey && _nativeDocument is not null) return _nativeDocument;
+        var split = storageKey.IndexOf('/');
+        if (split <= 0) throw new InvalidDataException("File model không hợp lệ.");
+        await using var source = await files.DownloadAsync(storageKey[..split], storageKey[(split + 1)..], ct);
+        using var content = new MemoryStream(); var buffer = new byte[65536]; int read;
+        while ((read = await source.ReadAsync(buffer, ct)) > 0)
+        {
+            if (content.Length + read > uploadOptions.Value.MaxFileBytes) throw new InvalidDataException("File vượt giới hạn dung lượng báo giá.");
+            content.Write(buffer, 0, read);
+        }
+        content.Position = 0;
+        _nativeDocument = ThreeMfPackage.ReadNative(content); _nativeStorageKey = storageKey;
+        return _nativeDocument;
+    }
     public async Task<QuoteSliceResult> SliceAsync(QuoteSliceRequest request, CancellationToken cancellationToken)
     {
         var config = options.Value;
-        if (string.IsNullOrWhiteSpace(config.ExecutablePath))
-            throw new InvalidOperationException("Chưa cấu hình đường dẫn CuraEngine.");
         var profile = await registry.ResolveAsync(request.MachineId, request.MaterialCode, cancellationToken, request.ProfileId)
             ?? throw new InvalidOperationException("Máy chưa có profile phù hợp được quản trị viên duyệt.");
         if (request.Colors.Count > profile.MaximumColorSlots)
@@ -46,6 +77,14 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
             if (settings.Any(p => p.Key != "global" && !p.Key.StartsWith("extruder.") && p.Key != "limit_to_extruder"))
                 throw new InvalidDataException("Profile Cura chỉ được chứa global, extruder.N và limit_to_extruder.");
             if (settings["global"] is not JsonObject global) throw new InvalidDataException("Profile thiếu global.");
+            if (request.FileFormat.TrimStart('.').Equals("3MF", StringComparison.OrdinalIgnoreCase))
+            {
+                var native = await LoadNativeAsync(request.StorageKey, cancellationToken);
+                if (native.HasSurfacePainting || native.PlateCount > 1)
+                    return await PrusaQuoteSlicer.SliceAsync(native, request, profile, settings, config, directory.FullName, logger, cancellationToken);
+            }
+            if (string.IsNullOrWhiteSpace(config.ExecutablePath))
+                throw new InvalidDataException("Chưa cấu hình đường dẫn CuraEngine.");
             var split = request.StorageKey.IndexOf('/');
             if (split <= 0) throw new InvalidDataException("File model không hợp lệ.");
             await using var source = await files.DownloadAsync(request.StorageKey[..split], request.StorageKey[(split + 1)..], cancellationToken);
@@ -59,7 +98,20 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
                 content.Write(buffer, 0, read);
             }
             content.Position = 0;
-            var groups = QuoteMesh.Read(content, request.FileFormat);
+            // Surface paint is enough for preview, but not a set of closed material
+            // volumes. Do not feed open colored surface patches to Cura as solids.
+            IReadOnlyList<List<QuoteMesh.Triangle>> groups;
+            IReadOnlyList<ColorGroupAssignment>? assignments = null;
+            if (request.ColorAssignments is not null)
+            {
+                if (!request.FileFormat.TrimStart('.').Equals("3MF", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("Ánh xạ nhóm màu hiện yêu cầu file 3MF.");
+                var sourceGroups = ThreeMfPackage.ReadGroups(content, allowSurfacePainting: request.Colors.Count == 1);
+                var mapped = ColorGroupMapping.Apply(sourceGroups, request.ColorAssignments, request.Colors);
+                groups = mapped.Groups;
+                assignments = mapped.Assignments;
+            }
+            else groups = QuoteMesh.Read(content, request.FileFormat, allowSurfacePainting: request.Colors.Count == 1);
             if (request.Colors.Count > 1 && groups.Count != request.Colors.Count)
                 throw new InvalidDataException("File chưa có đủ vùng vật liệu cho các màu đã chọn. Hãy dùng 3MF với mỗi màu là một vùng vật liệu riêng; hệ thống không tự chia đều nhựa theo số màu.");
             // Do not allocate another six million vertices for a 100 MiB STL.
@@ -146,7 +198,8 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
             var perPlate = global["machine_shape"]?.ToString() == "rectangular" ? across * along : 1;
             var plates = (int)decimal.Ceiling((decimal)request.Quantity / perPlate);
             return result with { PricePerHour = profile.PricePerHour, FailureRate = profile.FailureRate,
-                PlateCount = plates, ProfileId = profile.ProfileId, ProfileVersion = profile.ProfileVersion };
+                PlateCount = plates, ProfileId = profile.ProfileId, ProfileVersion = profile.ProfileVersion,
+                ColorAssignments = assignments, ModelScale = request.Scale, SlicingEngine = "CuraEngine 5.11.0" };
 
             // Turn resolved settings into definition JSONs with literal default_value fields.
             // Standard -j/-e/-l works with released CuraEngine versions; no GUI or -r required.
@@ -160,7 +213,7 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
                 return path;
             }
         }
-        catch (Exception e) when (e is IOException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException or FormatException or IndexOutOfRangeException)
+        catch (Exception e) when (e is IOException && e is not InvalidDataException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException or FormatException or IndexOutOfRangeException)
         { logger.LogWarning(e, "Cura quote configuration/input failure"); throw new InvalidOperationException("Không thể chạy slicer. Kiểm tra file, đường dẫn CuraEngine và profile máy."); }
         finally { try { directory.Delete(recursive: true); } finally { _slots.Release(); } }
     }

@@ -1,4 +1,9 @@
 using NSubstitute;
+using Microsoft.Extensions.Logging;
+using PrintGrid.Modules.Customer.Domain.Events;
+using PrintGrid.Modules.Scheduling.Application.EventHandlers;
+using PrintGrid.Modules.Scheduling.Domain.Entities;
+using PrintGrid.Modules.Scheduling.Domain.Repositories;
 using PrintGrid.Modules.Customer.Application.Abstractions;
 using PrintGrid.Modules.Customer.Application.Quotes;
 using PrintGrid.Modules.Customer.Domain.Entities;
@@ -11,10 +16,14 @@ namespace PrintGrid.UnitTests.Customer;
 
 public class SlicedQuoteFlowTests
 {
-    [Fact]
-    public async Task Quote_uses_reference_profile_and_network_rates_then_places_on_earliest_machine()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Quote_uses_reference_profile_and_network_rates_then_places_on_earliest_machine(bool useColorMapping)
     {
         var customer = Guid.NewGuid();
+        ColorGroupAssignment[]? assignments = useColorMapping
+            ? [new("filament:00000001", "BLUE", "#D02727"), new("filament:00000002", "WHITE", "#FFFFFF")] : null;
         var models = Substitute.For<IModelRepository>();
         var model = Model.Create(customer, "part", null, "part.3mf", "3MF", 1000, null,
             "printgrid-models/test/part.3mf", "hash");
@@ -33,7 +42,7 @@ public class SlicedQuoteFlowTests
         {
             var request = call.Arg<QuoteSliceRequest>();
             return new QuoteSliceResult([new QuoteColorUsage("BLUE", 460), new QuoteColorUsage("WHITE", 460)],
-                3900, request.MachineId == first ? 6000 : 5000, .08m);
+                3900, request.MachineId == first ? 6000 : 5000, .08m, ColorAssignments: request.ColorAssignments);
         });
         var probe = Substitute.For<IProductionCapacityProbe>();
         probe.FindEarliestFeasibleDeliveryAsync(Arg.Any<IReadOnlyList<TrialPlacementLine>>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
@@ -53,13 +62,14 @@ public class SlicedQuoteFlowTests
         var handler = new CreateQuoteCommandHandler(models, quotes, Substitute.For<IUnitOfWork>(), clock, probe,
             filter, policy, slicer);
         var result = await handler.Handle(new CreateQuoteCommand(customer, model.Id, "PLA", "BLUE", .2m, 30, 5, .2m,
-            "M", ["BLUE", "WHITE"], true), CancellationToken.None);
+            "M", ["BLUE", "WHITE"], true, ColorAssignments: assignments), CancellationToken.None);
         result.IsSuccess.Should().BeTrue();
         result.Value.EstimatedHubReadyDate.Should().Be(new DateOnly(2026, 11, 10));
         result.Value.PromisedDeliveryDate.Should().BeNull();
         result.Value.Items.Single().Calculation!.WidthMm.Should().Be(150);
         result.Value.Items.Single().Calculation!.DepthMm.Should().Be(100);
         result.Value.Items.Single().Calculation!.HeightMm.Should().Be(200);
+        result.Value.Items.Single().Calculation!.ColorAssignments.Should().BeEquivalentTo(assignments);
         result.Value.PlacementBasis.Should().BeNull();
         captured!.Items.Single().QuotedMachineId.Should().Be(second);
         await slicer.Received(1).SliceAsync(Arg.Is<QuoteSliceRequest>(r => r.Scale == 1.25m && r.Quantity == 5 && r.Colors.Count == 2 && r.MachineId == first), Arg.Any<CancellationToken>());
@@ -68,6 +78,25 @@ public class SlicedQuoteFlowTests
         order.Items.Single().CalculationJson.Should().Be(captured.Items.Single().CalculationJson);
         order.Items.Single().QuotedMachineId.Should().Be(second);
         order.Items.Single().LineTotal.Amount.Should().Be(result.Value.TotalPrice);
+        var frozen = System.Text.Json.JsonSerializer.Deserialize<QuotePriceBreakdown>(order.Items.Single().CalculationJson!);
+        frozen!.ColorAssignments.Should().BeEquivalentTo(assignments);
+        if (order.Status == PrintGrid.Modules.Customer.Domain.Enums.OrderStatus.AwaitingApproval)
+        {
+            captured.Approve(Guid.NewGuid(), captured.TotalPrice.Amount, captured.PromisedDeliveryDate,
+                "Reviewed", clock.UtcNow, TimeSpan.FromHours(48), false, 0).IsSuccess.Should().BeTrue();
+            order.ApplyApprovedQuote(captured).IsSuccess.Should().BeTrue();
+        }
+        order.ConfirmPayment("local-color-mapping-test").IsSuccess.Should().BeTrue();
+        var notification = order.DomainEvents.OfType<OrderConfirmedEvent>().Single();
+        var jobs = Substitute.For<IJobRepository>();
+        jobs.GetByOrderItemIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Array.Empty<Job>());
+        Job? produced = null;
+        jobs.AddAsync(Arg.Do<Job>(j => produced = j), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        await new OrderConfirmedEventHandler(jobs, Substitute.For<IUnitOfWork>(), Substitute.For<ILogger<OrderConfirmedEventHandler>>())
+            .Handle(notification, CancellationToken.None);
+        produced!.ProductionQuoteJson.Should().Be(order.Items.Single().CalculationJson);
+        System.Text.Json.JsonSerializer.Deserialize<QuotePriceBreakdown>(produced.ProductionQuoteJson!)!
+            .ColorAssignments.Should().BeEquivalentTo(assignments);
     }
 
     [Fact]

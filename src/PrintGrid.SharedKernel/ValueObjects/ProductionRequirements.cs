@@ -11,7 +11,8 @@ public sealed record ProductionRequirements(
     decimal? MaxToleranceMm = null,
     decimal? MinLayerHeightMm = null,
     Guid? PinnedModelId = null,
-    string? PinnedModelName = null);
+    string? PinnedModelName = null,
+    decimal? MinimumBuildWidthMm = null);
 
 public static class MachineModelIdentity
 {

@@ -1,18 +1,18 @@
 import { Component, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Canvas, useLoader } from '@react-three/fiber'
+import { Canvas, useLoader, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Environment, Lightformer, OrbitControls, useGLTF, useProgress } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
-import { ThreeMFLoader } from 'three/examples/jsm/loaders/3MFLoader.js'
-import { Box, Button, CircularProgress, Stack, Typography, type SxProps } from '@mui/material'
+import { ThreeMfPreviewLoader } from '../threeMf/ThreeMfPreviewLoader'
+import { groupIdForSlot, type ModelColorGroup } from '../threeMf/colorGroups'
+import { Box, Button, CircularProgress, MenuItem, Select, Stack, Typography, type SxProps } from '@mui/material'
 
 /**
  * Reusable 3D viewer, extracted from the login showcase (07/10) and widened to the
  * real customer formats (08/10) so the model library can preview what people upload:
  *   GLB/GLTF → drei useGLTF · STL → STLLoader · OBJ → OBJLoader
- * 3MF is a ZIP package and stays unsupported here — the drawer says so instead of
- * showing an empty frame.
+ *   3MF → worker-based Bambu painting/filament reader, standard material fallback.
  *
  * CRITICAL: MUI/DOM components must NOT go inside <Canvas> — the WebGL scene graph
  * only accepts R3F primitives. Loading/error UI lives at the DOM layer, as siblings
@@ -44,18 +44,54 @@ function Fitted({ object, fit, children }: { object: THREE.Object3D; fit: boolea
   )
 }
 
-function GltfModel({ url, fit }: { url: string; fit: boolean }) {
+/** Materials belong to a viewer instance; cached models retain their original appearance. */
+function usePreviewColor(source: THREE.Object3D, color?: string) {
+  const invalidate = useThree(state => state.invalidate)
+  const { object, materials } = useMemo(() => {
+    const object = source.clone(true)
+    const materials: { original: THREE.Material; copy: THREE.Material }[] = []
+    object.traverse(child => {
+      if (!(child instanceof THREE.Mesh)) return
+      const originals = Array.isArray(child.material) ? child.material : [child.material]
+      const copies = originals.map(original => {
+        const copy = original.clone()
+        materials.push({ original, copy })
+        return copy
+      })
+      child.material = Array.isArray(child.material) ? copies : copies[0]
+    })
+    return { object, materials }
+  }, [source])
+  useEffect(() => {
+    for (const { original, copy } of materials) {
+      copy.copy(original)
+      if (color && 'color' in copy) {
+        const material = copy as THREE.MeshStandardMaterial
+        material.color.set(color)
+        material.setValues({ map: null, vertexColors: false })
+      }
+      // Private material clones are mutable GPU resources, not cached loader assets.
+      // oxlint-disable-next-line react/immutability
+      copy.needsUpdate = true
+    }
+    invalidate()
+  }, [materials, color, invalidate])
+  useEffect(() => () => materials.forEach(m => m.copy.dispose()), [materials])
+  return object
+}
+
+function GltfModel({ url, fit, color }: { url: string; fit: boolean; color?: string }) {
   const { scene } = useGLTF(url)
   // Clone so fitting never mutates drei's cached scene (the same URL can be open
   // in two places at once). Geometries and materials stay shared.
-  const object = useMemo(() => scene.clone(true), [scene])
+  const object = usePreviewColor(scene, color)
   useEffect(() => {
     console.info('[preview3d] GLTF loaded', { children: object.children.length })
   }, [object])
   return <Fitted object={object} fit={fit} />
 }
 
-function StlModel({ url, fit }: { url: string; fit: boolean }) {
+function StlModel({ url, fit, color }: { url: string; fit: boolean; color?: string }) {
   const geometry = useLoader(STLLoader, url)
   useEffect(() => {
     console.info('[preview3d] STL parsed', {
@@ -67,31 +103,82 @@ function StlModel({ url, fit }: { url: string; fit: boolean }) {
     () =>
       new THREE.Mesh(
         geometry,
-        new THREE.MeshStandardMaterial({ color: '#E9E9EC', metalness: 0.2, roughness: 0.45 }),
+        new THREE.MeshStandardMaterial({ color: color ?? '#E9E9EC', metalness: 0.2, roughness: 0.45 }),
       ),
-    [geometry],
+    [geometry, color],
   )
+  useEffect(() => () => mesh.material.dispose(), [mesh])
   return <Fitted object={mesh} fit={fit} />
 }
 
-function ObjModel({ url, fit }: { url: string; fit: boolean }) {
-  const object = useLoader(OBJLoader, url)
+function ObjModel({ url, fit, color }: { url: string; fit: boolean; color?: string }) {
+  const source = useLoader(OBJLoader, url)
+  const object = usePreviewColor(source, color)
   useEffect(() => {
     console.info('[preview3d] OBJ loaded', { children: object.children.length })
   }, [object])
   return <Fitted object={object} fit={fit} />
 }
 
-/** 3MF is a ZIP package; three's 3MFLoader unzips it (fflate) and parses the model XML. */
-function ThreeMfModel({ url, fit }: { url: string; fit: boolean }) {
-  const object = useLoader(ThreeMFLoader, url)
-  useEffect(() => {
-    console.info('[preview3d] 3MF loaded', { children: object.children.length })
-  }, [object])
-  return <Fitted object={object} fit={fit} />
+interface ThreeMfInfo { palette: string[]; plates: string[]; slots: number[]; surfacePainting: boolean }
+
+interface ColorInteraction {
+  colorOverrides?: Record<string, string>
+  selectedColorGroup?: string | null
+  onColorGroupSelect?: (id: string | null) => void
 }
 
-interface SceneProps {
+function ThreeMfModel({ url, fit, plate, onInfo, colorOverrides, selectedColorGroup, onColorGroupSelect }:
+  { url: string; fit: boolean; plate: string; onInfo: (url: string, info: ThreeMfInfo) => void } & ColorInteraction) {
+  const source = useLoader(ThreeMfPreviewLoader, url)
+  const fallback = usePreviewColor(source, colorOverrides?.all)
+  const invalidate = useThree(state => state.invalidate)
+  const object = useMemo(() => {
+    if (!source.userData.plates) return fallback
+    const selected = source.clone(false)
+    for (const child of source.children) {
+      if (plate === 'ALL' || child.userData.plate === plate) {
+        const clone = child.clone() as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>
+        clone.material = clone.material.clone()
+        selected.add(clone)
+      }
+    }
+    return selected
+  }, [source, plate, fallback])
+  useEffect(() => {
+    if (!source.userData.plates) return
+    object.children.forEach(child => {
+      const mesh = child as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>
+      const id = groupIdForSlot(mesh.userData.slot)
+      const dimmed = !!selectedColorGroup && selectedColorGroup !== id
+      mesh.material.color.set(colorOverrides?.[id] ?? source.userData.palette[mesh.userData.slot - 1])
+      mesh.material.transparent = dimmed
+      mesh.material.opacity = dimmed ? .16 : 1
+      mesh.material.depthWrite = !dimmed
+      mesh.material.emissive.set(selectedColorGroup === id ? mesh.material.color : '#000000')
+      mesh.material.emissiveIntensity = selectedColorGroup === id ? .12 : 0
+      mesh.material.needsUpdate = true
+      mesh.renderOrder = dimmed ? 1 : 0
+    })
+    invalidate()
+  }, [object, source, colorOverrides, selectedColorGroup, invalidate])
+  useEffect(() => () => {
+    if (source.userData.plates) object.children.forEach(child => (child as THREE.Mesh<THREE.BufferGeometry, THREE.Material>).material.dispose())
+  }, [object, source])
+  useEffect(() => {
+    onInfo(url, { palette: source.userData.palette ?? [], plates: source.userData.plates ?? [], surfacePainting: !!source.userData.surfacePainting,
+      slots: [...new Set(source.children.map(c => c.userData.slot as number).filter(Boolean))].sort((a, b) => a - b) })
+  }, [source, url, onInfo])
+  return <Fitted object={object} fit={fit}><primitive object={object} onClick={onColorGroupSelect ? (event: { stopPropagation: () => void; object: THREE.Object3D }) => {
+    const slot = event.object.userData.slot
+    if (!slot) return
+    event.stopPropagation()
+    const id = groupIdForSlot(slot)
+    onColorGroupSelect(selectedColorGroup === id ? null : id)
+  } : undefined} /></Fitted>
+}
+
+interface SceneProps extends ColorInteraction {
   url: string
   format: string
   fit: boolean
@@ -99,11 +186,14 @@ interface SceneProps {
   autoRotate: boolean
   interactive: boolean
   background: string
+  plate: string
+  onThreeMfInfo: (url: string, info: ThreeMfInfo) => void
   onContextLost: () => void
   onContextRestored: () => void
 }
 
-function Scene({ url, format, fit, cameraPosition, autoRotate, interactive, background, onContextLost, onContextRestored }: SceneProps) {
+function Scene({ url, format, fit, cameraPosition, autoRotate, interactive, background, plate, onThreeMfInfo, colorOverrides,
+  selectedColorGroup, onColorGroupSelect, onContextLost, onContextRestored }: SceneProps) {
   const normalized = (format ?? '').trim().toUpperCase()
 
   useEffect(() => {
@@ -122,7 +212,7 @@ function Scene({ url, format, fit, cameraPosition, autoRotate, interactive, back
       camera={{ position: cameraPosition, fov: 40 }}
       dpr={[1, 1.5]}
       style={{ background }}
-      gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.5 }}
+      gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: normalized === '3MF' ? 1 : 1.5 }}
       onCreated={({ gl }) => {
         const ctx = gl.getContext()
         const debug = ctx.getExtension('WEBGL_debug_renderer_info')
@@ -164,13 +254,14 @@ function Scene({ url, format, fit, cameraPosition, autoRotate, interactive, back
 
       <Suspense fallback={null}>
         {normalized === 'STL' ? (
-          <StlModel url={url} fit={fit} />
+          <StlModel url={url} fit={fit} color={colorOverrides?.all} />
         ) : normalized === 'OBJ' ? (
-          <ObjModel url={url} fit={fit} />
+          <ObjModel url={url} fit={fit} color={colorOverrides?.all} />
         ) : normalized === '3MF' ? (
-          <ThreeMfModel url={url} fit={fit} />
+          <ThreeMfModel url={url} fit={fit} plate={plate} onInfo={onThreeMfInfo} colorOverrides={colorOverrides}
+            selectedColorGroup={selectedColorGroup} onColorGroupSelect={onColorGroupSelect} />
         ) : (
-          <GltfModel url={url} fit={fit} />
+          <GltfModel url={url} fit={fit} color={colorOverrides?.all} />
         )}
       </Suspense>
 
@@ -191,13 +282,14 @@ function Scene({ url, format, fit, cameraPosition, autoRotate, interactive, back
 }
 
 /* ── DOM-layer ErrorBoundary around <Canvas> (catches 3D crashes) ── */
-class SceneBoundary extends Component<{ children: ReactNode; fallback?: ReactNode }, { error: boolean }> {
+class SceneBoundary extends Component<{ children: ReactNode; fallback?: ReactNode; onError?: () => void }, { error: boolean }> {
   state = { error: false }
   static getDerivedStateFromError() {
     return { error: true }
   }
   componentDidCatch(error: Error) {
     console.error('[preview3d] viewer CRASHED', error)
+    this.props.onError?.()
   }
   render() {
     if (this.state.error) {
@@ -226,9 +318,9 @@ function ModelLoader() {
   )
 }
 
-export interface ModelViewerProps {
+export interface ModelViewerProps extends ColorInteraction {
   url: string
-  /** Wire format of the file behind `url`: GLB (default), GLTF, STL or OBJ. */
+  /** Wire format of the file behind `url`: GLB (default), GLTF, STL, OBJ or 3MF. */
   format?: string
   /** Centre and scale the model to fit the camera — use for uploaded parts. */
   fit?: boolean
@@ -240,6 +332,9 @@ export interface ModelViewerProps {
   cameraPosition?: [number, number, number]
   background?: string
   sx?: SxProps
+  onColorGroupsChange?: (groups: ModelColorGroup[], details: { surfacePainting: boolean }) => void
+  onPreviewError?: () => void
+  showColorLegend?: boolean
 }
 
 export function ModelViewer({
@@ -252,11 +347,27 @@ export function ModelViewer({
   cameraPosition = [6, 4.2, 8],
   background = '#F5F2FF',
   sx,
+  colorOverrides,
+  selectedColorGroup,
+  onColorGroupSelect,
+  onColorGroupsChange,
+  onPreviewError,
+  showColorLegend = true,
 }: ModelViewerProps) {
   // WebGL can lose its GPU context (driver reset, GPU memory, too many 3D tabs).
   // Keep the canvas mounted but tell the user and offer a clean remount.
   const [contextLost, setContextLost] = useState(false)
   const [canvasKey, setCanvasKey] = useState(0)
+  const [threeMfInfo, setThreeMfInfo] = useState<{ url: string; info: ThreeMfInfo } | null>(null)
+  const [plateSelection, setPlateSelection] = useState<{ url: string; plate: string } | null>(null)
+  const info = threeMfInfo?.url === url ? threeMfInfo.info : null
+  const plate = plateSelection?.url === url ? plateSelection.plate : 'ALL'
+  const onThreeMfInfo = useMemo(() => (sourceUrl: string, info: ThreeMfInfo) => setThreeMfInfo({ url: sourceUrl, info }), [])
+  useEffect(() => {
+    if (!info) return
+    onColorGroupsChange?.(info.slots.map(slot => ({ id: groupIdForSlot(slot), slot, originalColorHex: info.palette[slot - 1] })),
+      { surfacePainting: info.surfacePainting })
+  }, [info, onColorGroupsChange])
 
   return (
     <Box
@@ -270,7 +381,7 @@ export function ModelViewer({
       }}
     >
       <Box sx={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-        <SceneBoundary>
+        <SceneBoundary key={`${url}:${canvasKey}`} onError={onPreviewError}>
           <Scene
             key={canvasKey}
             url={url}
@@ -280,12 +391,34 @@ export function ModelViewer({
             autoRotate={autoRotate}
             interactive={interactive}
             background={background}
+            plate={plate}
+            onThreeMfInfo={onThreeMfInfo}
+            colorOverrides={colorOverrides}
+            selectedColorGroup={selectedColorGroup}
+            onColorGroupSelect={onColorGroupSelect}
             onContextLost={() => setContextLost(true)}
             onContextRestored={() => setContextLost(false)}
           />
           <ModelLoader />
         </SceneBoundary>
       </Box>
+
+      {info && ((showColorLegend && info.slots.length > 0) || info.plates.length > 1) && (
+        <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center"
+          sx={{ position: 'absolute', bottom: 10, left: 10, right: 10, zIndex: 2, pointerEvents: 'none' }}>
+          {info.plates.length > 1 && <Select size="small" value={plate} aria-label="Chọn bàn in"
+            onChange={event => setPlateSelection({ url, plate: event.target.value })}
+            sx={{ bgcolor: 'background.paper', fontSize: 12, pointerEvents: 'auto' }}>
+            <MenuItem value="ALL">Tất cả {info.plates.length} bàn in</MenuItem>
+            {info.plates.map(id => <MenuItem key={id} value={id}>Bàn in {id}</MenuItem>)}
+          </Select>}
+          {showColorLegend && info.slots.map(slot => <Stack key={slot} direction="row" gap={.75} alignItems="center"
+            sx={{ bgcolor: 'background.paper', borderRadius: 1, px: 1, py: .5 }}>
+            <Box sx={{ width: 13, height: 13, borderRadius: '50%', bgcolor: info.palette[slot - 1], border: '1px solid #B6B6C0' }} />
+            <Typography sx={{ fontSize: 11 }}>Màu {slot} · {info.palette[slot - 1]}</Typography>
+          </Stack>)}
+        </Stack>
+      )}
 
       {contextLost && (
         <Box

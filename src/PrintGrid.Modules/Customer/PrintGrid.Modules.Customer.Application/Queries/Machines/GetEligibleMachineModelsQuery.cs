@@ -9,7 +9,7 @@ namespace PrintGrid.Modules.Customer.Application.Queries.Machines;
 public sealed record GetEligibleMachineModelsQuery(CreateQuoteCommand Configuration) : IRequest<Result<MachineModelOptions>>;
 
 public sealed class GetEligibleMachineModelsQueryHandler(IModelRepository models, IMachineFilterService machines,
-    ICommercialPolicyProvider policy) : IRequestHandler<GetEligibleMachineModelsQuery, Result<MachineModelOptions>>
+    ICommercialPolicyProvider policy, IQuoteSlicer? slicer = null) : IRequestHandler<GetEligibleMachineModelsQuery, Result<MachineModelOptions>>
 {
     public async Task<Result<MachineModelOptions>> Handle(GetEligibleMachineModelsQuery query, CancellationToken ct)
     {
@@ -23,9 +23,10 @@ public sealed class GetEligibleMachineModelsQueryHandler(IModelRepository models
         var rates = (await policy.GetActiveAsync(ct)).Pricing;
         try
         {
-            return Result.Success(await machines.GetOptionsAsync(MachineSelection.Criteria(c, model),
+            var envelope = slicer is not null && model.StorageKey is not null ? await slicer.GetEnvelopeAsync(model.StorageKey, model.FileFormat, ct) : null;
+            return Result.Success(await machines.GetOptionsAsync(MachineSelection.Criteria(c, model, envelope),
                 rates.MinPinMachines, rates.MinPinLabs, rates.PinSurchargeCoefficient, ct));
         }
-        catch (ArgumentException e) { return Result.Failure<MachineModelOptions>(Error.Validation(e.Message)); }
+        catch (Exception e) when (e is ArgumentException or InvalidDataException) { return Result.Failure<MachineModelOptions>(Error.Validation(e.Message)); }
     }
 }

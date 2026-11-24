@@ -1,6 +1,7 @@
 using MediatR;
 using PrintGrid.Modules.Customer.Application.DTOs;
 using PrintGrid.SharedKernel.Results;
+using PrintGrid.SharedKernel.ValueObjects;
 
 namespace PrintGrid.Modules.Customer.Application.Quotes;
 
@@ -30,5 +31,6 @@ public record CreateQuoteCommand(
     int? BindingType = null,   // 0=None, 1=ByModel, 2=LikeOldOrder
     Guid? PinnedModelId = null,
     bool HardRequirement = true,
-    Guid? ReferenceLineId = null
+    Guid? ReferenceLineId = null,
+    IReadOnlyList<ColorGroupAssignment>? ColorAssignments = null
 ) : IRequest<Result<QuoteDto>>;

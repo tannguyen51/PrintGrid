@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import axios from 'axios'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -23,7 +23,11 @@ import {
 } from '@mui/material'
 import { ArrowBackRounded, ArrowDownwardRounded, ArrowForwardRounded, PriceCheckRounded } from '@mui/icons-material'
 import type { Quote } from './quoteTypes'
-import { COLORS, INFILL_OPTIONS, MATERIALS, QUALITY_GRADES, QUOTE_STATUS_LABELS } from './quoteTypes'
+import { INFILL_OPTIONS, MATERIALS, QUALITY_GRADES, QUOTE_STATUS_LABELS } from './quoteTypes'
+import { assignedColors, type ColorGroupAssignment } from '../../shared/threeMf/colorGroups'
+import { OrderColorConfigurator } from './OrderColorConfigurator'
+import { useModelFileUrl } from '../models/useModelFile'
+import type { ThreeDModel } from '../models/modelTypes'
 import { useCreateQuote, usePlaceOrder, useQuote } from './useQuotes'
 import { QuotePriceDetails } from './QuotePriceDetails'
 import { QuoteHistoryPanel } from './QuoteHistoryPanel'
@@ -32,6 +36,13 @@ import type { TechConstraintsValue } from './TechConstraintsSelector'
 import MachinePinningSelector from './MachinePinningSelector'
 import { OrderShippingAddress } from './OrderShippingAddress'
 import type { CustomerAddress } from '../account/accountTypes'
+
+function readColorDraft(modelId: string | undefined): ColorGroupAssignment[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem(`printgrid:order-colors:${modelId}`) ?? '[]')
+    return Array.isArray(saved) ? saved.filter(a => a && typeof a.groupId === 'string' && typeof a.colorCode === 'string') : []
+  } catch { return [] }
+}
 
 /**
  * G3 — Print configuration & pre-order flow.
@@ -74,8 +85,17 @@ export default function OrderConfigPage() {
 
   // Config state
   const [material, setMaterial] = useState('PLA')
-  const [color, setColor] = useState('BLACK')
-  const [colors, setColors] = useState<string[]>(['BLACK'])
+  const [fallbackColors, setFallbackColors] = useState<string[]>(['BLACK'])
+  const color = fallbackColors[0] ?? 'BLACK'
+  const [colorDraft, setColorDraft] = useState(() => ({ modelId, assignments: readColorDraft(modelId) }))
+  const colorAssignments = colorDraft.modelId === modelId ? colorDraft.assignments : readColorDraft(modelId)
+  const colors = colorAssignments.length ? assignedColors(colorAssignments) : fallbackColors
+  const [colorMappingValid, setColorMappingValid] = useState(false)
+  const restoredColorConfig = useRef<string | null>(null)
+  const modelQuery = useQuery({ queryKey: ['model', modelId], enabled: !!modelId,
+    queryFn: () => apiClient.get<ThreeDModel>(`/models/${modelId}`).then(r => r.data) })
+  const model = modelQuery.data
+  const modelFile = useModelFileUrl(modelId ?? null, !!model?.hasFile)
   const [sizeCode, setSizeCode] = useState('ORIGINAL')
   const [polishing, setPolishing] = useState(false)
   const [layerIndex, setLayerIndex] = useState(1) // Standard
@@ -91,7 +111,20 @@ export default function OrderConfigPage() {
 
   // Quote + address state
   const [quote, setQuote] = useState<Quote | null>(null)
+  const changeColorAssignments = useCallback((assignments: ColorGroupAssignment[]) => {
+    setColorDraft({ modelId, assignments })
+    try { localStorage.setItem(`printgrid:order-colors:${modelId}`, JSON.stringify(assignments)) } catch { /* storage is optional */ }
+    setQuote(null)
+  }, [modelId, setQuote])
   const quoteStatus = useQuote(quote?.id ?? requestedQuoteId)
+  const restoreColorAssignments = useEffectEvent((restored: Quote) => {
+    const assignments = restored.items.find(i => i.modelId === modelId)?.calculation?.colorAssignments
+    if (!assignments?.length) return
+    restoredColorConfig.current = JSON.stringify([modelId, material, assignedColors(assignments), assignments, sizeCode, polishing,
+      layerIndex, infill, quantity, techConstraints ?? {}, pinnedModelId])
+    setColorDraft({ modelId, assignments })
+    try { localStorage.setItem(`printgrid:order-colors:${modelId}`, JSON.stringify(assignments)) } catch { /* storage is optional */ }
+  })
   useEffect(() => {
     const restored = quoteStatus.data
     if (!restored) return
@@ -99,6 +132,7 @@ export default function OrderConfigPage() {
     // oxlint-disable-next-line react/set-state-in-effect
     setQuote(restored)
     if (requestedQuoteId === restored.id) {
+      restoreColorAssignments(restored)
       const next = new URLSearchParams(searchParams)
       next.delete('quoteId')
       setSearchParams(next, { replace: true })
@@ -119,7 +153,7 @@ export default function OrderConfigPage() {
   })
   const [orderError, setOrderError] = useState<string | null>(null)
   const [acceptTerms, setAcceptTerms] = useState(false)
-  const configKey = JSON.stringify([modelId, material, colors, sizeCode, polishing, layerIndex, infill, quantity, techConstraints ?? {}, pinnedModelId])
+  const configKey = JSON.stringify([modelId, material, colors, colorAssignments, sizeCode, polishing, layerIndex, infill, quantity, techConstraints ?? {}, pinnedModelId])
   const currentConfig = useRef(configKey)
   // The ref guards an in-flight calculation from being applied after its form changed.
   // oxlint-disable-next-line react/refs
@@ -128,8 +162,11 @@ export default function OrderConfigPage() {
 
   // A result belongs to exactly one configuration. Never allow placing a stale quote.
   useEffect(() => {
+    const restoring = restoredColorConfig.current === configKey
+    restoredColorConfig.current = null
     if (previousConfig.current === configKey) return
     previousConfig.current = configKey
+    if (restoring) return
     // A quote calculated for the previous form must never be submitted with new settings.
     // oxlint-disable-next-line react/set-state-in-effect
     setQuote(null)
@@ -178,7 +215,7 @@ export default function OrderConfigPage() {
   }
 
   async function handleGetQuote() {
-    if (!modelId || !machineSelectionValid) return
+    if (!modelId || !machineSelectionValid || !colorMappingValid) return
     setConfigError(null)
     setQuote(null)
     const submittedConfig = configKey
@@ -192,6 +229,7 @@ export default function OrderConfigPage() {
         quantity,
         toleranceMm: 0.2,
         sizeCode, colorCodes: colors, polishing,
+        colorAssignments: colorAssignments.length ? colorAssignments : undefined,
         // Section 3: hard tech constraints (BR-03)
         maxColors: techConstraints?.maxColors,
         enclosedChamber: techConstraints?.enclosedChamber,
@@ -302,18 +340,13 @@ export default function OrderConfigPage() {
                 </Select>
               </FormControl>
 
-              <FormControl sx={{ width: { xs: '100%', sm: 180 } }}>
-                <InputLabel>Màu sắc</InputLabel>
-                <Select multiple value={colors} label="Màu sắc" onChange={(e) => {
-                  const values = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value
-                  if (values.length) { setColors(values); setColor(values[0]) }
-                }}>
-                  {COLORS.map((c) => (
-                    <MenuItem key={c.code} value={c.code}>{c.label}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
             </Stack>
+
+            <OrderColorConfigurator key={modelId} url={modelFile.url} format={(model?.fileFormat ?? '').toUpperCase()}
+              failed={modelFile.failed || modelQuery.isError || !!model && !model.hasFile}
+              assignments={colorAssignments} singleColor={color} onChange={changeColorAssignments}
+              fallbackColors={fallbackColors} onFallbackColorsChange={setFallbackColors}
+              onSingleColorChange={code => setFallbackColors([code])} onValidityChange={setColorMappingValid} />
 
             <FormControl fullWidth>
               <InputLabel>Kích thước</InputLabel>
@@ -324,8 +357,7 @@ export default function OrderConfigPage() {
                 <MenuItem value="L">L — cạnh lớn nhất 300 mm</MenuItem>
               </Select>
             </FormControl>
-            <Typography variant="body2" color="text.secondary">Các cạnh được thay đổi cùng tỷ lệ. Chọn nhiều màu trên một mô hình cần file 3MF có vùng vật liệu riêng; thứ tự màu chọn tương ứng thứ tự vùng vật liệu trong file.</Typography>
-            {colors.length > 1 && <Stack direction="row" gap={1} flexWrap="wrap">{colors.map((c, i) => <Chip key={c} label={`Vùng ${i + 1}: ${COLORS.find(x => x.code === c)?.label ?? c}`} />)}</Stack>}
+            <Typography variant="body2" color="text.secondary">Các cạnh được thay đổi cùng tỷ lệ. Lựa chọn màu in được gắn với từng nhóm màu gốc trong file.</Typography>
             <FormControlLabel control={<Checkbox checked={polishing} onChange={e => setPolishing(e.target.checked)} />} label="Thêm dịch vụ đánh bóng" />
 
             <Box>
@@ -382,7 +414,7 @@ export default function OrderConfigPage() {
                 color="primary"
                 size="large"
                 onClick={handleGetQuote}
-                disabled={createQuote.isPending || !machineSelectionValid}
+                disabled={createQuote.isPending || !machineSelectionValid || !colorMappingValid}
                 endIcon={createQuote.isPending ? <CircularProgress size={18} color="inherit" /> : <PriceCheckRounded />}
               >
                 {createQuote.isPending ? 'Đang phân tích…' : 'Nhận báo giá'}
@@ -507,7 +539,10 @@ export default function OrderConfigPage() {
         )}
         </Box>
         {modelId && <QuoteHistoryPanel modelId={modelId} selectedQuoteId={quote?.id} onSelect={saved => {
-          setQuote(saved); setOrderError(null)
+          setQuote(null); setOrderError(null)
+          const next = new URLSearchParams(searchParams)
+          next.set('quoteId', saved.id)
+          setSearchParams(next, { replace: true })
           requestAnimationFrame(() => quoteResult.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
         }} />}
       </Stack>
