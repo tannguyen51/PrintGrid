@@ -64,6 +64,51 @@ public class OrdersController(ISender sender,
         return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
     }
 
+    /// <summary>
+    /// Customer confirms or rejects COD (Cash on Delivery) receipt.
+    /// Called when customer receives notification that order is ready for delivery.
+    /// Customer has 24h to confirm (BR-PAY-008 COD model).
+    /// </summary>
+    [HttpPost("{id:guid}/cod-confirm")]
+    public async Task<IActionResult> ConfirmCodReceipt(
+        Guid id,
+        [FromBody] ConfirmCodReceiptRequest request,
+        CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        if (customerId is null) return Forbid();
+
+        var result = await sender.Send(new ConfirmCodReceiptCommand(id, request.Accepted, customerId.Value), cancellationToken);
+        if (!result.IsFailure) return Ok(new { message = "Xác nhận COD thành công." });
+        var status = result.Error.Code switch
+        {
+            "not_found" => StatusCodes.Status404NotFound,
+            "conflict" => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status400BadRequest,
+        };
+        return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
+    }
+
+    /// <summary>
+    /// Hub/ops requests COD confirmation from customer.
+    /// Called automatically when order enters QualityCheck status, or manually by ops.
+    /// Sets 24h deadline for customer to respond.
+    /// </summary>
+    [HttpPost("{id:guid}/request-cod-confirmation")]
+    [Authorize(Policy = Policies.RequireHub)]
+    public async Task<IActionResult> RequestCodConfirmation(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new RequestCodConfirmationCommand(id), cancellationToken);
+        if (!result.IsFailure) return Ok(new { message = "Đã yêu cầu khách hàng xác nhận nhận hàng COD." });
+        var status = result.Error.Code switch
+        {
+            "not_found" => StatusCodes.Status404NotFound,
+            "conflict" => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status400BadRequest,
+        };
+        return StatusCode(status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
+    }
+
     [HttpPost]
     public async Task<IActionResult> PlaceOrder(
         [FromBody] PlaceOrderRequest request,
@@ -144,3 +189,6 @@ public record PlaceOrderRequest(
 public record DeliveryPreviewRequest(Guid QuoteId, DateOnly RequestedDeliveryDate);
 
 public record ReprintRequestBody(string Reason, string Description, IReadOnlyList<string> Photos);
+
+/// <summary>Request body for COD confirmation endpoint.</summary>
+public record ConfirmCodReceiptRequest(bool Accepted);

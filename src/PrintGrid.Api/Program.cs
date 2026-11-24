@@ -63,6 +63,9 @@ builder.Services.AddScoped<EmailDeliveryJob>();
 // depends on Hangfire's create-if-missing activator.
 builder.Services.AddScoped<CalibrationNightlyJob>();
 
+// COD confirmation deadline monitor - runs every 15 minutes to send reminders and auto-cancel
+builder.Services.AddHostedService<PrintGrid.Api.BackgroundServices.CodConfirmationDeadlineMonitorService>();
+
 builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "postgres")
     .AddRedis(redisConnection, name: "redis");

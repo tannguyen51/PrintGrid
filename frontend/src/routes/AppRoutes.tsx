@@ -71,6 +71,8 @@ function RouteFallback() {
   )
 }
 
+const NotificationsPage = lazy(() => import('../features/notifications/NotificationsPage'))
+
 /**
  * Role-based areas. Each demo account (demo@ / lab@ / qc@ / ops@) lands in its own
  * area only: customers see models/orders, lab staff see the lab queue, hub staff the
@@ -165,6 +167,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['Customer']}>
               <OrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <NotificationsPage />
             </ProtectedRoute>
           }
         />

@@ -75,12 +75,19 @@ public class ShipOrderCommandHandler(
 
         if (ShippingGateSettings.IsEnforced(configuration))
         {
-            // FR-CUST-012 AC02 / BR-PAY-008: goods may not leave the hub until the order is fully settled.
-            if (!order.IsSettled)
+            // FR-CUST-012 AC02 / BR-PAY-008 (COD model): deposit must be paid AND customer must confirm COD receipt.
+            if (!order.IsDeposited)
             {
-                var shortfall = order.TotalPrice.Amount - order.PaidAmount;
+                var depositShortfall = order.DepositAmount - order.PaidAmount;
                 return Result.Failure(Error.Conflict(
-                    $"Đơn {order.OrderNumber} chưa tất toán đủ — còn thiếu {shortfall:N0} {order.TotalPrice.Currency}, không thể xuất kho."));
+                    $"Đơn {order.OrderNumber} chưa đặt cọc đủ — còn thiếu {depositShortfall:N0} {order.TotalPrice.Currency}, không thể xuất kho."));
+            }
+
+            // COD confirmation check: customer must confirm they will receive the order
+            if (string.Equals(order.PaymentMethod, "COD", StringComparison.OrdinalIgnoreCase) && !order.IsCodConfirmed)
+            {
+                return Result.Failure(Error.Conflict(
+                    $"Đơn {order.OrderNumber} chưa được khách hàng xác nhận sẽ nhận hàng (COD). Vui lòng yêu cầu khách xác nhận trước khi giao."));
             }
 
             // Fully-refunded orders are dead, and no item may skip the QC-completed gate.

@@ -204,6 +204,22 @@ public class ShipmentGateTests
         return order;
     }
 
+    private static Order BuildQualityCheckOrderWithCodPending(
+        string firstStatus,
+        string secondStatus,
+        Guid? customerId = null,
+        DateTime? readyAtUtc = null)
+    {
+        var order = BuildOrder(customerId ?? Guid.NewGuid(), (firstStatus, 0), (secondStatus, 1));
+        order.ApplyPayment(order.DepositAmount, "deposit");
+        order.TransitionTo(OrderStatus.InProduction);
+        order.TransitionTo(OrderStatus.QualityCheck);
+        if (readyAtUtc is not null) order.SetReadyForPackingAt(readyAtUtc.Value);
+        // COD model: request COD confirmation but don't confirm yet
+        order.RequestCodConfirmation();
+        return order;
+    }
+
     private static Order BuildQualityCheckOrder(
         string firstStatus,
         string secondStatus,
@@ -215,6 +231,12 @@ public class ShipmentGateTests
         order.TransitionTo(OrderStatus.InProduction);
         order.TransitionTo(OrderStatus.QualityCheck);
         if (readyAtUtc is not null) order.SetReadyForPackingAt(readyAtUtc.Value);
+        // COD model: auto-confirm COD receipt for tests (customer paid in full, so COD confirmed)
+        if (string.Equals(order.PaymentMethod, "COD", StringComparison.OrdinalIgnoreCase))
+        {
+            order.RequestCodConfirmation();
+            order.ConfirmCodReceipt(true);
+        }
         return order;
     }
 

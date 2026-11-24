@@ -83,18 +83,25 @@ public class ConsolidateShipmentCommandHandler(
         var consolidatedId = Guid.NewGuid();
         var tracking = command.TrackingNumber.Trim();
 
-        // FR-CUST-012 AC02 / BR-PAY-008: a consolidated package may only ship when every included
-        // order is settled — one unpaid order blocks the whole package. The same QC-completed gate
-        // applies to every member: one item still in QualityCheck/Pending blocks the whole package.
+        // FR-CUST-012 AC02 / BR-PAY-008 (COD model): a consolidated package may only ship when every included
+        // order has deposit paid AND customer has confirmed COD receipt. One unpaid/unconfirmed order blocks the whole package.
+        // The same QC-completed gate applies to every member: one item still in QualityCheck/Pending blocks the whole package.
         if (ShippingGateSettings.IsEnforced(configuration))
         {
             foreach (var order in loaded)
             {
-                if (!order.IsSettled)
+                if (!order.IsDeposited)
                 {
-                    var shortfall = order.TotalPrice.Amount - order.PaidAmount;
+                    var depositShortfall = order.DepositAmount - order.PaidAmount;
                     return Result.Failure<ConsolidatedShipmentResultDto>(Error.Conflict(
-                        $"Đơn {order.OrderNumber} chưa tất toán đủ — còn thiếu {shortfall:N0} {order.TotalPrice.Currency}, không thể xuất kho."));
+                        $"Đơn {order.OrderNumber} chưa đặt cọc đủ — còn thiếu {depositShortfall:N0} {order.TotalPrice.Currency}, không thể xuất kho."));
+                }
+
+                // COD confirmation check for consolidated shipments
+                if (string.Equals(order.PaymentMethod, "COD", StringComparison.OrdinalIgnoreCase) && !order.IsCodConfirmed)
+                {
+                    return Result.Failure<ConsolidatedShipmentResultDto>(Error.Conflict(
+                        $"Đơn {order.OrderNumber} chưa được khách hàng xác nhận sẽ nhận hàng (COD). Không thể gộp vào kiện giao."));
                 }
 
                 var gate = ShipmentGate.EnsureReadyToLeaveHub(order);

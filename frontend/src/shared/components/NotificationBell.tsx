@@ -207,6 +207,18 @@ export function NotificationBell() {
             ))}
           </List>
         )}
+        <Divider />
+        <Box sx={{ p: 1.5, textAlign: 'center' }}>
+          <Button
+            size="small"
+            onClick={() => {
+              setAnchorEl(null)
+              navigate('/notifications')
+            }}
+          >
+            Xem tất cả thông báo
+          </Button>
+        </Box>
       </Popover>
       <Snackbar
         open={markReadMutation.isError || markAllReadMutation.isError}
