@@ -7,13 +7,21 @@ namespace PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
 public static class CuraProfileImporter
 {
     public static CuraProfile Parse(string name, string manufacturer, string model, string material,
-        string version, string engineVersion, int extruderCount, string json)
+        string version, string engineVersion, int extruderCount, string json,
+        bool isActive = true, string approvalStatus = CuraProfile.StatusApproved,
+        Guid? submittedByLabId = null, Guid? submittedByUserId = null, Guid? targetMachineId = null,
+        string? submissionNotes = null, string? sourceFileName = null)
     {
         if (new[] { name, manufacturer, model, material, version, engineVersion }.Any(string.IsNullOrWhiteSpace) ||
             new[] { name, manufacturer, model, material, version, engineVersion }.Any(v => v.Length > 100))
         {
             throw new ArgumentException("Tên profile, hãng, model, vật liệu, phiên bản là bắt buộc (tối đa 100 ký tự).");
         }
+
+        if (submissionNotes is not null && submissionNotes.Trim().Length > 1000)
+            throw new ArgumentException("Ghi chú đề nghị profile tối đa 1000 ký tự.");
+        if (sourceFileName is not null && sourceFileName.Trim().Length > 255)
+            throw new ArgumentException("Tên tệp profile tối đa 255 ký tự.");
 
         if (material.Trim().Equals("RESIN", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("CuraEngine chỉ hỗ trợ profile FDM/FFF.");
@@ -56,7 +64,9 @@ public static class CuraProfileImporter
         new Domain.ValueObjects.PrinterConfiguration(manufacturer, extruderCount, slots, nozzle, filament,
             heated, nozzleTemp, bedTemp, 1, 0).Validate();
         return CuraProfile.Import(name, manufacturer, model, material, version, engineVersion, nozzle, filament,
-            extruderCount, slots, width, depth, height, heated, nozzleTemp, bedTemp, root.ToJsonString());
+            extruderCount, slots, width, depth, height, heated, nozzleTemp, bedTemp, root.ToJsonString(),
+            isActive, approvalStatus, submittedByLabId, submittedByUserId, targetMachineId,
+            submissionNotes, sourceFileName);
 
         static decimal Number(JsonObject obj, string key) => decimal.TryParse(obj[key]?.ToString(), NumberStyles.Float,
             CultureInfo.InvariantCulture, out var n) ? n : throw new ArgumentException($"Profile thiếu/sai thông số {key}.");

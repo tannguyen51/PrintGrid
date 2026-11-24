@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
   Box,
@@ -11,14 +11,15 @@ import {
   DialogTitle,
   Divider,
   FormControl,
-  FormControlLabel,
   Grid,
-  InputLabel,
   InputAdornment,
+  InputLabel,
   MenuItem,
+  Paper,
   Select,
   Stack,
-  Switch,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from '@mui/material'
@@ -35,6 +36,7 @@ import {
 import { Link as RouterLink } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { PageBackButton } from '../../shared/components/PageBackButton'
+import { ServerPaginationBar } from '../../shared/components/ServerPaginationBar'
 import { defaultPrinterConfiguration, PrinterConfigurationFields } from '../lab/PrinterConfigurationFields'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { OpsStatCard } from './OpsComponents'
@@ -43,7 +45,10 @@ import {
   useApproveLab,
   useCreateLab,
   useDeleteMachine,
+  useLabOptions,
   useLabs,
+  useLabsPaged,
+  useMachinesPaged,
   useRejectLab,
   useSetLabActive,
   useSetLabCapacityLimit,
@@ -54,17 +59,13 @@ import {
 import {
   MACHINE_STATUS_LABELS,
   PRINT_TECHNOLOGY_LABELS,
+  PROFILE_STATUS_LABELS,
   type Lab,
   type Machine,
+  type PagedLabsFilter,
+  type PagedMachinesFilter,
   type PrintTechnology,
 } from './labTypes'
-
-/**
- * Shared lab registry surface (FR-LAB-001/002/006/007 · BR-OPS-005/006).
- * - LabManager declares its own lab/machines and tracks approval state.
- * - Admin/Ops approve or reject pending labs, suspend/restore standing, cap concurrency
- *   and maintain the network-wide machine registry.
- */
 
 const emptyLab = {
   name: '',
@@ -75,6 +76,7 @@ const emptyLab = {
   openingTime: '08:00',
   closingTime: '17:00',
 }
+
 const emptyMachine = {
   name: '',
   model: '',
@@ -99,13 +101,60 @@ const labStatusChip = (lab: Lab) =>
 
 export default function OpsLabsPage() {
   const { user } = useAuth()
-  const isLabManager = user?.roles.includes('LabManager') ?? false
+  const isLabManager = (user?.roles.includes('LabManager') ?? false) && !(user?.roles.includes('OpsManager') || user?.roles.includes('Admin'))
 
-  const [includeInactive, setIncludeInactive] = useState(true)
-  const { data, isLoading, isError } = useLabs(includeInactive)
-  const labs = useMemo(() => data ?? [], [data])
-  const [labSearch, setLabSearch] = useState('')
-  const visibleLabs = labs.filter((lab) => isLabManager || [lab.name, lab.city, ...lab.machines.map((machine) => machine.name + ' ' + machine.model)].join(' ').toLocaleLowerCase('vi-VN').includes(labSearch.trim().toLocaleLowerCase('vi-VN')))
+  // LabManager keeps single-lab view via useLabs(true); OpsManager uses server-filtered & paginated tabs
+  const [opsTab, setOpsTab] = useState(0)
+
+  const [labSearchInput, setLabSearchInput] = useState('')
+  const [labFilters, setLabFilters] = useState<PagedLabsFilter>({
+    search: '',
+    approvalStatus: '',
+    isActive: '',
+    manufacturerOrModel: '',
+    material: '',
+    includeInactive: true,
+    sortBy: 'pendingFirst',
+    page: 1,
+    pageSize: 10,
+  })
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setLabFilters((prev) => (prev.search === labSearchInput ? prev : { ...prev, search: labSearchInput, page: 1 }))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [labSearchInput])
+
+  const [machineSearchInput, setMachineSearchInput] = useState('')
+  const [machineFilters, setMachineFilters] = useState<PagedMachinesFilter>({
+    search: '',
+    labId: '',
+    profileStatus: '',
+    operationalStatus: '',
+    manufacturerOrModel: '',
+    material: '',
+    sortBy: 'pendingFirst',
+    page: 1,
+    pageSize: 10,
+  })
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setMachineFilters((prev) =>
+        prev.search === machineSearchInput ? prev : { ...prev, search: machineSearchInput, page: 1 },
+      )
+    }, 300)
+    return () => clearTimeout(t)
+  }, [machineSearchInput])
+
+  const myLabListQuery = useLabs(true)
+  const labsPagedQuery = useLabsPaged(labFilters, !isLabManager && opsTab === 0)
+  const machinesPagedQuery = useMachinesPaged(machineFilters, !isLabManager && opsTab === 1)
+  const labOptionsQuery = useLabOptions(!isLabManager)
+
+  // Summary counts across entire dataset (using small dedicated totals or page data)
+  const activeLabsTotalQuery = useLabsPaged({ isActive: 'true', includeInactive: true, page: 1, pageSize: 1 }, !isLabManager)
+  const pendingLabsTotalQuery = useLabsPaged({ approvalStatus: 'Pending', includeInactive: true, page: 1, pageSize: 1 }, !isLabManager)
+  const allMachinesTotalQuery = useMachinesPaged({ page: 1, pageSize: 1 }, !isLabManager)
 
   const createLab = useCreateLab()
   const addMachine = useAddMachine()
@@ -125,7 +174,7 @@ export default function OpsLabsPage() {
   const [labForm, setLabForm] = useState(emptyLab)
   const [labError, setLabError] = useState<string | null>(null)
 
-  const [machineLab, setMachineLab] = useState<Lab | null>(null)
+  const [machineLab, setMachineLab] = useState<{ id: string; name: string } | null>(null)
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null)
   const [machineForm, setMachineForm] = useState(emptyMachine)
   const [machineError, setMachineError] = useState<string | null>(null)
@@ -135,6 +184,10 @@ export default function OpsLabsPage() {
 
   const [capacityLab, setCapacityLab] = useState<Lab | null>(null)
   const [capacityValue, setCapacityValue] = useState('')
+
+  const visibleLabs = isLabManager ? (myLabListQuery.data ?? []) : (labsPagedQuery.data?.items ?? [])
+  const labsLoading = isLabManager ? myLabListQuery.isLoading : labsPagedQuery.isLoading
+  const labsError = isLabManager ? myLabListQuery.isError : labsPagedQuery.isError
 
   async function submitLab() {
     setLabError(null)
@@ -227,8 +280,13 @@ export default function OpsLabsPage() {
 
   return (
     <Box className="ops-page" sx={{ minHeight: 'calc(100vh - 72px)', bgcolor: 'background.default' }}>
-      <Stack className="ops-page-body" sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1100, mx: 'auto' }} spacing={2.5}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
+      <Stack className="ops-page-body" sx={{ p: { xs: 2.5, md: 4 }, maxWidth: 1120, mx: 'auto' }} spacing={2.5}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+          spacing={2}
+        >
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
             {isLabManager && <PageBackButton />}
             <Box>
@@ -238,222 +296,736 @@ export default function OpsLabsPage() {
               <Typography color="text.secondary">
                 {isLabManager
                   ? 'Khai báo năng lực xưởng và máy; xưởng chỉ nhận việc sau khi được Admin duyệt.'
-                  : 'Duyệt hồ sơ xưởng tự đăng ký, đình chỉ hoặc giới hạn số job đồng thời của từng xưởng.'}
+                  : 'Quản lý danh sách xưởng và máy in toàn mạng lưới với lọc & phân trang phía server.'}
               </Typography>
             </Box>
           </Stack>
-          {isLabManager && labs.length === 0 && (
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Button variant="contained" color="primary" startIcon={<AddRounded />} onClick={() => { setLabError(null); setLabOpen(true) }}>
-                Đăng ký xưởng
-              </Button>
-            </Stack>
+          {isLabManager && visibleLabs.length === 0 && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddRounded />}
+              onClick={() => {
+                setLabError(null)
+                setLabOpen(true)
+              }}
+            >
+              Đăng ký xưởng
+            </Button>
           )}
           {!isLabManager && (
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Button variant="contained" color="primary" startIcon={<AddRounded />} onClick={() => { setLabError(null); setLabOpen(true) }}>
-                Thêm xưởng
-              </Button>
-            </Stack>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddRounded />}
+              onClick={() => {
+                setLabError(null)
+                setLabOpen(true)
+              }}
+            >
+              Thêm xưởng
+            </Button>
           )}
         </Stack>
 
-        {!isLabManager && <Box className="ops-summary-grid">
-          <OpsStatCard label="Xưởng hoạt động" value={data ? labs.filter((lab) => lab.isActive).length : '—'} hint="Trong danh sách đang hiển thị" icon={<FactoryRounded />} loading={isLoading} />
-          <OpsStatCard label="Máy in đăng ký" value={data ? labs.reduce((sum, lab) => sum + lab.machines.length, 0) : '—'} hint="Năng lực từ các xưởng trong danh sách" icon={<PrecisionManufacturingRounded />} loading={isLoading} />
-          <OpsStatCard label="Hồ sơ chờ duyệt" value={data ? labs.filter((lab) => lab.status === 'Pending').length : '—'} hint="Cần kiểm tra năng lực trước khi kích hoạt" icon={<CheckCircleOutlineRounded />} loading={isLoading} tone="warning" />
-        </Box>}
-        {!isLabManager && <TextField size="small" placeholder="Tìm xưởng, thành phố hoặc máy in…" value={labSearch} onChange={(event) => setLabSearch(event.target.value)} inputProps={{ 'aria-label': 'Tìm xưởng hoặc máy in' }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRounded sx={{ fontSize: 19 }} /></InputAdornment> }} />}
-        <FormControlLabel
-          control={<Switch checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} />}
-          label={<Typography color="text.secondary">Hiện cả xưởng chờ duyệt &amp; xưởng đã tắt</Typography>}
-        />
+        {!isLabManager && (
+          <Box className="ops-summary-grid">
+            <OpsStatCard
+              label="Xưởng hoạt động"
+              value={activeLabsTotalQuery.data?.totalCount ?? '—'}
+              hint="Trên toàn mạng lưới"
+              icon={<FactoryRounded />}
+              loading={activeLabsTotalQuery.isLoading}
+            />
+            <OpsStatCard
+              label="Máy in đăng ký"
+              value={allMachinesTotalQuery.data?.totalCount ?? '—'}
+              hint="Tổng máy trên toàn mạng lưới"
+              icon={<PrecisionManufacturingRounded />}
+              loading={allMachinesTotalQuery.isLoading}
+            />
+            <OpsStatCard
+              label="Hồ sơ chờ duyệt"
+              value={pendingLabsTotalQuery.data?.totalCount ?? '—'}
+              hint="Cần kiểm tra năng lực trước khi kích hoạt"
+              icon={<CheckCircleOutlineRounded />}
+              loading={pendingLabsTotalQuery.isLoading}
+              tone="warning"
+            />
+          </Box>
+        )}
 
         {actionBannerError && (
-          <Alert severity="error" onClose={() => setActionBannerError(null)}>{actionBannerError}</Alert>
+          <Alert severity="error" onClose={() => setActionBannerError(null)}>
+            {actionBannerError}
+          </Alert>
         )}
         {actionBannerSuccess && (
-          <Alert severity="success" onClose={() => setActionBannerSuccess(null)}>{actionBannerSuccess}</Alert>
+          <Alert severity="success" onClose={() => setActionBannerSuccess(null)}>
+            {actionBannerSuccess}
+          </Alert>
         )}
-        {isError ? <Alert severity="error">Không tải được danh sách xưởng.</Alert> : null}
-        {setStatus.isError ? <Alert severity="error">{getApiErrorMessage(setStatus.error, 'Không đổi được trạng thái máy.')}</Alert> : null}
-        {setStanding.isError ? <Alert severity="error">{getApiErrorMessage(setStanding.error, 'Không đổi được trạng thái phân công của xưởng.')}</Alert> : null}
-        {setCapacity.isError ? <Alert severity="error">{getApiErrorMessage(setCapacity.error, 'Không lưu được giới hạn năng lực.')}</Alert> : null}
+        {setStatus.isError && (
+          <Alert severity="error">{getApiErrorMessage(setStatus.error, 'Không đổi được trạng thái máy.')}</Alert>
+        )}
+        {setStanding.isError && (
+          <Alert severity="error">
+            {getApiErrorMessage(setStanding.error, 'Không đổi được trạng thái phân công của xưởng.')}
+          </Alert>
+        )}
+        {setCapacity.isError && (
+          <Alert severity="error">
+            {getApiErrorMessage(setCapacity.error, 'Không lưu được giới hạn năng lực.')}
+          </Alert>
+        )}
 
-        {isLoading ? (
-          <CircularProgress sx={{ alignSelf: 'center' }} />
-        ) : isError && !data ? null : visibleLabs.length === 0 ? (
-          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
-            <FactoryRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
-            <Typography color="text.secondary">
-              {labSearch ? 'Không có xưởng hoặc máy in phù hợp với từ khóa tìm kiếm.' : 'Chưa có xưởng trong danh sách. Hồ sơ xưởng mới sẽ xuất hiện tại đây.'}
-            </Typography>
-          </Box>
-        ) : (
-          <Stack spacing={2.5}>
-            {visibleLabs.map((lab) => {
-              const statusChip = labStatusChip(lab)
-              const missingMachines = lab.machines.length === 0
-              return (
-                <Box key={lab.id} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1.5}>
-                    <Box>
-                      <Stack direction="row" spacing={1.25} alignItems="center" flexWrap="wrap" useFlexGap>
-                        <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '1.05rem' }}>{lab.name}</Typography>
-                        <Chip size="small" label={statusChip.label} color={statusChip.color} />
-                        {!lab.isInGoodStanding && <Chip size="small" variant="outlined" color="error" label="Đã đình chỉ phân công" />}
-                        {lab.maxConcurrentJobs && <Chip size="small" variant="outlined" label={`Tối đa ${lab.maxConcurrentJobs} job`} />}
-                        {missingMachines && <Chip size="small" variant="outlined" color="error" label="Chưa có máy in — cần 1 máy để duyệt" />}
-                      </Stack>
-                      <Typography variant="body2" color="text.secondary">
-                        {lab.city}{lab.district ? ` · ${lab.district}` : ''}{lab.address ? ` (${lab.address})` : ''}{lab.contactPhone ? ` · SĐT: ${lab.contactPhone}` : ''} · {lab.machines.length} máy · lịch {lab.workingDays || 'chưa khai'} {lab.openingTime}–{lab.closingTime} · vận chuyển về hub {lab.transitDaysToHub} ngày · đúng hạn {Math.round(lab.onTimeDeliveryRate * 100)}% · đạt lần đầu {Math.round(lab.firstPassYield * 100)}%
-                      </Typography>
-                      {lab.rejectionReason && (
-                        <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
-                          Lý do từ chối: {lab.rejectionReason}
-                        </Typography>
-                      )}
-                    </Box>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                      {isLabManager ? (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="primary"
-                          startIcon={<AddRounded />}
-                          onClick={() => { setMachineError(null); setEditingMachine(null); setMachineForm(emptyMachine); setMachineLab(lab) }}
-                        >
-                          Thêm máy
-                        </Button>
-                      ) : (
-                        <>
-                          {!lab.isActive && (
+        {!isLabManager && (
+          <Paper variant="outlined" sx={{ borderRadius: 2.5, overflow: 'hidden' }}>
+            <Tabs value={opsTab} onChange={(_, next) => setOpsTab(next)} sx={{ px: 1 }}>
+              <Tab label="Danh sách xưởng" />
+              <Tab label="Danh sách máy in" />
+            </Tabs>
+          </Paper>
+        )}
+
+        {/* ── TAB 0 (or LabManager view): LABS LIST ── */}
+        {(isLabManager || opsTab === 0) && (
+          <Stack spacing={2}>
+            {!isLabManager && (
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5 }}>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} flexWrap="wrap" useFlexGap>
+                  <TextField
+                    size="small"
+                    placeholder="Tìm tên xưởng, thành phố, địa chỉ hoặc máy in…"
+                    value={labSearchInput}
+                    onChange={(e) => setLabSearchInput(e.target.value)}
+                    sx={{ minWidth: 240, flex: 1 }}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchRounded sx={{ fontSize: 19 }} />
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
+                  />
+                  <FormControl size="small" sx={{ minWidth: 165 }}>
+                    <InputLabel id="ops-lab-status-filter">Trạng thái duyệt</InputLabel>
+                    <Select
+                      labelId="ops-lab-status-filter"
+                      label="Trạng thái duyệt"
+                      value={labFilters.approvalStatus ?? ''}
+                      onChange={(e) =>
+                        setLabFilters((p) => ({ ...p, approvalStatus: e.target.value, page: 1 }))
+                      }
+                    >
+                      <MenuItem value="">Tất cả</MenuItem>
+                      <MenuItem value="Pending">Chờ duyệt</MenuItem>
+                      <MenuItem value="Active">Đang hoạt động</MenuItem>
+                      <MenuItem value="Rejected">Đã từ chối</MenuItem>
+                      <MenuItem value="Inactive">Tạm dừng</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <FormControl size="small" sx={{ minWidth: 165 }}>
+                    <InputLabel id="ops-lab-active-filter">Hoạt động</InputLabel>
+                    <Select
+                      labelId="ops-lab-active-filter"
+                      label="Hoạt động"
+                      value={labFilters.isActive ?? ''}
+                      onChange={(e) =>
+                        setLabFilters((p) => ({
+                          ...p,
+                          isActive: e.target.value as '' | 'true' | 'false',
+                          page: 1,
+                        }))
+                      }
+                    >
+                      <MenuItem value="">Tất cả</MenuItem>
+                      <MenuItem value="true">Đang bật (Active)</MenuItem>
+                      <MenuItem value="false">Đang tắt / Chờ duyệt</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    size="small"
+                    label="Hãng / Model máy"
+                    value={labFilters.manufacturerOrModel ?? ''}
+                    onChange={(e) =>
+                      setLabFilters((p) => ({ ...p, manufacturerOrModel: e.target.value, page: 1 }))
+                    }
+                    sx={{ width: { xs: '100%', sm: 165 } }}
+                  />
+                  <TextField
+                    size="small"
+                    label="Vật liệu"
+                    value={labFilters.material ?? ''}
+                    onChange={(e) => setLabFilters((p) => ({ ...p, material: e.target.value, page: 1 }))}
+                    sx={{ width: { xs: '100%', sm: 125 } }}
+                  />
+                  <Button
+                    color="inherit"
+                    onClick={() => {
+                      setLabSearchInput('')
+                      setLabFilters((p) => ({
+                        ...p,
+                        search: '',
+                        approvalStatus: '',
+                        isActive: '',
+                        manufacturerOrModel: '',
+                        material: '',
+                        page: 1,
+                      }))
+                    }}
+                  >
+                    Xóa lọc
+                  </Button>
+                </Stack>
+              </Paper>
+            )}
+
+            {labsError && <Alert severity="error">Không tải được danh sách xưởng.</Alert>}
+
+            {labsLoading ? (
+              <CircularProgress sx={{ alignSelf: 'center' }} />
+            ) : visibleLabs.length === 0 ? (
+              <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
+                <FactoryRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
+                <Typography color="text.secondary">
+                  Không có xưởng nào phù hợp với bộ lọc hiện tại.
+                </Typography>
+              </Box>
+            ) : (
+              <Stack spacing={2.5}>
+                {visibleLabs.map((lab) => {
+                  const statusChip = labStatusChip(lab)
+                  const missingMachines = lab.machines.length === 0
+                  return (
+                    <Box
+                      key={lab.id}
+                      sx={{
+                        p: { xs: 2, md: 3 },
+                        borderRadius: 3,
+                        border: '1px solid #E8EBF2',
+                        bgcolor: 'background.paper',
+                      }}
+                    >
+                      <Stack
+                        direction={{ xs: 'column', sm: 'row' }}
+                        justifyContent="space-between"
+                        alignItems={{ xs: 'flex-start', sm: 'center' }}
+                        spacing={1.5}
+                      >
+                        <Box>
+                          <Stack direction="row" spacing={1.25} alignItems="center" flexWrap="wrap" useFlexGap>
+                            <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '1.05rem' }}>
+                              {lab.name}
+                            </Typography>
+                            <Chip size="small" label={statusChip.label} color={statusChip.color} />
+                            {!lab.isInGoodStanding && (
+                              <Chip size="small" variant="outlined" color="error" label="Đã đình chỉ phân công" />
+                            )}
+                            {lab.maxConcurrentJobs && (
+                              <Chip size="small" variant="outlined" label={`Tối đa ${lab.maxConcurrentJobs} job`} />
+                            )}
+                            {missingMachines && (
+                              <Chip size="small" variant="outlined" color="error" label="Chưa có máy in — cần 1 máy để duyệt" />
+                            )}
+                          </Stack>
+                          <Typography variant="body2" color="text.secondary">
+                            {lab.city}
+                            {lab.district ? ` · ${lab.district}` : ''}
+                            {lab.address ? ` (${lab.address})` : ''}
+                            {lab.contactPhone ? ` · SĐT: ${lab.contactPhone}` : ''} · {lab.machines.length} máy · lịch{' '}
+                            {lab.workingDays || 'chưa khai'} {lab.openingTime}–{lab.closingTime} · vận chuyển về hub{' '}
+                            {lab.transitDaysToHub} ngày · đúng hạn {Math.round(lab.onTimeDeliveryRate * 100)}% · đạt lần đầu{' '}
+                            {Math.round(lab.firstPassYield * 100)}%
+                          </Typography>
+                          {lab.rejectionReason && (
+                            <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                              Lý do từ chối: {lab.rejectionReason}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                          {isLabManager ? (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="primary"
+                              startIcon={<AddRounded />}
+                              onClick={() => {
+                                setMachineError(null)
+                                setEditingMachine(null)
+                                setMachineForm(emptyMachine)
+                                setMachineLab({ id: lab.id, name: lab.name })
+                              }}
+                            >
+                              Thêm máy
+                            </Button>
+                          ) : (
                             <>
+                              {!lab.isActive && (
+                                <>
+                                  <Button
+                                    size="small"
+                                    variant="contained"
+                                    color="success"
+                                    startIcon={<CheckCircleOutlineRounded />}
+                                    onClick={() => handleApprove(lab)}
+                                    disabled={approveLab.isPending || missingMachines}
+                                  >
+                                    {missingMachines ? 'Thiếu máy in' : 'Duyệt xưởng'}
+                                  </Button>
+                                  {lab.status !== 'Rejected' && (
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      color="error"
+                                      startIcon={<CloseRounded />}
+                                      onClick={() => {
+                                        setRejectTarget(lab)
+                                        setRejectReason('')
+                                      }}
+                                    >
+                                      Từ chối
+                                    </Button>
+                                  )}
+                                </>
+                              )}
                               <Button
                                 size="small"
-                                variant="contained"
-                                color="success"
-                                startIcon={<CheckCircleOutlineRounded />}
-                                onClick={() => handleApprove(lab)}
-                                disabled={approveLab.isPending || missingMachines}
+                                variant="outlined"
+                                color={lab.isInGoodStanding ? 'error' : 'success'}
+                                disabled={!lab.isActive || setStanding.isPending}
+                                onClick={() =>
+                                  setStanding.mutate({ labId: lab.id, isInGoodStanding: !lab.isInGoodStanding })
+                                }
                               >
-                                {missingMachines ? 'Thiếu máy in' : 'Duyệt xưởng'}
+                                {lab.isInGoodStanding ? 'Đình chỉ' : 'Khôi phục'}
                               </Button>
-                              {lab.status !== 'Rejected' && (
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="error"
-                                  startIcon={<CloseRounded />}
-                                  onClick={() => { setRejectTarget(lab); setRejectReason('') }}
-                                >
-                                  Từ chối
-                                </Button>
-                              )}
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                disabled={!lab.isActive}
+                                onClick={() => {
+                                  setCapacityLab(lab)
+                                  setCapacityValue(lab.maxConcurrentJobs?.toString() ?? '')
+                                }}
+                              >
+                                Giới hạn năng lực
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="inherit"
+                                sx={{ color: 'text.primary', borderColor: 'divider' }}
+                                onClick={() => handleToggleActive(lab)}
+                                disabled={setActive.isPending}
+                              >
+                                {lab.isActive ? 'Tắt xưởng' : 'Bật xưởng'}
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                                startIcon={<AddRounded />}
+                                onClick={() => {
+                                  setMachineError(null)
+                                  setEditingMachine(null)
+                                  setMachineForm(emptyMachine)
+                                  setMachineLab({ id: lab.id, name: lab.name })
+                                }}
+                              >
+                                Thêm máy
+                              </Button>
                             </>
                           )}
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color={lab.isInGoodStanding ? 'error' : 'success'}
-                            disabled={!lab.isActive || setStanding.isPending}
-                            onClick={() => setStanding.mutate({ labId: lab.id, isInGoodStanding: !lab.isInGoodStanding })}
-                          >
-                            {lab.isInGoodStanding ? 'Đình chỉ' : 'Khôi phục'}
+                        </Stack>
+                      </Stack>
+
+                      {isLabManager && (
+                        <Stack direction="row" spacing={1} mt={1.5} flexWrap="wrap" useFlexGap>
+                          <Button size="small" component={RouterLink} to={`/lab/${lab.id}/inventory`}>
+                            Khai tồn kho vật liệu ({lab.materialStockCount})
                           </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            disabled={!lab.isActive}
-                            onClick={() => { setCapacityLab(lab); setCapacityValue(lab.maxConcurrentJobs?.toString() ?? '') }}
-                          >
-                            Giới hạn năng lực
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="inherit"
-                            sx={{ color: 'text.primary', borderColor: 'divider' }}
-                            onClick={() => handleToggleActive(lab)}
-                            disabled={setActive.isPending}
-                          >
-                            {lab.isActive ? 'Tắt xưởng' : 'Bật xưởng'}
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="primary"
-                            startIcon={<AddRounded />}
-                            onClick={() => { setMachineError(null); setEditingMachine(null); setMachineForm(emptyMachine); setMachineLab(lab) }}
-                          >
-                            Thêm máy
-                          </Button>
-                        </>
+                          <Typography variant="caption" color="text.secondary" alignSelf="center">
+                            Lịch: {lab.workingDays}, {lab.openingTime}–{lab.closingTime}
+                          </Typography>
+                        </Stack>
                       )}
-                    </Stack>
-                  </Stack>
 
-                  {isLabManager && (
-                    <Stack direction="row" spacing={1} mt={1.5} flexWrap="wrap" useFlexGap>
-                      <Button size="small" component={RouterLink} to={`/lab/${lab.id}/inventory`}>
-                        Khai tồn kho vật liệu ({lab.materialStockCount})
-                      </Button>
-                      <Typography variant="caption" color="text.secondary" alignSelf="center">
-                        Lịch: {lab.workingDays}, {lab.openingTime}–{lab.closingTime}
-                      </Typography>
-                    </Stack>
-                  )}
+                      <Divider sx={{ my: 2, borderColor: 'divider' }} />
 
-                  <Divider sx={{ my: 2, borderColor: 'divider' }} />
+                      {lab.machines.length === 0 ? (
+                        <Typography variant="body2" color="text.disabled">
+                          Xưởng chưa khai báo máy in nào — engine sẽ không bao giờ chọn được xưởng này.
+                        </Typography>
+                      ) : (
+                        <Stack spacing={1.5}>
+                          {lab.machines.map((machine) => (
+                            <MachineRow
+                              key={machine.id}
+                              machine={machine}
+                              editable
+                              onChangeStatus={(status) =>
+                                setStatus.mutate({ labId: lab.id, machineId: machine.id, status })
+                              }
+                              onEdit={() => {
+                                setMachineError(null)
+                                setEditingMachine(machine)
+                                setMachineLab({ id: lab.id, name: lab.name })
+                                setMachineForm({
+                                  name: machine.name,
+                                  model: machine.model,
+                                  technology: machine.technology,
+                                  buildWidthMm: machine.buildWidthMm,
+                                  buildDepthMm: machine.buildDepthMm,
+                                  buildHeightMm: machine.buildHeightMm,
+                                  minLayerHeightMm: machine.minLayerHeightMm,
+                                  achievableToleranceMm: machine.achievableToleranceMm,
+                                  materials: machine.supportedMaterials.join(', '),
+                                  printerConfiguration: {
+                                    ...defaultPrinterConfiguration,
+                                    ...(machine.printerConfiguration ?? {}),
+                                  },
+                                })
+                              }}
+                              onDelete={async () => {
+                                if (!window.confirm(`Xóa máy ${machine.name}? Máy đang có job sẽ không thể xóa.`)) return
+                                try {
+                                  await deleteMachine.mutateAsync({ labId: lab.id, machineId: machine.id })
+                                  setActionBannerSuccess(`Đã xóa máy "${machine.name}".`)
+                                } catch (error) {
+                                  setActionBannerError(
+                                    getApiErrorMessage(error, 'Không thể xóa máy khi đang có đơn in hoạt động.'),
+                                  )
+                                }
+                              }}
+                            />
+                          ))}
+                        </Stack>
+                      )}
+                    </Box>
+                  )
+                })}
+              </Stack>
+            )}
 
-                  {lab.machines.length === 0 ? (
-                    <Typography variant="body2" color="text.disabled">
-                      Xưởng chưa khai báo máy in nào — engine sẽ không bao giờ chọn được xưởng này.
-                    </Typography>
-                  ) : (
-                    <Stack spacing={1.5}>
-                      {lab.machines.map((machine) => (
-                        <MachineRow
-                          key={machine.id}
-                          machine={machine}
-                          editable
-                          onChangeStatus={(status) => setStatus.mutate({ labId: lab.id, machineId: machine.id, status })}
-                          onEdit={() => {
-                            setMachineError(null)
-                            setEditingMachine(machine)
-                            setMachineLab(lab)
-                            setMachineForm({
-                              name: machine.name, model: machine.model, technology: machine.technology,
-                              buildWidthMm: machine.buildWidthMm, buildDepthMm: machine.buildDepthMm,
-                              buildHeightMm: machine.buildHeightMm, minLayerHeightMm: machine.minLayerHeightMm,
-                              achievableToleranceMm: machine.achievableToleranceMm,
-                              materials: machine.supportedMaterials.join(', '),
-                              printerConfiguration: { ...defaultPrinterConfiguration, ...(machine.printerConfiguration ?? {}) },
-                            })
-                          }}
-                          onDelete={async () => {
-                            if (!window.confirm(`Xóa máy ${machine.name}? Máy đang có job sẽ không thể xóa.`)) return
-                            try {
-                              await deleteMachine.mutateAsync({ labId: lab.id, machineId: machine.id })
-                              setActionBannerSuccess(`Đã xóa máy "${machine.name}".`)
-                            } catch (error) {
-                              setActionBannerError(getApiErrorMessage(error, 'Không thể xóa máy khi đang có đơn in hoạt động.'))
-                            }
-                          }}
-                        />
-                      ))}
-                    </Stack>
-                  )}
-                </Box>
-              )
-            })}
+            {!isLabManager && labsPagedQuery.data && (
+              <ServerPaginationBar
+                totalCount={labsPagedQuery.data.totalCount}
+                page={labsPagedQuery.data.page}
+                pageSize={labsPagedQuery.data.pageSize}
+                totalPages={labsPagedQuery.data.totalPages}
+                itemLabel="xưởng"
+                onPageChange={(nextPage) => setLabFilters((p) => ({ ...p, page: nextPage }))}
+                onPageSizeChange={(nextSize) => setLabFilters((p) => ({ ...p, pageSize: nextSize, page: 1 }))}
+              />
+            )}
+          </Stack>
+        )}
+
+        {/* ── TAB 1 (OpsManager): NETWORK-WIDE MACHINES LIST ── */}
+        {!isLabManager && opsTab === 1 && (
+          <Stack spacing={2}>
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5 }}>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} flexWrap="wrap" useFlexGap>
+                <TextField
+                  size="small"
+                  placeholder="Tìm tên máy, model, hãng hoặc tên xưởng…"
+                  value={machineSearchInput}
+                  onChange={(e) => setMachineSearchInput(e.target.value)}
+                  sx={{ minWidth: 220, flex: 1 }}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchRounded sx={{ fontSize: 19 }} />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <FormControl size="small" sx={{ minWidth: 185 }}>
+                  <InputLabel id="ops-mach-lab-filter">Xưởng</InputLabel>
+                  <Select
+                    labelId="ops-mach-lab-filter"
+                    label="Xưởng"
+                    value={machineFilters.labId ?? ''}
+                    onChange={(e) => setMachineFilters((p) => ({ ...p, labId: e.target.value, page: 1 }))}
+                  >
+                    <MenuItem value="">Tất cả xưởng</MenuItem>
+                    {(labOptionsQuery.data ?? []).map((lab) => (
+                      <MenuItem key={lab.id} value={lab.id}>
+                        {lab.name} ({lab.city})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 175 }}>
+                  <InputLabel id="ops-mach-approval-filter">Trạng thái duyệt</InputLabel>
+                  <Select
+                    labelId="ops-mach-approval-filter"
+                    label="Trạng thái duyệt"
+                    value={machineFilters.profileStatus ?? ''}
+                    onChange={(e) =>
+                      setMachineFilters((p) => ({ ...p, profileStatus: e.target.value, page: 1 }))
+                    }
+                  >
+                    <MenuItem value="">Tất cả</MenuItem>
+                    <MenuItem value="Approved">Đã duyệt máy</MenuItem>
+                    <MenuItem value="PendingReview">Chờ duyệt máy</MenuItem>
+                    <MenuItem value="MissingProfile">Chưa có đủ profile</MenuItem>
+                    <MenuItem value="Rejected">Bị từ chối</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 165 }}>
+                  <InputLabel id="ops-mach-op-filter">Trạng thái hoạt động</InputLabel>
+                  <Select
+                    labelId="ops-mach-op-filter"
+                    label="Trạng thái hoạt động"
+                    value={machineFilters.operationalStatus ?? ''}
+                    onChange={(e) =>
+                      setMachineFilters((p) => ({ ...p, operationalStatus: e.target.value, page: 1 }))
+                    }
+                  >
+                    <MenuItem value="">Tất cả</MenuItem>
+                    <MenuItem value="Idle">Sẵn sàng</MenuItem>
+                    <MenuItem value="Printing">Đang in</MenuItem>
+                    <MenuItem value="Maintenance">Bảo trì</MenuItem>
+                    <MenuItem value="Offline">Ngoại tuyến</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  size="small"
+                  label="Hãng / Model"
+                  value={machineFilters.manufacturerOrModel ?? ''}
+                  onChange={(e) =>
+                    setMachineFilters((p) => ({ ...p, manufacturerOrModel: e.target.value, page: 1 }))
+                  }
+                  sx={{ width: { xs: '100%', sm: 160 } }}
+                />
+                <TextField
+                  size="small"
+                  label="Vật liệu"
+                  value={machineFilters.material ?? ''}
+                  onChange={(e) => setMachineFilters((p) => ({ ...p, material: e.target.value, page: 1 }))}
+                  sx={{ width: { xs: '100%', sm: 120 } }}
+                />
+                <Button
+                  color="inherit"
+                  onClick={() => {
+                    setMachineSearchInput('')
+                    setMachineFilters((p) => ({
+                      ...p,
+                      search: '',
+                      labId: '',
+                      profileStatus: '',
+                      operationalStatus: '',
+                      manufacturerOrModel: '',
+                      material: '',
+                      page: 1,
+                    }))
+                  }}
+                >
+                  Xóa lọc
+                </Button>
+              </Stack>
+            </Paper>
+
+            {machinesPagedQuery.isError && <Alert severity="error">Không tải được danh sách máy in.</Alert>}
+            {machinesPagedQuery.isLoading ? (
+              <CircularProgress sx={{ alignSelf: 'center' }} />
+            ) : (machinesPagedQuery.data?.items.length ?? 0) === 0 ? (
+              <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
+                <PrecisionManufacturingRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
+                <Typography color="text.secondary">
+                  Không có máy in nào phù hợp với bộ lọc hiện tại.
+                </Typography>
+              </Box>
+            ) : (
+              <Stack spacing={1.5}>
+                {machinesPagedQuery.data?.items.map((machine) => {
+                  const offline = machine.status === 2 || machine.status === 3
+                  return (
+                    <Paper key={machine.id} variant="outlined" sx={{ p: 2, borderRadius: 2.5 }}>
+                      <Stack
+                        direction={{ xs: 'column', md: 'row' }}
+                        justifyContent="space-between"
+                        alignItems={{ xs: 'flex-start', md: 'center' }}
+                        spacing={1.5}
+                      >
+                        <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ minWidth: 0 }}>
+                          <PrecisionManufacturingRounded
+                            sx={{ mt: 0.5, color: offline ? 'error.main' : 'primary.main' }}
+                          />
+                          <Box sx={{ minWidth: 0 }}>
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                              <Typography sx={{ fontWeight: 700, color: 'text.primary' }}>
+                                {machine.name}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                · {machine.printerConfiguration?.manufacturer ? `${machine.printerConfiguration.manufacturer} ` : ''}
+                                {machine.model}
+                              </Typography>
+                              <Chip size="small" variant="outlined" label={`${machine.labName} (${machine.labCity})`} />
+                              <Chip
+                                size="small"
+                                color={
+                                  machine.profileStatus === 'Approved'
+                                    ? 'success'
+                                    : machine.profileStatus === 'Rejected'
+                                      ? 'error'
+                                      : machine.profileStatus === 'PendingReview'
+                                        ? 'info'
+                                        : 'warning'
+                                }
+                                label={PROFILE_STATUS_LABELS[machine.profileStatus] ?? machine.profileStatus}
+                              />
+                              <Chip
+                                size="small"
+                                variant="outlined"
+                                color={machine.isEligibleForQuotingAndScheduling ? 'success' : 'default'}
+                                label={
+                                  machine.isEligibleForQuotingAndScheduling
+                                    ? 'Đủ điều kiện báo giá & gán việc'
+                                    : 'Chưa đủ điều kiện báo giá & gán việc'
+                                }
+                              />
+                            </Stack>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.4 }}>
+                              {PRINT_TECHNOLOGY_LABELS[machine.technology] ?? '?'} · khổ in {machine.buildWidthMm}×
+                              {machine.buildDepthMm}×{machine.buildHeightMm} mm · layer ≥ {machine.minLayerHeightMm} mm · dung sai ≤{' '}
+                              {machine.achievableToleranceMm} mm
+                            </Typography>
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.6 }}>
+                              {machine.supportedMaterials.map((material) => (
+                                <Chip
+                                  key={material}
+                                  size="small"
+                                  label={material}
+                                  sx={{ bgcolor: 'rgba(111,85,255,0.10)', color: '#4933B8', height: 20 }}
+                                />
+                              ))}
+                            </Stack>
+                          </Box>
+                        </Stack>
+
+                        <Stack className="ops-machine-actions" direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                          <FormControl size="small" sx={{ minWidth: 145 }}>
+                            <Select
+                              value={machine.status}
+                              onChange={(e) =>
+                                setStatus.mutate({
+                                  labId: machine.labId,
+                                  machineId: machine.id,
+                                  status: Number(e.target.value) as Machine['status'],
+                                })
+                              }
+                            >
+                              {MACHINE_STATUS_LABELS.map((label, index) => (
+                                <MenuItem key={label} value={index}>
+                                  {label}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <Button
+                            size="small"
+                            color="inherit"
+                            aria-label="Sửa máy"
+                            onClick={() => {
+                              setMachineError(null)
+                              setEditingMachine({
+                                id: machine.id,
+                                name: machine.name,
+                                model: machine.model,
+                                technology: machine.technology,
+                                buildWidthMm: machine.buildWidthMm,
+                                buildDepthMm: machine.buildDepthMm,
+                                buildHeightMm: machine.buildHeightMm,
+                                minLayerHeightMm: machine.minLayerHeightMm,
+                                achievableToleranceMm: machine.achievableToleranceMm,
+                                speedFactor: machine.speedFactor,
+                                status: machine.status,
+                                supportedMaterials: machine.supportedMaterials,
+                                curaProfileIds: machine.curaProfileIds,
+                                maintenanceFromUtc: machine.maintenanceFromUtc,
+                                maintenanceUntilUtc: machine.maintenanceUntilUtc,
+                                maintenanceReason: machine.maintenanceReason,
+                                printerConfiguration: machine.printerConfiguration,
+                                profileStatus: machine.profileStatus,
+                                profileReviewReason: machine.profileReviewReason,
+                              })
+                              setMachineLab({ id: machine.labId, name: machine.labName })
+                              setMachineForm({
+                                name: machine.name,
+                                model: machine.model,
+                                technology: machine.technology,
+                                buildWidthMm: machine.buildWidthMm,
+                                buildDepthMm: machine.buildDepthMm,
+                                buildHeightMm: machine.buildHeightMm,
+                                minLayerHeightMm: machine.minLayerHeightMm,
+                                achievableToleranceMm: machine.achievableToleranceMm,
+                                materials: machine.supportedMaterials.join(', '),
+                                printerConfiguration: {
+                                  ...defaultPrinterConfiguration,
+                                  ...(machine.printerConfiguration ?? {}),
+                                },
+                              })
+                            }}
+                          >
+                            <EditRounded fontSize="small" />
+                          </Button>
+                          <Button
+                            size="small"
+                            color="error"
+                            aria-label="Xóa máy"
+                            onClick={async () => {
+                              if (!window.confirm(`Xóa máy ${machine.name}? Máy đang có job sẽ không thể xóa.`)) return
+                              try {
+                                await deleteMachine.mutateAsync({ labId: machine.labId, machineId: machine.id })
+                                setActionBannerSuccess(`Đã xóa máy "${machine.name}".`)
+                              } catch (error) {
+                                setActionBannerError(
+                                  getApiErrorMessage(error, 'Không thể xóa máy khi đang có đơn in hoạt động.'),
+                                )
+                              }
+                            }}
+                          >
+                            <DeleteOutlineRounded fontSize="small" />
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    </Paper>
+                  )
+                })}
+              </Stack>
+            )}
+
+            {machinesPagedQuery.data && (
+              <ServerPaginationBar
+                totalCount={machinesPagedQuery.data.totalCount}
+                page={machinesPagedQuery.data.page}
+                pageSize={machinesPagedQuery.data.pageSize}
+                totalPages={machinesPagedQuery.data.totalPages}
+                itemLabel="máy in"
+                onPageChange={(nextPage) => setMachineFilters((p) => ({ ...p, page: nextPage }))}
+                onPageSizeChange={(nextSize) => setMachineFilters((p) => ({ ...p, pageSize: nextSize, page: 1 }))}
+              />
+            )}
           </Stack>
         )}
       </Stack>
 
       {/* ── Reject Lab Dialog ── */}
-      <Dialog open={rejectTarget !== null} onClose={() => setRejectTarget(null)} fullWidth maxWidth="xs"
-        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}>
+      <Dialog
+        open={rejectTarget !== null}
+        onClose={() => setRejectTarget(null)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}
+      >
         <DialogTitle sx={{ fontWeight: 700 }}>Từ chối duyệt xưởng — {rejectTarget?.name}</DialogTitle>
         <DialogContent>
           <TextField
@@ -469,23 +1041,53 @@ export default function OpsLabsPage() {
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setRejectTarget(null)} color="inherit">Huỷ</Button>
-          <Button variant="contained" color="error" onClick={handleReject} disabled={rejectLab.isPending || !rejectReason.trim()}>
+          <Button onClick={() => setRejectTarget(null)} color="inherit">
+            Huỷ
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleReject}
+            disabled={rejectLab.isPending || !rejectReason.trim()}
+          >
             Xác nhận từ chối
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* ── Register lab ── */}
-      <Dialog open={labOpen} onClose={() => setLabOpen(false)} fullWidth maxWidth="sm"
-        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}>
+      <Dialog
+        open={labOpen}
+        onClose={() => setLabOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}
+      >
         <DialogTitle sx={{ fontWeight: 700 }}>Thêm xưởng vào mạng lưới</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {labError && <Alert severity="error">{labError}</Alert>}
-            <TextField label="Tên xưởng" value={labForm.name} onChange={(e) => setLabForm((f) => ({ ...f, name: e.target.value }))} required fullWidth />
-            <TextField label="Thành phố" value={labForm.city} onChange={(e) => setLabForm((f) => ({ ...f, city: e.target.value }))} required fullWidth />
-            <TextField label="Quận / Huyện" value={labForm.district} onChange={(e) => setLabForm((f) => ({ ...f, district: e.target.value }))} fullWidth helperText="Khách hàng chỉ thấy quận/huyện và thành phố." />
+            <TextField
+              label="Tên xưởng"
+              value={labForm.name}
+              onChange={(e) => setLabForm((f) => ({ ...f, name: e.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Thành phố"
+              value={labForm.city}
+              onChange={(e) => setLabForm((f) => ({ ...f, city: e.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Quận / Huyện"
+              value={labForm.district}
+              onChange={(e) => setLabForm((f) => ({ ...f, district: e.target.value }))}
+              fullWidth
+              helperText="Khách hàng chỉ thấy quận/huyện và thành phố."
+            />
             <TextField
               label="Số ngày vận chuyển về hub"
               type="number"
@@ -494,34 +1096,92 @@ export default function OpsLabsPage() {
               inputProps={{ min: 1 }}
               fullWidth
             />
-            <TextField label="Ngày làm việc" value={labForm.workingDays} onChange={(e) => setLabForm((f) => ({ ...f, workingDays: e.target.value }))} helperText="Ví dụ: Thứ 2, Thứ 3, Thứ 4, Thứ 5, Thứ 6" required fullWidth />
+            <TextField
+              label="Ngày làm việc"
+              value={labForm.workingDays}
+              onChange={(e) => setLabForm((f) => ({ ...f, workingDays: e.target.value }))}
+              helperText="Ví dụ: Thứ 2, Thứ 3, Thứ 4, Thứ 5, Thứ 6"
+              required
+              fullWidth
+            />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField label="Giờ mở cửa" type="time" value={labForm.openingTime} onChange={(e) => setLabForm((f) => ({ ...f, openingTime: e.target.value }))} InputLabelProps={{ shrink: true }} required fullWidth />
-              <TextField label="Giờ đóng cửa" type="time" value={labForm.closingTime} onChange={(e) => setLabForm((f) => ({ ...f, closingTime: e.target.value }))} InputLabelProps={{ shrink: true }} required fullWidth />
+              <TextField
+                label="Giờ mở cửa"
+                type="time"
+                value={labForm.openingTime}
+                onChange={(e) => setLabForm((f) => ({ ...f, openingTime: e.target.value }))}
+                InputLabelProps={{ shrink: true }}
+                required
+                fullWidth
+              />
+              <TextField
+                label="Giờ đóng cửa"
+                type="time"
+                value={labForm.closingTime}
+                onChange={(e) => setLabForm((f) => ({ ...f, closingTime: e.target.value }))}
+                InputLabelProps={{ shrink: true }}
+                required
+                fullWidth
+              />
             </Stack>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => setLabOpen(false)} color="inherit" sx={{ color: 'text.secondary' }}>Huỷ</Button>
-          <Button variant="contained" onClick={submitLab} disabled={createLab.isPending || !labForm.name.trim() || !labForm.city.trim() || !labForm.workingDays.trim() || labForm.transitDaysToHub < 1 || labForm.closingTime <= labForm.openingTime}>
+          <Button onClick={() => setLabOpen(false)} color="inherit" sx={{ color: 'text.secondary' }}>
+            Huỷ
+          </Button>
+          <Button
+            variant="contained"
+            onClick={submitLab}
+            disabled={
+              createLab.isPending ||
+              !labForm.name.trim() ||
+              !labForm.city.trim() ||
+              !labForm.workingDays.trim() ||
+              labForm.transitDaysToHub < 1 ||
+              labForm.closingTime <= labForm.openingTime
+            }
+          >
             {createLab.isPending ? 'Đang tạo…' : 'Tạo xưởng'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* ── Register / update machine ── */}
-      <Dialog open={machineLab !== null} onClose={() => { setMachineLab(null); setEditingMachine(null) }} fullWidth maxWidth="sm"
-        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}>
-        <DialogTitle sx={{ fontWeight: 700 }}>{editingMachine ? 'Cập nhật máy' : 'Thêm máy'} — {machineLab?.name}</DialogTitle>
+      <Dialog
+        open={machineLab !== null}
+        onClose={() => {
+          setMachineLab(null)
+          setEditingMachine(null)
+        }}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { bgcolor: 'background.paper', backgroundImage: 'none', border: '1px solid #E8EBF2' } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          {editingMachine ? 'Cập nhật máy' : 'Thêm máy'} — {machineLab?.name}
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {machineError && <Alert severity="error">{machineError}</Alert>}
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField label="Tên máy" value={machineForm.name} onChange={(e) => setMachineForm((f) => ({ ...f, name: e.target.value }))} required fullWidth />
+                <TextField
+                  label="Tên máy"
+                  value={machineForm.name}
+                  onChange={(e) => setMachineForm((f) => ({ ...f, name: e.target.value }))}
+                  required
+                  fullWidth
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField label="Model" value={machineForm.model} onChange={(e) => setMachineForm((f) => ({ ...f, model: e.target.value }))} required fullWidth />
+                <TextField
+                  label="Model"
+                  value={machineForm.model}
+                  onChange={(e) => setMachineForm((f) => ({ ...f, model: e.target.value }))}
+                  required
+                  fullWidth
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <FormControl fullWidth>
@@ -530,34 +1190,75 @@ export default function OpsLabsPage() {
                     labelId="tech-label"
                     label="Công nghệ"
                     value={machineForm.technology}
-                    onChange={(e) => setMachineForm((f) => ({ ...f, technology: Number(e.target.value) as PrintTechnology }))}
+                    onChange={(e) =>
+                      setMachineForm((f) => ({ ...f, technology: Number(e.target.value) as PrintTechnology }))
+                    }
                   >
                     {PRINT_TECHNOLOGY_LABELS.map((label, index) => (
-                      <MenuItem key={label} value={index}>{label}</MenuItem>
+                      <MenuItem key={label} value={index}>
+                        {label}
+                      </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField label="Vật liệu (phân cách bằng dấu phẩy)" value={machineForm.materials} onChange={(e) => setMachineForm((f) => ({ ...f, materials: e.target.value }))} fullWidth />
+                <TextField
+                  label="Vật liệu (phân cách bằng dấu phẩy)"
+                  value={machineForm.materials}
+                  onChange={(e) => setMachineForm((f) => ({ ...f, materials: e.target.value }))}
+                  fullWidth
+                />
               </Grid>
               <Grid size={{ xs: 4 }}>
-                <TextField label="Khổ in R (mm)" type="number" value={machineForm.buildWidthMm} onChange={(e) => setMachineForm((f) => ({ ...f, buildWidthMm: Number(e.target.value) }))} fullWidth />
+                <TextField
+                  label="Khổ in R (mm)"
+                  type="number"
+                  value={machineForm.buildWidthMm}
+                  onChange={(e) => setMachineForm((f) => ({ ...f, buildWidthMm: Number(e.target.value) }))}
+                  fullWidth
+                />
               </Grid>
               <Grid size={{ xs: 4 }}>
-                <TextField label="Khổ in S (mm)" type="number" value={machineForm.buildDepthMm} onChange={(e) => setMachineForm((f) => ({ ...f, buildDepthMm: Number(e.target.value) }))} fullWidth />
+                <TextField
+                  label="Khổ in S (mm)"
+                  type="number"
+                  value={machineForm.buildDepthMm}
+                  onChange={(e) => setMachineForm((f) => ({ ...f, buildDepthMm: Number(e.target.value) }))}
+                  fullWidth
+                />
               </Grid>
               <Grid size={{ xs: 4 }}>
-                <TextField label="Khổ in C (mm)" type="number" value={machineForm.buildHeightMm} onChange={(e) => setMachineForm((f) => ({ ...f, buildHeightMm: Number(e.target.value) }))} fullWidth />
+                <TextField
+                  label="Khổ in C (mm)"
+                  type="number"
+                  value={machineForm.buildHeightMm}
+                  onChange={(e) => setMachineForm((f) => ({ ...f, buildHeightMm: Number(e.target.value) }))}
+                  fullWidth
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField label="Layer height nhỏ nhất (mm)" type="number" value={machineForm.minLayerHeightMm} onChange={(e) => setMachineForm((f) => ({ ...f, minLayerHeightMm: Number(e.target.value) }))} fullWidth />
+                <TextField
+                  label="Layer height nhỏ nhất (mm)"
+                  type="number"
+                  value={machineForm.minLayerHeightMm}
+                  onChange={(e) => setMachineForm((f) => ({ ...f, minLayerHeightMm: Number(e.target.value) }))}
+                  fullWidth
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField label="Dung sai đạt được (mm)" type="number" value={machineForm.achievableToleranceMm} onChange={(e) => setMachineForm((f) => ({ ...f, achievableToleranceMm: Number(e.target.value) }))} fullWidth />
+                <TextField
+                  label="Dung sai đạt được (mm)"
+                  type="number"
+                  value={machineForm.achievableToleranceMm}
+                  onChange={(e) => setMachineForm((f) => ({ ...f, achievableToleranceMm: Number(e.target.value) }))}
+                  fullWidth
+                />
               </Grid>
-              <PrinterConfigurationFields value={machineForm.printerConfiguration}
-                onChange={printerConfiguration => setMachineForm(f => ({ ...f, printerConfiguration }))} />
+              <PrinterConfigurationFields
+                value={machineForm.printerConfiguration}
+                onChange={(printerConfiguration) => setMachineForm((f) => ({ ...f, printerConfiguration }))}
+              />
             </Grid>
             <Typography variant="caption" color="text.disabled">
               Khổ in, layer height và dung sai là ba điều kiện lọc cứng của engine — nhập sai thì máy sẽ bị loại khỏi mọi job.
@@ -565,11 +1266,26 @@ export default function OpsLabsPage() {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => { setMachineLab(null); setEditingMachine(null) }} color="inherit" sx={{ color: 'text.secondary' }}>Huỷ</Button>
+          <Button
+            onClick={() => {
+              setMachineLab(null)
+              setEditingMachine(null)
+            }}
+            color="inherit"
+            sx={{ color: 'text.secondary' }}
+          >
+            Huỷ
+          </Button>
           <Button
             variant="contained"
             onClick={submitMachine}
-            disabled={addMachine.isPending || updateMachine.isPending || !machineForm.name.trim() || !machineForm.model.trim() || !machineForm.materials.trim()}
+            disabled={
+              addMachine.isPending ||
+              updateMachine.isPending ||
+              !machineForm.name.trim() ||
+              !machineForm.model.trim() ||
+              !machineForm.materials.trim()
+            }
           >
             {addMachine.isPending || updateMachine.isPending ? 'Đang lưu…' : editingMachine ? 'Lưu thay đổi' : 'Thêm máy'}
           </Button>
@@ -580,22 +1296,53 @@ export default function OpsLabsPage() {
       <Dialog open={capacityLab !== null} onClose={() => setCapacityLab(null)} fullWidth maxWidth="xs">
         <DialogTitle>Giới hạn năng lực — {capacityLab?.name}</DialogTitle>
         <DialogContent>
-          <TextField autoFocus fullWidth sx={{ mt: 1 }} type="number" label="Số job đồng thời tối đa" value={capacityValue} onChange={(event) => setCapacityValue(event.target.value)} helperText="Để trống nếu không giới hạn." inputProps={{ min: 1 }} />
+          <TextField
+            autoFocus
+            fullWidth
+            sx={{ mt: 1 }}
+            type="number"
+            label="Số job đồng thời tối đa"
+            value={capacityValue}
+            onChange={(event) => setCapacityValue(event.target.value)}
+            helperText="Để trống nếu không giới hạn."
+            inputProps={{ min: 1 }}
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCapacityLab(null)}>Hủy</Button>
-          <Button variant="contained" disabled={setCapacity.isPending || (capacityValue !== '' && Number(capacityValue) <= 0)} onClick={async () => {
-            if (!capacityLab) return
-            await setCapacity.mutateAsync({ labId: capacityLab.id, maxConcurrentJobs: capacityValue === '' ? null : Number(capacityValue) })
-            setCapacityLab(null)
-          }}>Lưu</Button>
+          <Button
+            variant="contained"
+            disabled={setCapacity.isPending || (capacityValue !== '' && Number(capacityValue) <= 0)}
+            onClick={async () => {
+              if (!capacityLab) return
+              await setCapacity.mutateAsync({
+                labId: capacityLab.id,
+                maxConcurrentJobs: capacityValue === '' ? null : Number(capacityValue),
+              })
+              setCapacityLab(null)
+            }}
+          >
+            Lưu
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
   )
 }
 
-function MachineRow({ machine, editable, onChangeStatus, onEdit, onDelete }: { machine: Machine; editable: boolean; onChangeStatus: (status: Machine['status']) => void; onEdit: () => void; onDelete: () => void }) {
+function MachineRow({
+  machine,
+  editable,
+  onChangeStatus,
+  onEdit,
+  onDelete,
+}: {
+  machine: Machine
+  editable: boolean
+  onChangeStatus: (status: Machine['status']) => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
   const offline = machine.status === 2 || machine.status === 3
   return (
     <Stack
@@ -608,15 +1355,40 @@ function MachineRow({ machine, editable, onChangeStatus, onEdit, onDelete }: { m
       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
         <PrecisionManufacturingRounded sx={{ color: offline ? 'error.main' : 'text.secondary' }} />
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>
-            {machine.name} <Typography component="span" variant="body2" color="text.secondary">· {machine.model}</Typography>
-          </Typography>
+          <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>
+              {machine.name}{' '}
+              <Typography component="span" variant="body2" color="text.secondary">
+                · {machine.model}
+              </Typography>
+            </Typography>
+            <Chip
+              size="small"
+              color={
+                machine.profileStatus === 'Approved'
+                  ? 'success'
+                  : machine.profileStatus === 'Rejected'
+                    ? 'error'
+                    : machine.profileStatus === 'PendingReview'
+                      ? 'info'
+                      : 'warning'
+              }
+              label={PROFILE_STATUS_LABELS[machine.profileStatus] ?? machine.profileStatus}
+            />
+          </Stack>
           <Typography variant="body2" color="text.secondary">
-            {PRINT_TECHNOLOGY_LABELS[machine.technology] ?? '?'} · khổ in {machine.buildWidthMm}×{machine.buildDepthMm}×{machine.buildHeightMm} mm · layer ≥ {machine.minLayerHeightMm} mm · dung sai ≤ {machine.achievableToleranceMm} mm
+            {PRINT_TECHNOLOGY_LABELS[machine.technology] ?? '?'} · khổ in {machine.buildWidthMm}×
+            {machine.buildDepthMm}×{machine.buildHeightMm} mm · layer ≥ {machine.minLayerHeightMm} mm · dung sai ≤{' '}
+            {machine.achievableToleranceMm} mm
           </Typography>
           <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
             {machine.supportedMaterials.map((material) => (
-              <Chip key={material} size="small" label={material} sx={{ bgcolor: 'rgba(111,85,255,0.10)', color: '#4933B8', height: 20 }} />
+              <Chip
+                key={material}
+                size="small"
+                label={material}
+                sx={{ bgcolor: 'rgba(111,85,255,0.10)', color: '#4933B8', height: 20 }}
+              />
             ))}
           </Stack>
         </Box>
@@ -625,14 +1397,22 @@ function MachineRow({ machine, editable, onChangeStatus, onEdit, onDelete }: { m
         <FormControl size="small" sx={{ minWidth: 150 }} disabled={!editable}>
           <Select value={machine.status} onChange={(e) => onChangeStatus(Number(e.target.value) as Machine['status'])}>
             {MACHINE_STATUS_LABELS.map((label, index) => (
-              <MenuItem key={label} value={index}>{label}</MenuItem>
+              <MenuItem key={label} value={index}>
+                {label}
+              </MenuItem>
             ))}
           </Select>
         </FormControl>
-        {editable && <>
-          <Button size="small" color="inherit" onClick={onEdit} aria-label="Sửa máy"><EditRounded fontSize="small" /></Button>
-          <Button size="small" color="error" onClick={onDelete} aria-label="Xóa máy"><DeleteOutlineRounded fontSize="small" /></Button>
-        </>}
+        {editable && (
+          <>
+            <Button size="small" color="inherit" onClick={onEdit} aria-label="Sửa máy">
+              <EditRounded fontSize="small" />
+            </Button>
+            <Button size="small" color="error" onClick={onDelete} aria-label="Xóa máy">
+              <DeleteOutlineRounded fontSize="small" />
+            </Button>
+          </>
+        )}
       </Stack>
     </Stack>
   )

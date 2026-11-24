@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Admin.Application.AuditLogs;
+using PrintGrid.Modules.Scheduling.Application.Abstractions;
 using PrintGrid.Modules.Scheduling.Application.Commands.LabRegistry;
 using PrintGrid.Modules.Scheduling.Application.DTOs;
 using PrintGrid.Modules.Scheduling.Application.Queries;
@@ -23,7 +24,11 @@ namespace PrintGrid.Api.Controllers;
 [ApiController]
 [Route("api/v1/labs")]
 [Authorize]
-public class LabsController(ISender sender, IAuditLogWriter audit, CuraLibrarySyncService curaLibrarySync) : ControllerBase
+public class LabsController(
+    ISender sender,
+    IAuditLogWriter audit,
+    CuraLibrarySyncService curaLibrarySync,
+    ISchedulingRegistryQueryService registryQueries) : ControllerBase
 {
     private bool IsAdminOrOps => User.IsInRole(Roles.Admin) || User.IsInRole(Roles.OpsManager);
 
@@ -32,11 +37,84 @@ public class LabsController(ISender sender, IAuditLogWriter audit, CuraLibrarySy
     public async Task<IActionResult> GetLabs([FromQuery] bool includeInactive = false, CancellationToken cancellationToken = default)
     {
         // A LabManager only ever sees its own lab(s); Ops/Admin see the whole network.
-        var ownerUserId = User.IsInRole(Roles.LabManager) ? User.GetCustomerId() : null;
-        if (User.IsInRole(Roles.LabManager) && ownerUserId is null) return Forbid();
+        var ownerUserId = User.IsInRole(Roles.LabManager) && !IsAdminOrOps ? User.GetCustomerId() : null;
+        if (User.IsInRole(Roles.LabManager) && !IsAdminOrOps && ownerUserId is null) return Forbid();
 
         var result = await sender.Send(new GetLabsQuery(includeInactive, ownerUserId), cancellationToken);
         return result.IsFailure ? BadRequest(result.Error) : Ok(result.Value);
+    }
+
+    [HttpGet("options")]
+    [Authorize(Roles = $"{Roles.OpsManager},{Roles.Admin}")]
+    public async Task<IActionResult> GetLabOptions(CancellationToken cancellationToken = default) =>
+        Ok(await registryQueries.GetLabOptionsAsync(cancellationToken));
+
+    [HttpGet("paged")]
+    [Authorize(Roles = $"{Roles.LabManager},{Roles.OpsManager},{Roles.Admin}")]
+    public async Task<IActionResult> GetLabsPaged(
+        [FromQuery] string? search = null,
+        [FromQuery] string? approvalStatus = null,
+        [FromQuery] bool? isActive = null,
+        [FromQuery] bool? isInGoodStanding = null,
+        [FromQuery] string? manufacturerOrModel = null,
+        [FromQuery] string? material = null,
+        [FromQuery] bool includeInactive = true,
+        [FromQuery] string? sortBy = "pendingFirst",
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var ownerUserId = User.IsInRole(Roles.LabManager) && !IsAdminOrOps ? User.GetCustomerId() : null;
+        if (User.IsInRole(Roles.LabManager) && !IsAdminOrOps && ownerUserId is null) return Forbid();
+
+        var result = await registryQueries.GetLabsPagedAsync(new LabPagedQueryFilter(
+            search,
+            approvalStatus,
+            isActive,
+            isInGoodStanding,
+            manufacturerOrModel,
+            material,
+            includeInactive,
+            sortBy,
+            ownerUserId,
+            page,
+            pageSize), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("machines/paged")]
+    [Authorize(Roles = $"{Roles.LabManager},{Roles.OpsManager},{Roles.Admin}")]
+    public async Task<IActionResult> GetMachinesPaged(
+        [FromQuery] string? search = null,
+        [FromQuery] Guid? labId = null,
+        [FromQuery] string? profileStatus = null,
+        [FromQuery] string? operationalStatus = null,
+        [FromQuery] string? labStatus = null,
+        [FromQuery] string? manufacturerOrModel = null,
+        [FromQuery] string? material = null,
+        [FromQuery] string? technology = null,
+        [FromQuery] string? sortBy = "pendingFirst",
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var ownerUserId = User.IsInRole(Roles.LabManager) && !IsAdminOrOps ? User.GetCustomerId() : null;
+        if (User.IsInRole(Roles.LabManager) && !IsAdminOrOps && ownerUserId is null) return Forbid();
+
+        var result = await registryQueries.GetMachinesPagedAsync(new MachinePagedQueryFilter(
+            search,
+            labId,
+            profileStatus,
+            operationalStatus,
+            labStatus,
+            manufacturerOrModel,
+            material,
+            technology,
+            sortBy,
+            ownerUserId,
+            page,
+            pageSize), cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet("me")]

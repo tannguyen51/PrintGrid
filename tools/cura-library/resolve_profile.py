@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Resolve one trusted Cura 5.11 resource selection into PrintGrid stack JSON."""
+
 import argparse
 import ast
 import configparser
@@ -72,13 +73,17 @@ def cfg_values(root, directory, identifier):
     if not identifier:
         return {}, {}
     safe_id(identifier)
-    matches = list((root / directory).rglob(f"{identifier}.*.cfg")) + list((root / directory).rglob(f"{identifier}.cfg"))
+    matches = list((root / directory).rglob(f"{identifier}.*.cfg")) + list(
+        (root / directory).rglob(f"{identifier}.cfg")
+    )
     if not matches:
         raise ValueError(f"Cura {directory} preset not found: {identifier}")
     parser = configparser.ConfigParser(interpolation=None)
-    parser.optionxform = str
+    setattr(parser, "optionxform", str)
     parser.read(matches[0], encoding="utf-8")
-    return dict(parser.items("values")) if parser.has_section("values") else {}, dict(parser.items("metadata")) if parser.has_section("metadata") else {}
+    return dict(parser.items("values")) if parser.has_section("values") else {}, dict(
+        parser.items("metadata")
+    ) if parser.has_section("metadata") else {}
 
 
 def global_quality_values(root, machine_ids, quality_metadata):
@@ -87,18 +92,28 @@ def global_quality_values(root, machine_ids, quality_metadata):
     layers = []
     for path in (root / "quality").rglob("*.cfg"):
         parser = configparser.ConfigParser(interpolation=None)
-        parser.optionxform = str
-        try: parser.read(path, encoding="utf-8")
-        except (configparser.Error, UnicodeError): continue
+        setattr(parser, "optionxform", str)
+        try:
+            parser.read(path, encoding="utf-8")
+        except (configparser.Error, UnicodeError):
+            continue
         if not parser.has_section("metadata") or not parser.has_section("general"):
             continue
         metadata = dict(parser.items("metadata"))
-        if metadata.get("global_quality", "").lower() != "true" or metadata.get("quality_type") != quality_type:
+        if (
+            metadata.get("global_quality", "").lower() != "true"
+            or metadata.get("quality_type") != quality_type
+        ):
             continue
         definition = parser.get("general", "definition", fallback="")
         if definition not in machine_ids:
             continue
-        layers.append((machine_ids.index(definition), dict(parser.items("values")) if parser.has_section("values") else {}))
+        layers.append(
+            (
+                machine_ids.index(definition),
+                dict(parser.items("values")) if parser.has_section("values") else {},
+            )
+        )
     result = {}
     for _, values in sorted(layers, key=lambda item: item[0]):
         result.update(values)
@@ -129,22 +144,39 @@ def material_values(root, identifier, machine_ids, nozzle):
     values = {}
     density = tree.findtext("m:properties/m:density", namespaces=ns)
     diameter = tree.findtext("m:properties/m:diameter", namespaces=ns)
-    if density: values["material_density"] = float(density)
-    if diameter: values["material_diameter"] = float(diameter)
+    if density:
+        values["material_density"] = float(density)
+    if diameter:
+        values["material_diameter"] = float(diameter)
+
     def apply(settings):
         for setting in list(settings):
-            if setting.tag not in {"{http://www.ultimaker.com/material}setting",
-                                   "{http://www.ultimaker.com/cura}setting"} or not setting.text:
+            if (
+                setting.tag
+                not in {
+                    "{http://www.ultimaker.com/material}setting",
+                    "{http://www.ultimaker.com/cura}setting",
+                }
+                or not setting.text
+            ):
                 continue
             raw_key = setting.attrib.get("key", "")
-            key = raw_key if setting.tag.startswith("{http://www.ultimaker.com/cura}") else MATERIAL_KEYS.get(raw_key)
-            if key: values[key] = parse_literal(setting.text)
+            key = (
+                raw_key
+                if setting.tag.startswith("{http://www.ultimaker.com/cura}")
+                else MATERIAL_KEYS.get(raw_key)
+            )
+            if key:
+                values[key] = parse_literal(setting.text)
 
     settings = tree.find("m:settings", ns)
     if settings is not None:
         apply(settings)
         for machine in settings.findall("m:machine", ns):
-            products = {item.attrib.get("product", "") for item in machine.findall("m:machine_identifier", ns)}
+            products = {
+                item.attrib.get("product", "")
+                for item in machine.findall("m:machine_identifier", ns)
+            }
             if not products.intersection(machine_ids):
                 continue
             apply(machine)
@@ -153,11 +185,19 @@ def material_values(root, identifier, machine_ids, nozzle):
                 if nozzle_text in hotend.attrib.get("id", ""):
                     apply(hotend)
     if "material_print_temperature" in values:
-        values.setdefault("material_print_temperature_layer_0", values["material_print_temperature"])
-        values.setdefault("material_initial_print_temperature", values["material_print_temperature"])
-        values.setdefault("material_final_print_temperature", values["material_print_temperature"])
+        values.setdefault(
+            "material_print_temperature_layer_0", values["material_print_temperature"]
+        )
+        values.setdefault(
+            "material_initial_print_temperature", values["material_print_temperature"]
+        )
+        values.setdefault(
+            "material_final_print_temperature", values["material_print_temperature"]
+        )
     if "material_bed_temperature" in values:
-        values.setdefault("material_bed_temperature_layer_0", values["material_bed_temperature"])
+        values.setdefault(
+            "material_bed_temperature_layer_0", values["material_bed_temperature"]
+        )
     return values
 
 
@@ -182,50 +222,87 @@ class Resolver:
         self.active = set()
 
     def value(self, key, index=0):
-        if key == "extruder_nr": return index
+        if key == "extruder_nr":
+            return index
         if key in self.overrides:
             value = self.overrides[key]
-            return self.expression(value, key, index) if isinstance(value, str) else value
+            return (
+                self.expression(value, key, index) if isinstance(value, str) else value
+            )
         identity = (key, index)
-        if identity in self.cache: return self.cache[identity]
+        if identity in self.cache:
+            return self.cache[identity]
         definition = self.defs[key]
-        if identity in self.active: return copy.deepcopy(definition.get("default_value", 0))
+        if identity in self.active:
+            return copy.deepcopy(definition.get("default_value", 0))
         self.active.add(identity)
         try:
             raw = definition.get("value", definition.get("default_value"))
-            result = self.expression(raw, key, index) if isinstance(raw, str) else copy.deepcopy(raw)
+            result = (
+                self.expression(raw, key, index)
+                if isinstance(raw, str)
+                else copy.deepcopy(raw)
+            )
             kind = definition.get("type")
-            if kind in ("int", "extruder", "optional_extruder"): result = int(result)
+            if kind in ("int", "extruder", "optional_extruder"):
+                result = int(result)
             elif kind == "float":
                 result = float(result)
-                if not math.isfinite(result): raise ValueError(f"Non-finite setting: {key}")
+                if not math.isfinite(result):
+                    raise ValueError(f"Non-finite setting: {key}")
             self.cache[identity] = result
             return result
         finally:
             self.active.remove(identity)
 
     def expression(self, expression, key, index):
-        try: tree = ast.parse(expression, mode="eval")
-        except (SyntaxError, ValueError): return expression
+        try:
+            tree = ast.parse(expression, mode="eval")
+        except (SyntaxError, ValueError):
+            return expression
         helpers = {
-            "math": math, "max": max, "min": min, "sum": sum, "round": round,
-            "int": int, "float": float, "str": str, "bool": bool, "any": any,
-            "all": all, "len": len, "map": map, "abs": abs,
+            "math": math,
+            "max": max,
+            "min": min,
+            "sum": sum,
+            "round": round,
+            "int": int,
+            "float": float,
+            "str": str,
+            "bool": bool,
+            "any": any,
+            "all": all,
+            "len": len,
+            "map": map,
+            "abs": abs,
             "extruderValue": lambda number, name: self.value(name, max(0, int(number))),
-            "extruderValues": lambda name: [self.value(name, i) for i in range(self.count)],
+            "extruderValues": lambda name: [
+                self.value(name, i) for i in range(self.count)
+            ],
             "resolveOrValue": lambda name: self.value(name, index),
             "defaultExtruderPosition": lambda: 0,
-            "anyExtruderWithMaterial": lambda name: next((i for i in range(self.count) if self.value(name, i)), 0),
+            "anyExtruderWithMaterial": lambda name: next(
+                (i for i in range(self.count) if self.value(name, i)), 0
+            ),
         }
-        locals_ = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)}
+        locals_ = {
+            n.id
+            for n in ast.walk(tree)
+            if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)
+        }
         for name in {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)} - locals_:
-            if name in self.defs and name not in helpers: helpers[name] = self.value(name, index)
-        try: return eval(compile(tree, f"<cura:{key}>", "eval"), {"__builtins__": {}, **helpers})
+            if name in self.defs and name not in helpers:
+                helpers[name] = self.value(name, index)
+        try:
+            return eval(
+                compile(tree, f"<cura:{key}>", "eval"), {"__builtins__": {}, **helpers}
+            )
         except NameError:
             return expression
         except (TypeError, ValueError, ZeroDivisionError, AttributeError):
             default = self.defs[key].get("default_value")
-            if default is not None and default != expression: return default
+            if default is not None and default != expression:
+                return default
             raise
 
 
@@ -240,33 +317,56 @@ def main():
     parser.add_argument("--slots", type=int, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    if args.slots < 1 or args.slots > 8: raise ValueError("Color slots must be 1..8")
-    defs, metadata, machine_name, machine_ids = definitions(args.resources, args.definition, args.extruder)
+    if args.slots < 1 or args.slots > 8:
+        raise ValueError("Color slots must be 1..8")
+    defs, metadata, machine_name, machine_ids = definitions(
+        args.resources, args.definition, args.extruder
+    )
     variant, _ = cfg_values(args.resources, "variants", args.variant)
     quality, quality_meta = cfg_values(args.resources, "quality", args.quality)
     global_quality = global_quality_values(args.resources, machine_ids, quality_meta)
     variant_values = {k: parse_literal(v) for k, v in variant.items()}
     nozzle = float(variant_values.get("machine_nozzle_size", 0.4))
-    overrides = {**material_values(args.resources, args.material, machine_ids, nozzle),
-                 **variant_values,
-                 **{k: parse_literal(v) for k, v in global_quality.items()},
-                 **{k: parse_literal(v) for k, v in quality.items()},
-                 "machine_extruder_count": args.slots}
+    overrides = {
+        **material_values(args.resources, args.material, machine_ids, nozzle),
+        **variant_values,
+        **{k: parse_literal(v) for k, v in global_quality.items()},
+        **{k: parse_literal(v) for k, v in quality.items()},
+        "machine_extruder_count": args.slots,
+    }
     resolver = Resolver(defs, overrides, args.slots)
     # Cura disables bed-temperature settings on machines without a heated bed.
     # Material XML can still contain temperatures; those must not become hardware requirements.
     if not resolver.value("machine_heated_bed"):
-        overrides.update({"default_material_bed_temperature": 0,
-                          "material_bed_temperature": 0, "material_bed_temperature_layer_0": 0})
+        overrides.update(
+            {
+                "default_material_bed_temperature": 0,
+                "material_bed_temperature": 0,
+                "material_bed_temperature_layer_0": 0,
+            }
+        )
     output = {"global": {key: resolver.value(key) for key in defs}}
-    for index in range(args.slots): output[f"extruder.{index}"] = {key: resolver.value(key, index) for key in defs}
-    args.output.write_text(json.dumps(output, ensure_ascii=False, allow_nan=False, separators=(",", ":")), encoding="utf-8")
-    print(json.dumps({"machineName": machine_name, "manufacturer": metadata.get("manufacturer", "Unknown"),
-                      "qualityType": quality_meta.get("quality_type", "standard"), "settings": len(defs)}))
+    for index in range(args.slots):
+        output[f"extruder.{index}"] = {key: resolver.value(key, index) for key in defs}
+    args.output.write_text(
+        json.dumps(output, ensure_ascii=False, allow_nan=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    print(
+        json.dumps(
+            {
+                "machineName": machine_name,
+                "manufacturer": metadata.get("manufacturer", "Unknown"),
+                "qualityType": quality_meta.get("quality_type", "standard"),
+                "settings": len(defs),
+            }
+        )
+    )
 
 
 if __name__ == "__main__":
-    try: main()
+    try:
+        main()
     except Exception as error:
         print(str(error), file=sys.stderr)
         sys.exit(2)
