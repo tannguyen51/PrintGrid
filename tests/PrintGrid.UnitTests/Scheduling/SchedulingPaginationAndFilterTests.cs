@@ -195,5 +195,13 @@ public class SchedulingPaginationAndFilterTests
             new CuraProfilePagedQueryFilter(Scope: "proposals", ApprovalStatus: CuraProfile.StatusRejected, Page: 1, PageSize: 10));
         rejectedFilter.TotalCount.Should().Be(1);
         rejectedFilter.Items.Single().ReviewReason.Should().Be("Chưa đủ nhiệt bàn");
+
+        // Deactivating the approved profile immediately marks the machine ineligible in paged queries
+        approvedProfile.Deactivate();
+        await db.SaveChangesAsync();
+        var afterDeactivate = await service.GetMachinesPagedAsync(
+            new MachinePagedQueryFilter(ProfileStatus: "Approved", OperationalStatus: "Idle", Page: 1, PageSize: 10));
+        afterDeactivate.Items.Should().ContainSingle(x => x.Name == "X1C #01");
+        afterDeactivate.Items.Single().IsEligibleForQuotingAndScheduling.Should().BeFalse();
     }
 }

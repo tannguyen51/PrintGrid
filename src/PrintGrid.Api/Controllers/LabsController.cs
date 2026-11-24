@@ -136,7 +136,7 @@ public class LabsController(
         var result = await sender.Send(new GetLabQuery(labId), cancellationToken);
         if (result.IsFailure)
             return ToErrorResult(result.Error);
-        if (User.IsInRole(Roles.LabManager) && result.Value.OwnerUserId != User.GetCustomerId()) return Forbid();
+        if (!IsAdminOrOps && User.IsInRole(Roles.LabManager) && !await CallerManagesLabAsync(labId, cancellationToken)) return Forbid();
         return Ok(result.Value);
     }
 

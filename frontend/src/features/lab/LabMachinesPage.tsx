@@ -142,7 +142,7 @@ function profileStatusColor(status: string): 'success' | 'warning' | 'error' | '
 
 export default function LabMachinesPage() {
   const navigate = useNavigate()
-  const { data: myLab, isLoading, isError } = useMyLab(true)
+  const { data: myLab, isLoading, isError } = useMyLab(false)
 
   const addMachine = useAddMachine()
   const updateMachine = useUpdateMachine()

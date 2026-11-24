@@ -24,7 +24,9 @@ public sealed class SchedulingRegistryQueryService(PrintGridDbContext db) : ISch
         var query = db.Set<Lab>().AsNoTracking();
 
         if (filter.OwnerUserId.HasValue)
-            query = query.Where(l => l.OwnerUserId == filter.OwnerUserId.Value);
+            query = query.Where(l =>
+                l.OwnerUserId == filter.OwnerUserId.Value
+                || l.Staff.Any(s => s.UserId == filter.OwnerUserId.Value));
 
         if (!filter.IncludeInactive && string.IsNullOrWhiteSpace(filter.ApprovalStatus) && !filter.IsActive.HasValue)
             query = query.Where(l => l.IsActive && l.Status == LabStatus.Active);
@@ -123,7 +125,9 @@ public sealed class SchedulingRegistryQueryService(PrintGridDbContext db) : ISch
             select new { Machine = m, Lab = l };
 
         if (filter.OwnerUserId.HasValue)
-            query = query.Where(x => x.Lab.OwnerUserId == filter.OwnerUserId.Value);
+            query = query.Where(x =>
+                x.Lab.OwnerUserId == filter.OwnerUserId.Value
+                || x.Lab.Staff.Any(s => s.UserId == filter.OwnerUserId.Value));
 
         if (filter.LabId.HasValue)
             query = query.Where(x => x.Machine.LabId == filter.LabId.Value);
@@ -231,7 +235,13 @@ public sealed class SchedulingRegistryQueryService(PrintGridDbContext db) : ISch
                 && lab.Status == LabStatus.Active
                 && lab.IsInGoodStanding
                 && m.Status is MachineStatus.Idle or MachineStatus.Printing
-                && (m.Technology != PrintTechnology.Fdm || (m.ProfileStatus == "Approved" && m.CuraProfileIds.Length > 0));
+                && (m.Technology != PrintTechnology.Fdm || (
+                    m.ProfileStatus == "Approved"
+                    && m.SupportedMaterials.Count > 0
+                    && m.SupportedMaterials.All(mat => matched.Any(p =>
+                        p.IsActive
+                        && p.ApprovalStatus == CuraProfile.StatusApproved
+                        && string.Equals(p.MaterialCode, mat, StringComparison.OrdinalIgnoreCase)))));
 
             return new MachineListItemDto(
                 m.Id,

@@ -161,6 +161,17 @@ public sealed class CuraProfilesController(
                 submissionNotes: request.SubmissionNotes,
                 sourceFileName: request.SourceFileName);
 
+            var duplicatePending = await db.Set<CuraProfile>().AsNoTracking()
+                .AnyAsync(p => p.SubmittedByLabId == lab.Id
+                               && p.ApprovalStatus == CuraProfile.StatusPendingReview
+                               && p.Manufacturer.ToLower() == profile.Manufacturer.ToLower()
+                               && p.MachineModel.ToLower() == profile.MachineModel.ToLower()
+                               && p.MaterialCode == profile.MaterialCode
+                               && p.Version.ToLower() == profile.Version.ToLower()
+                               && p.NozzleDiameterMm == profile.NozzleDiameterMm, ct);
+            if (duplicatePending)
+                return Invalid("Xưởng đã có yêu cầu profile cùng hãng, model, vật liệu và phiên bản đang chờ Admin duyệt.");
+
             db.Set<CuraProfile>().Add(profile);
             await db.SaveChangesAsync(ct);
             await Log("cura_profile.proposed", "CuraProfile", profile.Id,
@@ -282,9 +293,17 @@ public sealed class CuraProfilesController(
 
         try
         {
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
             if (request.IsActive) profile.Activate();
             else profile.Deactivate();
             await db.SaveChangesAsync(ct);
+
+            var machinesToRematch = request.IsActive
+                ? await db.Set<Machine>().Where(m => m.ProfileStatus != "Approved" && m.ProfileStatus != "Rejected").ToListAsync(ct)
+                : await db.Set<Machine>().Where(m => m.CuraProfileIds.Contains(profile.Id) || (m.ProfileStatus != "Approved" && m.ProfileStatus != "Rejected")).ToListAsync(ct);
+            foreach (var machine in machinesToRematch) await matcher.MatchAsync(machine, ct);
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
             await Log(request.IsActive ? "cura_profile.activated" : "cura_profile.deactivated",
                 "CuraProfile", profile.Id, new { profile.Name, profile.Version, profile.IsActive }, null, ct);
             return Ok(await registryQueries.GetCuraProfileDetailAsync(profile.Id, ct));

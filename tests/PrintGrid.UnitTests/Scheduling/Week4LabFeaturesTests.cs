@@ -313,4 +313,55 @@ public class Week4LabFeaturesTests
         over10.Value.IsProvisional.Should().BeFalse();
         over10.Value.StandingScore.Should().BeGreaterThan(0.85m);
     }
+
+    [Fact]
+    public async Task AdminOrOps_registering_machine_on_unclaimed_lab_does_not_claim_ownership_and_foreign_manager_is_forbidden()
+    {
+        var unclaimedLab = Lab.Onboard("Xưởng Ops Tạo", "Hà Nội", 1);
+        _labs.GetByIdAsync(unclaimedLab.Id, Arg.Any<CancellationToken>()).Returns(unclaimedLab);
+
+        var opsUserId = Guid.NewGuid();
+        var registerHandler = new RegisterMachineCommandHandler(_labs, _unitOfWork);
+        var opsResult = await registerHandler.Handle(
+            new RegisterMachineCommand(
+                unclaimedLab.Id,
+                "Prusa MK4",
+                "MK4",
+                PrintTechnology.Fdm,
+                250, 210, 220,
+                0.1m, 0.15m,
+                ["PLA"],
+                RequestingUserId: opsUserId,
+                IsAdminOrOps: true,
+                ActorUserId: opsUserId),
+            CancellationToken.None);
+
+        opsResult.IsSuccess.Should().BeTrue();
+        unclaimedLab.OwnerUserId.Should().BeNull("Admin/Ops must not claim ownership of unclaimed labs");
+
+        var randomManagerId = Guid.NewGuid();
+        var foreignRegister = await registerHandler.Handle(
+            new RegisterMachineCommand(
+                unclaimedLab.Id,
+                "Unauthorized Machine",
+                "MK4",
+                PrintTechnology.Fdm,
+                250, 210, 220,
+                0.1m, 0.15m,
+                ["PLA"],
+                RequestingUserId: randomManagerId,
+                IsAdminOrOps: false,
+                ActorUserId: randomManagerId),
+            CancellationToken.None);
+        foreignRegister.IsFailure.Should().BeTrue();
+        foreignRegister.Error.Code.Should().Be("forbidden");
+
+        var crudHandler = new MachineCrudCommandHandler(_labs, _jobs, _unitOfWork);
+        var machine = unclaimedLab.Machines.Single();
+        var foreignDelete = await crudHandler.Handle(
+            new DeleteMachineCommand(unclaimedLab.Id, machine.Id, RequestingUserId: randomManagerId, IsAdminOrOps: false),
+            CancellationToken.None);
+        foreignDelete.IsFailure.Should().BeTrue();
+        foreignDelete.Error.Code.Should().Be("forbidden");
+    }
 }

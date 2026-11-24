@@ -132,7 +132,7 @@ export default function AdminLabApprovalPage() {
                 },
               }}
             />
-            <FormControl size="small" sx={{ minWidth: 165 }}>
+            <FormControl size="small" sx={{ minWidth: 195 }}>
               <InputLabel id="admin-lab-approval-status">Trạng thái duyệt</InputLabel>
               <Select
                 labelId="admin-lab-approval-status"
@@ -147,7 +147,7 @@ export default function AdminLabApprovalPage() {
                 <MenuItem value="Inactive">Tạm dừng</MenuItem>
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 165 }}>
+            <FormControl size="small" sx={{ minWidth: 195 }}>
               <InputLabel id="admin-lab-active-status">Trạng thái hoạt động</InputLabel>
               <Select
                 labelId="admin-lab-active-status"

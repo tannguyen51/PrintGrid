@@ -146,7 +146,7 @@ export default function OpsLabsPage() {
     return () => clearTimeout(t)
   }, [machineSearchInput])
 
-  const myLabListQuery = useLabs(true)
+  const myLabListQuery = useLabs(true, isLabManager)
   const labsPagedQuery = useLabsPaged(labFilters, !isLabManager && opsTab === 0)
   const machinesPagedQuery = useMachinesPaged(machineFilters, !isLabManager && opsTab === 1)
   const labOptionsQuery = useLabOptions(!isLabManager)
@@ -222,7 +222,7 @@ export default function OpsLabsPage() {
         buildHeightMm: Number(machineForm.buildHeightMm),
         minLayerHeightMm: Number(machineForm.minLayerHeightMm),
         achievableToleranceMm: Number(machineForm.achievableToleranceMm),
-        printerConfiguration: machineForm.printerConfiguration,
+        printerConfiguration: machineForm.technology === 0 ? machineForm.printerConfiguration : undefined,
         supportedMaterials: machineForm.materials
           .split(',')
           .map((m) => m.trim().toUpperCase())
@@ -246,7 +246,7 @@ export default function OpsLabsPage() {
       setActionBannerSuccess(`Đã duyệt xưởng "${lab.name}" — xưởng đã sẵn sàng nhận đơn in.`)
     } catch (error) {
       setActionBannerError(
-        getApiErrorMessage(error, 'Không thể duyệt xưởng khi chưa khai báo ít nhất 1 máy in.'),
+        getApiErrorMessage(error, 'Không thể duyệt xưởng khi chưa khai báo đủ máy in và tồn kho vật liệu.'),
       )
     }
   }
@@ -410,7 +410,7 @@ export default function OpsLabsPage() {
                       },
                     }}
                   />
-                  <FormControl size="small" sx={{ minWidth: 165 }}>
+                  <FormControl size="small" sx={{ minWidth: 195 }}>
                     <InputLabel id="ops-lab-status-filter">Trạng thái duyệt</InputLabel>
                     <Select
                       labelId="ops-lab-status-filter"
@@ -427,7 +427,7 @@ export default function OpsLabsPage() {
                       <MenuItem value="Inactive">Tạm dừng</MenuItem>
                     </Select>
                   </FormControl>
-                  <FormControl size="small" sx={{ minWidth: 165 }}>
+                  <FormControl size="small" sx={{ minWidth: 195 }}>
                     <InputLabel id="ops-lab-active-filter">Hoạt động</InputLabel>
                     <Select
                       labelId="ops-lab-active-filter"
@@ -530,6 +530,9 @@ export default function OpsLabsPage() {
                             {missingMachines && (
                               <Chip size="small" variant="outlined" color="error" label="Chưa có máy in — cần 1 máy để duyệt" />
                             )}
+                            {lab.status === 'Pending' && (lab.materialStockCount ?? 0) === 0 && (
+                              <Chip size="small" variant="outlined" color="warning" label="Chưa khai báo kho vật liệu — cần ≥ 1 vật liệu để duyệt" />
+                            )}
                           </Stack>
                           <Typography variant="body2" color="text.secondary">
                             {lab.city}
@@ -572,9 +575,9 @@ export default function OpsLabsPage() {
                                     color="success"
                                     startIcon={<CheckCircleOutlineRounded />}
                                     onClick={() => handleApprove(lab)}
-                                    disabled={approveLab.isPending || missingMachines}
+                                    disabled={approveLab.isPending || missingMachines || (lab.materialStockCount ?? 0) === 0}
                                   >
-                                    {missingMachines ? 'Thiếu máy in' : 'Duyệt xưởng'}
+                                    {missingMachines ? 'Thiếu máy in' : (lab.materialStockCount ?? 0) === 0 ? 'Thiếu vật liệu' : 'Duyệt xưởng'}
                                   </Button>
                                   {lab.status !== 'Rejected' && (
                                     <Button
@@ -762,7 +765,7 @@ export default function OpsLabsPage() {
                     ))}
                   </Select>
                 </FormControl>
-                <FormControl size="small" sx={{ minWidth: 175 }}>
+                <FormControl size="small" sx={{ minWidth: 195 }}>
                   <InputLabel id="ops-mach-approval-filter">Trạng thái duyệt</InputLabel>
                   <Select
                     labelId="ops-mach-approval-filter"
@@ -779,7 +782,7 @@ export default function OpsLabsPage() {
                     <MenuItem value="Rejected">Bị từ chối</MenuItem>
                   </Select>
                 </FormControl>
-                <FormControl size="small" sx={{ minWidth: 165 }}>
+                <FormControl size="small" sx={{ minWidth: 195 }}>
                   <InputLabel id="ops-mach-op-filter">Trạng thái hoạt động</InputLabel>
                   <Select
                     labelId="ops-mach-op-filter"
@@ -1255,10 +1258,12 @@ export default function OpsLabsPage() {
                   fullWidth
                 />
               </Grid>
-              <PrinterConfigurationFields
-                value={machineForm.printerConfiguration}
-                onChange={(printerConfiguration) => setMachineForm((f) => ({ ...f, printerConfiguration }))}
-              />
+              {machineForm.technology === 0 && (
+                <PrinterConfigurationFields
+                  value={machineForm.printerConfiguration}
+                  onChange={(printerConfiguration) => setMachineForm((f) => ({ ...f, printerConfiguration }))}
+                />
+              )}
             </Grid>
             <Typography variant="caption" color="text.disabled">
               Khổ in, layer height và dung sai là ba điều kiện lọc cứng của engine — nhập sai thì máy sẽ bị loại khỏi mọi job.
