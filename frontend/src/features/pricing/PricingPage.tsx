@@ -39,7 +39,7 @@ export default function PricingPage() {
       <PageHeading
         eyebrow="Bảng giá & vật liệu"
         title="Giá theo vật liệu, thời gian in và dịch vụ."
-        description="Bảng dưới là đơn giá tham chiếu. Báo giá cho file của bạn dùng kích thước đã chọn, lượng nhựa từng màu và thời gian từ slicer, đơn giá hợp đồng của máy phù hợp, dự phòng lỗi và dịch vụ hậu kỳ."
+        description="Bảng dưới là đơn giá bán do PrintGrid công bố. Báo giá cho file của bạn dùng kích thước đã chọn, lượng nhựa từng màu và thời gian từ slicer; lab chỉ đảm nhận sản xuất và không thể thay đổi đơn giá vật liệu."
         actions={
           !isCustomer ? (
             <PillButton onClick={() => setAuthMode('login')}>Đăng nhập để xem đơn giá</PillButton>
@@ -76,7 +76,7 @@ export default function PricingPage() {
             title="Vật liệu"
             note={
               isCustomer
-                ? 'Đơn giá chính xác đang áp dụng cho báo giá mới.'
+                ? 'Đơn giá chính xác do PrintGrid thiết lập, đang áp dụng cho báo giá mới.'
                 : `Khoảng giá cho một chi tiết tham chiếu ${preview.data?.referenceVolumeCm3 ?? 50} cm³.`
             }
           />
@@ -149,7 +149,7 @@ export default function PricingPage() {
                 <StepCard
                   step="02"
                   title="Thời gian máy"
-                  body="Thời gian dự kiến từ slicer × đơn giá giờ máy theo hợp đồng. Các máy có thể có đơn giá riêng."
+                  body="Thời gian dự kiến từ slicer × đơn giá giờ máy trong bộ giá chung do PrintGrid quản lý. Lab không tự đặt giá bán cho khách hàng."
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>

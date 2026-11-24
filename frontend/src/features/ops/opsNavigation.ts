@@ -11,6 +11,7 @@ export const OPS_GROUPS = [
     { label: 'Yêu cầu thiết kế', href: '/ops/design-requests', icon: 'design' },
   ] },
   { label: 'Đối soát & báo cáo', items: [
+    { label: 'Giá bán & vật liệu', href: '/ops/pricing', icon: 'pricing' },
     { label: 'Tài chính & đối soát', href: '/ops/finance', icon: 'payment' },
     { label: 'Thanh toán & đặt cọc', href: '/ops/payments', icon: 'payment' },
     { label: 'Xử lý hoàn tiền', href: '/ops/refunds', icon: 'refund' },

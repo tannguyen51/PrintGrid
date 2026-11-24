@@ -12,14 +12,15 @@ namespace PrintGrid.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/admin")]
-[Authorize(Policy = Policies.RequireAdmin)]
 public sealed class AdminConfigurationController(ISender sender, IAuditLogWriter audit) : ControllerBase
 {
     [HttpGet("commercial-configurations")]
+    [Authorize(Roles = Roles.Admin + "," + Roles.OpsManager)]
     public async Task<IActionResult> GetConfigurations(CancellationToken cancellationToken) =>
         Ok(await sender.Send(new GetCommercialConfigurationsQuery(), cancellationToken));
 
     [HttpPost("commercial-configurations")]
+    [Authorize(Roles = Roles.Admin + "," + Roles.OpsManager)]
     public async Task<IActionResult> CreateConfiguration(CreateCommercialConfigurationRequest request, CancellationToken cancellationToken)
     {
         var created = await sender.Send(new CreateCommercialConfigurationCommand(
@@ -30,6 +31,7 @@ public sealed class AdminConfigurationController(ISender sender, IAuditLogWriter
     }
 
     [HttpPost("commercial-configurations/{id:guid}/activate")]
+    [Authorize(Roles = Roles.Admin + "," + Roles.OpsManager)]
     public async Task<IActionResult> ActivateConfiguration(Guid id, [FromBody] ActivateCommercialConfigurationBody? body, CancellationToken cancellationToken)
     {
         var before = (await sender.Send(new GetCommercialConfigurationsQuery(), cancellationToken)).FirstOrDefault(x => x.Id == id);
@@ -41,6 +43,7 @@ public sealed class AdminConfigurationController(ISender sender, IAuditLogWriter
     }
 
     [HttpGet("catalog-items")]
+    [Authorize(Roles = Roles.Admin + "," + Roles.OpsManager)]
     public async Task<IActionResult> GetCatalog([FromQuery] string? type, [FromQuery] bool includeDeprecated = true, CancellationToken cancellationToken = default)
     {
         if (!string.IsNullOrWhiteSpace(type) && !SharedCatalogTypes.All.Contains(type))
@@ -49,6 +52,7 @@ public sealed class AdminConfigurationController(ISender sender, IAuditLogWriter
     }
 
     [HttpPut("catalog-items/{type}/{code}")]
+    [Authorize(Policy = Policies.RequireAdmin)]
     public async Task<IActionResult> SaveCatalogItem(string type, string code, SaveSharedCatalogItemRequest request, CancellationToken cancellationToken)
     {
         if (!SharedCatalogTypes.All.Contains(type))
@@ -65,6 +69,7 @@ public sealed class AdminConfigurationController(ISender sender, IAuditLogWriter
     }
 
     [HttpDelete("catalog-items/{type}/{code}")]
+    [Authorize(Policy = Policies.RequireAdmin)]
     public async Task<IActionResult> DeleteCatalogItem(string type, string code, CancellationToken cancellationToken)
     {
         if (!SharedCatalogTypes.All.Contains(type))

@@ -9,7 +9,7 @@ import {
   CloseRounded, DashboardRounded, DesignServicesOutlined, FactCheckOutlined,
   FactoryOutlined, HistoryRounded, InsightsOutlined, LogoutRounded, MenuRounded,
   PaymentsOutlined, ReceiptLongOutlined, SearchRounded, ViewInArOutlined,
-  WarningAmberRounded, WorkspacesOutlined,
+  WarningAmberRounded, WorkspacesOutlined, PriceChangeOutlined,
 } from '@mui/icons-material'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
@@ -23,7 +23,7 @@ const icons: Record<string, ReactNode> = {
   dashboard: <DashboardRounded />, warning: <WarningAmberRounded />, factory: <FactoryOutlined />,
   quote: <ReceiptLongOutlined />, model: <ViewInArOutlined />, qc: <FactCheckOutlined />,
   design: <DesignServicesOutlined />, payment: <PaymentsOutlined />, refund: <AssignmentOutlined />,
-  chart: <InsightsOutlined />, history: <HistoryRounded />,
+  chart: <InsightsOutlined />, history: <HistoryRounded />, pricing: <PriceChangeOutlined />,
 }
 
 export default function OpsLayout() {
