@@ -38,6 +38,8 @@ public class JobConfiguration : IEntityTypeConfiguration<Job>
         builder.Property(j => j.Priority).HasConversion<string>().HasMaxLength(16).IsRequired();
         builder.Property(j => j.CostBearer).HasConversion<string>().HasMaxLength(16).IsRequired();
         builder.Property(j => j.ReprintIndex).IsRequired();
+        builder.HasIndex(j => j.ReprintOfJobId).IsUnique()
+            .HasFilter("\"ReprintOfJobId\" IS NOT NULL");
 
         // Split batches (BR-SCHED-010) and the material the lab actually used.
         builder.Property(j => j.ActualMaterialGrams).HasPrecision(10, 2);

@@ -36,6 +36,10 @@ Xác nhận kiểm tra lại đơn, trạng thái job, số lượng, hạn sả
 
 Một dòng hàng chỉ hoàn tất khi mọi lô đang có hiệu lực đạt nghiệm thu; job gốc đã hủy vì chia lô không chặn hoàn tất. Job thất bại được thay bằng in lại không khiến đơn bị đánh dấu thất bại vĩnh viễn. Khách xem tiến độ từng phần trong chi tiết đơn; không lộ tên xưởng hoặc thông tin máy.
 
+Khi chia một lần in lại, các lô con giữ số lần in lại, mức ưu tiên, bên chịu chi phí và lab chịu trách nhiệm. `ReprintOfJobId` trỏ đến đúng job lỗi được thay thế; `OriginalJobId` tiếp tục chỉ gốc chuỗi, `ParentJobId` chỉ quan hệ chia lô. Hai nhánh chia lô có thể in lại riêng và không được dùng kết quả của nhánh này để xóa sự cố của nhánh kia. Job in lại đã chia vẫn được tính là một lần thay thế, còn các lô con phải nghiệm thu đầy đủ.
+
+Mỗi job lỗi chỉ có một job in lại trực tiếp. Gửi lại yêu cầu trả về job đã tạo, không gán việc hoặc đổi bên chịu chi phí lần nữa; muốn chạy tiếp job đang chờ thì gán lại job đó, muốn tạo lần in lại tiếp theo phải dùng job in lại đã bị lỗi. Unique index trên `ReprintOfJobId` chống tạo trùng khi hai yêu cầu đến đồng thời. Migration `TrackDirectReprintReplacement` thêm cột nullable và index; dữ liệu cũ giữ nguyên, việc đọc chuỗi cũ dùng liên kết gốc và các job cha chia lô. Không tự xóa các job trùng đã tồn tại trước bản sửa.
+
 ## BR-ORDER-STATS-001 — Thống kê theo đơn
 
 Trang `/ops/orders`, API `GET /api/v1/ops/orders`. Khoảng thời gian lọc **ngày tạo đơn**, theo giờ Việt Nam, bao gồm toàn bộ ngày kết thúc. Không phải thống kê số sự kiện giao hàng/hoàn tiền phát sinh trong kỳ.

@@ -89,7 +89,10 @@ public class Job : AggregateRoot<Guid>
     public JobPriority Priority { get; private set; } = JobPriority.Normal;
 
     /// <summary>Root job of a reprint chain; null when this job is the original (BR-RESCHED-003).</summary>
-    public Guid? OriginalJobId { get; private init; }
+    public Guid? OriginalJobId { get; private set; }
+
+    /// <summary>The exact failed job replaced by this reprint; split children use ParentJobId instead.</summary>
+    public Guid? ReprintOfJobId { get; private init; }
 
     /// <summary>0 for an original job, 1..N for successive reprints of it (BR-RESCHED-004 cap).</summary>
     public int ReprintIndex { get; private set; }
@@ -98,7 +101,7 @@ public class Job : AggregateRoot<Guid>
     public CostBearer CostBearer { get; private set; } = CostBearer.Customer;
 
     /// <summary>Lab held responsible for a reprint, when one can be identified.</summary>
-    public Guid? FaultLabId { get; private init; }
+    public Guid? FaultLabId { get; private set; }
 
     private Job() { }
 
@@ -181,6 +184,7 @@ public class Job : AggregateRoot<Guid>
             AttemptNumber = 1,
             Priority = JobPriority.Urgent,
             OriginalJobId = original.OriginalJobId ?? original.Id,
+            ReprintOfJobId = original.Id,
             ReprintIndex = reprintIndex,
             CostBearer = costBearer,
             FaultLabId = faultLabId,
@@ -222,6 +226,13 @@ public class Job : AggregateRoot<Guid>
             var child = Create(OrderItemId, ModelId, spec, Math.Max(1, (int)Math.Ceiling(EstimatedPrintMinutes * ratio)), InternalDueDate, q, Id,
                 DeliveryBufferDays, LastMileDays);
             child.SetQuotedProduction(ProductionQuoteJson, QuotedMachineId);
+            // A split divides the same production attempt, including its cost attribution.
+            // Do not copy ReprintOfJobId: only the parent directly replaces the failed job.
+            child.OriginalJobId = OriginalJobId;
+            child.ReprintIndex = ReprintIndex;
+            child.Priority = Priority;
+            child.CostBearer = CostBearer;
+            child.FaultLabId = FaultLabId;
             return child;
         }).ToList();
         Status = JobStatus.Cancelled; FailureReason = "Split into quantity batches due to schedule risk";

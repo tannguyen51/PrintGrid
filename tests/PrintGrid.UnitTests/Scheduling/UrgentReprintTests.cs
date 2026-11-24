@@ -27,7 +27,11 @@ public class UrgentReprintTests
 
     private readonly DateTime _now = new(2026, 10, 6, 8, 0, 0, DateTimeKind.Utc);
 
-    public UrgentReprintTests() => _clock.UtcNow.Returns(_now);
+    public UrgentReprintTests()
+    {
+        _clock.UtcNow.Returns(_now);
+        _unitOfWork.TrySaveChangesSafeAsync(Arg.Any<CancellationToken>()).Returns(true);
+    }
 
     private CreateUrgentReprintCommandHandler Handler() => new(
         _jobs, _engine, _escalations, _shortfall, _unitOfWork, _clock,

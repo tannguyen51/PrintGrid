@@ -392,6 +392,35 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Concurrent_reprint_inserts_keep_one_replacement_for_the_failed_job()
+    {
+        var (jobId, _, _) = await SeedJobWithTwoMachines();
+        var options = new DbContextOptionsBuilder<PrintGridDbContext>()
+            .UseNpgsql(_postgres.GetConnectionString()).Options;
+        await using var setup = new PrintGridDbContext(options);
+        var original = await setup.Set<Job>().SingleAsync(j => j.Id == jobId);
+        original.Fail("Failed print"); await setup.SaveChangesAsync();
+        // Independent contexts issue both inserts without a pre-check. The PostgreSQL
+        // unique index, rather than timing of the handler's read, must reject one.
+        async Task<bool> Insert()
+        {
+            await using var db = new PrintGridDbContext(options);
+            db.Add(Job.CreateUrgentReprint(original, 1));
+            return await new UnitOfWork(db).TrySaveChangesSafeAsync();
+        }
+        var results = await Task.WhenAll(Insert(), Insert());
+        results.Count(success => success).Should().Be(1);
+        await InScope(async sp =>
+        {
+            var replacements = await sp.GetRequiredService<PrintGridDbContext>().Set<Job>()
+                .Where(j => j.ReprintOfJobId == jobId).ToListAsync();
+            replacements.Should().ContainSingle();
+            replacements[0].Quantity.Should().Be(original.Quantity);
+            return true;
+        });
+    }
+
+    [Fact]
     public async Task The_third_reprint_goes_to_the_operations_queue_instead_of_being_created()
     {
         var (jobId, _, _) = await SeedJobWithTwoMachines();
@@ -404,7 +433,7 @@ public class RescheduleAndReprintFlowTests : IAsyncLifetime
 
             var first = Job.CreateUrgentReprint(original, 1);
             first.Fail("first reprint failed");
-            var second = Job.CreateUrgentReprint(original, 2);
+            var second = Job.CreateUrgentReprint(first, 2);
             second.Fail("second reprint failed");
 
             db.Add(first);

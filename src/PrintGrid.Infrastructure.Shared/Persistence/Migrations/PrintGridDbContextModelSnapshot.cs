@@ -1817,6 +1817,9 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.Property<int>("ReprintIndex")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("ReprintOfJobId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("ShipmentBatchId")
                         .HasColumnType("uuid");
 
@@ -1841,6 +1844,10 @@ namespace PrintGrid.Infrastructure.Shared.Persistence.Migrations
                     b.HasIndex("OriginalJobId");
 
                     b.HasIndex("ParentJobId");
+
+                    b.HasIndex("ReprintOfJobId")
+                        .IsUnique()
+                        .HasFilter("\"ReprintOfJobId\" IS NOT NULL");
 
                     b.HasIndex("ShipmentBatchId");
 

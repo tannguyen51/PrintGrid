@@ -68,6 +68,11 @@ public class CreateUrgentReprintCommandHandler(
                 Error.Conflict($"Job in state {original.Status} cannot be reprinted"));
         }
 
+        var siblings = await jobs.GetByOrderItemIdAsync(original.OrderItemId, cancellationToken);
+        var existing = JobReprintLinks.FindReplacement(original, siblings);
+        if (existing is not null)
+            return ExistingAttempt(existing);
+
         var reprintIndex = original.ReprintIndex + 1;
 
         // BR-RESCHED-004 (B14, chốt 23/09): past the cap, auto-reprint stops and a human decides.
@@ -104,7 +109,18 @@ public class CreateUrgentReprintCommandHandler(
         // keeps the engine's collision retry (which detaches pending changes) from discarding
         // a row that was never saved.
         await jobs.AddAsync(reprint, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        // The unique ReprintOfJobId index also protects requests that both passed the read
+        // above. A rejected insert must never reach the assignment engine or create a shortfall.
+        if (!await unitOfWork.TrySaveChangesSafeAsync(cancellationToken))
+        {
+            // A concurrent request may have committed the same replacement. Reuse its
+            // result, without assigning it a second time or changing cost attribution.
+            existing = JobReprintLinks.FindReplacement(original,
+                await jobs.GetByOrderItemIdAsync(original.OrderItemId, cancellationToken));
+            if (existing is not null) return ExistingAttempt(existing);
+            return Result.Failure<UrgentReprintResultDto>(Error.Conflict(
+                "Không thể tạo thêm job in lại. Vui lòng tải lại để kiểm tra lần in lại đã được tạo."));
+        }
 
         var outcome = await engine.AssignAsync(
             reprint,
@@ -148,4 +164,7 @@ public class CreateUrgentReprintCommandHandler(
             outcome.Result?.PlannedEndUtc,
             reprint.Id));
     }
+
+    private static Result<UrgentReprintResultDto> ExistingAttempt(Job existing) => Result.Success(
+        new UrgentReprintResultDto(false, existing.PlannedStartUtc, existing.PlannedEndUtc, existing.Id));
 }

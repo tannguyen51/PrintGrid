@@ -17,6 +17,10 @@
     <Compile Include="../PrintGrid.UnitTests/Scheduling/OrderConfirmedEventHandlerTests.cs" Link="Existing/OrderConfirmedEventHandlerTests.cs" />
     <Compile Include="../PrintGrid.UnitTests/Scheduling/AssignmentEngineTests.cs" Link="Existing/AssignmentEngineTests.cs" />
     <Compile Include="../PrintGrid.UnitTests/Scheduling/Builders.cs" Link="Existing/Builders.cs" />
+    <Compile Include="../PrintGrid.UnitTests/Scheduling/UrgentReprintTests.cs" Link="Existing/UrgentReprintTests.cs" />
+    <Compile Include="../PrintGrid.UnitTests/Scheduling/JobStatusIntegrationPublisherTests.cs" Link="Existing/JobStatusIntegrationPublisherTests.cs" />
+    <Compile Include="../PrintGrid.UnitTests/Scheduling/JobQuotedMaterialTests.cs" Link="Existing/JobQuotedMaterialTests.cs" />
+    <Compile Include="../PrintGrid.UnitTests/Customer/ShipmentGateTests.cs" Link="Existing/ShipmentGateTests.cs" />
     <Using Include="Xunit" />
     <Using Include="FluentAssertions" />
   </ItemGroup>

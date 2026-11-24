@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.Events;
 using PrintGrid.Modules.Scheduling.Domain.Repositories;
+using PrintGrid.Modules.Scheduling.Domain.Services;
 using PrintGrid.SharedKernel.Events;
 
 namespace PrintGrid.Modules.Scheduling.Application.EventHandlers;
@@ -73,7 +74,7 @@ public class JobStatusIntegrationPublisher(
             .ToList();
         var unresolvedFailures = liveJobs
             .Where(candidate => candidate.Status == JobStatus.Failed &&
-                                !Superseded(candidate.Id, candidate.OriginalJobId, candidate.ReprintIndex))
+                                !JobReprintLinks.HasReplacement(candidate, siblings))
             .Select(candidate => $"{candidate.Id}:Failed")
             .ToList();
         var anyCompleted = liveJobs.Any(candidate => candidate.Status == JobStatus.Completed);
@@ -90,15 +91,5 @@ public class JobStatusIntegrationPublisher(
         await publisher.Publish(
             new ProductionStatusChangedIntegrationEvent(job.OrderItemId, "Completed"),
             cancellationToken);
-        return;
-
-        // A failed job blocks the item only until a later reprint of the same chain exists
-        // (FR-HUB-003). The failed original keeps the same OrderItemId, so without this an
-        // item could never complete after a reprint passed.
-        bool Superseded(Guid id, Guid? originalJobId, int reprintIndex) =>
-            liveJobs.Any(other =>
-                other.Id != id &&
-                other.ReprintIndex > reprintIndex &&
-                (other.OriginalJobId ?? other.Id) == (originalJobId ?? id));
     }
 }

@@ -46,8 +46,10 @@ public sealed class OpsOrdersController(PrintGridDbContext db) : ControllerBase
                 (j.Status == JobStatus.Failed || j.ReprintIndex > 0 || j.AttemptNumber > 1 || j.QcProofStatus == QcProofStatus.Rejected))),
             HasOpenIncident = o.Status != OrderStatus.Delivered && o.Status != OrderStatus.Cancelled && o.Items.Any(i =>
                 jobs.Any(j => j.OrderItemId == i.Id && j.Status == JobStatus.Failed && !jobs.Any(r =>
-                    r.OrderItemId == i.Id && r.ReprintIndex > j.ReprintIndex && r.Status != JobStatus.Cancelled &&
-                    (r.OriginalJobId ?? r.Id) == (j.OriginalJobId ?? j.Id))))
+                    r.OrderItemId == i.Id &&
+                    (r.ReprintOfJobId == j.Id || r.ReprintOfJobId == null && r.ParentJobId == null &&
+                     r.ReprintIndex > j.ReprintIndex && r.OriginalJobId == (j.OriginalJobId ?? j.Id)) &&
+                    (r.Status != JobStatus.Cancelled || jobs.Any(child => child.ParentJobId == r.Id)))))
         });
         var summary = await rows.GroupBy(_ => 1).Select(g => new
         {
