@@ -222,7 +222,7 @@ export default function OrdersPage() {
               )}
               {selected.status === 'QualityCheck' && (
                 <>
-                  <CodConfirmationPanel orderId={selected.id} />
+                  <CodConfirmationPanel order={selected} />
                   <Divider sx={{ my: 3, borderColor: 'divider' }} />
                 </>
               )}
