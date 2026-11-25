@@ -238,23 +238,17 @@ public class ModelsController(
                 });
             }
 
-            // Stream once from the multipart temp file to object storage while computing SHA-256.
-            // We read into a MemoryStream first so the hash can be computed reliably, then
-            // write to MinIO — avoids CryptoStream finalize race conditions.
+            // MinIO can stop at the declared length without reading EOF, which leaves
+            // a CryptoStream hash unfinished. Hash the complete bounded buffer first.
             await using var stream = request.File.OpenReadStream();
             var randomId = Guid.NewGuid();
             var objectName = $"{customerId}/{randomId}{ext}";
-            string sha256;
-
-            // Read file bytes into memory (max 100 MiB per ModelUploadOptions guard above).
-            var memory = new System.IO.MemoryStream((int)request.File.Length);
+            await using var memory = new MemoryStream();
             await stream.CopyToAsync(memory, cancellationToken);
-
-            using var sha = System.Security.Cryptography.SHA256.Create();
-            sha256 = Convert.ToHexString(sha.ComputeHash(memory)).ToLowerInvariant();
-
-            // CRITICAL: Seek back to start BEFORE uploading — ComputeHash leaves position at end.
-            memory.Seek(0, System.IO.SeekOrigin.Begin);
+            memory.Position = 0;
+            var sha256 = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(
+                memory, cancellationToken)).ToLowerInvariant();
+            memory.Position = 0;
 
             // Write to MinIO object storage.
             try
