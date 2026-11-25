@@ -365,7 +365,7 @@ public class SlicingServiceTests
         BinaryPrimitives.WriteUInt32LittleEndian(glb.AsSpan(offset), 2); offset += 4;
         BinaryPrimitives.WriteUInt32LittleEndian(glb.AsSpan(offset), (uint)total); offset += 4;
 
-        BinaryPrimitives.WriteUInt32LittleEndian(glb.AsSpan(offset), (uint)jsonBytes.Length); offset += 4;
+        BinaryPrimitives.WriteUInt32LittleEndian(glb.AsSpan(offset), (uint)jsonPadded); offset += 4;
         BinaryPrimitives.WriteUInt32LittleEndian(glb.AsSpan(offset), 0x4E4F534A); offset += 4; // "JSON"
         jsonBytes.CopyTo(glb.AsSpan(offset));
         for (var i = jsonBytes.Length; i < jsonPadded; i++) glb[offset + i] = 0x20; // pad with spaces
