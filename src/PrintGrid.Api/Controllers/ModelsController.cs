@@ -238,26 +238,31 @@ public class ModelsController(
                 });
             }
 
-            // Stream once from the multipart temp file to object storage. CryptoStream
-            // computes BR-IP-001's SHA-256 while MinIO consumes the same bytes, avoiding
-            // the old 100 MiB RAM copy, synchronous mesh parse and separate hash pass.
+            // Stream once from the multipart temp file to object storage while computing SHA-256.
+            // We read into a MemoryStream first so the hash can be computed reliably, then
+            // write to MinIO — avoids CryptoStream finalize race conditions.
             await using var stream = request.File.OpenReadStream();
-            using var sha = System.Security.Cryptography.SHA256.Create();
             var randomId = Guid.NewGuid();
             var objectName = $"{customerId}/{randomId}{ext}";
             string sha256;
+
+            // Read file bytes into memory (max 100 MiB per ModelUploadOptions guard above).
+            var memory = new System.IO.MemoryStream((int)request.File.Length);
+            await stream.CopyToAsync(memory, cancellationToken);
+            memory.Seek(0, System.IO.SeekOrigin.Begin);
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            sha256 = Convert.ToHexString(sha.ComputeHash(memory)).ToLowerInvariant();
+
+            // Write to MinIO object storage.
             try
             {
-                await using var hashingStream = new System.Security.Cryptography.CryptoStream(
-                    stream, sha, System.Security.Cryptography.CryptoStreamMode.Read);
                 await files.UploadAsync(
                     _minio.ModelBucket,
                     objectName,
-                    hashingStream,
+                    memory,
                     ContentTypeFor(ext),
                     cancellationToken,
-                    request.File.Length);
-                sha256 = Convert.ToHexString(sha.Hash!).ToLowerInvariant();
+                    memory.Length);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
