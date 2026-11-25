@@ -32,6 +32,11 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.RefundedAmount).HasPrecision(18, 2).HasDefaultValue(0m);
         builder.Property(o => o.DepositAmount).HasPrecision(18, 2).HasDefaultValue(0m);
         builder.Property(o => o.PaidAmount).HasPrecision(18, 2).HasDefaultValue(0m);
+        builder.Property(o => o.PaymentMethod).HasMaxLength(50).HasDefaultValue("COD");
+        builder.Property(o => o.IsCodConfirmed).HasDefaultValue(false);
+        builder.Property(o => o.CodConfirmationRequestedAtUtc);
+        builder.Property(o => o.CodConfirmationDeadlineUtc);
+        builder.Property(o => o.CodConfirmationRequestCount).HasDefaultValue(0);
         builder.HasIndex(o => o.ConsolidatedShipmentId);
 
         builder.OwnsOne(o => o.TotalPrice, price =>

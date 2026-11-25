@@ -20,6 +20,7 @@ import { PageBackButton } from '../../shared/components/PageBackButton'
 import { ReprintRequestPanel } from './ReprintRequestPanel'
 import { OrderPaymentPanel } from './OrderPaymentPanel'
 import { OrderProductionProgress } from './OrderProductionProgress'
+import { CodConfirmationPanel } from './CodConfirmationPanel'
 
 const statusColor: Record<OrderStatus, 'warning' | 'info' | 'success' | 'error'> = {
   AwaitingApproval: 'warning',
@@ -216,6 +217,12 @@ export default function OrdersPage() {
               {selected.status === 'PaymentPending' && (
                 <>
                   <OrderPaymentPanel orderId={selected.id} />
+                  <Divider sx={{ my: 3, borderColor: 'divider' }} />
+                </>
+              )}
+              {selected.status === 'QualityCheck' && (
+                <>
+                  <CodConfirmationPanel orderId={selected.id} />
                   <Divider sx={{ my: 3, borderColor: 'divider' }} />
                 </>
               )}
