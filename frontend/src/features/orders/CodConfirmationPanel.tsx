@@ -17,138 +17,123 @@ import {
   CancelRounded,
   ScheduleRounded,
 } from '@mui/icons-material'
-import { useCodConfirmation, useConfirmCodReceipt } from './useCodConfirmation'
+import { useConfirmCodReceipt } from './useCodConfirmation'
+import type { Order } from '../../shared/types/order'
 
 const fmtDateTime = (d: string | null | undefined) =>
   d ? new Date(d).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—'
 
-function getTimeRemaining(deadline: string | null): { hours: number; minutes: number; seconds: number; expired: boolean } {
-  if (!deadline) return { hours: 0, minutes: 0, seconds: 0, expired: true }
-  const now = new Date().getTime()
-  const deadlineTime = new Date(deadline).getTime()
-  const diff = deadlineTime - now
-
-  if (diff <= 0) return { hours: 0, minutes: 0, seconds: 0, expired: true }
-
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
-
-  return { hours, minutes, seconds, expired: false }
+function getTimeRemaining(deadline: string | null | undefined) {
+  if (!deadline) return { hours: 0, minutes: 0, seconds: 0, expired: false, known: false }
+  const diff = new Date(deadline).getTime() - Date.now()
+  if (diff <= 0) return { hours: 0, minutes: 0, seconds: 0, expired: true, known: true }
+  return {
+    hours: Math.floor(diff / 3_600_000),
+    minutes: Math.floor((diff % 3_600_000) / 60_000),
+    seconds: Math.floor((diff % 60_000) / 1000),
+    expired: false,
+    known: true,
+  }
 }
 
-export function CodConfirmationPanel({ orderId }: { orderId: string }) {
-  const { data, isLoading, isError, error } = useCodConfirmation(orderId)
-  const confirmMutation = useConfirmCodReceipt()
+/**
+ * COD (Cash on Delivery) receipt confirmation panel for the customer (BR-PAY-008 / FR-CUST-012).
+ * Reads its state straight from the order list payload — no separate fetch. Renders nothing for
+ * non-COD orders; for COD orders waiting in QualityCheck it asks the customer to confirm they will
+ * receive the parcel so the hub is allowed to ship it.
+ */
+export function CodConfirmationPanel({ order }: { order: Order }) {
+  const confirmMutation = useConfirmCodReceipt(order.id)
+  const [dialog, setDialog] = useState<'none' | 'confirm' | 'reject'>('none')
 
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
-  const [actionType, setActionType] = useState<'confirm' | 'reject'>('confirm')
+  const isCod = (order.paymentMethod ?? 'COD').toUpperCase() === 'COD'
+  // Only relevant while the parcel is ready at the hub, before the waybill is written.
+  if (!isCod || order.status !== 'QualityCheck') return null
 
-  if (isLoading) {
+  const t = getTimeRemaining(order.codConfirmationDeadlineUtc)
+
+  if (order.isCodConfirmed) {
     return (
-      <Box sx={{ p: 2, textAlign: 'center' }}>
-        <CircularProgress size={24} />
-        <Typography variant="body2" sx={{ mt: 1 }}>Đang tải thông tin xác nhận COD...</Typography>
-      </Box>
-    )
-  }
-
-  if (isError || !data) {
-    return (
-      <Alert severity="error">
-        Không tải được thông tin xác nhận COD. {error instanceof Error ? error.message : ''}
+      <Alert severity="success" icon={<LocalShippingRounded />}>
+        Bạn đã xác nhận sẽ nhận hàng. Đơn hàng sẵn sàng để hub ghi vận đơn và giao đi.
       </Alert>
     )
   }
 
-  // Không hiển thị nếu không phải COD hoặc đã xác nhận
-  if (data.paymentMethod !== 'COD' || data.isCodConfirmed) {
-    return null
-  }
-
-  const timeRemaining = getTimeRemaining(data.codConfirmationDeadlineUtc)
-
-  const handleConfirm = () => {
-    setActionType('confirm')
-    setConfirmDialogOpen(true)
-  }
-
-  const handleReject = () => {
-    setActionType('reject')
-    setRejectDialogOpen(true)
-  }
-
-  const handleSubmit = async () => {
+  const submit = async (accepted: boolean) => {
     try {
-      await confirmMutation.mutateAsync({
-        orderId,
-        accepted: actionType === 'confirm',
-      })
-      setConfirmDialogOpen(false)
-      setRejectDialogOpen(false)
-    } catch (err) {
-      console.error('COD confirmation failed:', err)
+      await confirmMutation.mutateAsync(accepted)
+      setDialog('none')
+    } catch {
+      // Keep the dialog open; MUI Dialog shows nothing special — errors surface via the Alert below.
     }
   }
 
   return (
     <>
-      <Box sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: timeRemaining.expired ? 'error.main' : 'warning.main', bgcolor: timeRemaining.expired ? 'error.50' : 'warning.50' }}>
+      <Box
+        sx={{
+          p: 2.5,
+          borderRadius: 2,
+          border: '1px solid',
+          borderColor: t.expired ? 'error.main' : 'warning.main',
+          bgcolor: t.expired ? 'error.50' : 'warning.50',
+        }}
+      >
         <Stack spacing={2}>
           <Stack direction="row" spacing={1} alignItems="center">
             <LocalShippingRounded sx={{ color: 'warning.main' }} />
-            <Typography sx={{ fontWeight: 800, fontSize: '1.1rem' }}>
-              Xác nhận nhận hàng (COD)
-            </Typography>
-            <Chip
-              size="small"
-              color={data.isCodConfirmed ? 'success' : timeRemaining.expired ? 'error' : 'warning'}
-              label={data.isCodConfirmed ? 'Đã xác nhận' : timeRemaining.expired ? 'Quá hạn' : 'Chờ xác nhận'}
-            />
+            <Typography sx={{ fontWeight: 800, fontSize: '1.1rem' }}>Xác nhận nhận hàng (COD)</Typography>
+            <Chip size="small" color={t.expired ? 'error' : 'warning'} label={t.expired ? 'Quá hạn' : 'Chờ xác nhận'} />
           </Stack>
 
           <Typography variant="body2" color="text.secondary">
-            Đơn hàng của bạn đã hoàn thành kiểm tra chất lượng. Vui lòng xác nhận bạn sẽ nhận hàng để chúng tôi tiến hành giao hàng.
+            Hàng của bạn đã xong kiểm tra chất lượng. Xác nhận bạn sẽ nhận đơn để hub tiến hành giao. Bạn thanh toán{' '}
+            <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(Math.max(0, order.totalAmount - (order.depositAmount ?? 0)))}</strong>{' '}
+            còn lại khi nhận hàng.
           </Typography>
 
-          {!data.isCodConfirmed && !timeRemaining.expired && (
+          {t.known && !t.expired && (
+            <Box sx={{ p: 2, borderRadius: 1, bgcolor: 'background.paper' }}>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                <ScheduleRounded color="warning" />
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>Thời gian còn lại để xác nhận:</Typography>
+              </Stack>
+              <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: 'monospace', color: t.hours < 2 ? 'error.main' : 'warning.main' }}>
+                {String(t.hours).padStart(2, '0')}:{String(t.minutes).padStart(2, '0')}:{String(t.seconds).padStart(2, '0')}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">Hạn: {fmtDateTime(order.codConfirmationDeadlineUtc)}</Typography>
+            </Box>
+          )}
+
+          {t.expired ? (
+            <Alert severity="error">
+              Đã quá thời gian xác nhận. Đơn sẽ sớm bị hủy tự động và tiền cọc không hoàn lại. Liên hệ hỗ trợ nếu bạn vẫn muốn nhận.
+            </Alert>
+          ) : (
             <>
-              <Box sx={{ p: 2, borderRadius: 1, bgcolor: 'background.paper' }}>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                  <ScheduleRounded color="warning" />
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    Thời gian còn lại để xác nhận:
-                  </Typography>
-                </Stack>
-                <Typography variant="h6" sx={{ fontWeight: 800, color: timeRemaining.hours < 2 ? 'error.main' : 'warning.main', fontFamily: 'monospace' }}>
-                  {String(timeRemaining.hours).padStart(2, '0')}:{String(timeRemaining.minutes).padStart(2, '0')}:{String(timeRemaining.seconds).padStart(2, '0')}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                 Deadline: {fmtDateTime(data.codConfirmationDeadlineUtc)}
-                </Typography>
-              </Box>
-
-              <Alert severity="warning" sx={{ mt: 1 }}>
-                <strong>Lưu ý:</strong> Nếu bạn không xác nhận trong thời gian quy định, đơn hàng sẽ tự động hủy và tiền cọc sẽ không được hoàn lại.
+              <Alert severity="warning">
+                Nếu không xác nhận trong thời gian quy định, đơn tự động hủy và <strong>tiền cọc không được hoàn lại</strong>.
               </Alert>
-
-              <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+              {confirmMutation.isError && (
+                <Alert severity="error">Không xác nhận được. Vui lòng thử lại.</Alert>
+              )}
+              <Stack direction="row" spacing={2}>
                 <Button
                   variant="contained"
                   color="success"
                   startIcon={<LocalShippingRounded />}
-                  onClick={handleConfirm}
+                  onClick={() => setDialog('confirm')}
                   disabled={confirmMutation.isPending}
                   sx={{ flex: 1 }}
                 >
-                  {confirmMutation.isPending ? 'Đang xử lý...' : 'Xác nhận sẽ nhận hàng'}
+                  Xác nhận sẽ nhận hàng
                 </Button>
                 <Button
                   variant="outlined"
                   color="error"
                   startIcon={<CancelRounded />}
-                  onClick={handleReject}
+                  onClick={() => setDialog('reject')}
                   disabled={confirmMutation.isPending}
                   sx={{ flex: 1 }}
                 >
@@ -157,74 +142,34 @@ export function CodConfirmationPanel({ orderId }: { orderId: string }) {
               </Stack>
             </>
           )}
-
-          {timeRemaining.expired && !data.isCodConfirmed && (
-            <Alert severity="error">
-              Đã quá thời gian xác nhận. Đơn hàng sẽ được tự động hủy. Vui lòng liên hệ hỗ trợ nếu bạn vẫn muốn nhận hàng.
-            </Alert>
-          )}
-
-          {data.isCodConfirmed && (
-            <Alert severity="success">
-              Bạn đã xác nhận sẽ nhận hàng. Đơn hàng sẽ được giao trong thời gian sớm nhất.
-            </Alert>
-          )}
         </Stack>
       </Box>
 
-      {/* Confirm Dialog */}
-      <Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800 }}>Xác nhận nhận hàng</DialogTitle>
+      <Dialog open={dialog !== 'none'} onClose={() => setDialog('none')} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800, color: dialog === 'reject' ? 'error.main' : undefined }}>
+          {dialog === 'confirm' ? 'Xác nhận nhận hàng' : 'Từ chối nhận hàng'}
+        </DialogTitle>
         <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Bạn có chắc chắn muốn nhận đơn hàng này không?
-          </Typography>
-          <Alert severity="info">
-            Khi xác nhận, đơn hàng sẽ được chuyển sang trạng thái "Đang giao". Bạn sẽ thanh toán số tiền còn lại (50%) khi nhận hàng.
-          </Alert>
+          {dialog === 'confirm' ? (
+            <Alert severity="info">
+              Sau khi xác nhận, hub sẽ ghi vận đơn và giao hàng. Bạn trả phần tiền còn lại khi nhận (COD).
+            </Alert>
+          ) : (
+            <Alert severity="error">
+              Từ chối nhận hàng: tiền cọc sẽ <strong>không được hoàn lại</strong> (BR-PAY-010). Nếu hàng lỗi, hãy liên hệ hỗ trợ thay vì từ chối.
+            </Alert>
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => setConfirmDialogOpen(false)} color="inherit" disabled={confirmMutation.isPending}>
-            Hủy
-          </Button>
+          <Button onClick={() => setDialog('none')} color="inherit" disabled={confirmMutation.isPending}>Hủy</Button>
           <Button
             variant="contained"
-            color="success"
-            onClick={handleSubmit}
+            color={dialog === 'confirm' ? 'success' : 'error'}
             disabled={confirmMutation.isPending}
-            startIcon={confirmMutation.isPending ? <CircularProgress size={20} /> : <LocalShippingRounded />}
+            onClick={() => void submit(dialog === 'confirm')}
+            startIcon={confirmMutation.isPending ? <CircularProgress size={18} color="inherit" /> : (dialog === 'confirm' ? <LocalShippingRounded /> : <CancelRounded />)}
           >
-            {confirmMutation.isPending ? 'Đang xử lý...' : 'Xác nhận'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Reject Dialog */}
-      <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800, color: 'error.main' }}>Từ chối nhận hàng</DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Bạn có chắc chắn muốn từ chối nhận đơn hàng này không?
-          </Typography>
-          <Alert severity="error" sx={{ mb: 2 }}>
-            <strong>Cảnh báo:</strong> Khi từ chối nhận hàng, tiền cọc (50% giá trị đơn hàng) sẽ không được hoàn lại theo chính sách BR-PAY-010.
-          </Alert>
-          <Typography variant="body2" color="text.secondary">
-            Nếu bạn gặp vấn đề với đơn hàng (hàng lỗi, sai sản phẩm, v.v.), vui lòng liên hệ hỗ trợ thay vì từ chối nhận hàng.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => setRejectDialogOpen(false)} color="inherit" disabled={confirmMutation.isPending}>
-            Hủy
-          </Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={handleSubmit}
-            disabled={confirmMutation.isPending}
-            startIcon={confirmMutation.isPending ? <CircularProgress size={20} /> : <CancelRounded />}
-          >
-            {confirmMutation.isPending ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+            {confirmMutation.isPending ? 'Đang xử lý…' : dialog === 'confirm' ? 'Xác nhận' : 'Từ chối'}
           </Button>
         </DialogActions>
       </Dialog>

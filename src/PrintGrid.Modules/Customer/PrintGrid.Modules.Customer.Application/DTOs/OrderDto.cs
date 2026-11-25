@@ -12,7 +12,12 @@ public record OrderDto(
     decimal RefundedAmount,
     IReadOnlyList<OrderItemDto> Items,
     DateOnly? RequestedDeliveryDate = null,
-    string DispatchMode = "Manual");
+    string DispatchMode = "Manual",
+    // COD (Cash on Delivery) fields — BR-PAY-008/010, FR-CUST-012
+    string PaymentMethod = "COD",
+    bool IsCodConfirmed = false,
+    DateTime? CodConfirmationRequestedAtUtc = null,
+    DateTime? CodConfirmationDeadlineUtc = null);
 
 public record OrderItemDto(
     Guid Id,

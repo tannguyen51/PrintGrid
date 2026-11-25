@@ -40,5 +40,9 @@ public class GetOrdersQueryHandler(IOrderRepository orders)
             i.BindingLevel,
             i.ReferenceOrderLineId)).ToList(),
         RequestedDeliveryDate: order.RequestedDeliveryDate,
-        DispatchMode: order.DispatchMode);
+        DispatchMode: order.DispatchMode,
+        PaymentMethod: order.PaymentMethod,
+        IsCodConfirmed: order.IsCodConfirmed,
+        CodConfirmationRequestedAtUtc: order.CodConfirmationRequestedAtUtc,
+        CodConfirmationDeadlineUtc: order.CodConfirmationDeadlineUtc);
 }

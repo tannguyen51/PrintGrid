@@ -39,6 +39,11 @@ export interface Order {
   /** Issued when the order is confirmed — one contract per order. */
   contractNumber?: string | null
   termsAcceptedAtUtc?: string | null
+  /** COD (Cash on Delivery) fields — BR-PAY-008/010. */
+  paymentMethod?: string
+  isCodConfirmed?: boolean
+  codConfirmationRequestedAtUtc?: string | null
+  codConfirmationDeadlineUtc?: string | null
   items: OrderItem[]
 }
 
