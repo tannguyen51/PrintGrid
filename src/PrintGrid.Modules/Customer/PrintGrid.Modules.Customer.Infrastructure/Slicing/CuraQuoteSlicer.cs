@@ -33,10 +33,26 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
     private static readonly SemaphoreSlim _slots = new(2);
     private ThreeMfPackage.NativeDocument? _nativeDocument;
     private string? _nativeStorageKey;
+    private List<QuoteMesh.Triangle>? _glbMesh;
+    private string? _glbStorageKey;
     public Task<IReadOnlyList<Guid>> GetConfiguredMachineIdsAsync(CancellationToken cancellationToken) =>
         registry.GetApprovedMachineIdsAsync(cancellationToken);
     public async Task<QuoteModelEnvelope?> GetEnvelopeAsync(string storageKey, string format, CancellationToken cancellationToken)
     {
+        if (format.TrimStart('.').Equals("GLB", StringComparison.OrdinalIgnoreCase))
+        {
+            var mesh = await LoadGlbAsync(storageKey, cancellationToken);
+            var min = new Vector3(float.PositiveInfinity);
+            var max = new Vector3(float.NegativeInfinity);
+            foreach (var t in mesh)
+            {
+                min = Vector3.Min(min, Vector3.Min(t.A, Vector3.Min(t.B, t.C)));
+                max = Vector3.Max(max, Vector3.Max(t.A, Vector3.Max(t.B, t.C)));
+            }
+            var size = max - min;
+            // Older uploads were analysed from raw accessors without node/skin transforms.
+            return new((decimal)size.X, (decimal)size.Y, (decimal)size.Z);
+        }
         if (!format.TrimStart('.').Equals("3MF", StringComparison.OrdinalIgnoreCase)) return null;
         var document = await LoadNativeAsync(storageKey, cancellationToken);
         var bounds = PrusaPaintProject.Envelope(document);
@@ -46,18 +62,38 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
     private async Task<ThreeMfPackage.NativeDocument> LoadNativeAsync(string storageKey, CancellationToken ct)
     {
         if (_nativeStorageKey == storageKey && _nativeDocument is not null) return _nativeDocument;
+        using var content = await LoadContentAsync(storageKey, ct);
+        _nativeDocument = ThreeMfPackage.ReadNative(content); _nativeStorageKey = storageKey;
+        return _nativeDocument;
+    }
+
+    private async Task<List<QuoteMesh.Triangle>> LoadGlbAsync(string storageKey, CancellationToken ct)
+    {
+        if (_glbStorageKey == storageKey && _glbMesh is not null) return _glbMesh;
+        using var content = await LoadContentAsync(storageKey, ct);
+        _glbMesh = GlbSceneMesh.Read(content); _glbStorageKey = storageKey;
+        return _glbMesh;
+    }
+
+    private async Task<MemoryStream> LoadContentAsync(string storageKey, CancellationToken ct)
+    {
         var split = storageKey.IndexOf('/');
         if (split <= 0) throw new InvalidDataException("File model không hợp lệ.");
         await using var source = await files.DownloadAsync(storageKey[..split], storageKey[(split + 1)..], ct);
-        using var content = new MemoryStream(); var buffer = new byte[65536]; int read;
-        while ((read = await source.ReadAsync(buffer, ct)) > 0)
+        var content = new MemoryStream();
+        try
         {
-            if (content.Length + read > uploadOptions.Value.MaxFileBytes) throw new InvalidDataException("File vượt giới hạn dung lượng báo giá.");
-            content.Write(buffer, 0, read);
+            var buffer = new byte[65536]; int read;
+            while ((read = await source.ReadAsync(buffer, ct)) > 0)
+            {
+                if (content.Length + read > uploadOptions.Value.MaxFileBytes)
+                    throw new InvalidDataException($"File vượt giới hạn {uploadOptions.Value.MaxFileBytes / (1024m * 1024):0.##} MiB.");
+                content.Write(buffer, 0, read);
+            }
+            content.Position = 0;
+            return content;
         }
-        content.Position = 0;
-        _nativeDocument = ThreeMfPackage.ReadNative(content); _nativeStorageKey = storageKey;
-        return _nativeDocument;
+        catch { content.Dispose(); throw; }
     }
     public async Task<QuoteSliceResult> SliceAsync(QuoteSliceRequest request, CancellationToken cancellationToken)
     {
@@ -85,19 +121,8 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
             }
             if (string.IsNullOrWhiteSpace(config.ExecutablePath))
                 throw new InvalidDataException("Chưa cấu hình đường dẫn CuraEngine.");
-            var split = request.StorageKey.IndexOf('/');
-            if (split <= 0) throw new InvalidDataException("File model không hợp lệ.");
-            await using var source = await files.DownloadAsync(request.StorageKey[..split], request.StorageKey[(split + 1)..], cancellationToken);
-            using var content = new MemoryStream();
-            var buffer = new byte[65536];
-            int read;
-            while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
-            {
-                if (content.Length + read > uploadOptions.Value.MaxFileBytes)
-                    throw new InvalidDataException($"File vượt giới hạn {uploadOptions.Value.MaxFileBytes / (1024m * 1024):0.##} MiB.");
-                content.Write(buffer, 0, read);
-            }
-            content.Position = 0;
+            var isGlb = request.FileFormat.TrimStart('.').Equals("GLB", StringComparison.OrdinalIgnoreCase);
+            using var content = isGlb ? null : await LoadContentAsync(request.StorageKey, cancellationToken);
             // Surface paint is enough for preview, but not a set of closed material
             // volumes. Do not feed open colored surface patches to Cura as solids.
             IReadOnlyList<List<QuoteMesh.Triangle>> groups;
@@ -106,12 +131,13 @@ public sealed partial class CuraQuoteSlicer(IFileStorage files, IOptions<CuraQuo
             {
                 if (!request.FileFormat.TrimStart('.').Equals("3MF", StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException("Ánh xạ nhóm màu hiện yêu cầu file 3MF.");
-                var sourceGroups = ThreeMfPackage.ReadGroups(content, allowSurfacePainting: request.Colors.Count == 1);
+                var sourceGroups = ThreeMfPackage.ReadGroups(content!, allowSurfacePainting: request.Colors.Count == 1);
                 var mapped = ColorGroupMapping.Apply(sourceGroups, request.ColorAssignments, request.Colors);
                 groups = mapped.Groups;
                 assignments = mapped.Assignments;
             }
-            else groups = QuoteMesh.Read(content, request.FileFormat, allowSurfacePainting: request.Colors.Count == 1);
+            else groups = isGlb ? [await LoadGlbAsync(request.StorageKey, cancellationToken)]
+                : QuoteMesh.Read(content!, request.FileFormat, allowSurfacePainting: request.Colors.Count == 1);
             if (request.Colors.Count > 1 && groups.Count != request.Colors.Count)
                 throw new InvalidDataException("File chưa có đủ vùng vật liệu cho các màu đã chọn. Hãy dùng 3MF với mỗi màu là một vùng vật liệu riêng; hệ thống không tự chia đều nhựa theo số màu.");
             // Do not allocate another six million vertices for a 100 MiB STL.

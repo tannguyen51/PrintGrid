@@ -23,13 +23,17 @@ Vật liệu slicer báo đã bao gồm support/purge của profile; không cộ
 - `S`, `M`, `L`: cạnh lớn nhất lần lượt **100, 200, 300 mm**, giữ nguyên tỷ lệ ba trục.
   File trên chọn M sẽ thành **150 × 100 × 200 mm**. Đây là kích thước đích,
   khác với phân loại một file có sẵn vào khoảng S/M/L.
-- Một màu: STL hoặc 3MF. Nhiều màu trên cùng mô hình: 3MF core có các vùng
+- Một màu: STL, OBJ, GLB hoặc 3MF. OBJ/GLB được chuyển thành mesh STL trước khi
+  gọi CuraEngine. GLB dùng cảnh mặc định ở tư thế tĩnh ban đầu, áp dụng phép biến đổi
+  node, instance, khung xương và morph; không chạy animation và không lấy texture/màu
+  hiển thị làm vùng nhựa. Phân tích hình học và báo giá dùng cùng mesh đã chuyển đổi.
+  Nhiều màu trên cùng mô hình: 3MF core có các vùng
   vật liệu là những khối kín riêng. Thứ tự `colorCodes` gán vào các vùng theo
   thứ tự tăng của cặp `(pid, pindex)` trong file. Không chia đều gram theo số màu.
 - Chưa hỗ trợ màu nội suy trên mặt, kiểu tô màu riêng của Bambu/Orca không có
-  phân vùng 3MF core, tham chiếu model ngoài, hoặc báo giá trực tiếp OBJ/GLB.
-  Các file này vẫn được lưu/xem như trước; báo giá tự động trả lỗi cần xuất lại
-  STL/3MF phù hợp. Không trả một giá giả khi không đọc được vùng màu.
+  phân vùng 3MF core, hoặc tham chiếu model ngoài. GLB cần chứa dữ liệu mesh trong
+  file; không tải buffer từ đường dẫn ngoài. Không trả một giá giả khi không đọc
+  được mesh hoặc vùng màu. OBJ/GLB nhiều màu cần xuất sang 3MF phù hợp.
 - Hướng đặt giữ theo file. Nếu không vừa hướng hiện tại, trả lỗi; không tự xoay/ghép mô hình.
 
 ## Cấu hình máy chủ trước khi sử dụng

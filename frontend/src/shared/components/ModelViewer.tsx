@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { Environment, Lightformer, OrbitControls, useGLTF, useProgress } from '@react-three/drei'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
+import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { ThreeMfPreviewLoader } from '../threeMf/ThreeMfPreviewLoader'
 import { groupIdForSlot, type ModelColorGroup } from '../threeMf/colorGroups'
 import { Box, Button, CircularProgress, MenuItem, Select, Stack, Typography, type SxProps } from '@mui/material'
@@ -26,7 +27,12 @@ import { Box, Button, CircularProgress, MenuItem, Select, Stack, Typography, typ
  * real dimensions are shown as numbers beside the viewer.
  */
 function fitTransform(object: THREE.Object3D, targetSize = 5) {
-  const box = new THREE.Box3().setFromObject(object)
+  // Skinned bounds cached before the skeleton's world matrices are ready can be
+  // much smaller than the rendered pose, leaving the fitted camera inside it.
+  object.updateMatrixWorld(true)
+  let skinned = false
+  object.traverse(child => { if (child instanceof THREE.SkinnedMesh) skinned = true })
+  const box = new THREE.Box3().setFromObject(object, skinned)
   const size = box.getSize(new THREE.Vector3())
   const center = box.getCenter(new THREE.Vector3())
   const maxDimension = Math.max(size.x, size.y, size.z) || 1
@@ -48,7 +54,7 @@ function Fitted({ object, fit, children }: { object: THREE.Object3D; fit: boolea
 function usePreviewColor(source: THREE.Object3D, color?: string) {
   const invalidate = useThree(state => state.invalidate)
   const { object, materials } = useMemo(() => {
-    const object = source.clone(true)
+    const object = cloneSkeleton(source)
     const materials: { original: THREE.Material; copy: THREE.Material }[] = []
     object.traverse(child => {
       if (!(child instanceof THREE.Mesh)) return

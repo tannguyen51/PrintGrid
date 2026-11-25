@@ -109,6 +109,10 @@ export function OrderColorConfigurator({ url, format, failed, assignments, singl
       {format === '3MF' && <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
         File này chưa hỗ trợ chọn nhóm trực tiếp trên mô hình. Các màu in được gán theo thứ tự vùng vật liệu trong file; phần xem trước giữ màu gốc khi chọn nhiều màu.
       </Typography>}
+      {(format === 'GLB' || format === 'OBJ') && <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+        File {format} được báo giá theo một màu in đã chọn. Muốn in nhiều màu, hãy dùng 3MF có phân vùng vật liệu.
+        {format === 'GLB' && ' File có chuyển động được in theo hình dạng tĩnh mặc định trong phần xem trước.'}
+      </Typography>}
     </FormControl>}
   </Stack>
 }
