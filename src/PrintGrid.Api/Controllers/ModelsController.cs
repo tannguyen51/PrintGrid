@@ -249,9 +249,12 @@ public class ModelsController(
             // Read file bytes into memory (max 100 MiB per ModelUploadOptions guard above).
             var memory = new System.IO.MemoryStream((int)request.File.Length);
             await stream.CopyToAsync(memory, cancellationToken);
-            memory.Seek(0, System.IO.SeekOrigin.Begin);
+
             using var sha = System.Security.Cryptography.SHA256.Create();
             sha256 = Convert.ToHexString(sha.ComputeHash(memory)).ToLowerInvariant();
+
+            // CRITICAL: Seek back to start BEFORE uploading — ComputeHash leaves position at end.
+            memory.Seek(0, System.IO.SeekOrigin.Begin);
 
             // Write to MinIO object storage.
             try
@@ -262,7 +265,7 @@ public class ModelsController(
                     memory,
                     ContentTypeFor(ext),
                     cancellationToken,
-                    memory.Length);
+                    request.File.Length);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
