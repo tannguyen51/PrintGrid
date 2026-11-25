@@ -2,6 +2,7 @@ using Hangfire;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using PrintGrid.Api.Authorization;
@@ -23,7 +24,8 @@ public class ModelsController(
     IOptions<MinioOptions> minio,
     IOptions<ModelUploadOptions> uploadOptions,
     IAuditLogWriter audit,
-    IModelRepository models)
+    IModelRepository models,
+    ILogger<ModelsController>? logger)
     : ControllerBase
 {
     private readonly MinioOptions _minio = minio.Value;
@@ -243,16 +245,25 @@ public class ModelsController(
             using var sha = System.Security.Cryptography.SHA256.Create();
             var randomId = Guid.NewGuid();
             var objectName = $"{customerId}/{randomId}{ext}";
-            await using var hashingStream = new System.Security.Cryptography.CryptoStream(
-                stream, sha, System.Security.Cryptography.CryptoStreamMode.Read);
-            await files.UploadAsync(
-                _minio.ModelBucket,
-                objectName,
-                hashingStream,
-                ContentTypeFor(ext),
-                cancellationToken,
-                request.File.Length);
-            var sha256 = Convert.ToHexString(sha.Hash!).ToLowerInvariant();
+            string sha256;
+            try
+            {
+                await using var hashingStream = new System.Security.Cryptography.CryptoStream(
+                    stream, sha, System.Security.Cryptography.CryptoStreamMode.Read);
+                await files.UploadAsync(
+                    _minio.ModelBucket,
+                    objectName,
+                    hashingStream,
+                    ContentTypeFor(ext),
+                    cancellationToken,
+                    request.File.Length);
+                sha256 = Convert.ToHexString(sha.Hash!).ToLowerInvariant();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger?.LogError(ex, "Minio upload failed for customer {CustomerId}, file {FileName}", customerId, request.File.FileName);
+                return StatusCode(500, new { error = new { code = "storage_error", message = "Lưu trữ file thất bại — vui lòng thử lại sau hoặc liên hệ hỗ trợ." } });
+            }
 
             try
             {
