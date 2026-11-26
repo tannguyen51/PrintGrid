@@ -1,257 +1,67 @@
-import { useState } from 'react'
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from '@mui/material'
-import { CheckRounded, PaymentsRounded, RefreshRounded, ReceiptLongOutlined, AccountBalanceWalletOutlined } from '@mui/icons-material'
+import { useMemo, useState } from 'react'
+import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
+import { CheckRounded, RefreshRounded, ReceiptLongOutlined, SyncRounded } from '@mui/icons-material'
+import { useQueryClient } from '@tanstack/react-query'
 import { OpsStatCard } from './OpsComponents'
-import { getApiErrorMessage } from '../../shared/api/apiError'
-import { usePendingPayments, type PendingPaymentRow } from './usePendingPayments'
 import { useMarkPaid } from './useMarkPaid'
+import { getPaymentDetail, PENDING_PAYMENTS_KEY, syncPaymentReconciliation, type PaymentDetail, type PaymentOverviewRow, type PaymentStatus, usePendingPayments } from './usePendingPayments'
 
-const fmtVnd = (amount: number) =>
-  new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(amount)
+const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value)
+const dateTime = (value: string) => new Date(value).toLocaleString('vi-VN')
+const labels: Record<PaymentStatus, string> = { Unpaid: 'Chưa thanh toán', Partial: 'Thanh toán một phần', Paid: 'Đã thanh toán đầy đủ' }
 
-const fmtDateTime = (value: string) => {
-  if (!value) return '—'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('vi-VN')
-}
-
-const customerOf = (row: PendingPaymentRow) =>
-  row.customerName?.trim() ||
-  row.customerEmail?.trim() ||
-  (row.customerId ? `${row.customerId.slice(0, 8)}…` : '—')
-
-/**
- * FR-CUST-012 / BR-PAY-007/008 — ops records deposits. Placement no longer confirms an
- * order: it becomes Confirmed only once the deposit has been received, so this queue is
- * the ops surface that unblocks production.
- */
 export default function PaymentsPage() {
-  const { data, isLoading, isError, error, refetch, isFetching } = usePendingPayments()
-  const markPaid = useMarkPaid()
-
-  const [target, setTarget] = useState<PendingPaymentRow | null>(null)
+  const queryClient = useQueryClient()
+  const [filter, setFilter] = useState<'All' | PaymentStatus>('All')
+  const [search, setSearch] = useState('')
+  const [detail, setDetail] = useState<PaymentDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [payTarget, setPayTarget] = useState<PaymentOverviewRow | null>(null)
   const [amount, setAmount] = useState('')
   const [reference, setReference] = useState('')
+  const [syncing, setSyncing] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const { data = [], isLoading, isError, refetch, isFetching } = usePendingPayments(filter, search)
+  const markPaid = useMarkPaid()
+  const totals = useMemo(() => ({ unpaid: data.filter(x => x.paymentStatus === 'Unpaid').length, partial: data.filter(x => x.paymentStatus === 'Partial').length, paid: data.filter(x => x.paymentStatus === 'Paid').length }), [data])
 
-  const rows = data ?? []
-
-  const parsedAmount = Number(amount)
-  const amountError =
-    !amount.trim()
-      ? 'Nhập số tiền đã nhận.'
-      : !Number.isFinite(parsedAmount)
-        ? 'Số tiền không hợp lệ.'
-        : parsedAmount <= 0
-          ? 'Số tiền phải lớn hơn 0.'
-          : target && parsedAmount > target.remaining
-            ? `Số tiền vượt quá số còn lại (${fmtVnd(target.remaining)}).`
-            : null
-
-  function openDialog(row: PendingPaymentRow) {
-    markPaid.reset()
-    setTarget(row)
-    setAmount(String(row.remaining))
-    setReference('')
-    setNotice(null)
+  async function showDetail(row: PaymentOverviewRow) {
+    setDetailLoading(true)
+    try { setDetail(await getPaymentDetail(row.orderId)) } finally { setDetailLoading(false) }
   }
-
-  function closeDialog() {
-    if (markPaid.isPending) return
-    setTarget(null)
-    setAmount('')
-    setReference('')
-  }
-
-  async function confirmPaid() {
-    if (!target || amountError) return
+  async function sync() {
+    setSyncing(true)
     try {
-      await markPaid.mutateAsync({
-        orderId: target.orderId,
-        amount: parsedAmount,
-        paymentReference: reference,
-      })
-      setNotice(`Đã ghi nhận ${fmtVnd(parsedAmount)} cho đơn ${target.orderNumber}.`)
-      setTarget(null)
-      setAmount('')
-      setReference('')
-    } catch {
-      // The mutation's error is rendered inside the dialog via getApiErrorMessage.
-    }
+      const result = await syncPaymentReconciliation()
+      await queryClient.invalidateQueries({ queryKey: PENDING_PAYMENTS_KEY })
+      setNotice(`Đã đồng bộ: bổ sung ${result.ledgerCreated} giao dịch ledger, tạo ${result.labCreated} và điều chỉnh ${result.labCorrected} khoản công nợ Lab.`)
+    } finally { setSyncing(false) }
+  }
+  async function recordPayment() {
+    if (!payTarget || Number(amount) <= 0 || Number(amount) > payTarget.remaining) return
+    await markPaid.mutateAsync({ orderId: payTarget.orderId, amount: Number(amount), paymentReference: reference })
+    setPayTarget(null); setAmount(''); setReference(''); setNotice('Đã ghi nhận giao dịch và cập nhật trạng thái thanh toán.')
   }
 
-  const serverError = markPaid.isError
-    ? getApiErrorMessage(markPaid.error, 'Không ghi nhận được thanh toán. Vui lòng thử lại.')
-    : null
-
-  return (
-    <Box className="ops-page">
-      <Stack className="ops-page-body" spacing={2.5}>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          justifyContent="space-between"
-          alignItems={{ xs: 'stretch', sm: 'center' }}
-          spacing={2}
-        >
-          <Stack direction="row" spacing={1.5} alignItems="flex-start">
-            <Box>
-              <Typography variant="h1">
-                Thanh toán & đặt cọc
-              </Typography>
-              <Typography color="text.secondary">
-                Các đơn chưa thanh toán đủ tiền cọc. Xác nhận khoản tiền đã nhận để đơn chuyển sang trạng thái Đã xác nhận.
-              </Typography>
-            </Box>
-          </Stack>
-          <Button
-            startIcon={<RefreshRounded />}
-            onClick={() => refetch()}
-            disabled={isFetching}
-            sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}
-          >
-            Làm mới
-          </Button>
-        </Stack>
-
-        <Box className="ops-summary-grid">
-          <OpsStatCard label="Đơn chờ thanh toán" value={data ? rows.length : '—'} hint="Chưa nhận đủ khoản đặt cọc" icon={<ReceiptLongOutlined />} loading={isLoading} />
-          <OpsStatCard label="Còn cần đối soát" value={data ? fmtVnd(rows.reduce((sum, row) => sum + row.remaining, 0)) : '—'} hint="Tổng số tiền còn lại của các đơn chờ" icon={<PaymentsRounded />} loading={isLoading} tone="warning" />
-          <OpsStatCard label="Đã ghi nhận" value={data ? fmtVnd(rows.reduce((sum, row) => sum + row.paidAmount, 0)) : '—'} hint="Thanh toán đã nhận cho các đơn chờ" icon={<AccountBalanceWalletOutlined />} loading={isLoading} tone="success" />
-        </Box>
-        {notice && (
-          <Alert severity="success" onClose={() => setNotice(null)}>
-            {notice}
-          </Alert>
-        )}
-        {isError && (
-          <Alert severity="error">
-            Không tải được danh sách đơn chờ thanh toán.
-            {error instanceof Error ? ` (${error.message})` : ''}
-          </Alert>
-        )}
-
-        {isLoading ? (
-          <CircularProgress sx={{ alignSelf: 'center' }} />
-        ) : isError && !data ? null : rows.length === 0 ? (
-          <Box sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px dashed #E8EBF2' }}>
-            <PaymentsRounded sx={{ fontSize: 42, color: 'text.disabled', mb: 1 }} />
-            <Typography color="text.secondary">Không có đơn nào đang chờ thanh toán cọc.</Typography>
-          </Box>
-        ) : (
-          <TableContainer sx={{ borderRadius: 2, border: '1px solid #E8EBF2', bgcolor: 'background.paper' }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Mã đơn</TableCell>
-                  <TableCell>Khách</TableCell>
-                  <TableCell align="right">Tổng</TableCell>
-                  <TableCell align="right">Cọc</TableCell>
-                  <TableCell align="right">Đã trả</TableCell>
-                  <TableCell align="right">Còn lại</TableCell>
-                  <TableCell>Ngày tạo</TableCell>
-                  <TableCell align="right">Hành động</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.orderId} hover>
-                    <TableCell sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{row.orderNumber}</TableCell>
-                    <TableCell sx={{ maxWidth: 220 }}>{customerOf(row)}</TableCell>
-                    <TableCell align="right">{fmtVnd(row.totalPrice)}</TableCell>
-                    <TableCell align="right">{fmtVnd(row.depositAmount)}</TableCell>
-                    <TableCell align="right">{fmtVnd(row.paidAmount)}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 800, color: 'warning.main' }}>
-                      {fmtVnd(row.remaining)}
-                    </TableCell>
-                    <TableCell>{fmtDateTime(row.createdAt)}</TableCell>
-                    <TableCell align="right">
-                      <Button size="small" variant="outlined" onClick={() => openDialog(row)}>
-                        Xác nhận
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Stack>
-
-      <Dialog open={target !== null} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>Xác nhận đã nhận tiền</DialogTitle>
-        <DialogContent>
-          {target && (
-            <Stack spacing={2} sx={{ pt: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Đơn <strong style={{ color: '#25263A' }}>{target.orderNumber}</strong> · Khách{' '}
-                <strong style={{ color: '#25263A' }}>{customerOf(target)}</strong>
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Tổng {fmtVnd(target.totalPrice)} · Cọc {fmtVnd(target.depositAmount)} · Đã trả{' '}
-                {fmtVnd(target.paidAmount)} · Còn lại{' '}
-                <strong style={{ color: '#25263A' }}>{fmtVnd(target.remaining)}</strong>
-              </Typography>
-
-              <TextField
-                label="Số tiền đã nhận"
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-                error={Boolean(amountError) && amount.length > 0}
-                helperText={amount.length > 0 ? amountError ?? 'Mặc định bằng số tiền còn lại.' : `Mặc định bằng số tiền còn lại (${fmtVnd(target.remaining)}).`}
-                inputProps={{ min: 0, step: 1000 }}
-              />
-              <TextField
-                label="Mã tham chiếu (không bắt buộc)"
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
-                placeholder="VD: FT25102412345"
-                inputProps={{ maxLength: 100 }}
-                helperText="Mã giao dịch ngân hàng để đối soát sau này."
-              />
-
-              {serverError && <Alert severity="error">{serverError}</Alert>}
-            </Stack>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={closeDialog} disabled={markPaid.isPending}>
-            Hủy
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={markPaid.isPending ? <CircularProgress size={16} color="inherit" /> : <CheckRounded />}
-            disabled={markPaid.isPending || Boolean(amountError)}
-            onClick={confirmPaid}
-          >
-            {markPaid.isPending ? 'Đang ghi nhận…' : 'Xác nhận đã nhận tiền'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+  return <Box className="ops-page"><Stack className="ops-page-body" spacing={2.5}>
+    <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2}>
+      <Box><Typography variant="h1">Quản lý thanh toán đơn hàng</Typography><Typography color="text.secondary">Theo dõi toàn bộ đơn, lịch sử giao dịch và trạng thái đối soát với Lab.</Typography></Box>
+      <Stack direction="row" spacing={1}><Button startIcon={syncing ? <CircularProgress size={16} /> : <SyncRounded />} onClick={sync} disabled={syncing}>Đồng bộ đối soát</Button><Button startIcon={<RefreshRounded />} onClick={() => refetch()} disabled={isFetching}>Làm mới</Button></Stack>
+    </Stack>
+    {notice && <Alert severity="success" onClose={() => setNotice(null)}>{notice}</Alert>}
+    {isError && <Alert severity="error">Không tải được danh sách thanh toán.</Alert>}
+    <Box className="ops-summary-grid">
+      <OpsStatCard label="Chưa thanh toán" value={totals.unpaid} hint="Chưa ghi nhận giao dịch" icon={<ReceiptLongOutlined />} loading={isLoading} />
+      <OpsStatCard label="Thanh toán một phần" value={totals.partial} hint="Đã trả nhưng chưa đủ" icon={<ReceiptLongOutlined />} loading={isLoading} tone="warning" />
+      <OpsStatCard label="Đã thanh toán" value={totals.paid} hint="Đã thanh toán đầy đủ" icon={<CheckRounded />} loading={isLoading} tone="success" />
     </Box>
-  )
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}><FormControl sx={{ minWidth: 230 }}><InputLabel>Trạng thái thanh toán</InputLabel><Select value={filter} label="Trạng thái thanh toán" onChange={e => setFilter(e.target.value as 'All' | PaymentStatus)}><MenuItem value="All">Tất cả</MenuItem><MenuItem value="Unpaid">Chưa thanh toán</MenuItem><MenuItem value="Partial">Thanh toán một phần</MenuItem><MenuItem value="Paid">Đã thanh toán đầy đủ</MenuItem></Select></FormControl><TextField fullWidth label="Tìm theo mã đơn hoặc mã khách hàng" value={search} onChange={e => setSearch(e.target.value)} /></Stack>
+    {isLoading ? <CircularProgress sx={{ alignSelf: 'center' }} /> : <TableContainer sx={{ border: '1px solid #E8EBF2', borderRadius: 2 }}><Table size="small">
+      <TableHead><TableRow><TableCell>Đơn hàng / Khách hàng</TableCell><TableCell>Trạng thái</TableCell><TableCell align="right">Cần thanh toán</TableCell><TableCell align="right">Đã thanh toán</TableCell><TableCell align="right">Còn thiếu</TableCell><TableCell>Đối soát</TableCell><TableCell align="right">Thao tác</TableCell></TableRow></TableHead>
+      <TableBody>{data.map(row => <TableRow key={row.orderId} hover><TableCell><Typography fontWeight={800}>{row.orderNumber}</Typography><Typography variant="caption" color="text.secondary">{row.customerName || row.customerEmail || row.customerId}</Typography></TableCell><TableCell><Chip size="small" color={row.paymentStatus === 'Paid' ? 'success' : row.paymentStatus === 'Partial' ? 'warning' : 'default'} label={labels[row.paymentStatus]} /></TableCell><TableCell align="right">{money(row.totalAmount)}</TableCell><TableCell align="right">{money(row.paidAmount)}</TableCell><TableCell align="right" sx={{ fontWeight: 800, color: row.remaining ? 'warning.main' : 'success.main' }}>{money(row.remaining)}</TableCell><TableCell><Chip size="small" variant="outlined" color={row.reconciliationStatus === 'Synced' ? 'success' : 'error'} label={row.reconciliationStatus === 'Synced' ? 'Đồng bộ' : 'Có chênh lệch'} />{row.reconciliationIssues.map(x => <Typography key={x} display="block" variant="caption" color="error">{x}</Typography>)}</TableCell><TableCell align="right"><Stack direction="row" justifyContent="flex-end"><Button size="small" onClick={() => showDetail(row)}>Chi tiết</Button>{row.remaining > 0 && <Button size="small" variant="outlined" onClick={() => { setPayTarget(row); setAmount(String(row.remaining)); setReference('') }}>Ghi nhận tiền</Button>}</Stack></TableCell></TableRow>)}</TableBody>
+    </Table></TableContainer>}
+  </Stack>
+  <Dialog open={detail !== null || detailLoading} onClose={() => setDetail(null)} fullWidth maxWidth="md"><DialogTitle>Chi tiết thanh toán {detail?.orderNumber}</DialogTitle><DialogContent>{detailLoading ? <CircularProgress /> : detail && <Stack spacing={2}><Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}><Typography>Tổng: <b>{money(detail.totalAmount)}</b></Typography><Typography>Đã trả: <b>{money(detail.paidAmount)}</b></Typography><Typography>Còn thiếu: <b>{money(detail.remaining)}</b></Typography><Typography>Đã hoàn: <b>{money(detail.refundedAmount)}</b></Typography></Stack><Typography variant="h6">Lịch sử giao dịch</Typography>{detail.transactions.length === 0 ? <Typography color="text.secondary">Chưa có giao dịch trong ledger.</Typography> : detail.transactions.map(t => <Box key={t.id} sx={{ p: 1.5, border: '1px solid #E8EBF2', borderRadius: 1 }}><Stack direction="row" justifyContent="space-between"><Typography>{t.type} · {t.reference}</Typography><Typography fontWeight={800}>{money(t.amount)}</Typography></Stack><Typography variant="caption" color="text.secondary">{dateTime(t.confirmedAtUtc)} · {t.status}</Typography></Box>)}<Typography variant="h6">Công nợ Lab</Typography>{detail.labPayables.length === 0 ? <Typography color="text.secondary">Chưa phát sinh công nợ Lab.</Typography> : detail.labPayables.map(p => <Box key={p.id} sx={{ p: 1.5, border: '1px solid #E8EBF2', borderRadius: 1 }}><Stack direction="row" justifyContent="space-between"><Typography>Lab {p.labId.slice(0, 8)} · {p.status}</Typography><Typography fontWeight={800}>{money(p.netAmount)}</Typography></Stack></Box>)}</Stack>}</DialogContent><DialogActions><Button onClick={() => setDetail(null)}>Đóng</Button></DialogActions></Dialog>
+  <Dialog open={payTarget !== null} onClose={() => setPayTarget(null)} fullWidth maxWidth="sm"><DialogTitle>Ghi nhận thanh toán</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}><Typography>Đơn <b>{payTarget?.orderNumber}</b> · còn thiếu {money(payTarget?.remaining ?? 0)}</Typography><TextField label="Số tiền đã nhận" type="number" value={amount} onChange={e => setAmount(e.target.value)} /><TextField label="Mã tham chiếu giao dịch" value={reference} onChange={e => setReference(e.target.value)} />{markPaid.isError && <Alert severity="error">Không thể ghi nhận giao dịch.</Alert>}</Stack></DialogContent><DialogActions><Button onClick={() => setPayTarget(null)}>Hủy</Button><Button variant="contained" startIcon={<CheckRounded />} disabled={markPaid.isPending || Number(amount) <= 0 || Number(amount) > (payTarget?.remaining ?? 0)} onClick={recordPayment}>Xác nhận</Button></DialogActions></Dialog>
+  </Box>
 }
