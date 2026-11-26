@@ -52,6 +52,7 @@ const SlaReportPage = lazy(() => import('../features/ops/SlaReportPage'))
 const RefundsPage = lazy(() => import('../features/ops/RefundsPage'))
 const PaymentsPage = lazy(() => import('../features/ops/PaymentsPage'))
 const FinancePage = lazy(() => import('../features/ops/FinancePage'))
+const OpsDashboard = lazy(() => import('../features/ops/OpsDashboard'))
 const DesignRequestsPage = lazy(() => import('../features/ops/DesignRequestsPage'))
 const DesignRequestPage = lazy(() => import('../features/design/DesignRequestPage'))
 const PublicLayout = lazy(() => import('../features/public/PublicLayout').then((m) => ({ default: m.PublicLayout })))
@@ -360,6 +361,7 @@ export function AppRoutes() {
           }
         />
         <Route path="/ops/finance" element={<ProtectedRoute allowedRoles={['OpsManager']}><FinancePage /></ProtectedRoute>} />
+        <Route path="/ops/dashboard" element={<ProtectedRoute allowedRoles={['OpsManager']}><OpsDashboard /></ProtectedRoute>} />
         <Route
           path="/ops/pricing"
           element={<ProtectedRoute allowedRoles={['OpsManager']}><AdminCommercialConfigurationPage /></ProtectedRoute>}
