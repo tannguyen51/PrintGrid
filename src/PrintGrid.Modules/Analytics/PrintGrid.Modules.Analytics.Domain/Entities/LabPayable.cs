@@ -34,15 +34,23 @@ public sealed class LabPayable : Entity<Guid>
         Status = "Approved"; ApprovedBy = actor; ApprovedAtUtc = now; return Result.Success();
     }
 
-    /// <summary>Reconcile an unpaid reprint fee; a changed amount must be approved again.</summary>
-    public bool ReconcileUnpaidDeduction(decimal deduction)
+    public bool NeedsDeductionReconciliation(decimal deduction)
     {
         if (deduction < 0m || deduction > GrossAmount) throw new ArgumentOutOfRangeException(nameof(deduction));
-        if (Status == "Paid" || DeductionAmount == deduction) return false;
+        return DeductionAmount != deduction && (Status != "Paid" || NetAmount == 0m && deduction < DeductionAmount);
+    }
+
+    /// <summary>Correct outstanding fees, including an erroneous zero-value paid marker. Require fresh approval.</summary>
+    public bool ReconcileUnpaidDeduction(decimal deduction)
+    {
+        if (!NeedsDeductionReconciliation(deduction)) return false;
         DeductionAmount = deduction;
         Status = "Eligible";
         ApprovedBy = null;
         ApprovedAtUtc = null;
+        PaidBy = null;
+        PaidAtUtc = null;
+        PaymentReference = null;
         return true;
     }
 

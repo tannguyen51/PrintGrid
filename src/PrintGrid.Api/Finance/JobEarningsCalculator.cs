@@ -46,8 +46,9 @@ public sealed class JobEarningsCalculator
         try
         {
             _payables.TryGetValue(job.Id, out var payable);
-            // An actual payment is immutable. Corrections here only change unposted/pending earnings.
-            if (payable?.Status == "Paid")
+            // Preserve actual payments. A historical zero-value "Paid" marker may come from the
+            // former blanket reprint deduction and must still be checked against the lineage.
+            if (payable?.Status == "Paid" && payable.NetAmount != 0m)
                 return _calculated[job.Id] = new(payable.GrossAmount, payable.DeductionAmount);
 
             var line = _lines[job.OrderItemId];

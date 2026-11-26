@@ -43,7 +43,7 @@ public sealed class FinanceController(PrintGridDbContext db) : ControllerBase
             var earnings = calculator.Calculate(row.Job);
             if (existing.TryGetValue(row.Job.Id, out var payable))
             {
-                if (payable.ReconcileUnpaidDeduction(earnings.DeductionAmount)) corrected++;
+                if (await ReconcilePayableAsync(payable, earnings, ct)) corrected++;
                 continue;
             }
             // The producer receives the payable; another lab's fault must not remove this producer's income.
@@ -108,12 +108,12 @@ public sealed class FinanceController(PrintGridDbContext db) : ControllerBase
         var actor = User.GetCustomerId(); if (actor is null) return Forbid();
         var payable = await db.Set<LabPayable>().SingleOrDefaultAsync(x => x.Id == id, ct);
         if (payable is null) return NotFound();
-        if (payable.Status != "Paid")
+        if (payable.Status != "Paid" || payable.NetAmount == 0m)
         {
             var job = await db.Set<Job>().AsNoTracking().SingleOrDefaultAsync(j => j.Id == payable.JobId, ct);
             if (job is null) return Conflict(new { error = new { code = "conflict", message = "Không tìm thấy job của khoản công nợ." } });
             var calculator = await JobEarningsCalculator.LoadAsync(db, [job.OrderItemId], ct);
-            if (payable.ReconcileUnpaidDeduction(calculator.Calculate(job).DeductionAmount))
+            if (await ReconcilePayableAsync(payable, calculator.Calculate(job), ct))
             {
                 await db.SaveChangesAsync(ct);
                 return Conflict(new { error = new { code = "conflict", message = "Tiền công in lại đã được cập nhật. Vui lòng kiểm tra số tiền mới và duyệt lại trước khi chi." } });
@@ -122,6 +122,30 @@ public sealed class FinanceController(PrintGridDbContext db) : ControllerBase
         var result = reference is null ? payable.Approve(actor.Value, DateTime.UtcNow) : payable.MarkPaid(actor.Value, reference, DateTime.UtcNow);
         if (result.IsFailure) return Conflict(new { error = new { result.Error.Code, result.Error.Message } });
         await db.SaveChangesAsync(ct); return Ok(payable);
+    }
+
+    private async Task<bool> ReconcilePayableAsync(LabPayable payable, JobEarnings earnings, CancellationToken ct)
+    {
+        if (!payable.NeedsDeductionReconciliation(earnings.DeductionAmount)) return false;
+        if (payable.Status == "Paid")
+        {
+            // This is a correction of a zero-value marker, never a cash receipt or a new payment.
+            // Archive the old approval/payment metadata before reopening the outstanding fee.
+            var key = $"lab-zero-correction:{payable.Id:N}";
+            if (!await db.Set<FinancialTransaction>().AnyAsync(t => t.Type == "LabCorrection" && t.IdempotencyKey == key, ct))
+            {
+                var note = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    payableId = payable.Id, previousPaidBy = payable.PaidBy, previousPaidAtUtc = payable.PaidAtUtc,
+                    previousApprovedBy = payable.ApprovedBy, previousApprovedAtUtc = payable.ApprovedAtUtc,
+                    previousDeduction = payable.DeductionAmount, correctedDeduction = earnings.DeductionAmount
+                });
+                db.Set<FinancialTransaction>().Add(FinancialTransaction.Create(payable.OrderId, "LabCorrection", 0m,
+                    payable.Currency, payable.PaymentReference ?? $"ZERO-{payable.Id:N}", key,
+                    ControllerContext.HttpContext?.User.GetCustomerId() ?? payable.PaidBy ?? Guid.Empty, DateTime.UtcNow, note: note));
+            }
+        }
+        return payable.ReconcileUnpaidDeduction(earnings.DeductionAmount);
     }
 }
 

@@ -305,6 +305,94 @@ public sealed class LabFinanceTests
     }
 
     [Fact]
+    public async Task A_historical_zero_paid_marker_does_not_erase_the_first_successful_reprint_fee()
+    {
+        await using var db = Database();
+        var owner = Guid.NewGuid();
+        var lab = Lab.Onboard("Lab A", "HCM", 1, owner); db.Add(lab);
+        var original = await SeedJob(db, lab.Id, 1, 1, JobStatus.Failed, batchTotal: 126_373m);
+        var reprint = await Reprint(db, original, lab.Id, JobStatus.Completed);
+        var old = LabPayable.Create(reprint.Id, Guid.NewGuid(), lab.Id, 88_461.10m, 88_461.10m, "VND", Now);
+        old.Approve(owner, Now);
+        old.MarkPaid(owner, "OLD-ZERO-MARKER", Now);
+        db.Add(old); await db.SaveChangesAsync();
+
+        var before = await Report(db, owner);
+        before.Summary.TotalIncome.Should().Be(88_461.10m);
+        before.Summary.TotalReceived.Should().Be(0m);
+        before.Summary.Outstanding.Should().Be(88_461.10m);
+        before.Items.Single().PaymentStatus.Should().Be("PendingSync");
+        before.Items.Single().PaidAtUtc.Should().BeNull();
+        before.Items.Single().PaymentReference.Should().BeNull();
+        old.Status.Should().Be("Paid", "GET must not mutate the persisted history");
+
+        var finance = new FinanceController(db) { ControllerContext = Controller(db, owner).ControllerContext };
+        await finance.SyncPayables(default);
+        await finance.SyncPayables(default);
+        old.Status.Should().Be("Eligible");
+        old.NetAmount.Should().Be(88_461.10m);
+        old.PaidAtUtc.Should().BeNull();
+        old.PaidBy.Should().BeNull();
+        old.PaymentReference.Should().BeNull();
+        var audit = await db.Set<FinancialTransaction>().SingleAsync();
+        audit.Type.Should().Be("LabCorrection");
+        audit.Amount.Should().Be(0m);
+        audit.Reference.Should().Be("OLD-ZERO-MARKER");
+        audit.Note.Should().Contain(owner.ToString()).And.Contain("88461.10");
+        audit.Note!.Length.Should().BeLessThanOrEqualTo(500);
+        (await db.Set<LabPayable>().CountAsync()).Should().Be(1);
+        (await finance.Approve(old.Id, default)).Should().BeOfType<OkObjectResult>();
+        (await finance.Pay(old.Id, new PayLabRequest("REAL-FIRST-PAYMENT"), default)).Should().BeOfType<OkObjectResult>();
+        (await Report(db, owner)).Summary.TotalReceived.Should().Be(88_461.10m);
+    }
+
+    [Fact]
+    public async Task A_zero_paid_reprint_stays_zero_when_the_original_fee_has_already_been_earned()
+    {
+        await using var db = Database();
+        var owner = Guid.NewGuid();
+        var lab = Lab.Onboard("Lab A", "HCM", 1, owner); db.Add(lab);
+        var original = await SeedJob(db, lab.Id, 2, 2, JobStatus.Completed);
+        var originalFee = LabPayable.Create(original.Id, Guid.NewGuid(), lab.Id, 140_000m, 0m, "VND", Now);
+        originalFee.Approve(owner, Now); originalFee.MarkPaid(owner, "ORIGINAL-ALREADY-PAID", Now);
+        db.Add(originalFee); await db.SaveChangesAsync();
+        var reprint = await Reprint(db, original, lab.Id, JobStatus.Completed);
+        var zero = LabPayable.Create(reprint.Id, Guid.NewGuid(), lab.Id, 140_000m, 140_000m, "VND", Now);
+        zero.Approve(owner, Now); zero.MarkPaid(owner, "NO-ADDITIONAL-FEE", Now);
+        db.Add(zero); await db.SaveChangesAsync();
+        await new FinanceController(db).SyncPayables(default);
+        var report = await Report(db, owner);
+        report.Summary.TotalIncome.Should().Be(140_000m);
+        report.Summary.TotalReceived.Should().Be(140_000m);
+        report.Items.Single(x => x.JobId == reprint.Id).NetAmount.Should().Be(0m);
+        zero.Status.Should().Be("Paid");
+        zero.PaymentReference.Should().Be("NO-ADDITIONAL-FEE");
+        (await db.Set<FinancialTransaction>().CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Multiple_completed_zero_markers_restore_only_one_original_fee()
+    {
+        await using var db = Database();
+        var owner = Guid.NewGuid();
+        var lab = Lab.Onboard("Lab A", "HCM", 1, owner); db.Add(lab);
+        var original = await SeedJob(db, lab.Id, 2, 2, JobStatus.Failed);
+        var first = await Reprint(db, original, lab.Id, JobStatus.Completed);
+        var second = await Reprint(db, first, lab.Id, JobStatus.Completed);
+        foreach (var job in new[] { second, first })
+        {
+            var marker = LabPayable.Create(job.Id, Guid.NewGuid(), lab.Id, 140_000m, 140_000m, "VND", Now);
+            marker.Approve(owner, Now); marker.MarkPaid(owner, $"ZERO-{job.Id:N}", Now);
+            db.Add(marker);
+        }
+        await db.SaveChangesAsync();
+        (await Report(db, owner)).Summary.TotalIncome.Should().Be(140_000m);
+        await new FinanceController(db).SyncPayables(default);
+        (await db.Set<LabPayable>().ToListAsync()).Sum(x => x.NetAmount).Should().Be(140_000m);
+        (await db.Set<FinancialTransaction>().CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
     public async Task A_stale_zero_fee_cannot_be_paid_without_reviewing_the_corrected_amount()
     {
         await using var db = Database();

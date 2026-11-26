@@ -77,7 +77,7 @@ public sealed class LabFinanceController(PrintGridDbContext db) : ControllerBase
                 row.Job.CreatedAt, split.JobValue, earnings.GrossAmount, split.HubAmount, earnings.DeductionAmount,
                 earnings.NetAmount, row.Currency,
                 needsCorrection ? "PendingSync" : row.Payable?.Status ?? (row.Job.Status == JobStatus.Completed ? "PendingSync" : "Estimated"),
-                row.Payable?.PaidAtUtc, row.Payable?.PaymentReference);
+                needsCorrection ? null : row.Payable?.PaidAtUtc, needsCorrection ? null : row.Payable?.PaymentReference);
         }).ToList();
 
         // Only Completed (hub-accepted) production earns income. Failed attempts and cancelled split parents earn nothing.
