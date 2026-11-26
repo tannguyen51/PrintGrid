@@ -24,7 +24,7 @@ public sealed class LabFinanceController(PrintGridDbContext db) : ControllerBase
     {
         if (from > to || from == DateOnly.MinValue || to == DateOnly.MaxValue || page is < 1 or > 1_000_000
             || pageSize is < 1 or > 100 || scope is not ("completed" or "all")
-            || paymentStatus is not (null or "" or "all" or "PendingSync" or "Eligible" or "Approved" or "Paid"))
+            || paymentStatus is not (null or "" or "all" or "PendingSync" or "Eligible" or "Approved" or "Paid" or "Estimated"))
             return BadRequest(new { error = new { code = "validation", message = "Bộ lọc hoặc phân trang không hợp lệ." } });
 
         var actor = User.GetCustomerId();
@@ -36,7 +36,7 @@ public sealed class LabFinanceController(PrintGridDbContext db) : ControllerBase
         var jobs = db.Set<Job>().AsNoTracking().Where(j => j.LabId == lab.Id
             && j.Status != JobStatus.Cancelled && j.Status != JobStatus.Failed);
         if (scope == "completed") jobs = jobs.Where(j => j.Status == JobStatus.Completed);
-        // Completed report is a cohort by Vietnam inspection/completion date. The price book includes all assigned jobs.
+        // Summary uses completed production only. The unified table can include assigned work, dated by creation.
         if (from.HasValue)
         {
             var start = DateTime.SpecifyKind(from.Value.ToDateTime(TimeOnly.MinValue).AddHours(-7), DateTimeKind.Utc);

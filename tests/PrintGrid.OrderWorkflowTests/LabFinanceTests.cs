@@ -83,7 +83,7 @@ public sealed class LabFinanceTests
     }
 
     [Fact]
-    public async Task Price_book_shows_assigned_work_without_counting_it_as_earned_income()
+    public async Task Unified_job_table_shows_assigned_work_without_counting_it_as_earned_income()
     {
         await using var db = Database();
         var owner = Guid.NewGuid();
@@ -97,6 +97,9 @@ public sealed class LabFinanceTests
         prices.Summary.TotalIncome.Should().Be(0m);
         prices.Items.Single().NetAmount.Should().Be(70_000m);
         prices.Items.Single().PaymentStatus.Should().Be("Estimated");
+        var filtered = (LabFinanceReportDto)(await Controller(db, owner).Report(scope: "all", paymentStatus: "Estimated") as OkObjectResult)!.Value!;
+        filtered.Items.Should().HaveCount(1);
+        filtered.Summary.TotalIncome.Should().Be(0m);
     }
 
     [Fact]

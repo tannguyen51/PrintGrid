@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Alert, Box, Button, Chip, CircularProgress, LinearProgress, MenuItem, Paper, Stack,
-  Tab, Tabs, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination,
+  Table, TableBody, TableCell, TableContainer, TableHead, TablePagination,
   TableRow, TextField, Typography,
 } from '@mui/material'
 import { AccountBalanceWalletOutlined, Inventory2Outlined, PaymentsOutlined } from '@mui/icons-material'
@@ -27,23 +27,16 @@ const payment: Record<string, { label: string; color: 'default' | 'warning' | 'i
 }
 
 export default function LabFinancePage() {
-  const [tab, setTab] = useState(0)
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [search, setSearch] = useState('')
   const [paymentStatus, setPaymentStatus] = useState('all')
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(20)
-  const [example, setExample] = useState('100000')
   const invalidRange = Boolean(from && to && from > to)
   const report = useLabFinance({ from: from || undefined, to: to || undefined,
-    scope: 'completed', search: tab === 0 ? search || undefined : undefined,
-    paymentStatus: tab === 0 ? paymentStatus : 'all', page: tab === 0 ? page + 1 : 1, pageSize }, !invalidRange)
-  const prices = useLabFinance({ scope: 'all', search: search || undefined, page: page + 1, pageSize }, tab === 1)
-  const active = tab === 0 ? report : prices
+    scope: 'all', search: search || undefined, paymentStatus, page: page + 1, pageSize }, !invalidRange)
   const summary = invalidRange || report.isError ? undefined : report.data?.summary
-  const exampleValue = Number(example)
-  const exampleValid = example.trim() !== '' && Number.isFinite(exampleValue) && exampleValue >= 0
   const labRate = report.data?.labRate ?? .7
   const hubRate = report.data?.hubRate ?? .3
   const cards = [
@@ -59,20 +52,20 @@ export default function LabFinancePage() {
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={2}>
         <Stack direction="row" spacing={1.5} alignItems="flex-start"><PageBackButton /><Box>
           <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800 }}>Thống kê & Thu nhập Lab</Typography>
-          <Typography color="text.secondary">{report.data?.labName ?? 'Xưởng của bạn'} · Sản lượng, thu nhập và bảng giá từng job.</Typography>
+          <Typography color="text.secondary">{report.data?.labName ?? 'Xưởng của bạn'} · Sản lượng, thu nhập và tiền công từng job.</Typography>
         </Box></Stack>
       </Stack>
 
       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
-          <TextField type="date" label="Nghiệm thu từ ngày" InputLabelProps={{ shrink: true }} value={from}
+          <TextField type="date" label="Từ ngày" InputLabelProps={{ shrink: true }} value={from}
             onChange={e => { setFrom(e.target.value); setPage(0) }} />
           <TextField type="date" label="Đến ngày" InputLabelProps={{ shrink: true }} value={to}
             onChange={e => { setTo(e.target.value); setPage(0) }} />
           <Button onClick={() => { setFrom(''); setTo(''); setPage(0) }}>Toàn bộ thời gian</Button>
         </Stack>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-          Thống kê theo ngày nghiệm thu, giờ Việt Nam. Tiền đã nhận và còn phải trả được tính cho các job trong khoảng này, kể cả khi được thanh toán sau đó.
+          Số tổng hợp tính theo ngày nghiệm thu, giờ Việt Nam. Trong bảng chi tiết, job chưa nghiệm thu được lọc theo ngày tạo job. Tiền đã nhận và còn phải trả tính cho các job đã nghiệm thu trong khoảng này, kể cả khi thanh toán sau đó.
         </Typography>
       </Paper>
       {invalidRange && <Alert severity="error">Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.</Alert>}
@@ -113,11 +106,7 @@ export default function LabFinancePage() {
       </Box>
 
       {!!summary?.pendingSyncJobs && <Alert severity="info">Có {summary.pendingSyncJobs} job đã nghiệm thu đang chờ Ops đối soát. Thu nhập của các job này đã được tính vào tổng và số còn phải trả.</Alert>}
-      <Tabs value={tab} onChange={(_, value) => { setTab(value); setPage(0); setSearch(''); setPaymentStatus('all') }} aria-label="Thống kê và bảng giá Lab">
-        <Tab label="Sản lượng & Công nợ" /><Tab label="Bảng giá theo job" />
-      </Tabs>
-
-      {tab === 0 && summary && Boolean(report.data?.byType.length) && <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
+      {summary && Boolean(report.data?.byType.length) && <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
         <Typography variant="h6" fontWeight={800} sx={{ p: 2.5 }}>Thống kê theo loại job</Typography>
         <TableContainer><Table size="small" aria-label="Thống kê sản lượng và thu nhập theo loại job"><TableHead><TableRow>
           {['Loại job / Vật liệu', 'Số job', 'Sản phẩm', 'Thu nhập Lab', 'Đã nhận', 'Còn phải trả'].map(label => <TableCell key={label}>{label}</TableCell>)}
@@ -128,45 +117,26 @@ export default function LabFinancePage() {
         </TableRow>)}</TableBody></Table></TableContainer>
       </Paper>}
 
-      {tab === 1 && <Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
-        <Typography variant="h6" fontWeight={800} sx={{ mb: 1 }}>Bảng giá nhận việc</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Mỗi job có giá theo báo giá đã chốt, vật liệu, thời gian in và số lượng. Danh sách bên dưới gồm các job được giao cho Lab trong toàn bộ thời gian. Job chưa nghiệm thu chỉ hiển thị tiền dự kiến.</Typography>
-        <TextField type="number" label="Giá trị job để xem cách chia (VND)" value={example} onChange={e => setExample(e.target.value)}
-          inputProps={{ min: 0, step: 1000 }} error={!exampleValid} helperText={!exampleValid ? 'Nhập số tiền không âm hợp lệ.' : 'Ví dụ minh họa, không thay đổi giá hoặc công nợ.'} sx={{ width: { xs: '100%', sm: 360 }, mb: 2 }} />
-        <TableContainer><Table size="small" aria-label="Quy tắc bảng giá theo loại job"><TableHead><TableRow>
-          <TableCell>Loại job</TableCell><TableCell>Cách tính tiền công</TableCell><TableCell>Lab được hưởng</TableCell>
-        </TableRow></TableHead><TableBody>
-          {[
-            ['In theo đơn / in lại do khách đặt', 'Theo giá trị job đã chốt', false],
-            ['In lại do Hub hoặc hệ thống chịu chi phí', 'Theo giá trị job đã chốt', false],
-            ['Lab tự in lại, chưa ghi nhận tiền công gốc', 'Nhận tiền công một lần khi nghiệm thu đạt; Lab tự chịu chi phí in lại', false],
-            ['Lab tự in lại, đã ghi nhận đủ tiền công gốc', 'Tiền công đã nằm ở job gốc; không cộng thêm cho lần in lại', true],
-          ].map(([label, rule, deducted]) => <TableRow key={String(label)}>
-            <TableCell>{label}</TableCell><TableCell>{rule}</TableCell><TableCell sx={{ fontWeight: 700 }}>{exampleValid ? money(deducted ? 0 : Math.round(exampleValue * labRate * 100) / 100) : '—'}</TableCell>
-          </TableRow>)}
-        </TableBody></Table></TableContainer>
-      </Paper>}
-
       <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
         <Stack spacing={2} sx={{ p: 2.5 }}>
-          <Typography variant="h6" fontWeight={800}>{tab === 0 ? 'Chi tiết thu nhập từng job' : 'Giá trị và phần Lab được nhận từng job'}</Typography>
+          <Typography variant="h6" fontWeight={800}>Chi tiết thu nhập từng job</Typography>
+          <Typography variant="body2" color="text.secondary">Gồm job đang thực hiện và đã nghiệm thu. Khoản có nhãn “Dự kiến” chỉ là tiền công dự kiến, chưa tính vào tổng thu nhập và công nợ.</Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
             <TextField size="small" label="Tìm mã đơn, job hoặc vật liệu" value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} sx={{ minWidth: { sm: 300 } }} />
-            {tab === 0 && <TextField select size="small" label="Thanh toán" value={paymentStatus} onChange={e => { setPaymentStatus(e.target.value); setPage(0) }} sx={{ minWidth: 220 }}>
-              <MenuItem value="all">Tất cả trạng thái</MenuItem>{Object.entries(payment).filter(([key]) => key !== 'Estimated').map(([key, item]) => <MenuItem key={key} value={key}>{item.label}</MenuItem>)}
-            </TextField>}
+            <TextField select size="small" label="Thanh toán" value={paymentStatus} onChange={e => { setPaymentStatus(e.target.value); setPage(0) }} sx={{ minWidth: 220 }}>
+              <MenuItem value="all">Tất cả trạng thái</MenuItem>{Object.entries(payment).map(([key, item]) => <MenuItem key={key} value={key}>{item.label}</MenuItem>)}
+            </TextField>
           </Stack>
-          {tab === 1 && prices.isError && <Alert severity="error">{getApiErrorMessage(prices.error, 'Không tải được bảng giá job.')}</Alert>}
         </Stack>
-        <TableContainer><Table aria-label={tab === 0 ? 'Chi tiết công nợ Lab' : 'Bảng giá job của Lab'} sx={{ minWidth: 900 }}>
+        <TableContainer><Table aria-label="Chi tiết thu nhập từng job" sx={{ minWidth: 900 }}>
           <TableHead><TableRow><TableCell>Job / Đơn hàng</TableCell><TableCell>Loại job</TableCell><TableCell align="right">Số lượng</TableCell>
             <TableCell align="right">Giá trị job</TableCell>
             <TableCell align="right">Khấu trừ</TableCell><TableCell align="right">Lab được hưởng</TableCell><TableCell>Thanh toán</TableCell>
           </TableRow></TableHead>
-          <TableBody>{active.isLoading ? <TableRow><TableCell colSpan={7} sx={{ textAlign: 'center', py: 5 }}><CircularProgress aria-label="Đang tải danh sách job" /></TableCell></TableRow>
-            : active.isError || (tab === 0 && invalidRange) ? <TableRow><TableCell colSpan={7}>Chưa thể hiển thị danh sách. Vui lòng kiểm tra bộ lọc hoặc thử tải lại.</TableCell></TableRow>
-            : !active.data?.items.length ? <TableRow><TableCell colSpan={7} sx={{ py: 5, textAlign: 'center' }}>{tab === 0 ? 'Chưa có job đã nghiệm thu phù hợp bộ lọc.' : 'Chưa có job được giao cho Lab.'}</TableCell></TableRow>
-            : active.data.items.map(row => <TableRow key={row.jobId} hover>
+          <TableBody>{report.isLoading ? <TableRow><TableCell colSpan={7} sx={{ textAlign: 'center', py: 5 }}><CircularProgress aria-label="Đang tải danh sách job" /></TableCell></TableRow>
+            : report.isError || invalidRange ? <TableRow><TableCell colSpan={7}>Chưa thể hiển thị danh sách. Vui lòng kiểm tra bộ lọc hoặc thử tải lại.</TableCell></TableRow>
+            : !report.data?.items.length ? <TableRow><TableCell colSpan={7} sx={{ py: 5, textAlign: 'center' }}>Chưa có job phù hợp bộ lọc.</TableCell></TableRow>
+            : report.data.items.map(row => <TableRow key={row.jobId} hover>
               <TableCell><Typography fontWeight={700}>{row.orderNumber}</Typography><Typography variant="body2" color="text.secondary" title={row.jobId}>Job #{row.jobId.slice(0, 8)}</Typography>
                 <Typography variant="body2" color="text.secondary">{row.completedAtUtc ? `Nghiệm thu ${date(row.completedAtUtc)}` : (JOB_LABELS as Record<string, string>)[row.jobStatus] ?? row.jobStatus}</Typography></TableCell>
               <TableCell>{jobType[row.jobType]}<Typography variant="body2" color="text.secondary">{row.technology} · {row.materialCode}</Typography>
@@ -183,7 +153,7 @@ export default function LabFinancePage() {
             </TableRow>)}
           </TableBody>
         </Table></TableContainer>
-        <TablePagination component="div" count={active.data?.totalCount ?? 0} page={page} rowsPerPage={pageSize}
+        <TablePagination component="div" count={report.data?.totalCount ?? 0} page={page} rowsPerPage={pageSize}
           rowsPerPageOptions={[10, 20, 50]} onPageChange={(_, value) => setPage(value)}
           onRowsPerPageChange={e => { setPageSize(Number(e.target.value)); setPage(0) }} labelRowsPerPage="Job mỗi trang"
           labelDisplayedRows={({ from: start, to: end, count }) => `${start}–${end} / ${count} job`} />
