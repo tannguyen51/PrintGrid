@@ -92,6 +92,48 @@ public sealed class FinanceController(PrintGridDbContext db) : ControllerBase
         });
     }
 
+    [HttpGet("lab-summary")]
+    [Authorize(Policy = Policies.RequireOps)]
+    public async Task<IActionResult> LabSummary([FromQuery] Guid? labId, [FromQuery] DateTime? fromUtc, [FromQuery] DateTime? toUtc, CancellationToken ct)
+    {
+        var from = fromUtc ?? DateTime.UnixEpoch; var to = toUtc ?? DateTime.MaxValue;
+        var query = db.Set<LabPayable>().AsNoTracking()
+            .Where(x => x.EligibleAtUtc >= from && x.EligibleAtUtc <= to);
+        if (labId.HasValue) query = query.Where(x => x.LabId == labId.Value);
+        var payables = await query.ToListAsync(ct);
+        var labIds = payables.Select(x => x.LabId).Distinct();
+        var labs = await db.Set<Lab>().AsNoTracking().Where(x => labIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+        var summary = payables.GroupBy(x => x.LabId).Select(g => new
+        {
+            labId = g.Key,
+            labName = labs.GetValueOrDefault(g.Key) ?? "Unknown",
+            totalPayable = g.Sum(x => x.NetAmount),
+            paid = g.Where(x => x.Status == "Paid").Sum(x => x.NetAmount),
+            outstanding = g.Where(x => x.Status != "Paid").Sum(x => x.NetAmount),
+            transactionCount = g.Count()
+        }).OrderByDescending(x => x.totalPayable);
+        return Ok(summary);
+    }
+
+    [HttpGet("revenue-by-period")]
+    [Authorize(Policy = Policies.RequireOps)]
+    public async Task<IActionResult> RevenueByPeriod([FromQuery] Guid? labId, [FromQuery] DateTime? fromUtc, [FromQuery] DateTime? toUtc, [FromQuery] string period = "week", CancellationToken ct = default)
+    {
+        var from = fromUtc ?? DateTime.UtcNow.AddMonths(-3); var to = toUtc ?? DateTime.UtcNow;
+        var txQuery = db.Set<FinancialTransaction>().AsNoTracking()
+            .Where(x => x.ConfirmedAtUtc >= from && x.ConfirmedAtUtc <= to && x.Type == "Receipt");
+        var receipts = await txQuery.ToListAsync(ct);
+        var grouped = period.ToLower() switch
+        {
+            "day" => receipts.GroupBy(x => x.ConfirmedAtUtc.Date),
+            "month" => receipts.GroupBy(x => new DateTime(x.ConfirmedAtUtc.Year, x.ConfirmedAtUtc.Month, 1)),
+            _ => receipts.GroupBy(x => System.Globalization.CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(x.ConfirmedAtUtc, System.Globalization.CalendarWeekRule.FirstDay, DayOfWeek.Monday) > 0
+                ? x.ConfirmedAtUtc.Date.AddDays(-(int)x.ConfirmedAtUtc.DayOfWeek + 1) : x.ConfirmedAtUtc.Date)
+        };
+        var data = grouped.Select(g => new { period = g.Key.ToString("yyyy-MM-dd"), total = g.Sum(x => x.Amount), count = g.Count() }).OrderBy(x => x.period);
+        return Ok(data);
+    }
+
     private async Task<IActionResult> ChangePayable(Guid id, string? reference, CancellationToken ct)
     {
         var actor = User.GetCustomerId(); if (actor is null) return Forbid();
