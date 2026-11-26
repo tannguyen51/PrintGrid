@@ -39,6 +39,7 @@ const PRIMARY: Partial<Record<Role, NavLink[]>> = {
     { label: 'Hàng đợi sản xuất', href: '/lab/queue' },
     { label: 'Máy in xưởng', href: '/lab/machines' },
     { label: 'Lịch máy & Điểm', href: '/lab/timeline' },
+    { label: 'Thống kê & Thu nhập', href: '/lab/finance' },
   ],
   LabOperator: [
     { label: 'Hàng đợi sản xuất', href: '/lab/queue' },

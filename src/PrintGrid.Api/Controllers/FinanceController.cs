@@ -35,10 +35,12 @@ public sealed class FinanceController(PrintGridDbContext db) : ControllerBase
                           select new { Job = job, Item = item }).ToListAsync(ct);
         foreach (var row in rows)
         {
-            var gross = decimal.Round(row.Item.LineTotal.Amount * row.Job.Quantity / row.Item.Quantity * 0.70m, 2);
-            var deduction = row.Job.CostBearer == CostBearer.Lab ? gross : 0m;
+            var gross = LabRevenueShare.Calculate(row.Item.LineTotal.Amount, row.Item.Quantity, row.Job.Quantity).LabAmount;
+            var deduction = row.Job.CostBearer == CostBearer.Lab
+                && (row.Job.FaultLabId ?? row.Job.LabId) == row.Job.LabId ? gross : 0m;
+            // The producer receives the payable; another lab's fault must not remove this producer's income.
             db.Set<LabPayable>().Add(LabPayable.Create(row.Job.Id, row.Item.OrderId,
-                row.Job.FaultLabId ?? row.Job.LabId!.Value, gross, deduction,
+                row.Job.LabId!.Value, gross, deduction,
                 row.Item.UnitPrice.Currency, row.Job.CompletedAtUtc ?? DateTime.UtcNow));
         }
         await db.SaveChangesAsync(ct);
