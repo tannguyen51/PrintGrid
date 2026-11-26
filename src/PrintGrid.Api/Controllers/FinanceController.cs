@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PrintGrid.Api.Authorization;
+using PrintGrid.Api.Finance;
 using PrintGrid.Infrastructure.Shared.Persistence;
 using PrintGrid.Modules.Analytics.Domain.Entities;
 using PrintGrid.Modules.Customer.Domain.Entities;
@@ -28,23 +29,31 @@ public sealed class FinanceController(PrintGridDbContext db) : ControllerBase
     [Authorize(Policy = Policies.RequireOps)]
     public async Task<IActionResult> SyncPayables(CancellationToken ct)
     {
-        var known = await db.Set<LabPayable>().Select(x => x.JobId).ToListAsync(ct);
         var rows = await (from job in db.Set<Job>().AsNoTracking()
                           join item in db.Set<OrderItem>().AsNoTracking() on job.OrderItemId equals item.Id
-                          where job.Status == JobStatus.Completed && job.LabId != null && !known.Contains(job.Id)
+                          where job.Status == JobStatus.Completed && job.LabId != null
                           select new { Job = job, Item = item }).ToListAsync(ct);
+        var calculator = await JobEarningsCalculator.LoadAsync(db, rows.Select(r => r.Item.Id).Distinct().ToList(), ct);
+        var jobIds = rows.Select(r => r.Job.Id).ToList();
+        var existing = await db.Set<LabPayable>().Where(p => jobIds.Contains(p.JobId)).ToDictionaryAsync(p => p.JobId, ct);
+        var created = 0;
+        var corrected = 0;
         foreach (var row in rows)
         {
-            var gross = LabRevenueShare.Calculate(row.Item.LineTotal.Amount, row.Item.Quantity, row.Job.Quantity).LabAmount;
-            var deduction = row.Job.CostBearer == CostBearer.Lab
-                && (row.Job.FaultLabId ?? row.Job.LabId) == row.Job.LabId ? gross : 0m;
+            var earnings = calculator.Calculate(row.Job);
+            if (existing.TryGetValue(row.Job.Id, out var payable))
+            {
+                if (payable.ReconcileUnpaidDeduction(earnings.DeductionAmount)) corrected++;
+                continue;
+            }
             // The producer receives the payable; another lab's fault must not remove this producer's income.
             db.Set<LabPayable>().Add(LabPayable.Create(row.Job.Id, row.Item.OrderId,
-                row.Job.LabId!.Value, gross, deduction,
+                row.Job.LabId!.Value, earnings.GrossAmount, earnings.DeductionAmount,
                 row.Item.UnitPrice.Currency, row.Job.CompletedAtUtc ?? DateTime.UtcNow));
+            created++;
         }
         await db.SaveChangesAsync(ct);
-        return Ok(new { created = rows.Count });
+        return Ok(new { created, corrected });
     }
 
     [HttpGet("lab-payables")]
@@ -99,6 +108,17 @@ public sealed class FinanceController(PrintGridDbContext db) : ControllerBase
         var actor = User.GetCustomerId(); if (actor is null) return Forbid();
         var payable = await db.Set<LabPayable>().SingleOrDefaultAsync(x => x.Id == id, ct);
         if (payable is null) return NotFound();
+        if (payable.Status != "Paid")
+        {
+            var job = await db.Set<Job>().AsNoTracking().SingleOrDefaultAsync(j => j.Id == payable.JobId, ct);
+            if (job is null) return Conflict(new { error = new { code = "conflict", message = "Không tìm thấy job của khoản công nợ." } });
+            var calculator = await JobEarningsCalculator.LoadAsync(db, [job.OrderItemId], ct);
+            if (payable.ReconcileUnpaidDeduction(calculator.Calculate(job).DeductionAmount))
+            {
+                await db.SaveChangesAsync(ct);
+                return Conflict(new { error = new { code = "conflict", message = "Tiền công in lại đã được cập nhật. Vui lòng kiểm tra số tiền mới và duyệt lại trước khi chi." } });
+            }
+        }
         var result = reference is null ? payable.Approve(actor.Value, DateTime.UtcNow) : payable.MarkPaid(actor.Value, reference, DateTime.UtcNow);
         if (result.IsFailure) return Conflict(new { error = new { result.Error.Code, result.Error.Message } });
         await db.SaveChangesAsync(ct); return Ok(payable);

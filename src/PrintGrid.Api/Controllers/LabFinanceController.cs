@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PrintGrid.Api.Authorization;
+using PrintGrid.Api.Finance;
 using PrintGrid.Infrastructure.Shared.Persistence;
 using PrintGrid.Modules.Analytics.Domain.Entities;
 using PrintGrid.Modules.Customer.Domain.Entities;
@@ -61,20 +62,21 @@ public sealed class LabFinanceController(PrintGridDbContext db) : ControllerBase
                               Currency = item.UnitPrice.Currency, Payable = payable
                           }).ToListAsync(ct);
 
+        var calculator = await JobEarningsCalculator.LoadAsync(db, rows.Select(r => r.Job.OrderItemId).Distinct().ToList(), ct);
         var prices = rows.Select(row =>
         {
             var split = LabRevenueShare.Calculate(row.LineTotal, row.LineQuantity, row.Job.Quantity);
             var ownFault = row.Job.CostBearer == CostBearer.Lab
                 && (row.Job.FaultLabId ?? row.Job.LabId) == lab.Id;
-            var gross = row.Payable?.GrossAmount ?? split.LabAmount;
-            var deduction = row.Payable?.DeductionAmount ?? (ownFault ? gross : 0m);
+            var earnings = calculator.Calculate(row.Job);
+            var needsCorrection = row.Payable is not null && row.Payable.DeductionAmount != earnings.DeductionAmount;
             return new LabFinanceJobDto(row.Job.Id, row.OrderId, row.OrderNumber,
                 row.Job.Specification.MaterialCode, row.Job.Specification.Technology.ToString(),
                 row.Job.ReprintIndex > 0 ? (ownFault ? "LabReprint" : "PaidReprint") : "Standard",
                 row.Job.Quantity, row.Job.Status.ToString(), row.Job.InspectedAtUtc ?? row.Job.CompletedAtUtc,
-                row.Job.CreatedAt, split.JobValue, gross, split.HubAmount, deduction,
-                gross - deduction, row.Currency,
-                row.Payable?.Status ?? (row.Job.Status == JobStatus.Completed ? "PendingSync" : "Estimated"),
+                row.Job.CreatedAt, split.JobValue, earnings.GrossAmount, split.HubAmount, earnings.DeductionAmount,
+                earnings.NetAmount, row.Currency,
+                needsCorrection ? "PendingSync" : row.Payable?.Status ?? (row.Job.Status == JobStatus.Completed ? "PendingSync" : "Estimated"),
                 row.Payable?.PaidAtUtc, row.Payable?.PaymentReference);
         }).ToList();
 

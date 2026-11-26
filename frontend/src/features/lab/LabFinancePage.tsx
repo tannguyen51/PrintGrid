@@ -4,7 +4,7 @@ import {
   Tab, Tabs, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination,
   TableRow, TextField, Typography,
 } from '@mui/material'
-import { AccountBalanceWalletOutlined, Inventory2Outlined, PaymentsOutlined, RefreshRounded } from '@mui/icons-material'
+import { AccountBalanceWalletOutlined, Inventory2Outlined, PaymentsOutlined } from '@mui/icons-material'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { PageBackButton } from '../../shared/components/PageBackButton'
 import { JOB_LABELS } from '../jobs/jobTypes'
@@ -61,8 +61,6 @@ export default function LabFinancePage() {
           <Typography variant="h1" sx={{ fontSize: '1.9rem', fontWeight: 800 }}>Thống kê & Thu nhập Lab</Typography>
           <Typography color="text.secondary">{report.data?.labName ?? 'Xưởng của bạn'} · Sản lượng, thu nhập và bảng giá từng job.</Typography>
         </Box></Stack>
-        <Button startIcon={<RefreshRounded />} disabled={report.isFetching || prices.isFetching || invalidRange}
-          onClick={() => { void report.refetch(); if (tab === 1) void prices.refetch() }} sx={{ alignSelf: 'flex-start' }}>Làm mới</Button>
       </Stack>
 
       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
@@ -136,11 +134,15 @@ export default function LabFinancePage() {
         <TextField type="number" label="Giá trị job để xem cách chia (VND)" value={example} onChange={e => setExample(e.target.value)}
           inputProps={{ min: 0, step: 1000 }} error={!exampleValid} helperText={!exampleValid ? 'Nhập số tiền không âm hợp lệ.' : 'Ví dụ minh họa, không thay đổi giá hoặc công nợ.'} sx={{ width: { xs: '100%', sm: 360 }, mb: 2 }} />
         <TableContainer><Table size="small" aria-label="Quy tắc bảng giá theo loại job"><TableHead><TableRow>
-          <TableCell>Loại job</TableCell><TableCell>Phần Lab 70%</TableCell><TableCell>Khấu trừ</TableCell><TableCell>Lab thực nhận</TableCell>
+          <TableCell>Loại job</TableCell><TableCell>Cách tính tiền công</TableCell><TableCell>Lab được hưởng</TableCell>
         </TableRow></TableHead><TableBody>
-          {[['In theo đơn / in lại do khách đặt', false], ['In lại do Hub hoặc hệ thống chịu chi phí', false], ['In lại do chính Lab này chịu lỗi', true]].map(([label, deducted]) => <TableRow key={String(label)}>
-            <TableCell>{label}</TableCell><TableCell>{exampleValid ? money(Math.round(exampleValue * labRate * 100) / 100) : '—'}</TableCell>
-            <TableCell>{deducted ? 'Toàn bộ phần Lab được hưởng' : 'Không'}</TableCell><TableCell sx={{ fontWeight: 700 }}>{exampleValid ? money(deducted ? 0 : Math.round(exampleValue * labRate * 100) / 100) : '—'}</TableCell>
+          {[
+            ['In theo đơn / in lại do khách đặt', 'Theo giá trị job đã chốt', false],
+            ['In lại do Hub hoặc hệ thống chịu chi phí', 'Theo giá trị job đã chốt', false],
+            ['Lab tự in lại, chưa ghi nhận tiền công gốc', 'Nhận tiền công một lần khi nghiệm thu đạt; Lab tự chịu chi phí in lại', false],
+            ['Lab tự in lại, đã ghi nhận đủ tiền công gốc', 'Tiền công đã nằm ở job gốc; không cộng thêm cho lần in lại', true],
+          ].map(([label, rule, deducted]) => <TableRow key={String(label)}>
+            <TableCell>{label}</TableCell><TableCell>{rule}</TableCell><TableCell sx={{ fontWeight: 700 }}>{exampleValid ? money(deducted ? 0 : Math.round(exampleValue * labRate * 100) / 100) : '—'}</TableCell>
           </TableRow>)}
         </TableBody></Table></TableContainer>
       </Paper>}
@@ -156,20 +158,23 @@ export default function LabFinancePage() {
           </Stack>
           {tab === 1 && prices.isError && <Alert severity="error">{getApiErrorMessage(prices.error, 'Không tải được bảng giá job.')}</Alert>}
         </Stack>
-        <TableContainer><Table aria-label={tab === 0 ? 'Chi tiết công nợ Lab' : 'Bảng giá job của Lab'} sx={{ minWidth: 1100 }}>
+        <TableContainer><Table aria-label={tab === 0 ? 'Chi tiết công nợ Lab' : 'Bảng giá job của Lab'} sx={{ minWidth: 900 }}>
           <TableHead><TableRow><TableCell>Job / Đơn hàng</TableCell><TableCell>Loại job</TableCell><TableCell align="right">Số lượng</TableCell>
-            <TableCell align="right">Giá trị job</TableCell><TableCell align="right">Lab 70%</TableCell><TableCell align="right">Hub 30%</TableCell>
+            <TableCell align="right">Giá trị job</TableCell>
             <TableCell align="right">Khấu trừ</TableCell><TableCell align="right">Lab được hưởng</TableCell><TableCell>Thanh toán</TableCell>
           </TableRow></TableHead>
-          <TableBody>{active.isLoading ? <TableRow><TableCell colSpan={9} sx={{ textAlign: 'center', py: 5 }}><CircularProgress aria-label="Đang tải danh sách job" /></TableCell></TableRow>
-            : active.isError || (tab === 0 && invalidRange) ? <TableRow><TableCell colSpan={9}>Chưa thể hiển thị danh sách. Vui lòng kiểm tra bộ lọc hoặc thử tải lại.</TableCell></TableRow>
-            : !active.data?.items.length ? <TableRow><TableCell colSpan={9} sx={{ py: 5, textAlign: 'center' }}>{tab === 0 ? 'Chưa có job đã nghiệm thu phù hợp bộ lọc.' : 'Chưa có job được giao cho Lab.'}</TableCell></TableRow>
+          <TableBody>{active.isLoading ? <TableRow><TableCell colSpan={7} sx={{ textAlign: 'center', py: 5 }}><CircularProgress aria-label="Đang tải danh sách job" /></TableCell></TableRow>
+            : active.isError || (tab === 0 && invalidRange) ? <TableRow><TableCell colSpan={7}>Chưa thể hiển thị danh sách. Vui lòng kiểm tra bộ lọc hoặc thử tải lại.</TableCell></TableRow>
+            : !active.data?.items.length ? <TableRow><TableCell colSpan={7} sx={{ py: 5, textAlign: 'center' }}>{tab === 0 ? 'Chưa có job đã nghiệm thu phù hợp bộ lọc.' : 'Chưa có job được giao cho Lab.'}</TableCell></TableRow>
             : active.data.items.map(row => <TableRow key={row.jobId} hover>
               <TableCell><Typography fontWeight={700}>{row.orderNumber}</Typography><Typography variant="body2" color="text.secondary" title={row.jobId}>Job #{row.jobId.slice(0, 8)}</Typography>
                 <Typography variant="body2" color="text.secondary">{row.completedAtUtc ? `Nghiệm thu ${date(row.completedAtUtc)}` : (JOB_LABELS as Record<string, string>)[row.jobStatus] ?? row.jobStatus}</Typography></TableCell>
-              <TableCell>{jobType[row.jobType]}<Typography variant="body2" color="text.secondary">{row.technology} · {row.materialCode}</Typography></TableCell>
+              <TableCell>{jobType[row.jobType]}<Typography variant="body2" color="text.secondary">{row.technology} · {row.materialCode}</Typography>
+                {row.jobType === 'LabReprint' && <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 220 }}>
+                  {row.deductionAmount > 0 ? 'Trừ phần tiền công đã ghi nhận ở lần trước' : 'Nhận tiền công gốc một lần khi đạt'}
+                </Typography>}
+              </TableCell>
               <TableCell align="right">{number(row.quantity)}</TableCell><TableCell align="right">{money(row.jobValue)}</TableCell>
-              <TableCell align="right">{money(row.labAmount)}</TableCell><TableCell align="right">{money(row.hubAmount)}</TableCell>
               <TableCell align="right">{money(row.deductionAmount)}</TableCell><TableCell align="right" sx={{ fontWeight: 800 }}>{money(row.netAmount)}</TableCell>
               <TableCell><Chip size="small" color={payment[row.paymentStatus]?.color ?? 'default'} label={payment[row.paymentStatus]?.label ?? row.paymentStatus} />
                 {row.paidAtUtc && <Typography variant="body2" sx={{ mt: .75 }}>{date(row.paidAtUtc)}</Typography>}

@@ -34,6 +34,18 @@ public sealed class LabPayable : Entity<Guid>
         Status = "Approved"; ApprovedBy = actor; ApprovedAtUtc = now; return Result.Success();
     }
 
+    /// <summary>Reconcile an unpaid reprint fee; a changed amount must be approved again.</summary>
+    public bool ReconcileUnpaidDeduction(decimal deduction)
+    {
+        if (deduction < 0m || deduction > GrossAmount) throw new ArgumentOutOfRangeException(nameof(deduction));
+        if (Status == "Paid" || DeductionAmount == deduction) return false;
+        DeductionAmount = deduction;
+        Status = "Eligible";
+        ApprovedBy = null;
+        ApprovedAtUtc = null;
+        return true;
+    }
+
     public Result MarkPaid(Guid actor, string reference, DateTime now)
     {
         if (Status != "Approved") return Result.Failure(Error.Conflict("Khoản công nợ phải được duyệt trước khi chi."));

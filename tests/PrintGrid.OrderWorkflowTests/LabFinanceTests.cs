@@ -145,7 +145,7 @@ public sealed class LabFinanceTests
     }
 
     [Fact]
-    public async Task Reprint_deductions_apply_to_the_at_fault_producer_and_another_producer_gets_paid()
+    public async Task Reprints_without_prior_earned_fees_pay_both_the_at_fault_and_other_producers()
     {
         await using var db = Database();
         var owner = Guid.NewGuid();
@@ -161,12 +161,185 @@ public sealed class LabFinanceTests
         db.Entry(other).Property(x => x.FaultLabId).CurrentValue = Guid.NewGuid();
         await db.SaveChangesAsync();
         var before = await Report(db, owner);
-        before.Summary.Deductions.Should().Be(70_000m);
-        before.Summary.TotalIncome.Should().Be(70_000m);
+        before.Summary.Deductions.Should().Be(0m);
+        before.Summary.TotalIncome.Should().Be(140_000m);
         await new FinanceController(db).SyncPayables(default);
         var after = await Report(db, owner);
         after.Summary.TotalIncome.Should().Be(before.Summary.TotalIncome);
         (await db.Set<LabPayable>().ToListAsync()).Should().OnlyContain(x => x.LabId == lab.Id);
+    }
+
+    [Fact]
+    public async Task Failed_original_and_failed_reprint_still_earn_the_original_fee_once_on_success()
+    {
+        await using var db = Database();
+        var owner = Guid.NewGuid();
+        var lab = Lab.Onboard("Lab A", "HCM", 1, owner); db.Add(lab);
+        var original = await SeedJob(db, lab.Id, 2, 2, JobStatus.Failed);
+        var failed = await Reprint(db, original, lab.Id, JobStatus.Failed);
+        var success = await Reprint(db, failed, lab.Id, JobStatus.Completed);
+
+        var before = await Report(db, owner);
+        before.Summary.TotalIncome.Should().Be(140_000m);
+        before.Items.Single().JobId.Should().Be(success.Id);
+        before.Items.Single().DeductionAmount.Should().Be(0m);
+        await new FinanceController(db).SyncPayables(default);
+        await new FinanceController(db).SyncPayables(default);
+        var payable = await db.Set<LabPayable>().SingleAsync();
+        payable.JobId.Should().Be(success.Id);
+        payable.NetAmount.Should().Be(140_000m);
+    }
+
+    [Theory]
+    [InlineData("unsynced")]
+    [InlineData("Eligible")]
+    [InlineData("Approved")]
+    [InlineData("Paid")]
+    public async Task Already_earned_original_fee_is_not_added_again_by_a_lab_funded_reprint(string status)
+    {
+        await using var db = Database();
+        var owner = Guid.NewGuid();
+        var lab = Lab.Onboard("Lab A", "HCM", 1, owner); db.Add(lab);
+        var original = await SeedJob(db, lab.Id, 2, 2, JobStatus.Completed, Now.AddDays(-2));
+        if (status != "unsynced")
+        {
+            var payable = LabPayable.Create(original.Id, Guid.NewGuid(), lab.Id, 140_000m, 0m, "VND", Now.AddDays(-2));
+            if (status is "Approved" or "Paid") payable.Approve(owner, Now);
+            if (status == "Paid") payable.MarkPaid(owner, "ORIGINAL-FEE", Now);
+            db.Add(payable); await db.SaveChangesAsync();
+        }
+        var reprint = await Reprint(db, original, lab.Id, JobStatus.Completed);
+        var before = await Report(db, owner);
+        before.Summary.TotalIncome.Should().Be(140_000m);
+        before.Items.Single(x => x.JobId == reprint.Id).NetAmount.Should().Be(0m);
+        // Historical earnings outside the date filter must still block an extra payment.
+        var today = await Report(db, owner, DateOnly.FromDateTime(Now), DateOnly.FromDateTime(Now));
+        today.Summary.TotalIncome.Should().Be(0m);
+        await new FinanceController(db).SyncPayables(default);
+        var after = await Report(db, owner);
+        after.Summary.TotalIncome.Should().Be(before.Summary.TotalIncome);
+        after.Summary.TotalReceived.Should().Be(status == "Paid" ? 140_000m : 0m);
+        (await db.Set<LabPayable>().ToListAsync()).Sum(x => x.NetAmount).Should().Be(140_000m);
+    }
+
+    [Fact]
+    public async Task Split_reprint_children_share_the_first_success_fee_without_consuming_another_branchs_earnings()
+    {
+        await using var db = Database();
+        var owner = Guid.NewGuid();
+        var lab = Lab.Onboard("Lab A", "HCM", 1, owner); db.Add(lab);
+        var root = await SeedJob(db, lab.Id, 6, 6, JobStatus.Pending);
+        var branches = root.Split([2, 4]).Value;
+        foreach (var child in branches)
+        {
+            child.AssignTo(lab.Id, Guid.NewGuid(), Now, Now.AddHours(1), 1m);
+            db.Add(child);
+        }
+        db.Entry(branches[0]).Property(x => x.Status).CurrentValue = JobStatus.Completed;
+        db.Entry(branches[0]).Property(x => x.CompletedAtUtc).CurrentValue = Now;
+        db.Entry(branches[1]).Property(x => x.Status).CurrentValue = JobStatus.Failed;
+        await db.SaveChangesAsync();
+        var replacement = await Reprint(db, branches[1], lab.Id, JobStatus.Pending);
+        var children = replacement.Split([1, 3]).Value;
+        foreach (var child in children)
+        {
+            child.AssignTo(lab.Id, Guid.NewGuid(), Now, Now.AddHours(1), 1m);
+            db.Add(child);
+            db.Entry(child).Property(x => x.Status).CurrentValue = JobStatus.Completed;
+            db.Entry(child).Property(x => x.CompletedAtUtc).CurrentValue = Now;
+        }
+        await db.SaveChangesAsync();
+        var report = await Report(db, owner);
+        report.Summary.CompletedProducts.Should().Be(6);
+        report.Summary.TotalIncome.Should().Be(420_000m);
+        await new FinanceController(db).SyncPayables(default);
+        (await db.Set<LabPayable>().ToListAsync()).Sum(x => x.NetAmount).Should().Be(420_000m);
+    }
+
+    [Fact]
+    public async Task Split_replacements_of_an_already_earned_attempt_do_not_duplicate_the_fee()
+    {
+        await using var db = Database();
+        var owner = Guid.NewGuid();
+        var lab = Lab.Onboard("Lab A", "HCM", 1, owner); db.Add(lab);
+        var original = await SeedJob(db, lab.Id, 4, 4, JobStatus.Completed);
+        var replacement = await Reprint(db, original, lab.Id, JobStatus.Pending);
+        foreach (var child in replacement.Split([1, 3]).Value)
+        {
+            child.AssignTo(lab.Id, Guid.NewGuid(), Now, Now.AddHours(1), 1m);
+            db.Add(child);
+            db.Entry(child).Property(x => x.Status).CurrentValue = JobStatus.Completed;
+            db.Entry(child).Property(x => x.CompletedAtUtc).CurrentValue = Now;
+        }
+        await db.SaveChangesAsync();
+        var report = await Report(db, owner);
+        report.Summary.TotalIncome.Should().Be(280_000m);
+        report.Items.Where(x => x.JobId != original.Id).Should().OnlyContain(x => x.NetAmount == 0m);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Sync_repairs_old_unpaid_zero_reprint_fees_and_requires_approval_again(bool approved)
+    {
+        await using var db = Database();
+        var owner = Guid.NewGuid();
+        var lab = Lab.Onboard("Lab A", "HCM", 1, owner); db.Add(lab);
+        var original = await SeedJob(db, lab.Id, 2, 2, JobStatus.Failed);
+        var reprint = await Reprint(db, original, lab.Id, JobStatus.Completed);
+        var old = LabPayable.Create(reprint.Id, Guid.NewGuid(), lab.Id, 140_000m, 140_000m, "VND", Now);
+        if (approved) old.Approve(owner, Now);
+        db.Add(old); await db.SaveChangesAsync();
+        var before = await Report(db, owner);
+        before.Summary.TotalIncome.Should().Be(140_000m);
+        before.Items.Single().PaymentStatus.Should().Be("PendingSync");
+        await new FinanceController(db).SyncPayables(default);
+        old.NetAmount.Should().Be(140_000m);
+        old.Status.Should().Be("Eligible");
+        old.ApprovedBy.Should().BeNull();
+        old.ApprovedAtUtc.Should().BeNull();
+        (await db.Set<LabPayable>().CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task A_stale_zero_fee_cannot_be_paid_without_reviewing_the_corrected_amount()
+    {
+        await using var db = Database();
+        var owner = Guid.NewGuid();
+        var lab = Lab.Onboard("Lab A", "HCM", 1, owner); db.Add(lab);
+        var original = await SeedJob(db, lab.Id, 2, 2, JobStatus.Failed);
+        var reprint = await Reprint(db, original, lab.Id, JobStatus.Completed);
+        var payable = LabPayable.Create(reprint.Id, Guid.NewGuid(), lab.Id, 140_000m, 140_000m, "VND", Now);
+        payable.Approve(owner, Now);
+        db.Add(payable); await db.SaveChangesAsync();
+        var controller = new FinanceController(db) { ControllerContext = Controller(db, owner).ControllerContext };
+        (await controller.Pay(payable.Id, new PayLabRequest("DO-NOT-PAY-STALE-AMOUNT"), default))
+            .Should().BeOfType<ConflictObjectResult>();
+        payable.Status.Should().Be("Eligible");
+        payable.NetAmount.Should().Be(140_000m);
+        payable.PaymentReference.Should().BeNull();
+        (await controller.Approve(payable.Id, default)).Should().BeOfType<OkObjectResult>();
+        (await controller.Pay(payable.Id, new PayLabRequest("CORRECTED-FEE"), default)).Should().BeOfType<OkObjectResult>();
+        (await Report(db, owner)).Summary.TotalReceived.Should().Be(140_000m);
+    }
+
+    [Fact]
+    public async Task System_funded_reprints_keep_their_separate_fee_and_paid_history_is_immutable()
+    {
+        await using var db = Database();
+        var owner = Guid.NewGuid();
+        var lab = Lab.Onboard("Lab A", "HCM", 1, owner); db.Add(lab);
+        var original = await SeedJob(db, lab.Id, 1, 1, JobStatus.Completed);
+        var paid = LabPayable.Create(original.Id, Guid.NewGuid(), lab.Id, 70_000m, 10_000m, "VND", Now);
+        paid.Approve(owner, Now); paid.MarkPaid(owner, "FROZEN-RECEIPT", Now);
+        db.Add(paid); await db.SaveChangesAsync();
+        await Reprint(db, original, lab.Id, JobStatus.Completed, CostBearer.System);
+        await new FinanceController(db).SyncPayables(default);
+        var report = await Report(db, owner);
+        report.Summary.TotalIncome.Should().Be(130_000m);
+        report.Summary.TotalReceived.Should().Be(60_000m);
+        paid.DeductionAmount.Should().Be(10_000m);
+        paid.PaymentReference.Should().Be("FROZEN-RECEIPT");
     }
 
     [Fact]
@@ -254,6 +427,19 @@ public sealed class LabFinanceTests
         db.Entry(job).Property(x => x.Status).CurrentValue = status;
         if (status == JobStatus.Completed) db.Entry(job).Property(x => x.CompletedAtUtc).CurrentValue = completedAt ?? Now;
         await db.SaveChangesAsync(); return job;
+    }
+
+    private static async Task<Job> Reprint(PrintGridDbContext db, Job original, Guid labId,
+        JobStatus status, CostBearer costBearer = CostBearer.Lab)
+    {
+        var reprint = Job.CreateUrgentReprint(original, original.ReprintIndex + 1,
+            faultLabId: labId, costBearer: costBearer, createdAtUtc: Now);
+        reprint.AssignTo(labId, Guid.NewGuid(), Now, Now.AddHours(1), 1m);
+        db.Add(reprint);
+        db.Entry(reprint).Property(x => x.Status).CurrentValue = status;
+        if (status == JobStatus.Completed) db.Entry(reprint).Property(x => x.CompletedAtUtc).CurrentValue = Now;
+        await db.SaveChangesAsync();
+        return reprint;
     }
     private static PrintGridDbContext Database()
     {
