@@ -41,8 +41,33 @@ export function CustomerHomeDashboard() {
               <Typography sx={{ mt: 1.25, fontSize: { xs: '0.95rem', md: '1.05rem' }, color: 'rgba(255,255,255,.78)', maxWidth: 580 }}>Tải thiết kế lên để nhận báo giá, chọn model trong thư viện hoặc tiếp tục theo dõi đơn đang sản xuất.</Typography>
             </Box>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-              <Button variant="contained" size="large" startIcon={<UploadFileRounded />} onClick={() => navigate('/order/new')} sx={{ bgcolor: '#fff', color: '#4933B8', fontWeight: 800, px: 3, '&:hover': { bgcolor: '#F7F4FF' } }}>Bắt đầu đơn in</Button>
-              <Button variant="outlined" size="large" startIcon={<LibraryBooksRounded />} onClick={() => navigate('/models')} sx={{ color: '#fff', borderColor: 'rgba(255,255,255,.45)', fontWeight: 700, '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,.08)' } }}>Chọn từ thư viện</Button>
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={<UploadFileRounded />}
+                onClick={() => navigate('/order/new')}
+                sx={{
+                  background: '#fff !important', color: '#4933B8 !important', fontWeight: 800, px: 3,
+                  '& .MuiButton-startIcon': { color: 'inherit' },
+                  '&:hover': { background: '#F7F4FF !important', boxShadow: '0 10px 28px rgba(25, 15, 85, .25)' },
+                }}
+              >
+                Bắt đầu đơn in
+              </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                startIcon={<LibraryBooksRounded />}
+                onClick={() => navigate('/models')}
+                sx={{
+                  background: 'rgba(255,255,255,.08) !important', color: '#fff !important',
+                  borderColor: 'rgba(255,255,255,.55) !important', fontWeight: 700,
+                  '& .MuiButton-startIcon': { color: 'inherit' },
+                  '&:hover': { borderColor: '#fff !important', background: 'rgba(255,255,255,.16) !important' },
+                }}
+              >
+                Chọn từ thư viện
+              </Button>
             </Stack>
           </Stack>
         </Paper>
