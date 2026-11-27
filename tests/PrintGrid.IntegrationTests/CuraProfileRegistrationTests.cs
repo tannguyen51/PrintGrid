@@ -15,6 +15,7 @@ using PrintGrid.Modules.Customer.Application.Abstractions;
 using PrintGrid.Modules.Customer.Application.Quotes;
 using PrintGrid.Modules.Customer.Domain.Repositories;
 using PrintGrid.Modules.Scheduling.Domain.Entities;
+using PrintGrid.Modules.Scheduling.Application.Abstractions;
 using PrintGrid.Modules.Scheduling.Domain.Enums;
 using PrintGrid.Modules.Scheduling.Domain.ValueObjects;
 using PrintGrid.Modules.Scheduling.Infrastructure.Slicing;
@@ -86,7 +87,7 @@ public class CuraProfileRegistrationTests
         await db.SaveChangesAsync();
 
         var registry = new MachineProfileRegistry(db, configuration);
-        var controller = new CuraProfilesController(db, registry, configuration, Substitute.For<IAuditLogWriter>())
+        var controller = new CuraProfilesController(db, registry, Substitute.For<ISchedulingRegistryQueryService>(), configuration, Substitute.For<IAuditLogWriter>())
         {
             ControllerContext = new ControllerContext
             {

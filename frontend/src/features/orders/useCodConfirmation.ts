@@ -14,7 +14,7 @@ export function useConfirmCodReceipt(orderId: string) {
       const { data } = await apiClient.post(`/orders/${orderId}/cod-confirm`, { accepted })
       return data
     },
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] })
       queryClient.invalidateQueries({ queryKey: ['order-timeline', orderId] })
     },

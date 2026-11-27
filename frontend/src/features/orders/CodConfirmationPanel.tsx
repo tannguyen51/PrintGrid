@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
   Box,
@@ -19,13 +19,14 @@ import {
 } from '@mui/icons-material'
 import { useConfirmCodReceipt } from './useCodConfirmation'
 import type { Order } from '../../shared/types/order'
+import { getApiErrorMessage } from '../../shared/api/apiError'
 
 const fmtDateTime = (d: string | null | undefined) =>
   d ? new Date(d).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—'
 
-function getTimeRemaining(deadline: string | null | undefined) {
+function getTimeRemaining(deadline: string | null | undefined, now: number) {
   if (!deadline) return { hours: 0, minutes: 0, seconds: 0, expired: false, known: false }
-  const diff = new Date(deadline).getTime() - Date.now()
+  const diff = new Date(deadline).getTime() - now
   if (diff <= 0) return { hours: 0, minutes: 0, seconds: 0, expired: true, known: true }
   return {
     hours: Math.floor(diff / 3_600_000),
@@ -45,12 +46,19 @@ function getTimeRemaining(deadline: string | null | undefined) {
 export function CodConfirmationPanel({ order }: { order: Order }) {
   const confirmMutation = useConfirmCodReceipt(order.id)
   const [dialog, setDialog] = useState<'none' | 'confirm' | 'reject'>('none')
+  const [now, setNow] = useState(Date.now)
 
   const isCod = (order.paymentMethod ?? 'COD').toUpperCase() === 'COD'
+  useEffect(() => {
+    if (!isCod || order.status !== 'QualityCheck' || order.isCodConfirmed || !order.codConfirmationDeadlineUtc) return
+    setNow(Date.now())
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [isCod, order.id, order.status, order.isCodConfirmed, order.codConfirmationDeadlineUtc])
   // Only relevant while the parcel is ready at the hub, before the waybill is written.
   if (!isCod || order.status !== 'QualityCheck') return null
 
-  const t = getTimeRemaining(order.codConfirmationDeadlineUtc)
+  const t = getTimeRemaining(order.codConfirmationDeadlineUtc, now)
 
   if (order.isCodConfirmed) {
     return (
@@ -106,6 +114,7 @@ export function CodConfirmationPanel({ order }: { order: Order }) {
             </Box>
           )}
 
+          {!t.known && <Alert severity="info">Hub đang chuẩn bị yêu cầu xác nhận. Vui lòng chờ thông báo và hạn xác nhận của đơn.</Alert>}
           {t.expired ? (
             <Alert severity="error">
               Đã quá thời gian xác nhận. Đơn sẽ sớm bị hủy tự động và tiền cọc không hoàn lại. Liên hệ hỗ trợ nếu bạn vẫn muốn nhận.
@@ -116,7 +125,7 @@ export function CodConfirmationPanel({ order }: { order: Order }) {
                 Nếu không xác nhận trong thời gian quy định, đơn tự động hủy và <strong>tiền cọc không được hoàn lại</strong>.
               </Alert>
               {confirmMutation.isError && (
-                <Alert severity="error">Không xác nhận được. Vui lòng thử lại.</Alert>
+                <Alert severity="error">{getApiErrorMessage(confirmMutation.error, 'Không xử lý được yêu cầu COD. Vui lòng thử lại.')}</Alert>
               )}
               <Stack direction="row" spacing={2}>
                 <Button
@@ -124,7 +133,7 @@ export function CodConfirmationPanel({ order }: { order: Order }) {
                   color="success"
                   startIcon={<LocalShippingRounded />}
                   onClick={() => setDialog('confirm')}
-                  disabled={confirmMutation.isPending}
+                  disabled={confirmMutation.isPending || !t.known}
                   sx={{ flex: 1 }}
                 >
                   Xác nhận sẽ nhận hàng
@@ -134,7 +143,7 @@ export function CodConfirmationPanel({ order }: { order: Order }) {
                   color="error"
                   startIcon={<CancelRounded />}
                   onClick={() => setDialog('reject')}
-                  disabled={confirmMutation.isPending}
+                  disabled={confirmMutation.isPending || !t.known}
                   sx={{ flex: 1 }}
                 >
                   Từ chối nhận hàng
@@ -150,6 +159,8 @@ export function CodConfirmationPanel({ order }: { order: Order }) {
           {dialog === 'confirm' ? 'Xác nhận nhận hàng' : 'Từ chối nhận hàng'}
         </DialogTitle>
         <DialogContent>
+          {t.expired && <Alert severity="error" sx={{ mb: 2 }}>Đã quá hạn xác nhận COD. Yêu cầu này không thể tiếp tục.</Alert>}
+          {confirmMutation.isError && <Alert severity="error" sx={{ mb: 2 }}>{getApiErrorMessage(confirmMutation.error, 'Không xử lý được yêu cầu COD.')}</Alert>}
           {dialog === 'confirm' ? (
             <Alert severity="info">
               Sau khi xác nhận, hub sẽ ghi vận đơn và giao hàng. Bạn trả phần tiền còn lại khi nhận (COD).
@@ -165,7 +176,7 @@ export function CodConfirmationPanel({ order }: { order: Order }) {
           <Button
             variant="contained"
             color={dialog === 'confirm' ? 'success' : 'error'}
-            disabled={confirmMutation.isPending}
+            disabled={confirmMutation.isPending || t.expired || !t.known}
             onClick={() => void submit(dialog === 'confirm')}
             startIcon={confirmMutation.isPending ? <CircularProgress size={18} color="inherit" /> : (dialog === 'confirm' ? <LocalShippingRounded /> : <CancelRounded />)}
           >

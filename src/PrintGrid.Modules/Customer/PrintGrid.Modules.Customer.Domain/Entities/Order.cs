@@ -263,7 +263,7 @@ public class Order : AggregateRoot<Guid>
         {
             OrderStatus.Confirmed => next is OrderStatus.InProduction or OrderStatus.Cancelled,
             OrderStatus.InProduction => next is OrderStatus.QualityCheck or OrderStatus.Cancelled,
-            OrderStatus.QualityCheck => next is OrderStatus.Shipping or OrderStatus.InProduction,
+            OrderStatus.QualityCheck => next is OrderStatus.Shipping or OrderStatus.InProduction or OrderStatus.Cancelled,
             OrderStatus.Shipping => next is OrderStatus.Delivered,
             _ => false
         };
@@ -283,15 +283,17 @@ public class Order : AggregateRoot<Guid>
     /// Requests COD confirmation from the customer. Called when order enters QualityCheck status.
     /// Sets a 24-hour deadline for the customer to confirm they will receive the order.
     /// </summary>
-    public Result RequestCodConfirmation()
+    public Result RequestCodConfirmation(DateTime? nowUtc = null)
     {
+        if (!string.Equals(PaymentMethod, "COD", StringComparison.OrdinalIgnoreCase))
+            return Result.Failure(Error.Conflict("Đơn hàng không sử dụng thanh toán COD."));
         if (Status != OrderStatus.QualityCheck)
             return Result.Failure(Error.Conflict("COD confirmation can only be requested when order is in QualityCheck status."));
 
-        if (IsCodConfirmed)
-            return Result.Success(); // Already confirmed
+        if (IsCodConfirmed || CodConfirmationDeadlineUtc.HasValue)
+            return Result.Success(); // Preserve the original response window on retries.
 
-        var now = DateTime.UtcNow;
+        var now = nowUtc ?? DateTime.UtcNow;
         CodConfirmationRequestedAtUtc = now;
         CodConfirmationDeadlineUtc = now.AddHours(24);
         CodConfirmationRequestCount++;
@@ -301,13 +303,22 @@ public class Order : AggregateRoot<Guid>
     /// <summary>
     /// Customer confirms or rejects COD receipt. If rejected, the deposit is forfeited per BR-PAY-010.
     /// </summary>
-    public Result ConfirmCodReceipt(bool accepted, Guid? confirmedBy = null)
+    public Result ConfirmCodReceipt(bool accepted, Guid? confirmedBy = null, DateTime? nowUtc = null)
     {
+        if (confirmedBy.HasValue && confirmedBy.Value != CustomerId)
+            return Result.Failure(Error.NotFound("Order", Id));
         if (!string.Equals(PaymentMethod, "COD", StringComparison.OrdinalIgnoreCase))
             return Result.Failure(Error.Conflict("This order does not use COD payment method."));
 
-        if (Status != OrderStatus.QualityCheck && Status != OrderStatus.Shipping)
-            return Result.Failure(Error.Conflict("COD confirmation can only be processed in QualityCheck or Shipping status."));
+        if (Status == OrderStatus.Cancelled && !accepted) return Result.Success();
+        if (Status != OrderStatus.QualityCheck)
+            return Result.Failure(Error.Conflict("Chỉ xác nhận hoặc từ chối COD khi đơn còn chờ giao tại Hub."));
+        if (IsCodConfirmed)
+            return accepted ? Result.Success() : Result.Failure(Error.Conflict("Đơn đã được xác nhận nhận hàng. Vui lòng liên hệ hỗ trợ để thay đổi."));
+        if (!CodConfirmationDeadlineUtc.HasValue)
+            return Result.Failure(Error.Conflict("Đơn chưa có yêu cầu xác nhận COD. Vui lòng chờ thông báo từ Hub."));
+        if ((nowUtc ?? DateTime.UtcNow) >= CodConfirmationDeadlineUtc.Value)
+            return Result.Failure(Error.Conflict("Đã quá hạn xác nhận COD 24 giờ. Không thể xác nhận hoặc từ chối sau thời hạn."));
 
         if (accepted)
         {
@@ -316,22 +327,23 @@ public class Order : AggregateRoot<Guid>
         }
         else
         {
-            // Customer rejected — deposit is forfeited per BR-PAY-010
-            return Result.Failure(Error.Conflict(
-                $"Customer rejected COD receipt for order {OrderNumber}. Deposit of {DepositAmount:N0} {TotalPrice.Currency} is forfeited per BR-PAY-010."));
+            // Cancellation is a successful customer decision, not a validation error.
+            // Keep the collected deposit and refund ledger unchanged (BR-PAY-010).
+            return TransitionTo(OrderStatus.Cancelled);
         }
     }
 
     /// <summary>
     /// Checks if COD confirmation is required (COD payment + not yet confirmed + deadline not expired).
     /// </summary>
-    public bool IsCodConfirmationRequired()
+    public bool IsCodConfirmationRequired(DateTime? nowUtc = null)
     {
+        if (Status != OrderStatus.QualityCheck || !CodConfirmationDeadlineUtc.HasValue) return false;
         if (!string.Equals(PaymentMethod, "COD", StringComparison.OrdinalIgnoreCase))
             return false;
         if (IsCodConfirmed)
             return false;
-        if (CodConfirmationDeadlineUtc.HasValue && DateTime.UtcNow > CodConfirmationDeadlineUtc.Value)
+        if ((nowUtc ?? DateTime.UtcNow) >= CodConfirmationDeadlineUtc.Value)
             return false; // Deadline expired, order should be auto-cancelled
         return true;
     }
@@ -339,23 +351,24 @@ public class Order : AggregateRoot<Guid>
     /// <summary>
     /// Checks if the COD confirmation deadline has passed without customer confirmation.
     /// </summary>
-    public bool IsCodConfirmationExpired()
+    public bool IsCodConfirmationExpired(DateTime? nowUtc = null)
     {
+        if (Status != OrderStatus.QualityCheck) return false;
         if (!string.Equals(PaymentMethod, "COD", StringComparison.OrdinalIgnoreCase))
             return false;
         if (IsCodConfirmed)
             return false;
         if (!CodConfirmationDeadlineUtc.HasValue)
             return false;
-        return DateTime.UtcNow > CodConfirmationDeadlineUtc.Value;
+        return (nowUtc ?? DateTime.UtcNow) >= CodConfirmationDeadlineUtc.Value;
     }
 
     /// <summary>
     /// Auto-cancels the order due to COD confirmation timeout. Forfeits deposit per BR-PAY-010.
     /// </summary>
-    public Result CancelDueToCodTimeout()
+    public Result CancelDueToCodTimeout(DateTime? nowUtc = null)
     {
-        if (!IsCodConfirmationExpired())
+        if (!IsCodConfirmationExpired(nowUtc))
             return Result.Failure(Error.Conflict("COD confirmation has not expired yet."));
 
         var transition = TransitionTo(OrderStatus.Cancelled);

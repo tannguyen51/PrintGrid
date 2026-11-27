@@ -51,9 +51,10 @@ const fmtDateTime = (d: string) => new Date(d).toLocaleString('vi-VN', { day: '2
 export default function OrdersPage() {
   const navigate = useNavigate()
   const { data, isLoading, isError } = useOrders()
-  const [selected, setSelected] = useState<Order | null>(null)
+  const [selectedSnapshot, setSelected] = useState<Order | null>(null)
 
   const rows = useMemo(() => data ?? [], [data])
+  const selected = rows.find(order => order.id === selectedSnapshot?.id) ?? selectedSnapshot
 
   const columns: GridColDef<Order>[] = [
     { field: 'orderNumber', headerName: 'Mã đơn', width: 200 },
@@ -214,6 +215,7 @@ export default function OrdersPage() {
                 <Typography>Ngày cam kết: {selected.promisedDeliveryDate ? fmtDate(selected.promisedDeliveryDate) : '—'}</Typography>
                 <Chip label={selected.dispatchMode === 'Automatic' ? 'Xét tự động sau khi đủ cọc' : 'Ops điều phối'} sx={{ alignSelf: 'flex-start' }} />
               </Stack>
+              {selected.status === 'Cancelled' && <Alert severity="info" sx={{ mb: 3 }}>Đơn hàng đã hủy. Đơn sẽ không được tiếp tục giao.</Alert>}
               {selected.status === 'PaymentPending' && (
                 <>
                   <OrderPaymentPanel orderId={selected.id} />

@@ -5,17 +5,20 @@ using PrintGrid.Api.Authorization;
 using PrintGrid.Modules.Customer.Application.Commands.PlaceOrder;
 using PrintGrid.Modules.Customer.Application.Commands.ReprintRequests;
 using PrintGrid.Modules.Customer.Application.Commands.Shipment;
+using PrintGrid.Api.Payments;
+using PrintGrid.Infrastructure.Shared.Persistence;
 
 namespace PrintGrid.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/orders")]
-[Authorize(Policy = Policies.RequireCustomer)]
+[Authorize]
 public class OrdersController(ISender sender,
     PrintGrid.Modules.Customer.Domain.Repositories.IQuoteRepository quotes,
-    OrderDeliveryService delivery) : ControllerBase
+    OrderDeliveryService delivery, PrintGridDbContext db) : ControllerBase
 {
     [HttpPost("delivery-preview")]
+    [Authorize(Policy = Policies.RequireCustomer)]
     public async Task<IActionResult> PreviewDelivery(DeliveryPreviewRequest request, CancellationToken ct)
     {
         var quote = await quotes.GetByIdAsync(request.QuoteId, ct);
@@ -28,6 +31,7 @@ public class OrdersController(ISender sender,
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
     }
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCustomer)]
     public async Task<IActionResult> GetOrders(CancellationToken cancellationToken)
     {
         var customerId = User.GetCustomerId();
@@ -38,6 +42,7 @@ public class OrdersController(ISender sender,
     }
 
     [HttpGet("{id:guid}/timeline")]
+    [Authorize(Policy = Policies.RequireCustomer)]
     public async Task<IActionResult> GetOrderTimeline(Guid id, CancellationToken cancellationToken)
     {
         var customerId = User.GetCustomerId();
@@ -48,6 +53,7 @@ public class OrdersController(ISender sender,
     }
 
     [HttpPost("{id:guid}/confirm-receipt")]
+    [Authorize(Policy = Policies.RequireCustomer)]
     public async Task<IActionResult> ConfirmReceipt(Guid id, CancellationToken cancellationToken)
     {
         var customerId = User.GetCustomerId();
@@ -70,6 +76,7 @@ public class OrdersController(ISender sender,
     /// Customer has 24h to confirm (BR-PAY-008 COD model).
     /// </summary>
     [HttpPost("{id:guid}/cod-confirm")]
+    [Authorize(Policy = Policies.RequireCustomer)]
     public async Task<IActionResult> ConfirmCodReceipt(
         Guid id,
         [FromBody] ConfirmCodReceiptRequest request,
@@ -78,8 +85,13 @@ public class OrdersController(ISender sender,
         var customerId = User.GetCustomerId();
         if (customerId is null) return Forbid();
 
+        await using var transaction = await CodOrderTransaction.BeginAsync(db, id, cancellationToken);
         var result = await sender.Send(new ConfirmCodReceiptCommand(id, request.Accepted, customerId.Value), cancellationToken);
-        if (!result.IsFailure) return Ok(new { message = "Xác nhận COD thành công." });
+        if (!result.IsFailure)
+        {
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return Ok(new { message = request.Accepted ? "Đã xác nhận sẽ nhận hàng COD." : "Đã từ chối nhận hàng và hủy đơn." });
+        }
         var status = result.Error.Code switch
         {
             "not_found" => StatusCodes.Status404NotFound,
@@ -95,11 +107,16 @@ public class OrdersController(ISender sender,
     /// Sets 24h deadline for customer to respond.
     /// </summary>
     [HttpPost("{id:guid}/request-cod-confirmation")]
-    [Authorize(Policy = Policies.RequireHub)]
+    [Authorize(Roles = $"{Roles.HubFulfillment},{Roles.HubQc},{Roles.OpsManager}")]
     public async Task<IActionResult> RequestCodConfirmation(Guid id, CancellationToken cancellationToken)
     {
+        await using var transaction = await CodOrderTransaction.BeginAsync(db, id, cancellationToken);
         var result = await sender.Send(new RequestCodConfirmationCommand(id), cancellationToken);
-        if (!result.IsFailure) return Ok(new { message = "Đã yêu cầu khách hàng xác nhận nhận hàng COD." });
+        if (!result.IsFailure)
+        {
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return Ok(new { message = "Đã yêu cầu khách hàng xác nhận nhận hàng COD." });
+        }
         var status = result.Error.Code switch
         {
             "not_found" => StatusCodes.Status404NotFound,
@@ -110,6 +127,7 @@ public class OrdersController(ISender sender,
     }
 
     [HttpPost]
+    [Authorize(Policy = Policies.RequireCustomer)]
     public async Task<IActionResult> PlaceOrder(
         [FromBody] PlaceOrderRequest request,
         CancellationToken cancellationToken)
@@ -149,6 +167,7 @@ public class OrdersController(ISender sender,
     }
 
     [HttpGet("{id:guid}/reprint-requests")]
+    [Authorize(Policy = Policies.RequireCustomer)]
     public async Task<IActionResult> GetReprintRequests(Guid id, CancellationToken cancellationToken)
     {
         var customerId = User.GetCustomerId();
@@ -158,6 +177,7 @@ public class OrdersController(ISender sender,
     }
 
     [HttpPost("{id:guid}/reprint-request")]
+    [Authorize(Policy = Policies.RequireCustomer)]
     [RequestSizeLimit(40 * 1024 * 1024)]
     public async Task<IActionResult> CreateReprintRequest(Guid id, [FromBody] ReprintRequestBody request, CancellationToken cancellationToken)
     {

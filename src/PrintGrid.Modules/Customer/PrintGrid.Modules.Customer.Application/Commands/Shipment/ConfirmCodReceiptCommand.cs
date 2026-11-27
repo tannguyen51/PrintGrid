@@ -32,17 +32,21 @@ public class ConfirmCodReceiptCommandHandler(
     public async Task<Result> Handle(ConfirmCodReceiptCommand command, CancellationToken cancellationToken)
     {
         var order = await orders.GetByIdAsync(command.OrderId, cancellationToken);
-        if (order is null)
+        if (order is null || command.ConfirmedBy is null || order.CustomerId != command.ConfirmedBy.Value)
             return Result.Failure(Error.NotFound("Order", command.OrderId));
 
+        var previousStatus = order.Status;
+        var previousConfirmation = order.IsCodConfirmed;
         var result = order.ConfirmCodReceipt(command.Accepted, command.ConfirmedBy);
         if (result.IsFailure)
             return result;
 
+        if (order.Status == previousStatus && order.IsCodConfirmed == previousConfirmation) return Result.Success();
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Publish event for notification/timeline
-        await publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
+        await publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId,
+            command.Accepted ? "CodConfirmed" : "CodRejected"), cancellationToken);
 
         return Result.Success();
     }
@@ -64,14 +68,16 @@ public class RequestCodConfirmationCommandHandler(
         if (order is null)
             return Result.Failure(Error.NotFound("Order", command.OrderId));
 
+        var previousCount = order.CodConfirmationRequestCount;
         var result = order.RequestCodConfirmation();
         if (result.IsFailure)
             return result;
 
+        if (previousCount == order.CodConfirmationRequestCount) return Result.Success();
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Publish event for notification (customer needs to be notified)
-        await publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId), cancellationToken);
+        await publisher.Publish(new OrderTimelineUpdatedIntegrationEvent(order.Id, order.CustomerId, "CodConfirmationRequested"), cancellationToken);
 
         return Result.Success();
     }

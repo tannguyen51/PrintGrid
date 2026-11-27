@@ -35,7 +35,7 @@ public sealed class OrderNotificationHandler : INotificationHandler<OrderTimelin
                 customerTitle,
                 customerMessage,
                 "order",
-                $"/orders/{notification.OrderId}"),
+                notification.Status?.StartsWith("Cod", StringComparison.Ordinal) == true ? "/orders" : $"/orders/{notification.OrderId}"),
         };
 
         foreach (var staffNotification in staffNotifications)
@@ -77,6 +77,15 @@ public sealed class OrderNotificationHandler : INotificationHandler<OrderTimelin
     {
         return notification.Status switch
         {
+            "CodConfirmationRequested" => (
+                "Vui lòng xác nhận nhận hàng COD",
+                "Đơn đã sẵn sàng tại Hub. Bạn có 24 giờ để xác nhận sẽ nhận hàng và thanh toán phần còn lại cho shipper. Quá hạn, đơn sẽ hủy theo chính sách tiền cọc.", []),
+            "CodConfirmed" => ("Đã xác nhận sẽ nhận hàng", "Hub sẽ tiến hành giao hàng. Bạn thanh toán phần tiền còn lại cho shipper khi nhận hàng.",
+                [new(Roles.HubFulfillment, "Khách đã xác nhận COD", "Đơn đã được khách xác nhận sẽ nhận hàng.", "/hub/shipments")]),
+            "CodRejected" => ("Đơn hàng đã hủy", "Đơn đã được hủy theo yêu cầu từ chối nhận hàng của bạn. Tiền cọc được xử lý theo chính sách đã chấp thuận.",
+                [new(Roles.HubFulfillment, "Khách đã từ chối COD", "Đơn đã hủy; không tiếp tục giao hàng.", "/hub/shipments")]),
+            "CodExpired" => ("Đơn hàng đã hủy do quá hạn COD", "Đơn đã tự động hủy vì không xác nhận nhận hàng trong 24 giờ. Tiền cọc được xử lý theo chính sách đã chấp thuận.",
+                [new(Roles.HubFulfillment, "Đơn COD quá hạn đã hủy", "Không tiếp tục giao đơn chưa được khách xác nhận đúng hạn.", "/hub/shipments")]),
             "Printing" => (
                 "Sản xuất đã bắt đầu",
                 "Đơn hàng của bạn đã bắt đầu được in.",
