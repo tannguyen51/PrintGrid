@@ -22,7 +22,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { AddRounded, SearchRounded } from '@mui/icons-material'
+import { AddRounded, CheckCircleRounded, PrecisionManufacturingRounded, SearchRounded } from '@mui/icons-material'
 import { apiClient } from '../../shared/api/apiClient'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { ServerPaginationBar } from '../../shared/components/ServerPaginationBar'
@@ -293,13 +293,40 @@ export default function AdminCuraProfilesPage() {
           </Alert>
         )}
 
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 2.5 }}>
-          <Typography variant="h6">Model khách được phép chỉ định</Typography>
-          <Typography variant="body2" color="text.secondary">Model chỉ xuất hiện khi đủ số máy và số lab theo cấu hình thương mại, đồng thời đáp ứng yêu cầu sản phẩm.</Typography>
-          {models.isLoading && <CircularProgress size={22} />}
+        <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, overflow: 'hidden', boxShadow: '0 12px 32px rgba(35, 29, 85, 0.05)' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 2.5 }}>
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <Box sx={{ width: 42, height: 42, borderRadius: 2.5, display: 'grid', placeItems: 'center', bgcolor: '#F0ECFF', color: 'primary.main', flexShrink: 0 }}>
+                <PrecisionManufacturingRounded />
+              </Box>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 800 }}>Model khách được phép chỉ định</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35, maxWidth: 760 }}>
+                  Chọn các model khách hàng có thể yêu cầu khi đặt in. Model vẫn phải đáp ứng đủ năng lực máy, số xưởng và yêu cầu sản phẩm.
+                </Typography>
+              </Box>
+            </Stack>
+            {!models.isLoading && !models.isError && (
+              <Chip icon={<CheckCircleRounded />} label={`${models.data?.filter((model) => model.allowsCustomerPinning).length ?? 0}/${models.data?.length ?? 0} đang cho phép`} color="primary" variant="outlined" sx={{ alignSelf: { xs: 'flex-start', sm: 'center' }, fontWeight: 700, bgcolor: '#FAF9FF' }} />
+            )}
+          </Stack>
+          {models.isLoading && <Box sx={{ py: 3, display: 'grid', placeItems: 'center' }}><CircularProgress size={28} /></Box>}
           {models.isError && <Alert severity="error" action={<Button onClick={() => void models.refetch()}>Thử lại</Button>}>Không tải được danh sách model.</Alert>}
-          {models.data?.map(m => <FormControlLabel key={m.id} label={m.name} control={<Switch checked={m.allowsCustomerPinning}
-            disabled={pinning.isPending} onChange={(_, allowed) => pinning.mutate({ id: m.id, allowed })} />} />)}
+          {!!models.data?.length && (
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(3, minmax(0, 1fr))' }, gap: 1.25 }}>
+              {models.data.map((model) => (
+                <Box key={model.id} sx={{ px: 1.75, py: 1.25, border: '1px solid', borderColor: model.allowsCustomerPinning ? 'primary.light' : 'divider', borderRadius: 2.25, bgcolor: model.allowsCustomerPinning ? '#FAF9FF' : '#fff', transition: 'border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease', '&:hover': { borderColor: 'primary.main', boxShadow: '0 6px 18px rgba(111, 85, 255, 0.08)' } }}>
+                  <FormControlLabel
+                    sx={{ m: 0, width: '100%', justifyContent: 'space-between', gap: 1, '& .MuiFormControlLabel-label': { minWidth: 0 } }}
+                    labelPlacement="start"
+                    label={<Box sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{model.name}</Typography><Typography variant="caption" color={model.allowsCustomerPinning ? 'primary.main' : 'text.secondary'}>{model.allowsCustomerPinning ? 'Khách hàng có thể chỉ định' : 'Chỉ phân bổ tự động'}</Typography></Box>}
+                    control={<Switch size="small" checked={model.allowsCustomerPinning} disabled={pinning.isPending} onChange={(_, allowed) => pinning.mutate({ id: model.id, allowed })} />}
+                  />
+                </Box>
+              ))}
+            </Box>
+          )}
+          {!models.isLoading && !models.isError && !models.data?.length && <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>Chưa có model máy nào trong hệ thống.</Box>}
         </Paper>
 
         <Paper variant="outlined" sx={{ borderRadius: 2.5, overflow: 'hidden' }}>

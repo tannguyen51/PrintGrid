@@ -213,7 +213,7 @@ export default function OrdersPage() {
               <Stack spacing={1} sx={{ mb: 3 }}>
                 <Typography>Ngày mong muốn: {selected.requestedDeliveryDate ? fmtDate(selected.requestedDeliveryDate) : 'Chưa khai báo (đơn cũ)'}</Typography>
                 <Typography>Ngày cam kết: {selected.promisedDeliveryDate ? fmtDate(selected.promisedDeliveryDate) : '—'}</Typography>
-                <Chip label={selected.dispatchMode === 'Automatic' ? 'Xét tự động sau khi đủ cọc' : 'Ops điều phối'} sx={{ alignSelf: 'flex-start' }} />
+                {selected.dispatchMode === 'Automatic' && <Chip label="Xét tự động sau khi đủ cọc" sx={{ alignSelf: 'flex-start' }} />}
               </Stack>
               {selected.status === 'Cancelled' && <Alert severity="info" sx={{ mb: 3 }}>Đơn hàng đã hủy. Đơn sẽ không được tiếp tục giao.</Alert>}
               {selected.status === 'PaymentPending' && (

@@ -10,12 +10,10 @@ import { PublicNavbar } from './landing/PublicNavbar'
 import { PublicHero } from './landing/PublicHero'
 import { PublicSections } from './landing/PublicSections'
 import { pageWash } from '../../shared/theme/tokens'
+import { CustomerHomeDashboard } from './CustomerHomeDashboard'
 
-/**
- * The Figma landing is the homepage for EVERYONE (08/10): visitors, customers and staff.
- * Only the navbar differs — each role keeps its own links on top of the same page.
- * The old purple/black hero + feature grid is gone from every role's home.
- */
+/** Public visitors and staff keep the marketing homepage; signed-in customers
+ * receive a focused workspace with their orders, models and primary actions. */
 export default function HomePage() {
   const [authMode, setAuthMode] = useState<AuthMode | null>(null)
   const { isAuthenticated, user } = useAuth()
@@ -31,11 +29,18 @@ export default function HomePage() {
   // staff jump to their console. Null hides the button when there is no console yet.
   const staffLink = showStaffNavbar ? staffPrimaryLink(user?.roles ?? []) : null
 
+  if (showCustomerNavbar) {
+    return (
+      <Box sx={{ minHeight: '100vh', background: pageWash }}>
+        <CustomerNavbar />
+        <CustomerHomeDashboard />
+      </Box>
+    )
+  }
+
   return (
     <Box sx={{ minHeight: '100vh', background: pageWash }}>
-      {showCustomerNavbar ? (
-        <CustomerNavbar />
-      ) : showStaffNavbar ? (
+      {showStaffNavbar ? (
         <StaffNavbar />
       ) : (
         <PublicNavbar onLogin={openLogin} onRegister={openRegister} />
@@ -44,9 +49,7 @@ export default function HomePage() {
       <PublicHero
         onRegister={openRegister}
         cta={
-          showCustomerNavbar
-            ? { label: 'Đặt in ngay', onClick: () => navigate('/order/new') }
-            : showStaffNavbar
+          showStaffNavbar
               ? staffLink
                 ? { label: staffLink.label, onClick: () => navigate(staffLink.href) }
                 : null
