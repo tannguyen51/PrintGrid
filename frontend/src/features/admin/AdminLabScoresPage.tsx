@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { Alert, Box, Chip, CircularProgress, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
 import { apiClient } from '../../shared/api/apiClient'
+import { useState } from 'react'
+import { ClientPaginationBar } from '../../shared/components/ClientPaginationBar'
 
 interface LabScoreExplanation {
   labId: string
@@ -26,6 +28,10 @@ function useLabScoreExplanations() {
 
 export function AdminLabScoresPage() {
   const query = useLabScoreExplanations()
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+  const rows = query.data ?? []
+  const visibleRows = rows.slice(page * pageSize, page * pageSize + pageSize)
 
   return (
     <Box>
@@ -65,7 +71,7 @@ export function AdminLabScoresPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                (query.data ?? []).map((lab) => (
+                visibleRows.map((lab) => (
                   <TableRow key={lab.labId} hover>
                     <TableCell sx={{ fontWeight: 700 }}>{lab.labName}</TableCell>
                     <TableCell align="right">{lab.completedJobs}/{lab.totalAssignedJobs}</TableCell>
@@ -87,6 +93,7 @@ export function AdminLabScoresPage() {
             </TableBody>
           </Table>
         )}
+        {!query.isLoading && rows.length > 0 && <ClientPaginationBar count={rows.length} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(0) }} />}
       </Paper>
     </Box>
   )

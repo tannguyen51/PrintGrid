@@ -24,6 +24,7 @@ import {
 import { InsightsRounded } from '@mui/icons-material'
 import { apiClient } from '../../shared/api/apiClient'
 import { getApiErrorMessage } from '../../shared/api/apiError'
+import { ClientPaginationBar } from '../../shared/components/ClientPaginationBar'
 
 interface ScoringConfiguration {
   id?: string | null
@@ -85,6 +86,10 @@ export function AdminScoringConfigurationPage() {
   const [form, setForm] = useState<ActivateForm>((EMPTY_FORM))
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+  const rows = configurations.data ?? []
+  const visibleRows = rows.slice(page * pageSize, page * pageSize + pageSize)
 
   const activate = useMutation({
     mutationFn: async () =>
@@ -173,7 +178,7 @@ export function AdminScoringConfigurationPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                (configurations.data ?? []).map((config) => (
+                visibleRows.map((config) => (
                   <TableRow key={`${config.version}-${config.id ?? 'default'}`} hover>
                     <TableCell sx={{ fontWeight: 700 }}>{config.version}</TableCell>
                     <TableCell align="right">{config.dueDateSlack}</TableCell>
@@ -195,6 +200,7 @@ export function AdminScoringConfigurationPage() {
             </TableBody>
           </Table>
         )}
+        {!configurations.isLoading && rows.length > 0 && <ClientPaginationBar count={rows.length} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(0) }} />}
       </Paper>
 
       <Dialog open={formOpen} onClose={() => setFormOpen(false)} fullWidth maxWidth="sm">

@@ -24,6 +24,7 @@ import { getApiErrorMessage } from '../../shared/api/apiError'
 import { landing } from '../../shared/theme/landing'
 import { SAMPLE_CATEGORIES, type AdminSample } from '../samples/sampleTypes'
 import { useAdminSamples, useDeleteSample, useSaveSample, useSetSamplePublished, type SampleFormInput } from './useAdminSamples'
+import { ClientPaginationBar } from '../../shared/components/ClientPaginationBar'
 
 const emptyForm: SampleFormInput = {
   name: '',
@@ -52,6 +53,10 @@ export default function AdminSamplesPage() {
   const [editing, setEditing] = useState<AdminSample | null>(null)
   const [form, setForm] = useState<SampleFormInput>(emptyForm)
   const [error, setError] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+  const rows = query.data ?? []
+  const visibleRows = rows.slice(page * pageSize, page * pageSize + pageSize)
 
   const showCreate = () => {
     setEditing(null)
@@ -146,7 +151,7 @@ export default function AdminSamplesPage() {
             </Box>
           ) : (
             <Stack divider={<Box sx={{ borderTop: 1, borderColor: 'divider' }} />}>
-              {(query.data ?? []).map((sample) => (
+              {visibleRows.map((sample) => (
                 <Stack
                   key={sample.id}
                   direction={{ xs: 'column', md: 'row' }}
@@ -222,6 +227,7 @@ export default function AdminSamplesPage() {
               ))}
             </Stack>
           )}
+          {!query.isLoading && rows.length > 0 && <ClientPaginationBar count={rows.length} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(0) }} />}
         </Paper>
 
         <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>

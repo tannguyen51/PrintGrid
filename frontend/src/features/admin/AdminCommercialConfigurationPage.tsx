@@ -3,6 +3,7 @@ import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, Dial
 import { AddRounded, CheckCircleRounded, ScheduleRounded } from '@mui/icons-material'
 import { getApiErrorMessage } from '../../shared/api/apiError'
 import { type CommercialConfiguration, type CommercialParameters, useActivateCommercialConfiguration, useCatalogItems, useCommercialConfigurations, useCreateCommercialConfiguration } from './useAdminConfiguration'
+import { ClientPaginationBar } from '../../shared/components/ClientPaginationBar'
 
 const defaults: CommercialParameters = {
   materialRates: { PLA: 470, PETG: 575, ABS: 520, TPU: 680, RESIN: 1550 },
@@ -25,6 +26,10 @@ export default function AdminCommercialConfigurationPage() {
   const [referenceProfiles, setReferenceProfiles] = useState('{}')
   const [activateDialog, setActivateDialog] = useState<{ open: boolean; id: string; item: CommercialConfiguration } | null>(null)
   const [scheduledLocal, setScheduledLocal] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+  const configurationRows = query.data ?? []
+  const visibleConfigurations = configurationRows.slice(page * pageSize, page * pageSize + pageSize)
   const materials = useMemo(() => Object.keys(params.materialRates), [params.materialRates])
   const startCreate = () => {
     const next = active ? structuredClone(active.parameters) : structuredClone(defaults)
@@ -75,7 +80,7 @@ export default function AdminCommercialConfigurationPage() {
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
     {query.isError && <Alert severity="error" sx={{ mb: 2 }} action={<Button onClick={() => { void query.refetch() }}>Thử lại</Button>}>Không tải được cấu hình thương mại.</Alert>}
     {!query.isLoading && !query.isError && !query.data?.length && <Paper variant="outlined" sx={{ p: 5, textAlign: 'center' }}><Typography fontWeight={650}>Chưa có phiên bản cấu hình</Typography><Typography color="text.secondary" sx={{ mt: 1 }}>Chọn “Tạo phiên bản” để thiết lập cấu hình thương mại đầu tiên.</Typography></Paper>}
-    {query.isLoading ? <CircularProgress /> : <Stack spacing={2}>{query.data?.map(item => <Paper key={item.id} variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
+    {query.isLoading ? <CircularProgress /> : <Stack spacing={2}>{visibleConfigurations.map(item => <Paper key={item.id} variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
       <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={2}>
         <Box><Stack direction="row" spacing={1} alignItems="center"><Typography variant="h6" fontWeight={750}>v{item.versionNumber} · {item.name}</Typography><Chip size="small" color={item.status === 'Active' ? 'success' : item.status === 'Draft' ? 'warning' : 'default'} label={item.status === 'Active' ? 'Đang hoạt động' : item.status === 'Draft' ? 'Bản nháp' : 'Đã lưu trữ'} /></Stack><Typography color="text.secondary" mt={0.5}>{item.changeSummary}</Typography>
           <Typography variant="caption" color="text.secondary" component="div">Tạo lúc {formatUtc(item.createdAtUtc)}</Typography>
@@ -93,6 +98,7 @@ export default function AdminCommercialConfigurationPage() {
         </Stack>
       </Box>
     </Paper>)}</Stack>}
+    {!query.isLoading && configurationRows.length > 0 && <ClientPaginationBar count={configurationRows.length} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(0) }} />}
 
     <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth><DialogTitle>Tạo phiên bản cấu hình mới</DialogTitle><DialogContent><Stack spacing={2} mt={1}>
       {error && <Alert severity="error">{error}</Alert>}<TextField label="Tên phiên bản" value={name} onChange={e => setName(e.target.value)} required /><TextField label="Mô tả thay đổi" value={summary} onChange={e => setSummary(e.target.value)} multiline minRows={2} required />
