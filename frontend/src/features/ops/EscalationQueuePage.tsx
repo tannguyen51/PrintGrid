@@ -19,6 +19,7 @@ import {
 } from '@mui/material'
 import { WarningRounded } from '@mui/icons-material'
 import { useOpsEscalations, type OpsEscalationKind, type OpsEscalationStatus } from './useOps'
+import { ClientPaginationBar } from '../../shared/components/ClientPaginationBar'
 
 const KIND_LABELS: Record<OpsEscalationKind, string> = {
   ReprintLimitExceeded: 'In lại vượt trần',
@@ -43,7 +44,10 @@ export default function EscalationQueuePage() {
   const rows = escalations.data ?? []
   const [statusFilter, setStatusFilter] = useState('')
   const [kindFilter, setKindFilter] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
   const filteredRows = rows.filter((row) => (!statusFilter || row.status === statusFilter) && (!kindFilter || row.kind === kindFilter))
+  const visibleRows = filteredRows.slice(page * pageSize, page * pageSize + pageSize)
 
   return (
     <Box className="ops-page">
@@ -91,7 +95,7 @@ export default function EscalationQueuePage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredRows.map((e) => (
+                {visibleRows.map((e) => (
                   <TableRow key={e.id}>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{fmtDateTime(e.createdAtUtc)}</TableCell>
                     <TableCell>
@@ -115,6 +119,7 @@ export default function EscalationQueuePage() {
                 ))}
               </TableBody>
             </Table>
+            <ClientPaginationBar count={filteredRows.length} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(0) }} />
           </TableContainer>
         ) : null}
       </Stack>

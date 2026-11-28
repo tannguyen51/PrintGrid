@@ -16,6 +16,8 @@ import {
 } from '@mui/material'
 import { DownloadRounded, InsightsRounded } from '@mui/icons-material'
 import { useExportSlaReport, useSlaReport, type SlaLabRow } from './useSlaReport'
+import { useState } from 'react'
+import { ClientPaginationBar } from '../../shared/components/ClientPaginationBar'
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`
 
@@ -37,11 +39,14 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
  * The network row is an aggregate of the underlying jobs (not an average of lab rates).
  */
 export default function SlaReportPage() {
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
   const { data, isLoading, isError, error } = useSlaReport()
   const exportCsv = useExportSlaReport()
 
   const network = data?.network
   const labs = data?.labs ?? []
+  const visibleLabs = labs.slice(page * pageSize, page * pageSize + pageSize)
 
   return (
     <Box className="ops-page">
@@ -135,7 +140,7 @@ export default function SlaReportPage() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {labs.map((row) => (
+                    {visibleLabs.map((row) => (
                       <LabRow key={row.labId ?? row.labName} row={row} />
                     ))}
                     <TableRow sx={{ bgcolor: 'rgba(111,85,255,0.08)' }}>
@@ -155,6 +160,7 @@ export default function SlaReportPage() {
                     </TableRow>
                   </TableBody>
                 </Table>
+                <ClientPaginationBar count={labs.length} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(0) }} />
               </TableContainer>
             )}
           </>

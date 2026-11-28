@@ -17,6 +17,7 @@ import {
   Typography,
 } from '@mui/material'
 import { DESIGN_STATUSES, useChangeDesignStatus, useDesignRequests } from '../design/useDesignRequests'
+import { ClientPaginationBar } from '../../shared/components/ClientPaginationBar'
 
 const STATUS_LABELS: Record<string, string> = {
   Pending: 'Chờ xử lý',
@@ -40,10 +41,13 @@ const statusColor = (status: string): 'warning' | 'info' | 'success' | 'error' |
 export default function DesignRequestsPage() {
   const [statusFilter, setStatusFilter] = useState('Pending')
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
 
   const { data, isLoading, isError } = useDesignRequests(statusFilter || undefined)
   const changeStatus = useChangeDesignStatus()
   const rows = data ?? []
+  const visibleRows = rows.slice(page * pageSize, page * pageSize + pageSize)
 
   async function setStatus(id: string, status: string) {
     setError(null)
@@ -109,7 +113,7 @@ export default function DesignRequestsPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.map((row) => (
+                {visibleRows.map((row) => (
                   <TableRow key={row.id} hover>
                     <TableCell sx={{ fontWeight: 600 }}>{row.title}</TableCell>
                     <TableCell sx={{ maxWidth: 320 }}>
@@ -137,6 +141,7 @@ export default function DesignRequestsPage() {
                 ))}
               </TableBody>
             </Table>
+            <ClientPaginationBar count={rows.length} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(0) }} />
           </TableContainer>
         )}
       </Stack>

@@ -22,6 +22,7 @@ import {
 } from '@mui/material'
 import { CheckRounded, CloseRounded, DownloadRounded } from '@mui/icons-material'
 import { useExportRefunds, useProcessRefund, useRefunds, type RefundRequestRow } from './useRefunds'
+import { ClientPaginationBar } from '../../shared/components/ClientPaginationBar'
 
 const fmtVnd = (amount: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(amount)
@@ -39,12 +40,15 @@ export default function RefundsPage() {
   const [target, setTarget] = useState<RefundRequestRow | null>(null)
   const [note, setNote] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
 
   const { data, isLoading, isError, error } = useRefunds(status)
   const processRefund = useProcessRefund()
   const exportCsv = useExportRefunds()
 
   const rows = data ?? []
+  const visibleRows = rows.slice(page * pageSize, page * pageSize + pageSize)
 
   async function decide(approve: boolean) {
     if (!target) return
@@ -129,7 +133,7 @@ export default function RefundsPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.map((row) => (
+                {visibleRows.map((row) => (
                   <TableRow key={row.id} hover>
                     <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.78rem' }}>{row.orderId.slice(0, 8)}…</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>{fmtVnd(row.amount)}</TableCell>
@@ -158,6 +162,7 @@ export default function RefundsPage() {
                 ))}
               </TableBody>
             </Table>
+            <ClientPaginationBar count={rows.length} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(0) }} />
           </TableContainer>
         )}
       </Stack>
